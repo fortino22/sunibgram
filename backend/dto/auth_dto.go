@@ -15,11 +15,14 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
+	Message string `json:"message"`
+}
+
+type LoginProdResponse struct {
 	AccessToken           string    `json:"access_token"`
 	RefreshToken          string    `json:"refresh_token"`
 	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
 	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
-	User                  UserData  `json:"user"`
 }
 
 type RefreshResponse struct {
@@ -34,6 +37,7 @@ type UserData struct {
 	Name     string `json:"name"`
 	UserName string `json:"username"`
 	Email    string `json:"email"`
+	RoleID   uint   `json:"role_id"`
 }
 
 type ErrorResponse struct {

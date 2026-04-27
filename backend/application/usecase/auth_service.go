@@ -27,10 +27,11 @@ const (
 
 type AuthService struct {
 	userRepo repository.IUserRepository
+	roleRepo repository.IRoleRepository
 }
 
-func NewAuthService(userRepo repository.IUserRepository) service.IAuthService {
-	return &AuthService{userRepo: userRepo}
+func NewAuthService(userRepo repository.IUserRepository, roleRepo repository.IRoleRepository) service.IAuthService {
+	return &AuthService{userRepo: userRepo, roleRepo: roleRepo}
 }
 
 func (s *AuthService) Register(user *model.User) error {
@@ -54,6 +55,12 @@ func (s *AuthService) Register(user *model.User) error {
 		return errors.New("username already taken")
 	}
 
+	defaultRole, err := s.roleRepo.FindByName(model.DefaultRoleName)
+	if err != nil {
+		return errors.New("default role not found, contact administrator")
+	}
+	user.RoleID = defaultRole.RoleID
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -63,7 +70,18 @@ func (s *AuthService) Register(user *model.User) error {
 	return s.userRepo.Save(user)
 }
 
-func (s *AuthService) Login(email, password string) (*model.User, model.TokenPair, error) {
+func (s *AuthService) Login(email, password string) error {
+	user, err := s.userRepo.FindByEmail(email)
+	if err != nil {
+		return errors.New("invalid email or password")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return errors.New("invalid email or password")
+	}
+	return nil
+}
+
+func (s *AuthService) LoginProd(email, password string) (*model.User, model.TokenPair, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		return nil, model.TokenPair{}, errors.New("invalid email or password")
@@ -106,11 +124,13 @@ func generateTokenPair(user *model.User) (model.TokenPair, error) {
 
 	accessExp := now.Add(accessTokenDuration)
 	accessToken, err := signToken(jwt.MapClaims{
-		"kind":     string(kindAccess),
-		"user_id":  user.UserID,
-		"username": user.UserName,
-		"email":    user.Email,
-		"exp":      accessExp.Unix(),
+		"kind":      string(kindAccess),
+		"user_id":   user.UserID,
+		"username":  user.UserName,
+		"email":     user.Email,
+		"role_id":   user.RoleID,
+		"role_name": user.Role.Name,
+		"exp":       accessExp.Unix(),
 	}, secret)
 	if err != nil {
 		return model.TokenPair{}, err
@@ -127,9 +147,9 @@ func generateTokenPair(user *model.User) (model.TokenPair, error) {
 	}
 
 	return model.TokenPair{
-		AccessToken:          accessToken,
-		RefreshToken:         refreshToken,
-		AccessTokenExpiresAt: accessExp,
+		AccessToken:           accessToken,
+		RefreshToken:          refreshToken,
+		AccessTokenExpiresAt:  accessExp,
 		RefreshTokenExpiresAt: refreshExp,
 	}, nil
 }

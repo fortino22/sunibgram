@@ -9,4 +9,5 @@ type IUserRepository interface {
 	FindByUserName(username string) (*model.User, error)
 	ExistsByEmail(email string) (bool, error)
 	ExistsByUserName(username string) (bool, error)
+	FindAllPaginated(page, limit int) ([]model.User, int64, error)
 }

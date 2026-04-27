@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const allowedEmailDomain = "@binus.ac.id"
+
 type TokenPair struct {
 	AccessToken           string
 	RefreshToken          string
@@ -19,6 +21,8 @@ type User struct {
 	UserName  string    `gorm:"uniqueIndex;not null"`
 	Email     string    `gorm:"uniqueIndex;not null"`
 	Password  string    `gorm:"not null"`
+	RoleID    uint      `gorm:"not null;default:1"`
+	Role      Role      `gorm:"foreignKey:RoleID;references:RoleID"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
@@ -33,8 +37,8 @@ func (u *User) ValidateRegister() error {
 	if strings.TrimSpace(u.Email) == "" {
 		return errors.New("email is required")
 	}
-	if !strings.Contains(u.Email, "@") {
-		return errors.New("email is invalid")
+	if !strings.HasSuffix(strings.ToLower(u.Email), allowedEmailDomain) {
+		return errors.New("email must use @binus.ac.id domain")
 	}
 	if len(u.Password) < 6 {
 		return errors.New("password must be at least 6 characters")

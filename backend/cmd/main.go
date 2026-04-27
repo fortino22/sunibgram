@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"os"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/application/usecase"
 	"github.com/sunibgram/infrastructure/config"
 	"github.com/sunibgram/infrastructure/migration"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
 	"github.com/sunibgram/webapi/controller"
+	"github.com/sunibgram/webapi/router"
 )
 
 func main() {
@@ -17,18 +19,30 @@ func main() {
 
 	migration.AutoMigrate(writeDB)
 
+	roleRepo := infrarepo.NewRoleRepository(writeDB, readDB)
 	userRepo := infrarepo.NewUserRepository(writeDB, readDB)
-	authService := usecase.NewAuthService(userRepo)
+
+	authService := usecase.NewAuthService(userRepo, roleRepo)
+	roleService := usecase.NewRoleService(roleRepo)
+	userService := usecase.NewUserService(userRepo)
+
 	authController := controller.NewAuthController(authService)
+	roleController := controller.NewRoleController(roleService)
+	userController := controller.NewUserController(userService)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/auth/register", authController.Register)
-	mux.HandleFunc("POST /api/auth/login", authController.Login)
-	mux.HandleFunc("POST /api/auth/refresh", authController.Refresh)
+	app := fiber.New()
+	router.Register(app, authController, roleController, userController)
 
-	addr := ":8080"
+	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
 	fmt.Printf("server running on %s\n", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := app.Listen(addr); err != nil {
 		panic(err)
 	}
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }

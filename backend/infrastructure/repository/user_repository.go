@@ -18,7 +18,7 @@ func NewUserRepository(writeDB *gorm.DB, readDB *gorm.DB) domainrepo.IUserReposi
 
 func (r *UserRepository) FindByID(id uint) (*model.User, error) {
 	var user model.User
-	err := r.readDB.First(&user, id).Error
+	err := r.readDB.Preload("Role").First(&user, id).Error
 	return &user, err
 }
 
@@ -28,13 +28,13 @@ func (r *UserRepository) Save(user *model.User) error {
 
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	var user model.User
-	err := r.readDB.Where("email = ?", email).First(&user).Error
+	err := r.readDB.Preload("Role").Where("email = ?", email).First(&user).Error
 	return &user, err
 }
 
 func (r *UserRepository) FindByUserName(username string) (*model.User, error) {
 	var user model.User
-	err := r.readDB.Where("user_name = ?", username).First(&user).Error
+	err := r.readDB.Preload("Role").Where("user_name = ?", username).First(&user).Error
 	return &user, err
 }
 
@@ -48,4 +48,18 @@ func (r *UserRepository) ExistsByUserName(username string) (bool, error) {
 	var count int64
 	err := r.readDB.Model(&model.User{}).Where("user_name = ?", username).Count(&count).Error
 	return count > 0, err
+}
+
+func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {
+	var users []model.User
+	var total int64
+
+	offset := (page - 1) * limit
+
+	if err := r.readDB.Model(&model.User{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := r.readDB.Preload("Role").Offset(offset).Limit(limit).Find(&users).Error
+	return users, total, err
 }
