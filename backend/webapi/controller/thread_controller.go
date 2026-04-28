@@ -30,12 +30,11 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, req.Content, req.ParentID)
-	if err != nil {
+	if _, err := c.threadService.Create(ctx.Context(), claims.UserID, req.Content, req.ParentID); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(toThreadResponse(thread, nil))
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "thread created successfully"})
 }
 
 func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
@@ -47,10 +46,7 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	data := make([]dto.ThreadResponse, len(threads))
-	for i, t := range threads {
-		data[i] = toThreadResponse(&t, nil)
-	}
+	data := c.buildThreadResponses(threads)
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedThreadsResponse{
 		Data:  data,
@@ -71,7 +67,8 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(toThreadResponse(thread, nil))
+	media, _ := c.mediaService.GetByThreadID(uint(id))
+	return ctx.Status(fiber.StatusOK).JSON(toThreadResponse(thread, media))
 }
 
 func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
@@ -80,17 +77,22 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
 	}
 
-	threads, err := c.threadService.GetChain(uint(id))
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+
+	threads, total, err := c.threadService.GetChain(uint(id), page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	data := make([]dto.ThreadResponse, len(threads))
-	for i, t := range threads {
-		data[i] = toThreadResponse(&t, nil)
-	}
+	data := c.buildThreadResponses(threads)
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": data})
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedThreadsResponse{
+		Data:  data,
+		Total: total,
+		Page:  page,
+		Limit: limit,
+	})
 }
 
 func (c *ThreadController) Update(ctx *fiber.Ctx) error {
@@ -109,15 +111,14 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	thread, err := c.threadService.Update(ctx.Context(), uint(id), claims.UserID, req.Content)
-	if err != nil {
+	if _, err := c.threadService.Update(ctx.Context(), uint(id), claims.UserID, req.Content); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(toThreadResponse(thread, nil))
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread updated successfully"})
 }
 
 func (c *ThreadController) Delete(ctx *fiber.Ctx) error {
@@ -141,6 +142,27 @@ func (c *ThreadController) Delete(ctx *fiber.Ctx) error {
 	_ = c.mediaService.DeleteByThread(ctx.Context(), uint(id))
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread deleted successfully"})
+}
+
+// buildThreadResponses bulk-loads media for a slice of threads in one query.
+func (c *ThreadController) buildThreadResponses(threads []model.Thread) []dto.ThreadResponse {
+	ids := make([]uint, len(threads))
+	for i, t := range threads {
+		ids[i] = t.ThreadID
+	}
+
+	allMedia, _ := c.mediaService.GetByThreadIDs(ids)
+
+	mediaByThread := make(map[uint][]model.ThreadMedia, len(ids))
+	for _, m := range allMedia {
+		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
+	}
+
+	data := make([]dto.ThreadResponse, len(threads))
+	for i, t := range threads {
+		data[i] = toThreadResponse(&t, mediaByThread[t.ThreadID])
+	}
+	return data
 }
 
 func toThreadResponse(t *model.Thread, media []model.ThreadMedia) dto.ThreadResponse {

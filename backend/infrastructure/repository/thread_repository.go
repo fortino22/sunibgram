@@ -42,16 +42,22 @@ func (r *ThreadRepository) FindRoots(page, limit int) ([]model.Thread, int64, er
 	return threads, total, err
 }
 
-// FindByRootID returns all posts in a thread chain ordered chronologically.
-func (r *ThreadRepository) FindByRootID(rootID uint) ([]model.Thread, error) {
+// FindByRootID returns all posts in a thread chain ordered chronologically, paginated.
+func (r *ThreadRepository) FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error) {
 	var threads []model.Thread
-	// Include the root post itself (root_id IS NULL and thread_id = rootID)
-	// plus all replies that have root_id = rootID.
+	var total int64
+
+	base := r.readDB.Model(&model.Thread{}).Where("thread_id = ? OR root_id = ?", rootID, rootID)
+	base.Count(&total)
+
+	offset := (page - 1) * limit
 	err := r.readDB.Preload("User").
 		Where("thread_id = ? OR root_id = ?", rootID, rootID).
 		Order("created_at ASC").
+		Offset(offset).Limit(limit).
 		Find(&threads).Error
-	return threads, err
+
+	return threads, total, err
 }
 
 func (r *ThreadRepository) Update(thread *model.Thread) error {

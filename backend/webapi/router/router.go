@@ -38,6 +38,7 @@ func Register(
 	threads.Put("/:id", threadCtrl.Update)
 	threads.Delete("/:id", threadCtrl.Delete)
 	threads.Post("/:id/media", threadMediaCtrl.Upload)
+	threads.Put("/:id/media", threadMediaCtrl.Update)
 	threads.Delete("/:id/media", threadMediaCtrl.Delete)
 
 	admin := api.Group("", middleware.Auth(), middleware.AdminOnly())

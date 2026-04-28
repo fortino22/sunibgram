@@ -62,15 +62,21 @@ func (s *ThreadService) GetRoots(page, limit int) ([]model.Thread, int64, error)
 	return s.threadRepo.FindRoots(page, limit)
 }
 
-func (s *ThreadService) GetChain(rootID uint) ([]model.Thread, error) {
+func (s *ThreadService) GetChain(rootID uint, page, limit int) ([]model.Thread, int64, error) {
 	root, err := s.threadRepo.FindByID(rootID)
 	if err != nil {
-		return nil, errors.New("thread not found")
+		return nil, 0, errors.New("thread not found")
 	}
 	if root.ParentID != nil {
-		return nil, errors.New("thread is not a root post")
+		return nil, 0, errors.New("thread is not a root post")
 	}
-	return s.threadRepo.FindByRootID(rootID)
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return s.threadRepo.FindByRootID(rootID, page, limit)
 }
 
 func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error) {

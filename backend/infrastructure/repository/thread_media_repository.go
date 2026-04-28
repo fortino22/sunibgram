@@ -19,6 +19,10 @@ func (r *ThreadMediaRepository) SaveAll(media []model.ThreadMedia) error {
 	return r.writeDB.Create(&media).Error
 }
 
+func (r *ThreadMediaRepository) UpdateOne(media *model.ThreadMedia) error {
+	return r.writeDB.Save(media).Error
+}
+
 func (r *ThreadMediaRepository) FindByThreadID(threadID uint) ([]model.ThreadMedia, error) {
 	var media []model.ThreadMedia
 	err := r.readDB.Where("thread_id = ?", threadID).Find(&media).Error
