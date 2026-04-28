@@ -16,7 +16,7 @@ import (
 
 func main() {
 	writeDB := config.NewPostgresWrite()
-	readDB := config.NewPostgresRead()
+	readDB  := config.NewPostgresRead()
 
 	migration.AutoMigrate(writeDB)
 
@@ -25,6 +25,9 @@ func main() {
 	avatarRepo      := infrarepo.NewUserAvatarRepository(writeDB, readDB)
 	threadRepo      := infrarepo.NewThreadRepository(writeDB, readDB)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
+	likeRepo        := infrarepo.NewLikeRepository(writeDB, readDB)
+	bookmarkRepo    := infrarepo.NewBookmarkRepository(writeDB, readDB)
+	repostRepo      := infrarepo.NewRepostRepository(writeDB, readDB)
 
 	minioClient    := storage.NewMinioClient()
 	storageUsecase := usecase.NewStorageUsecase(minioClient)
@@ -35,6 +38,9 @@ func main() {
 	avatarService      := usecase.NewAvatarService(avatarRepo, storageUsecase)
 	threadService      := usecase.NewThreadService(threadRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
+	likeService        := usecase.NewLikeService(likeRepo, threadRepo)
+	bookmarkService    := usecase.NewBookmarkService(bookmarkRepo, threadRepo)
+	repostService      := usecase.NewRepostService(repostRepo, threadRepo)
 
 	authController        := controller.NewAuthController(authService)
 	roleController        := controller.NewRoleController(roleService)
@@ -42,9 +48,23 @@ func main() {
 	avatarController      := controller.NewAvatarController(avatarService)
 	threadController      := controller.NewThreadController(threadService, threadMediaService)
 	threadMediaController := controller.NewThreadMediaController(threadMediaService)
+	likeController        := controller.NewLikeController(likeService, threadMediaService)
+	bookmarkController    := controller.NewBookmarkController(bookmarkService, threadMediaService)
+	repostController      := controller.NewRepostController(repostService, threadMediaService)
 
 	app := fiber.New()
-	router.Register(app, authController, roleController, userController, avatarController, threadController, threadMediaController)
+	router.Register(
+		app,
+		authController,
+		roleController,
+		userController,
+		avatarController,
+		threadController,
+		threadMediaController,
+		likeController,
+		bookmarkController,
+		repostController,
+	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
 	fmt.Printf("server running on %s\n", addr)

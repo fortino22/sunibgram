@@ -14,6 +14,9 @@ func Register(
 	avatarCtrl *controller.AvatarController,
 	threadCtrl *controller.ThreadController,
 	threadMediaCtrl *controller.ThreadMediaController,
+	likeCtrl *controller.LikeController,
+	bookmarkCtrl *controller.BookmarkController,
+	repostCtrl *controller.RepostController,
 ) {
 	api := app.Group("/api")
 
@@ -30,6 +33,10 @@ func Register(
 	protected.Get("/avatar", avatarCtrl.GetAvatar)
 	protected.Delete("/avatar", avatarCtrl.DeleteAvatar)
 
+	protected.Get("/bookmarks", bookmarkCtrl.GetMyBookmarks)
+	protected.Get("/likes", likeCtrl.GetMyLikes)
+	protected.Get("/reposts", repostCtrl.GetMyReposts)
+
 	threads := protected.Group("/threads")
 	threads.Post("/", threadCtrl.Create)
 	threads.Get("/", threadCtrl.GetRoots)
@@ -40,9 +47,16 @@ func Register(
 	threads.Post("/:id/media", threadMediaCtrl.Upload)
 	threads.Put("/:id/media", threadMediaCtrl.Update)
 	threads.Delete("/:id/media", threadMediaCtrl.Delete)
+	threads.Post("/:id/like", likeCtrl.Like)
+	threads.Delete("/:id/unlike", likeCtrl.Unlike)
+	threads.Post("/:id/bookmark", bookmarkCtrl.Bookmark)
+	threads.Delete("/:id/unbookmark", bookmarkCtrl.Unbookmark)
+	threads.Post("/:id/repost", repostCtrl.Repost)
+	threads.Delete("/:id/unrepost", repostCtrl.Unrepost)
+
 
 	admin := api.Group("", middleware.Auth(), middleware.AdminOnly())
-
+	
 	roles := admin.Group("/roles")
 	roles.Post("/", roleCtrl.Create)
 	roles.Get("/", roleCtrl.GetAll)
