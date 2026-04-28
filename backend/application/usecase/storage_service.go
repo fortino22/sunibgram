@@ -54,6 +54,10 @@ func (s *StorageUsecase) Upload(ctx context.Context, bucket string, file multipa
 	return s.storage.Upload(ctx, bucket, objectName, file, header.Size, contentType)
 }
 
+func (s *StorageUsecase) Delete(ctx context.Context, bucket, objectName string) error {
+	return s.storage.Delete(ctx, bucket, objectName)
+}
+
 func (s *StorageUsecase) GetAllowedTypes() []string {
 	types := make([]string, 0, len(bucketWhitelist))
 	for k := range bucketWhitelist {

@@ -53,6 +53,9 @@ func (s *AvatarService) UploadAvatar(ctx context.Context, userID uint, file mult
 		if err != nil {
 			return nil, err
 		}
+		// delete old object from storage before replacing
+		_ = s.storageUsecase.Delete(ctx, existing.Bucket, existing.ObjectName)
+
 		existing.URL = url
 		existing.ObjectName = objectName
 		existing.Bucket = bucket
@@ -80,7 +83,7 @@ func (s *AvatarService) GetAvatarByUserID(userID uint) (*model.UserAvatar, error
 	return s.avatarRepo.FindByUserID(userID)
 }
 
-func (s *AvatarService) DeleteAvatarByUserID(userID uint) error {
+func (s *AvatarService) DeleteAvatarByUserID(ctx context.Context, userID uint) error {
 	exists, err := s.avatarRepo.ExistsByUserID(userID)
 	if err != nil {
 		return err
@@ -88,5 +91,13 @@ func (s *AvatarService) DeleteAvatarByUserID(userID uint) error {
 	if !exists {
 		return errors.New("avatar not found")
 	}
+
+	avatar, err := s.avatarRepo.FindByUserID(userID)
+	if err != nil {
+		return err
+	}
+
+	_ = s.storageUsecase.Delete(ctx, avatar.Bucket, avatar.ObjectName)
+
 	return s.avatarRepo.DeleteByUserID(userID)
 }

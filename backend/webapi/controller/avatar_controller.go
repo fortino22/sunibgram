@@ -1,10 +1,7 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
-	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/webapi/ctxutil"
@@ -35,12 +32,11 @@ func (c *AvatarController) UploadAvatar(ctx *fiber.Ctx) error {
 	}
 	defer file.Close()
 
-	avatar, err := c.avatarService.UploadAvatar(ctx.Context(), claims.UserID, file, fileHeader)
-	if err != nil {
+	if _, err := c.avatarService.UploadAvatar(ctx.Context(), claims.UserID, file, fileHeader); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(avatarResponse(avatar))
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "avatar uploaded successfully"})
 }
 
 func (c *AvatarController) UpdateAvatar(ctx *fiber.Ctx) error {
@@ -60,26 +56,25 @@ func (c *AvatarController) UpdateAvatar(ctx *fiber.Ctx) error {
 	}
 	defer file.Close()
 
-	avatar, err := c.avatarService.UploadAvatar(ctx.Context(), claims.UserID, file, fileHeader)
-	if err != nil {
+	if _, err := c.avatarService.UploadAvatar(ctx.Context(), claims.UserID, file, fileHeader); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(avatarResponse(avatar))
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "avatar updated successfully"})
 }
 
-func (c *AvatarController) GetAvatarByUserID(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("userId"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+func (c *AvatarController) GetAvatar(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
 
-	avatar, err := c.avatarService.GetAvatarByUserID(uint(id))
+	avatar, err := c.avatarService.GetAvatarByUserID(claims.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "avatar not found"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(avatarResponse(avatar))
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"url": avatar.URL})
 }
 
 func (c *AvatarController) DeleteAvatar(ctx *fiber.Ctx) error {
@@ -88,20 +83,9 @@ func (c *AvatarController) DeleteAvatar(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
 
-	if err := c.avatarService.DeleteAvatarByUserID(claims.UserID); err != nil {
+	if err := c.avatarService.DeleteAvatarByUserID(ctx.Context(), claims.UserID); err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "avatar deleted"})
-}
-
-func avatarResponse(a *model.UserAvatar) dto.AvatarResponse {
-	return dto.AvatarResponse{
-		AvatarID:   a.AvatarID,
-		UserID:     a.UserID,
-		URL:        a.URL,
-		ObjectName: a.ObjectName,
-		Bucket:     a.Bucket,
-		UpdatedAt:  a.UpdatedAt,
-	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "avatar deleted successfully"})
 }

@@ -25,7 +25,7 @@ func Register(
 	protected := api.Group("", middleware.Auth())
 	protected.Post("/avatar", avatarCtrl.UploadAvatar)
 	protected.Put("/avatar", avatarCtrl.UpdateAvatar)
-	protected.Get("/avatar/:userId", avatarCtrl.GetAvatarByUserID)
+	protected.Get("/avatar", avatarCtrl.GetAvatar)
 	protected.Delete("/avatar", avatarCtrl.DeleteAvatar)
 
 	// admin only
