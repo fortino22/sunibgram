@@ -37,7 +37,24 @@ func NewMinioClient() domainservice.IStorageService {
 	return &MinioStorage{client: client, endpoint: endpoint, useSSL: useSSL}
 }
 
+func (s *MinioStorage) ensureBucket(ctx context.Context, bucket string) error {
+	exists, err := s.client.BucketExists(ctx, bucket)
+	if err != nil {
+		return fmt.Errorf("failed to check bucket: %w", err)
+	}
+	if !exists {
+		if err := s.client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{}); err != nil {
+			return fmt.Errorf("failed to create bucket: %w", err)
+		}
+	}
+	return nil
+}
+
 func (s *MinioStorage) Upload(ctx context.Context, bucket, objectName string, file multipart.File, size int64, contentType string) (string, error) {
+	if err := s.ensureBucket(ctx, bucket); err != nil {
+		return "", err
+	}
+
 	_, err := s.client.PutObject(ctx, bucket, objectName, file, size, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
