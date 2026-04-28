@@ -70,9 +70,8 @@ func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, 
 	return media, nil
 }
 
-// Update replaces individual media objects in-place, keeping the same media_id.
-// replacements maps each existing media_id to the new file that should replace it.
-func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, replacements map[uint]*multipart.FileHeader) error {
+// Update deletes all existing media for the thread and uploads the new set.
+func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) error {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return errors.New("thread not found")
@@ -81,29 +80,19 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 		return errors.New("forbidden")
 	}
 
-	existing, err := s.mediaRepo.FindByThreadID(threadID)
-	if err != nil {
-		return err
-	}
-
-	existingByID := make(map[uint]model.ThreadMedia, len(existing))
+	existing, _ := s.mediaRepo.FindByThreadID(threadID)
 	for _, m := range existing {
-		existingByID[m.MediaID] = m
+		_ = s.storage.Delete(ctx, m.Bucket, m.ObjectName)
 	}
-
-	// Validate all requested IDs exist before touching anything.
-	for mediaID := range replacements {
-		if _, ok := existingByID[mediaID]; !ok {
-			return errors.New("media not found")
-		}
-	}
+	_ = s.mediaRepo.DeleteByThreadID(threadID)
 
 	bucket, err := s.storage.ResolveBucket("post")
 	if err != nil {
 		return err
 	}
 
-	for mediaID, header := range replacements {
+	var media []model.ThreadMedia
+	for _, header := range files {
 		if err := model.ValidateThreadMediaExt(header.Filename); err != nil {
 			return err
 		}
@@ -119,21 +108,15 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 			return uploadErr
 		}
 
-		// Delete old object from MinIO.
-		old := existingByID[mediaID]
-		_ = s.storage.Delete(ctx, old.Bucket, old.ObjectName)
-
-		// Update the row in-place — same media_id.
-		updated := old
-		updated.ObjectName = filepath.Base(url)
-		updated.Bucket = bucket
-		updated.URL = url
-		if err := s.mediaRepo.UpdateOne(&updated); err != nil {
-			return err
-		}
+		media = append(media, model.ThreadMedia{
+			ThreadID:   threadID,
+			ObjectName: filepath.Base(url),
+			Bucket:     bucket,
+			URL:        url,
+		})
 	}
 
-	return nil
+	return s.mediaRepo.SaveAll(media)
 }
 
 func (s *ThreadMediaService) DeleteByThread(ctx context.Context, threadID uint) error {

@@ -18,7 +18,6 @@ type MinioStorage struct {
 	endpoint       string
 	publicEndpoint string
 	useSSL         bool
-	cacheMaxAge    string
 }
 
 func NewMinioClient() domainservice.IStorageService {
@@ -30,9 +29,6 @@ func NewMinioClient() domainservice.IStorageService {
 	if publicEndpoint == "" {
 		publicEndpoint = endpoint
 	}
-
-	cacheMaxAge := strings.TrimSpace(os.Getenv("MINIO_CACHE_MAX_AGE"))
-
 
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
@@ -47,7 +43,6 @@ func NewMinioClient() domainservice.IStorageService {
 		endpoint:       endpoint,
 		publicEndpoint: publicEndpoint,
 		useSSL:         useSSL,
-		cacheMaxAge:    cacheMaxAge,
 	}
 }
 
@@ -95,9 +90,6 @@ func (s *MinioStorage) Upload(ctx context.Context, bucket, objectName string, fi
 
 	_, err := s.client.PutObject(ctx, bucket, objectName, file, size, minio.PutObjectOptions{
 		ContentType: contentType,
-		UserMetadata: map[string]string{
-			"Cache-Control": "public, max-age=" + s.cacheMaxAge,
-		},
 	})
 	if err != nil {
 		return "", fmt.Errorf("upload failed: %w", err)
