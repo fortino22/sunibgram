@@ -15,7 +15,8 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Message string `json:"message"`
+	Message     string `json:"message"`
+	AccessToken string `json:"access_token"`
 }
 
 type LoginProdResponse struct {

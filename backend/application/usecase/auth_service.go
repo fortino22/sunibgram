@@ -70,15 +70,15 @@ func (s *AuthService) Register(user *model.User) error {
 	return s.userRepo.Save(user)
 }
 
-func (s *AuthService) Login(email, password string) error {
+func (s *AuthService) Login(email, password string) (model.TokenPair, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
-		return errors.New("invalid email or password")
+		return model.TokenPair{}, errors.New("invalid email or password")
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return errors.New("invalid email or password")
+		return model.TokenPair{}, errors.New("invalid email or password")
 	}
-	return nil
+	return generateTokenPair(user)
 }
 
 func (s *AuthService) LoginProd(email, password string) (*model.User, model.TokenPair, error) {

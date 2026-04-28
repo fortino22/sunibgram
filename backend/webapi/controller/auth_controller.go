@@ -41,11 +41,15 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	if err := c.authService.Login(req.Email, req.Password); err != nil {
+	pair, err := c.authService.Login(req.Email, req.Password)
+	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{Message: "login successful"})
+	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{
+		Message:     "login successful",
+		AccessToken: pair.AccessToken,
+	})
 }
 
 func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {

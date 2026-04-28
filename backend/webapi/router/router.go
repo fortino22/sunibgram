@@ -11,6 +11,7 @@ func Register(
 	authCtrl *controller.AuthController,
 	roleCtrl *controller.RoleController,
 	userCtrl *controller.UserController,
+	avatarCtrl *controller.AvatarController,
 ) {
 	api := app.Group("/api")
 
@@ -20,6 +21,14 @@ func Register(
 	auth.Post("/login/prod", authCtrl.LoginProd)
 	auth.Post("/refresh", authCtrl.Refresh)
 
+	// any authenticated user
+	protected := api.Group("", middleware.Auth())
+	protected.Post("/avatar", avatarCtrl.UploadAvatar)
+	protected.Put("/avatar", avatarCtrl.UpdateAvatar)
+	protected.Get("/avatar/:userId", avatarCtrl.GetAvatarByUserID)
+	protected.Delete("/avatar", avatarCtrl.DeleteAvatar)
+
+	// admin only
 	admin := api.Group("", middleware.Auth(), middleware.AdminOnly())
 
 	roles := admin.Group("/roles")
@@ -29,7 +38,7 @@ func Register(
 	roles.Put("/:id", roleCtrl.Update)
 	roles.Delete("/:id", roleCtrl.Delete)
 
-	users_admin_only := admin.Group("/users")
-	users_admin_only.Get("/", userCtrl.GetAll)
-	users_admin_only.Get("/:id", userCtrl.GetByID)
+	users := admin.Group("/users")
+	users.Get("/", userCtrl.GetAll)
+	users.Get("/:id", userCtrl.GetByID)
 }

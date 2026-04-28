@@ -11,6 +11,7 @@ func AutoMigrate(db *gorm.DB) {
 
 	db.AutoMigrate(&model.Role{})
 	db.AutoMigrate(&model.User{})
+	db.AutoMigrate(&model.UserAvatar{})
 
 	seedRoles(db)
 	seeder.SeedAdmin(db)
