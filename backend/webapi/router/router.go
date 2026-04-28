@@ -17,6 +17,7 @@ func Register(
 	likeCtrl *controller.LikeController,
 	bookmarkCtrl *controller.BookmarkController,
 	repostCtrl *controller.RepostController,
+	emailCtrl *controller.EmailController,
 ) {
 	api := app.Group("/api")
 
@@ -55,8 +56,10 @@ func Register(
 	threads.Delete("/:id/unrepost", repostCtrl.Unrepost)
 
 
+	protected.Post("/email/send", emailCtrl.Send)
+
 	admin := api.Group("", middleware.Auth(), middleware.AdminOnly())
-	
+
 	roles := admin.Group("/roles")
 	roles.Post("/", roleCtrl.Create)
 	roles.Get("/", roleCtrl.GetAll)

@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/application/usecase"
 	"github.com/sunibgram/infrastructure/config"
+	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
 	"github.com/sunibgram/infrastructure/storage"
@@ -32,6 +33,9 @@ func main() {
 	minioClient    := storage.NewMinioClient()
 	storageUsecase := usecase.NewStorageUsecase(minioClient)
 
+	smtpClient  := infraemail.NewSMTPClient()
+	emailService := usecase.NewEmailService(smtpClient)
+
 	authService        := usecase.NewAuthService(userRepo, roleRepo)
 	roleService        := usecase.NewRoleService(roleRepo)
 	userService        := usecase.NewUserService(userRepo)
@@ -51,6 +55,7 @@ func main() {
 	likeController        := controller.NewLikeController(likeService, threadMediaService)
 	bookmarkController    := controller.NewBookmarkController(bookmarkService, threadMediaService)
 	repostController      := controller.NewRepostController(repostService, threadMediaService)
+	emailController       := controller.NewEmailController(emailService)
 
 	app := fiber.New()
 	router.Register(
@@ -64,6 +69,7 @@ func main() {
 		likeController,
 		bookmarkController,
 		repostController,
+		emailController,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
