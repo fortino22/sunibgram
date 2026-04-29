@@ -46,7 +46,6 @@ func threadChainKey(rootID uint, page, limit int) string {
 	return fmt.Sprintf("thread:chain:%d:page:%d:limit:%d", rootID, page, limit)
 }
 
-// ── cache invalidation ───────────────────────────────────────────────────────
 
 func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *uint) {
 	r.cache.Delete(ctx, threadKey(threadID))
@@ -54,12 +53,10 @@ func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *ui
 	if rootID != nil {
 		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", *rootID))
 	} else {
-		// thread itself may be a root — invalidate its own chain too
 		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", threadID))
 	}
 }
 
-// ── IThreadRepository ────────────────────────────────────────────────────────
 
 func (r *threadCached) Save(thread *model.Thread) error {
 	if err := r.db.writeDB.Create(thread).Error; err != nil {
@@ -143,12 +140,22 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	if err := r.db.writeDB.Save(thread).Error; err != nil {
 		return err
 	}
-	r.invalidate(context.Background(), thread.ThreadID, thread.RootID)
+
+	ctx := context.Background()
+
+	r.cache.Set(ctx, threadKey(thread.ThreadID), *thread, r.ttl)
+
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	if thread.RootID != nil {
+		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", *thread.RootID))
+	} else {
+		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", thread.ThreadID))
+	}
+
 	return nil
 }
 
 func (r *threadCached) Delete(id uint) error {
-	// fetch first to know rootID for targeted chain invalidation
 	var thread model.Thread
 	r.db.readDB.Select("thread_id, root_id").First(&thread, id)
 
