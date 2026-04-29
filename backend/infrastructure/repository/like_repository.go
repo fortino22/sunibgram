@@ -11,18 +11,26 @@ import (
 )
 
 type LikeRepository struct {
-	base *interactionRepo
+	base       *interactionRepo
+	patchCount func(threadID uint, column string, delta int)
 }
 
-func NewLikeRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.ILikeRepository {
-	return &LikeRepository{base: newInteractionRepo(writeDB, readDB, c, "likes")}
+func NewLikeRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.ILikeRepository {
+	return &LikeRepository{
+		base:       newInteractionRepo(writeDB, readDB, c, "likes"),
+		patchCount: patchCount,
+	}
 }
 
 func (r *LikeRepository) Save(like *model.Like) error {
 	if err := r.base.saveRecord(like); err != nil {
 		return err
 	}
-	r.base.invalidateUser(context.Background(), like.UserID)
+	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", like.ThreadID).
+		UpdateColumn("like_count", gorm.Expr("like_count + 1"))
+	ctx := context.Background()
+	r.base.invalidateUser(ctx, like.UserID)
+	r.patchCount(like.ThreadID, "like_count", 1)
 	return nil
 }
 
@@ -30,7 +38,11 @@ func (r *LikeRepository) Delete(userID, threadID uint) error {
 	if err := r.base.deleteRecord(userID, threadID, &model.Like{}); err != nil {
 		return err
 	}
-	r.base.invalidateUser(context.Background(), userID)
+	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
+		UpdateColumn("like_count", gorm.Expr("GREATEST(like_count - 1, 0)"))
+	ctx := context.Background()
+	r.base.invalidateUser(ctx, userID)
+	r.patchCount(threadID, "like_count", -1)
 	return nil
 }
 

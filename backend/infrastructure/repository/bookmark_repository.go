@@ -11,18 +11,26 @@ import (
 )
 
 type BookmarkRepository struct {
-	base *interactionRepo
+	base       *interactionRepo
+	patchCount func(threadID uint, column string, delta int)
 }
 
-func NewBookmarkRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IBookmarkRepository {
-	return &BookmarkRepository{base: newInteractionRepo(writeDB, readDB, c, "bookmarks")}
+func NewBookmarkRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.IBookmarkRepository {
+	return &BookmarkRepository{
+		base:       newInteractionRepo(writeDB, readDB, c, "bookmarks"),
+		patchCount: patchCount,
+	}
 }
 
 func (r *BookmarkRepository) Save(bookmark *model.Bookmark) error {
 	if err := r.base.saveRecord(bookmark); err != nil {
 		return err
 	}
-	r.base.invalidateUser(context.Background(), bookmark.UserID)
+	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", bookmark.ThreadID).
+		UpdateColumn("bookmark_count", gorm.Expr("bookmark_count + 1"))
+	ctx := context.Background()
+	r.base.invalidateUser(ctx, bookmark.UserID)
+	r.patchCount(bookmark.ThreadID, "bookmark_count", 1)
 	return nil
 }
 
@@ -30,7 +38,11 @@ func (r *BookmarkRepository) Delete(userID, threadID uint) error {
 	if err := r.base.deleteRecord(userID, threadID, &model.Bookmark{}); err != nil {
 		return err
 	}
-	r.base.invalidateUser(context.Background(), userID)
+	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
+		UpdateColumn("bookmark_count", gorm.Expr("GREATEST(bookmark_count - 1, 0)"))
+	ctx := context.Background()
+	r.base.invalidateUser(ctx, userID)
+	r.patchCount(threadID, "bookmark_count", -1)
 	return nil
 }
 

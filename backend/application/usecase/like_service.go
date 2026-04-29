@@ -29,10 +29,7 @@ func (s *LikeService) Like(userID, threadID uint) error {
 	if exists {
 		return errors.New("already liked")
 	}
-	if err := s.likeRepo.Save(&model.Like{UserID: userID, ThreadID: threadID}); err != nil {
-		return err
-	}
-	return s.threadRepo.IncrementCount(threadID, "like_count")
+	return s.likeRepo.Save(&model.Like{UserID: userID, ThreadID: threadID})
 }
 
 func (s *LikeService) Unlike(userID, threadID uint) error {
@@ -43,10 +40,7 @@ func (s *LikeService) Unlike(userID, threadID uint) error {
 	if !exists {
 		return errors.New("not liked")
 	}
-	if err := s.likeRepo.Delete(userID, threadID); err != nil {
-		return err
-	}
-	return s.threadRepo.DecrementCount(threadID, "like_count")
+	return s.likeRepo.Delete(userID, threadID)
 }
 
 func (s *LikeService) GetMyLikes(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {

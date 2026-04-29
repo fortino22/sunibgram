@@ -41,8 +41,6 @@ func (r *interactionRepo) invalidateUser(ctx context.Context, userID uint) {
 	r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", r.table, userID))
 }
 
-// invalidateByThreadID finds all users who interacted with threadID and
-// invalidates only their list caches — avoids a full table-wide wipe.
 func (r *interactionRepo) invalidateByThreadID(ctx context.Context, threadID uint) {
 	var userIDs []uint
 	r.readDB.Table(r.table).

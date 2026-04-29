@@ -11,18 +11,26 @@ import (
 )
 
 type RepostRepository struct {
-	base *interactionRepo
+	base       *interactionRepo
+	patchCount func(threadID uint, column string, delta int)
 }
 
-func NewRepostRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IRepostRepository {
-	return &RepostRepository{base: newInteractionRepo(writeDB, readDB, c, "reposts")}
+func NewRepostRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.IRepostRepository {
+	return &RepostRepository{
+		base:       newInteractionRepo(writeDB, readDB, c, "reposts"),
+		patchCount: patchCount,
+	}
 }
 
 func (r *RepostRepository) Save(repost *model.Repost) error {
 	if err := r.base.saveRecord(repost); err != nil {
 		return err
 	}
-	r.base.invalidateUser(context.Background(), repost.UserID)
+	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", repost.ThreadID).
+		UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
+	ctx := context.Background()
+	r.base.invalidateUser(ctx, repost.UserID)
+	r.patchCount(repost.ThreadID, "repost_count", 1)
 	return nil
 }
 
@@ -30,7 +38,11 @@ func (r *RepostRepository) Delete(userID, threadID uint) error {
 	if err := r.base.deleteRecord(userID, threadID, &model.Repost{}); err != nil {
 		return err
 	}
-	r.base.invalidateUser(context.Background(), userID)
+	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
+		UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
+	ctx := context.Background()
+	r.base.invalidateUser(ctx, userID)
+	r.patchCount(threadID, "repost_count", -1)
 	return nil
 }
 

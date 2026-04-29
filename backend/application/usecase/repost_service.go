@@ -29,10 +29,7 @@ func (s *RepostService) Repost(userID, threadID uint) error {
 	if exists {
 		return errors.New("already reposted")
 	}
-	if err := s.repostRepo.Save(&model.Repost{UserID: userID, ThreadID: threadID}); err != nil {
-		return err
-	}
-	return s.threadRepo.IncrementCount(threadID, "repost_count")
+	return s.repostRepo.Save(&model.Repost{UserID: userID, ThreadID: threadID})
 }
 
 func (s *RepostService) Unrepost(userID, threadID uint) error {
@@ -43,10 +40,7 @@ func (s *RepostService) Unrepost(userID, threadID uint) error {
 	if !exists {
 		return errors.New("not reposted")
 	}
-	if err := s.repostRepo.Delete(userID, threadID); err != nil {
-		return err
-	}
-	return s.threadRepo.DecrementCount(threadID, "repost_count")
+	return s.repostRepo.Delete(userID, threadID)
 }
 
 func (s *RepostService) GetMyReposts(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {

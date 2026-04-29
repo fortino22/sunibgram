@@ -9,6 +9,4 @@ type IThreadRepository interface {
 	FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error)
 	Update(thread *model.Thread) error
 	Delete(id uint) error
-	IncrementCount(threadID uint, column string) error
-	DecrementCount(threadID uint, column string) error
 }
