@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/application/usecase"
+	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/config"
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
@@ -21,10 +22,12 @@ func main() {
 
 	migration.AutoMigrate(writeDB)
 
+	redisCache := cache.New()
+
 	roleRepo        := infrarepo.NewRoleRepository(writeDB, readDB)
 	userRepo        := infrarepo.NewUserRepository(writeDB, readDB)
 	avatarRepo      := infrarepo.NewUserAvatarRepository(writeDB, readDB)
-	threadRepo      := infrarepo.NewThreadRepository(writeDB, readDB)
+	threadRepo      := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
 	likeRepo             := infrarepo.NewLikeRepository(writeDB, readDB)
 	bookmarkRepo         := infrarepo.NewBookmarkRepository(writeDB, readDB)

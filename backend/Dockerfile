@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,9 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/main.go
 
-FROM scratch
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 
