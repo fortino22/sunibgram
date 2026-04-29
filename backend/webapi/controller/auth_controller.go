@@ -5,6 +5,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type AuthController struct {
@@ -28,11 +29,53 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		Password: req.Password,
 	}
 
-	if err := c.authService.Register(user); err != nil {
+	if err := c.authService.Register(user, req.ConfirmPassword); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user registered successfully"})
+}
+
+func (c *AuthController) ChangePassword(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	var req dto.ChangePasswordRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	if req.NewPassword != req.ConfirmPassword {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "new password and confirm password do not match"})
+	}
+
+	if err := c.authService.ChangePassword(claims.UserID, req.OldPassword, req.NewPassword); err != nil {
+		if err.Error() == "old password is incorrect" {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "password changed successfully"})
+}
+
+func (c *AuthController) ForgotPassword(ctx *fiber.Ctx) error {
+	var req dto.ForgotPasswordRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	if req.NewPassword != req.ConfirmPassword {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "new password and confirm password do not match"})
+	}
+
+	if err := c.authService.ForgotPassword(req.Email, req.NewPassword); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "password reset successfully"})
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {

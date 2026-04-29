@@ -26,17 +26,25 @@ const (
 )
 
 type AuthService struct {
-	userRepo repository.IUserRepository
-	roleRepo repository.IRoleRepository
+	userRepo         repository.IUserRepository
+	roleRepo         repository.IRoleRepository
+	verificationRepo repository.IVerificationRepository
 }
 
-func NewAuthService(userRepo repository.IUserRepository, roleRepo repository.IRoleRepository) service.IAuthService {
-	return &AuthService{userRepo: userRepo, roleRepo: roleRepo}
+func NewAuthService(userRepo repository.IUserRepository, roleRepo repository.IRoleRepository, verificationRepo repository.IVerificationRepository) service.IAuthService {
+	return &AuthService{userRepo: userRepo, roleRepo: roleRepo, verificationRepo: verificationRepo}
 }
 
-func (s *AuthService) Register(user *model.User) error {
+func (s *AuthService) Register(user *model.User, confirmPassword string) error {
+	if user.Password != confirmPassword {
+		return errors.New("password and confirm password do not match")
+	}
 	if err := user.ValidateRegister(); err != nil {
 		return err
+	}
+
+	if _, err := s.verificationRepo.FindVerifiedByEmailAndType(user.Email, model.VerificationTypeRegister); err != nil {
+		return errors.New("email not verified, please verify your otp first")
 	}
 
 	emailExists, err := s.userRepo.ExistsByEmail(user.Email)
@@ -70,6 +78,59 @@ func (s *AuthService) Register(user *model.User) error {
 	return s.userRepo.Save(user)
 }
 
+func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword string) error {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
+		return errors.New("old password is incorrect")
+	}
+
+	if len(newPassword) < 6 {
+		return errors.New("new password must be at least 6 characters")
+	}
+
+	if oldPassword == newPassword {
+		return errors.New("new password must be different from old password")
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return s.userRepo.UpdatePassword(userID, string(hashed))
+}
+
+func (s *AuthService) ForgotPassword(email, newPassword string) error {
+	if _, err := s.verificationRepo.FindVerifiedByEmailAndType(email, model.VerificationTypeForgotPassword); err != nil {
+		return errors.New("otp not verified or expired, please verify your otp first")
+	}
+
+	if len(newPassword) < 6 {
+		return errors.New("new password must be at least 6 characters")
+	}
+
+	user, err := s.userRepo.FindByEmail(email)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	if err := s.userRepo.UpdatePassword(user.UserID, string(hashed)); err != nil {
+		return err
+	}
+
+	_ = s.verificationRepo.DeleteByEmailAndType(email, model.VerificationTypeForgotPassword)
+	return nil
+}
+
 func (s *AuthService) Login(email, password string) (model.TokenPair, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
@@ -89,6 +150,10 @@ func (s *AuthService) LoginProd(email, password string) (*model.User, model.Toke
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, model.TokenPair{}, errors.New("invalid email or password")
+	}
+
+	if user.Role.Name != "admin" {
+		return nil, model.TokenPair{}, errors.New("admin access required")
 	}
 
 	pair, err := generateTokenPair(user)

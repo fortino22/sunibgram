@@ -57,6 +57,8 @@ func verificationErrorStatus(err error) int {
 		return fiber.StatusTooManyRequests
 	case msg == "email must use @binus.ac.id domain" ||
 		msg == "email is required" ||
+		msg == "email already registered" ||
+		msg == "email not found" ||
 		msg == "type must be REGISTER or FORGOT_PASSWORD" ||
 		msg == "invalid code" ||
 		msg == "code has expired" ||

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	"time"
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
@@ -28,6 +29,17 @@ func (r *VerificationRepository) FindLatestByEmailAndType(email string, t model.
 		First(&code).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("code not found")
+	}
+	return &code, err
+}
+
+func (r *VerificationRepository) FindVerifiedByEmailAndType(email string, t model.VerificationType) (*model.VerificationCode, error) {
+	var code model.VerificationCode
+	err := r.readDB.Where("email = ? AND type = ? AND used = true AND expires_at > ?", email, t, time.Now()).
+		Order("created_at DESC").
+		First(&code).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, errors.New("otp not verified")
 	}
 	return &code, err
 }

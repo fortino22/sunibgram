@@ -50,6 +50,10 @@ func (r *UserRepository) ExistsByUserName(username string) (bool, error) {
 	return count > 0, err
 }
 
+func (r *UserRepository) UpdatePassword(userID uint, hashedPassword string) error {
+	return r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).Update("password", hashedPassword).Error
+}
+
 func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {
 	var users []model.User
 	var total int64

@@ -3,10 +3,23 @@ package dto
 import "time"
 
 type RegisterRequest struct {
-	Name     string `json:"name"`
-	UserName string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Name            string `json:"name"`
+	UserName        string `json:"username"`
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirm_password"`
+}
+
+type ChangePasswordRequest struct {
+	OldPassword     string `json:"old_password"`
+	NewPassword     string `json:"new_password"`
+	ConfirmPassword string `json:"confirm_password"`
+}
+
+type ForgotPasswordRequest struct {
+	Email           string `json:"email"`
+	NewPassword     string `json:"new_password"`
+	ConfirmPassword string `json:"confirm_password"`
 }
 
 type LoginRequest struct {

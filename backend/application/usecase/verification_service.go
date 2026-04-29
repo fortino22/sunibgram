@@ -15,6 +15,7 @@ import (
 
 type VerificationService struct {
 	verificationRepo repository.IVerificationRepository
+	userRepo         repository.IUserRepository
 	emailService     service.IEmailService
 	sendLimiter      *ratelimit.RateLimiter
 	verifyLimiter    *ratelimit.RateLimiter
@@ -22,10 +23,12 @@ type VerificationService struct {
 
 func NewVerificationService(
 	verificationRepo repository.IVerificationRepository,
+	userRepo repository.IUserRepository,
 	emailService service.IEmailService,
 ) service.IVerificationService {
 	return &VerificationService{
 		verificationRepo: verificationRepo,
+		userRepo:         userRepo,
 		emailService:     emailService,
 		sendLimiter:      ratelimit.New(3, 10*time.Minute),
 		verifyLimiter:    ratelimit.New(3, 10*time.Minute),
@@ -38,6 +41,21 @@ func (s *VerificationService) SendCode(email string, t model.VerificationType) e
 	}
 	if err := model.ValidateVerificationType(t); err != nil {
 		return err
+	}
+
+	exists, err := s.userRepo.ExistsByEmail(email)
+	if err != nil {
+		return err
+	}
+	switch t {
+	case model.VerificationTypeRegister:
+		if exists {
+			return errors.New("email already registered")
+		}
+	case model.VerificationTypeForgotPassword:
+		if !exists {
+			return errors.New("email not found")
+		}
 	}
 
 	rateLimitKey := string(t) + ":" + email

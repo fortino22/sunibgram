@@ -10,4 +10,5 @@ type IUserRepository interface {
 	ExistsByEmail(email string) (bool, error)
 	ExistsByUserName(username string) (bool, error)
 	FindAllPaginated(page, limit int) ([]model.User, int64, error)
+	UpdatePassword(userID uint, hashedPassword string) error
 }
