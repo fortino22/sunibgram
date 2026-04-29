@@ -29,9 +29,9 @@ func main() {
 	avatarRepo      := infrarepo.NewUserAvatarRepository(writeDB, readDB)
 	threadRepo      := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
-	likeRepo             := infrarepo.NewLikeRepository(writeDB, readDB)
-	bookmarkRepo         := infrarepo.NewBookmarkRepository(writeDB, readDB)
-	repostRepo           := infrarepo.NewRepostRepository(writeDB, readDB)
+	likeRepo             := infrarepo.NewLikeRepository(writeDB, readDB, redisCache)
+	bookmarkRepo         := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache)
+	repostRepo           := infrarepo.NewRepostRepository(writeDB, readDB, redisCache)
 	verificationRepo     := infrarepo.NewVerificationRepository(writeDB, readDB)
 
 	minioClient    := storage.NewMinioClient()

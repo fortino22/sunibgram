@@ -1,36 +1,43 @@
 package repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 )
 
 type BookmarkRepository struct {
-	writeDB *gorm.DB
-	readDB  *gorm.DB
+	base *interactionRepo
 }
 
-func NewBookmarkRepository(writeDB, readDB *gorm.DB) domainrepo.IBookmarkRepository {
-	return &BookmarkRepository{writeDB: writeDB, readDB: readDB}
+func NewBookmarkRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IBookmarkRepository {
+	return &BookmarkRepository{base: newInteractionRepo(writeDB, readDB, c, "bookmarks")}
 }
 
 func (r *BookmarkRepository) Save(bookmark *model.Bookmark) error {
-	return r.writeDB.Create(bookmark).Error
+	if err := r.base.saveRecord(bookmark); err != nil {
+		return err
+	}
+	r.base.invalidateUser(context.Background(), bookmark.UserID)
+	return nil
 }
 
 func (r *BookmarkRepository) Delete(userID, threadID uint) error {
-	return r.writeDB.Where("user_id = ? AND thread_id = ?", userID, threadID).Delete(&model.Bookmark{}).Error
+	if err := r.base.deleteRecord(userID, threadID, &model.Bookmark{}); err != nil {
+		return err
+	}
+	r.base.invalidateUser(context.Background(), userID)
+	return nil
 }
 
 func (r *BookmarkRepository) Exists(userID, threadID uint) (bool, error) {
-	var count int64
-	err := r.readDB.Model(&model.Bookmark{}).Where("user_id = ? AND thread_id = ?", userID, threadID).Count(&count).Error
-	return count > 0, err
+	return r.base.exists(userID, threadID, &model.Bookmark{})
 }
 
 func (r *BookmarkRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
-	return findThreadsByInteraction(r.readDB, "bookmarks", userID, page, limit)
+	return r.base.findByUserID(userID, page, limit)
 }

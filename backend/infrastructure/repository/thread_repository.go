@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -11,12 +10,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// threadCached wraps threadDB with a Redis cache layer.
-// Reads go through cache; writes invalidate only the affected keys.
 type threadCached struct {
-	db    *threadDB
-	cache *cache.Cache
-	ttl   time.Duration
+	db        *threadDB
+	cache     *cache.Cache
+	ttl       time.Duration
+	likes     *interactionRepo
+	bookmarks *interactionRepo
+	reposts   *interactionRepo
 }
 
 type threadDB struct {
@@ -26,37 +26,14 @@ type threadDB struct {
 
 func NewThreadRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IThreadRepository {
 	return &threadCached{
-		db:    &threadDB{writeDB: writeDB, readDB: readDB},
-		cache: c,
-		ttl:   cache.DefaultTTL,
+		db:        &threadDB{writeDB: writeDB, readDB: readDB},
+		cache:     c,
+		ttl:       cache.DefaultTTL,
+		likes:     newInteractionRepo(writeDB, readDB, c, "likes"),
+		bookmarks: newInteractionRepo(writeDB, readDB, c, "bookmarks"),
+		reposts:   newInteractionRepo(writeDB, readDB, c, "reposts"),
 	}
 }
-
-// ── key helpers ──────────────────────────────────────────────────────────────
-
-func threadKey(id uint) string {
-	return fmt.Sprintf("thread:id:%d", id)
-}
-
-func threadRootsKey(page, limit int) string {
-	return fmt.Sprintf("thread:roots:page:%d:limit:%d", page, limit)
-}
-
-func threadChainKey(rootID uint, page, limit int) string {
-	return fmt.Sprintf("thread:chain:%d:page:%d:limit:%d", rootID, page, limit)
-}
-
-
-func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *uint) {
-	r.cache.Delete(ctx, threadKey(threadID))
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	if rootID != nil {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", *rootID))
-	} else {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", threadID))
-	}
-}
-
 
 func (r *threadCached) Save(thread *model.Thread) error {
 	if err := r.db.writeDB.Create(thread).Error; err != nil {
@@ -140,18 +117,10 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	if err := r.db.writeDB.Save(thread).Error; err != nil {
 		return err
 	}
-
 	ctx := context.Background()
-
 	r.cache.Set(ctx, threadKey(thread.ThreadID), *thread, r.ttl)
-
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	if thread.RootID != nil {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", *thread.RootID))
-	} else {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", thread.ThreadID))
-	}
-
+	r.invalidate(ctx, thread.ThreadID, thread.RootID)
+	r.invalidateInteractions(ctx, thread.ThreadID)
 	return nil
 }
 
@@ -159,9 +128,16 @@ func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
 	r.db.readDB.Select("thread_id, root_id").First(&thread, id)
 
+	ctx := context.Background()
+	r.invalidate(ctx, id, thread.RootID)
+	r.invalidateInteractions(ctx, id)
+
+	r.likes.deleteByThreadID(id)
+	r.bookmarks.deleteByThreadID(id)
+	r.reposts.deleteByThreadID(id)
+
 	if err := r.db.writeDB.Delete(&model.Thread{}, id).Error; err != nil {
 		return err
 	}
-	r.invalidate(context.Background(), id, thread.RootID)
 	return nil
 }

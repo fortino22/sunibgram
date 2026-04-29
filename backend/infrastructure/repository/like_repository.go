@@ -1,36 +1,43 @@
 package repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 )
 
 type LikeRepository struct {
-	writeDB *gorm.DB
-	readDB  *gorm.DB
+	base *interactionRepo
 }
 
-func NewLikeRepository(writeDB, readDB *gorm.DB) domainrepo.ILikeRepository {
-	return &LikeRepository{writeDB: writeDB, readDB: readDB}
+func NewLikeRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.ILikeRepository {
+	return &LikeRepository{base: newInteractionRepo(writeDB, readDB, c, "likes")}
 }
 
 func (r *LikeRepository) Save(like *model.Like) error {
-	return r.writeDB.Create(like).Error
+	if err := r.base.saveRecord(like); err != nil {
+		return err
+	}
+	r.base.invalidateUser(context.Background(), like.UserID)
+	return nil
 }
 
 func (r *LikeRepository) Delete(userID, threadID uint) error {
-	return r.writeDB.Where("user_id = ? AND thread_id = ?", userID, threadID).Delete(&model.Like{}).Error
+	if err := r.base.deleteRecord(userID, threadID, &model.Like{}); err != nil {
+		return err
+	}
+	r.base.invalidateUser(context.Background(), userID)
+	return nil
 }
 
 func (r *LikeRepository) Exists(userID, threadID uint) (bool, error) {
-	var count int64
-	err := r.readDB.Model(&model.Like{}).Where("user_id = ? AND thread_id = ?", userID, threadID).Count(&count).Error
-	return count > 0, err
+	return r.base.exists(userID, threadID, &model.Like{})
 }
 
 func (r *LikeRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
-	return findThreadsByInteraction(r.readDB, "likes", userID, page, limit)
+	return r.base.findByUserID(userID, page, limit)
 }
