@@ -18,6 +18,19 @@ type RateLimiter struct {
 	window   time.Duration
 }
 
+func formatDuration(d time.Duration) string {
+	m := int(d.Minutes())
+	s := int(d.Seconds()) % 60
+	switch {
+	case m > 0 && s > 0:
+		return fmt.Sprintf("%d minutes %d seconds", m, s)
+	case m > 0:
+		return fmt.Sprintf("%d minutes", m)
+	default:
+		return fmt.Sprintf("%d seconds", s)
+	}
+}
+
 func New(max int, window time.Duration) *RateLimiter {
 	return &RateLimiter{
 		buckets: make(map[string]*bucket),
@@ -41,7 +54,7 @@ func (r *RateLimiter) Allow(key string) error {
 
 	if b.count >= r.max {
 		wait := time.Until(b.windowEnd).Round(time.Second)
-		return fmt.Errorf("rate limit exceeded, try again in %s", wait)
+		return fmt.Errorf("try again in %s", formatDuration(wait))
 	}
 
 	b.count++

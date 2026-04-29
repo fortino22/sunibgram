@@ -17,12 +17,14 @@ func NewPostgresRead() *gorm.DB {
 }
 
 func newPostgres(role string) *gorm.DB {
-	host := getEnv("DB_HOST", "postgres")
-	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", "postgres")
-	pass := getEnv("DB_PASSWORD", "postgres")
-	name := getEnv("DB_NAME", "sunibgram")
-	sslmode := getEnv("DB_SSLMODE", "disable")
+	
+	host := os.Getenv("DB_HOST")
+	port := os.Getenv("DB_PORT")
+	user := os.Getenv("DB_USER")
+	pass := os.Getenv("DB_PASSWORD")
+	name := os.Getenv("DB_NAME")
+	sslmode := os.Getenv("DB_SSLMODE")
+	
 
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
@@ -37,9 +39,3 @@ func newPostgres(role string) *gorm.DB {
 	return db
 }
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}

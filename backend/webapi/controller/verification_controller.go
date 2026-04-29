@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 )
@@ -23,12 +24,10 @@ func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
 	}
 
 	req.Email = strings.TrimSpace(req.Email)
-	if req.Email == "" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "email is required"})
-	}
+	req.Type = strings.TrimSpace(strings.ToUpper(req.Type))
 
-	if err := c.verificationService.SendCode(req.Email); err != nil {
-		return ctx.Status(errorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
+	if err := c.verificationService.SendCode(req.Email, model.VerificationType(req.Type)); err != nil {
+		return ctx.Status(verificationErrorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "verification code sent"})
@@ -42,26 +41,26 @@ func (c *VerificationController) VerifyCode(ctx *fiber.Ctx) error {
 
 	req.Email = strings.TrimSpace(req.Email)
 	req.Code = strings.TrimSpace(req.Code)
+	req.Type = strings.TrimSpace(strings.ToUpper(req.Type))
 
-	if req.Email == "" || req.Code == "" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "email and code are required"})
-	}
-
-	if err := c.verificationService.VerifyCode(req.Email, req.Code); err != nil {
-		return ctx.Status(errorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
+	if err := c.verificationService.VerifyCode(req.Email, req.Code, model.VerificationType(req.Type)); err != nil {
+		return ctx.Status(verificationErrorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "email verified successfully"})
 }
 
-func errorStatus(err error) int {
+func verificationErrorStatus(err error) int {
 	msg := err.Error()
 	switch {
-	case strings.HasPrefix(msg, "rate limit exceeded"):
+	case strings.HasPrefix(msg, "try again in"):
 		return fiber.StatusTooManyRequests
-	case msg == "email must use @binus.ac.id domain" || msg == "email is required" ||
-		msg == "invalid code" || msg == "code has expired" || msg == "invalid or expired code" ||
-		msg == "email and code are required":
+	case msg == "email must use @binus.ac.id domain" ||
+		msg == "email is required" ||
+		msg == "type must be REGISTER or FORGOT_PASSWORD" ||
+		msg == "invalid code" ||
+		msg == "code has expired" ||
+		msg == "invalid or expired code":
 		return fiber.StatusBadRequest
 	default:
 		return fiber.StatusInternalServerError

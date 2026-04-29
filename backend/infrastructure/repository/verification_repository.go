@@ -21,9 +21,9 @@ func (r *VerificationRepository) Save(code *model.VerificationCode) error {
 	return r.writeDB.Create(code).Error
 }
 
-func (r *VerificationRepository) FindLatestByEmail(email string) (*model.VerificationCode, error) {
+func (r *VerificationRepository) FindLatestByEmailAndType(email string, t model.VerificationType) (*model.VerificationCode, error) {
 	var code model.VerificationCode
-	err := r.readDB.Where("email = ? AND used = false", email).
+	err := r.readDB.Where("email = ? AND type = ? AND used = false", email, t).
 		Order("created_at DESC").
 		First(&code).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -36,6 +36,6 @@ func (r *VerificationRepository) MarkUsed(id uint) error {
 	return r.writeDB.Model(&model.VerificationCode{}).Where("id = ?", id).Update("used", true).Error
 }
 
-func (r *VerificationRepository) DeleteByEmail(email string) error {
-	return r.writeDB.Where("email = ?", email).Delete(&model.VerificationCode{}).Error
+func (r *VerificationRepository) DeleteByEmailAndType(email string, t model.VerificationType) error {
+	return r.writeDB.Where("email = ? AND type = ?", email, t).Delete(&model.VerificationCode{}).Error
 }
