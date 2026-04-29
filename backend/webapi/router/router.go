@@ -18,6 +18,7 @@ func Register(
 	bookmarkCtrl *controller.BookmarkController,
 	repostCtrl *controller.RepostController,
 	emailCtrl *controller.EmailController,
+	verificationCtrl *controller.VerificationController,
 ) {
 	api := app.Group("/api")
 
@@ -26,6 +27,10 @@ func Register(
 	auth.Post("/login", authCtrl.Login)
 	auth.Post("/login/prod", authCtrl.LoginProd)
 	auth.Post("/refresh", authCtrl.Refresh)
+
+	verification := api.Group("/verification")
+	verification.Post("/send", verificationCtrl.SendCode)
+	verification.Post("/verify", verificationCtrl.VerifyCode)
 
 	protected := api.Group("", middleware.Auth())
 

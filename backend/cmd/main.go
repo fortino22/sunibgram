@@ -26,9 +26,10 @@ func main() {
 	avatarRepo      := infrarepo.NewUserAvatarRepository(writeDB, readDB)
 	threadRepo      := infrarepo.NewThreadRepository(writeDB, readDB)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
-	likeRepo        := infrarepo.NewLikeRepository(writeDB, readDB)
-	bookmarkRepo    := infrarepo.NewBookmarkRepository(writeDB, readDB)
-	repostRepo      := infrarepo.NewRepostRepository(writeDB, readDB)
+	likeRepo             := infrarepo.NewLikeRepository(writeDB, readDB)
+	bookmarkRepo         := infrarepo.NewBookmarkRepository(writeDB, readDB)
+	repostRepo           := infrarepo.NewRepostRepository(writeDB, readDB)
+	verificationRepo     := infrarepo.NewVerificationRepository(writeDB, readDB)
 
 	minioClient    := storage.NewMinioClient()
 	storageUsecase := usecase.NewStorageUsecase(minioClient)
@@ -45,6 +46,7 @@ func main() {
 	likeService        := usecase.NewLikeService(likeRepo, threadRepo)
 	bookmarkService    := usecase.NewBookmarkService(bookmarkRepo, threadRepo)
 	repostService      := usecase.NewRepostService(repostRepo, threadRepo)
+	verificationService := usecase.NewVerificationService(verificationRepo, emailService)
 
 	authController        := controller.NewAuthController(authService)
 	roleController        := controller.NewRoleController(roleService)
@@ -55,7 +57,8 @@ func main() {
 	likeController        := controller.NewLikeController(likeService, threadMediaService)
 	bookmarkController    := controller.NewBookmarkController(bookmarkService, threadMediaService)
 	repostController      := controller.NewRepostController(repostService, threadMediaService)
-	emailController       := controller.NewEmailController(emailService)
+	emailController        := controller.NewEmailController(emailService)
+	verificationController := controller.NewVerificationController(verificationService)
 
 	app := fiber.New()
 	router.Register(
@@ -70,6 +73,7 @@ func main() {
 		bookmarkController,
 		repostController,
 		emailController,
+		verificationController,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
