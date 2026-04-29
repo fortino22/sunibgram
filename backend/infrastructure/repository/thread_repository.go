@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -107,6 +108,80 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 		r.cache.Set(ctx, key, result, r.ttl)
 	}
 	return result.Threads, result.Total, nil
+}
+
+func (r *threadCached) FindPostsByUserID(userID uint, page, limit int) ([]model.Thread, int64, error) {
+	type entry struct {
+		threadID  uint
+		createdAt time.Time
+	}
+
+	seen := make(map[uint]time.Time)
+
+	var ownedThreads []model.Thread
+	if err := r.db.readDB.Select("thread_id, created_at").
+		Where("user_id = ?", userID).
+		Find(&ownedThreads).Error; err != nil {
+		return nil, 0, err
+	}
+	for _, t := range ownedThreads {
+		seen[t.ThreadID] = t.CreatedAt
+	}
+
+	var reposts []model.Repost
+	if err := r.db.readDB.Where("user_id = ?", userID).Find(&reposts).Error; err != nil {
+		return nil, 0, err
+	}
+	for _, rp := range reposts {
+		if _, exists := seen[rp.ThreadID]; !exists {
+			seen[rp.ThreadID] = rp.CreatedAt
+		}
+	}
+
+	merged := make([]entry, 0, len(seen))
+	for id, ts := range seen {
+		merged = append(merged, entry{threadID: id, createdAt: ts})
+	}
+	sort.Slice(merged, func(i, j int) bool {
+		return merged[i].createdAt.After(merged[j].createdAt)
+	})
+
+	total := int64(len(merged))
+
+	offset := (page - 1) * limit
+	if offset >= len(merged) {
+		return nil, total, nil
+	}
+	end := offset + limit
+	if end > len(merged) {
+		end = len(merged)
+	}
+	page_entries := merged[offset:end]
+
+	ids := make([]uint, len(page_entries))
+	for i, e := range page_entries {
+		ids[i] = e.threadID
+	}
+
+	var threads []model.Thread
+	if err := r.db.readDB.Preload("User").
+		Where("thread_id IN ?", ids).
+		Find(&threads).Error; err != nil {
+		return nil, 0, err
+	}
+
+	threadMap := make(map[uint]model.Thread, len(threads))
+	for _, t := range threads {
+		threadMap[t.ThreadID] = t
+	}
+	sorted := make([]model.Thread, 0, len(ids))
+	for _, e := range page_entries {
+		if t, ok := threadMap[e.threadID]; ok {
+			sorted = append(sorted, t)
+		}
+	}
+
+	return sorted, total, nil
 }
 
 func (r *threadCached) Update(thread *model.Thread) error {

@@ -21,6 +21,7 @@ func registerThreadRoutes(
 	threads := api.Group("/threads", auth)
 	threads.Post("/", threadCtrl.Create)
 	threads.Get("/", threadCtrl.GetRoots)
+	threads.Get("/me", threadCtrl.GetMyPosts)
 	threads.Get("/:id", threadCtrl.GetByID)
 	threads.Get("/:id/chain", threadCtrl.GetChain)
 	threads.Put("/:id", threadCtrl.Update)

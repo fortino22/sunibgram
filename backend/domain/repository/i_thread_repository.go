@@ -9,4 +9,5 @@ type IThreadRepository interface {
 	FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error)
 	Update(thread *model.Thread) error
 	Delete(id uint) error
+	FindPostsByUserID(userID uint, page, limit int) ([]model.Thread, int64, error)
 }
