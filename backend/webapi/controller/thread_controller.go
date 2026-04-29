@@ -167,15 +167,18 @@ func (c *ThreadController) buildThreadResponses(threads []model.Thread) []dto.Th
 
 func toThreadResponse(t *model.Thread, media []model.ThreadMedia) dto.ThreadResponse {
 	return dto.ThreadResponse{
-		ThreadID:  t.ThreadID,
-		UserID:    t.UserID,
-		Username:  t.User.UserName,
-		Content:   t.Content,
-		ParentID:  t.ParentID,
-		RootID:    t.RootID,
-		Media:     toMediaResponses(media),
-		CreatedAt: t.CreatedAt,
-		UpdatedAt: t.UpdatedAt,
+		ThreadID:      t.ThreadID,
+		UserID:        t.UserID,
+		Username:      t.User.UserName,
+		Content:       t.Content,
+		ParentID:      t.ParentID,
+		RootID:        t.RootID,
+		Media:         toMediaResponses(media),
+		LikeCount:     t.LikeCount,
+		RepostCount:   t.RepostCount,
+		BookmarkCount: t.BookmarkCount,
+		CreatedAt:     t.CreatedAt,
+		UpdatedAt:     t.UpdatedAt,
 	}
 }
 

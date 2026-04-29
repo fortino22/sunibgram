@@ -124,6 +124,28 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	return nil
 }
 
+func (r *threadCached) IncrementCount(threadID uint, column string) error {
+	err := r.db.writeDB.Model(&model.Thread{}).
+		Where("thread_id = ?", threadID).
+		UpdateColumn(column, gorm.Expr("? + 1", gorm.Expr(column))).Error
+	if err != nil {
+		return err
+	}
+	r.cache.Delete(context.Background(), threadKey(threadID))
+	return nil
+}
+
+func (r *threadCached) DecrementCount(threadID uint, column string) error {
+	err := r.db.writeDB.Model(&model.Thread{}).
+		Where("thread_id = ?", threadID).
+		UpdateColumn(column, gorm.Expr("GREATEST(? - 1, 0)", gorm.Expr(column))).Error
+	if err != nil {
+		return err
+	}
+	r.cache.Delete(context.Background(), threadKey(threadID))
+	return nil
+}
+
 func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
 	r.db.readDB.Select("thread_id, root_id").First(&thread, id)
