@@ -34,6 +34,41 @@ func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
 	return c.fetchAndRespond(ctx, uint(id))
 }
 
+func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	input := service.UpdateProfileInput{}
+
+	if name := ctx.FormValue("name"); name != "" {
+		input.Name = &name
+	}
+	if username := ctx.FormValue("username"); username != "" {
+		input.Username = &username
+	}
+	if avatar, err := ctx.FormFile("avatar"); err == nil {
+		input.Avatar = avatar
+	}
+	if banner, err := ctx.FormFile("banner"); err == nil {
+		input.Banner = banner
+	}
+	if bio := ctx.FormValue("bio"); bio != "" {
+		input.Bio = &bio
+	}
+
+	if err := c.profileService.UpdateProfile(ctx.Context(), claims.UserID, input); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	fp, err := c.profileService.GetProfile(claims.UserID)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(fp))
+}
+
 func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint) error {
 	fp, err := c.profileService.GetProfile(userID)
 	if err != nil {

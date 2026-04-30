@@ -25,6 +25,11 @@ func SeedAdmin(db *gorm.DB) {
 
 	var existing model.User
 	if err := db.Where("email = ?", email).First(&existing).Error; err == nil {
+		var existingProfile model.UserProfile
+		if err := db.Where("user_id = ?", existing.UserID).First(&existingProfile).Error; err != nil {
+			profile := model.UserProfile{UserID: existing.UserID}
+			db.Create(&profile)
+		}
 		return
 	}
 
@@ -45,6 +50,11 @@ func SeedAdmin(db *gorm.DB) {
 	if err := db.Create(&admin).Error; err != nil {
 		log.Printf("admin seeder: failed to create admin user: %v", err)
 		return
+	}
+
+	profile := model.UserProfile{UserID: admin.UserID}
+	if err := db.Create(&profile).Error; err != nil {
+		log.Printf("admin seeder: failed to create admin profile: %v", err)
 	}
 
 	log.Println("admin seeder: admin user created")

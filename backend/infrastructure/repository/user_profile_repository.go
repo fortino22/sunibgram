@@ -17,6 +17,15 @@ func NewUserProfileRepository(writeDB *gorm.DB, readDB *gorm.DB) domainrepo.IUse
 }
 
 func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
+	if profile.ProfileID != 0 {
+		return r.writeDB.Model(profile).Updates(map[string]any{
+			"avatar_object_name": profile.AvatarObjectName,
+			"avatar_bucket":      profile.AvatarBucket,
+			"banner_object_name": profile.BannerObjectName,
+			"banner_bucket":      profile.BannerBucket,
+			"bio":                profile.Bio,
+		}).Error
+	}
 	return r.writeDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"avatar_object_name", "avatar_bucket", "banner_object_name", "banner_bucket", "bio", "updated_at"}),

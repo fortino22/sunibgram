@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -37,6 +38,9 @@ func NewUserProfileService(
 }
 
 func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, input service.UpsertProfileInput) error {
+	if userID == 0 {
+		return errors.New("invalid user id")
+	}
 	existing, _ := s.profileRepo.FindByUserID(userID)
 	if existing == nil {
 		existing = &model.UserProfile{UserID: userID}
@@ -51,8 +55,10 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 		if err != nil {
 			return err
 		}
-		if existing.AvatarObjectName != "" {
-			_ = s.storageUsecase.Delete(ctx, existing.AvatarBucket, existing.AvatarObjectName)
+		if existing.AvatarObjectName != "" && existing.AvatarBucket != "" {
+			if err := s.storageUsecase.Delete(ctx, existing.AvatarBucket, existing.AvatarObjectName); err != nil {
+				return fmt.Errorf("failed to delete old avatar: %w", err)
+			}
 		}
 		f, err := input.Avatar.Open()
 		if err != nil {
@@ -76,8 +82,10 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 		if err != nil {
 			return err
 		}
-		if existing.BannerObjectName != "" {
-			_ = s.storageUsecase.Delete(ctx, existing.BannerBucket, existing.BannerObjectName)
+		if existing.BannerObjectName != "" && existing.BannerBucket != "" {
+			if err := s.storageUsecase.Delete(ctx, existing.BannerBucket, existing.BannerObjectName); err != nil {
+				return fmt.Errorf("failed to delete old banner: %w", err)
+			}
 		}
 		f, err := input.Banner.Open()
 		if err != nil {
@@ -97,6 +105,51 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	}
 
 	return s.profileRepo.Upsert(existing)
+}
+
+func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, input service.UpdateProfileInput) error {
+	if input.Name != nil || input.Username != nil {
+		user, err := s.userRepo.FindByID(userID)
+		if err != nil {
+			return errors.New("user not found")
+		}
+		name := user.Name
+		username := user.UserName
+		if input.Name != nil {
+			name = strings.TrimSpace(*input.Name)
+			if name == "" {
+				return errors.New("name cannot be empty")
+			}
+		}
+		if input.Username != nil {
+			username = strings.TrimSpace(*input.Username)
+			if username == "" {
+				return errors.New("username cannot be empty")
+			}
+			if username != user.UserName {
+				taken, err := s.userRepo.ExistsByUserName(username)
+				if err != nil {
+					return err
+				}
+				if taken {
+					return errors.New("username already taken")
+				}
+			}
+		}
+		if err := s.userRepo.UpdateInfo(userID, name, username); err != nil {
+			return err
+		}
+	}
+
+	mediaInput := service.UpsertProfileInput{
+		Avatar: input.Avatar,
+		Banner: input.Banner,
+		Bio:    input.Bio,
+	}
+	if mediaInput.Avatar != nil || mediaInput.Banner != nil || mediaInput.Bio != nil {
+		return s.UpsertProfile(ctx, userID, mediaInput)
+	}
+	return nil
 }
 
 func (s *UserProfileService) GetProfile(userID uint) (*service.FullProfile, error) {

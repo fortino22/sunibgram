@@ -64,6 +64,11 @@ func (r *UserRepository) UpdatePassword(userID uint, hashedPassword string) erro
 	return r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).Update("password", hashedPassword).Error
 }
 
+func (r *UserRepository) UpdateInfo(userID uint, name, username string) error {
+	return r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).
+		Updates(map[string]any{"name": name, "user_name": username}).Error
+}
+
 func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {
 	var users []model.User
 	var total int64
