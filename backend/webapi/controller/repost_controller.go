@@ -83,15 +83,17 @@ func (c *RepostController) GetMyReposts(ctx *fiber.Ctx) error {
 		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
 	}
 
-	data := make([]dto.RepostedThreadResponse, len(threads))
+	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
-		data[i] = dto.RepostedThreadResponse{
-			ThreadResponse: toThreadResponse(&t, mediaByThread[t.ThreadID]),
-			RepostedAt:     utils.Wrap(timestamps[i]),
-		}
+		item := toFeedItem(&t, mediaByThread[t.ThreadID])
+		item.Type = "REPOST"
+		wrapped := utils.Wrap(timestamps[i])
+		item.RepostedAt = &wrapped
+		data[i] = item
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedRepostedThreadsResponse{
-		Data: data, Total: total, Page: page, Limit: limit,
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+		Data: data,
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }

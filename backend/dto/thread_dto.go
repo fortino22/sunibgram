@@ -73,6 +73,7 @@ type FeedItemResponse struct {
 	CreatedAt     utils.FormattedTime   `json:"created_at"`
 	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
 	RepostedAt    *utils.FormattedTime  `json:"reposted_at,omitempty"`
+	ActionAt      *utils.FormattedTime  `json:"action_at,omitempty"`
 	Author        FeedAuthor            `json:"author"`
 	Stats         FeedStats             `json:"stats"`
 	Media         []ThreadMediaResponse `json:"media"`

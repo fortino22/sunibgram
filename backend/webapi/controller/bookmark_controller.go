@@ -83,15 +83,16 @@ func (c *BookmarkController) GetMyBookmarks(ctx *fiber.Ctx) error {
 		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
 	}
 
-	data := make([]dto.BookmarkedThreadResponse, len(threads))
+	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
-		data[i] = dto.BookmarkedThreadResponse{
-			ThreadResponse: toThreadResponse(&t, mediaByThread[t.ThreadID]),
-			BookmarkedAt:   utils.Wrap(timestamps[i]),
-		}
+		item := toFeedItem(&t, mediaByThread[t.ThreadID])
+		wrapped := utils.Wrap(timestamps[i])
+		item.ActionAt = &wrapped
+		data[i] = item
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedBookmarkedThreadsResponse{
-		Data: data, Total: total, Page: page, Limit: limit,
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+		Data: data,
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
