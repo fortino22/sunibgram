@@ -7,11 +7,12 @@ import (
 )
 
 type UserService struct {
-	userRepo repository.IUserRepository
+	userRepo   repository.IUserRepository
+	followRepo repository.IFollowRepository
 }
 
-func NewUserService(userRepo repository.IUserRepository) service.IUserService {
-	return &UserService{userRepo: userRepo}
+func NewUserService(userRepo repository.IUserRepository, followRepo repository.IFollowRepository) service.IUserService {
+	return &UserService{userRepo: userRepo, followRepo: followRepo}
 }
 
 func (s *UserService) GetAllPaginated(page, limit int) ([]model.User, int64, error) {
@@ -26,4 +27,16 @@ func (s *UserService) GetAllPaginated(page, limit int) ([]model.User, int64, err
 
 func (s *UserService) GetByID(id uint) (*model.User, error) {
 	return s.userRepo.FindByID(id)
+}
+
+func (s *UserService) GetProfile(userID uint) (*model.User, *model.UserStat, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	stat, err := s.followRepo.GetStat(userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return user, stat, nil
 }

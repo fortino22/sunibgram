@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"mime/multipart"
-	"path/filepath"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
@@ -50,7 +49,7 @@ func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, 
 			return nil, err
 		}
 
-		url, uploadErr := s.storage.Upload(ctx, bucket, file, header)
+		objectName, uploadErr := s.storage.Upload(ctx, bucket, file, header)
 		file.Close()
 		if uploadErr != nil {
 			return nil, uploadErr
@@ -58,9 +57,8 @@ func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, 
 
 		media = append(media, model.ThreadMedia{
 			ThreadID:   threadID,
-			ObjectName: filepath.Base(url),
+			ObjectName: objectName,
 			Bucket:     bucket,
-			URL:        url,
 		})
 	}
 
@@ -102,7 +100,7 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 			return err
 		}
 
-		url, uploadErr := s.storage.Upload(ctx, bucket, file, header)
+		objectName, uploadErr := s.storage.Upload(ctx, bucket, file, header)
 		file.Close()
 		if uploadErr != nil {
 			return uploadErr
@@ -110,9 +108,8 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 
 		media = append(media, model.ThreadMedia{
 			ThreadID:   threadID,
-			ObjectName: filepath.Base(url),
+			ObjectName: objectName,
 			Bucket:     bucket,
-			URL:        url,
 		})
 	}
 
@@ -170,4 +167,8 @@ func (s *ThreadMediaService) Delete(ctx context.Context, threadID, userID uint, 
 		_ = s.storage.Delete(ctx, m.Bucket, m.ObjectName)
 	}
 	return nil
+}
+
+func (s *ThreadMediaService) GetURL(bucket, objectName string) string {
+	return s.storage.GetURL(bucket, objectName)
 }

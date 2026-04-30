@@ -7,7 +7,7 @@ import (
 )
 
 func registerAdminRoutes(api fiber.Router, roleCtrl *controller.RoleController, userCtrl *controller.UserController) {
-	admin := api.Group("", middleware.Auth(), middleware.AdminOnly())
+	admin := api.Group("/admin", middleware.Auth(), middleware.AdminOnly())
 
 	roles := admin.Group("/roles")
 	roles.Post("/", roleCtrl.Create)

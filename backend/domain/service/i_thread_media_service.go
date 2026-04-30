@@ -14,4 +14,5 @@ type IThreadMediaService interface {
 	Update(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) error
 	Delete(ctx context.Context, threadID, userID uint, mediaIDs []uint) error
 	DeleteByThread(ctx context.Context, threadID uint) error
+	GetURL(bucket, objectName string) string
 }

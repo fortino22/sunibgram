@@ -74,7 +74,7 @@ func (c *AvatarController) GetAvatar(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "avatar not found"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"url": avatar.URL})
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"url": c.avatarService.GetURL(avatar.Bucket, avatar.ObjectName)})
 }
 
 func (c *AvatarController) DeleteAvatar(ctx *fiber.Ctx) error {

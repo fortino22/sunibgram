@@ -26,6 +26,5 @@ type ThreadMedia struct {
 	Thread     Thread `gorm:"foreignKey:ThreadID;references:ThreadID"`
 	ObjectName string `gorm:"not null"`
 	Bucket     string `gorm:"not null"`
-	URL        string `gorm:"not null"`
 	CreatedAt  time.Time
 }

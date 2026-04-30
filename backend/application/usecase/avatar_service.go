@@ -36,12 +36,10 @@ func (s *AvatarService) UploadAvatar(ctx context.Context, userID uint, file mult
 		return nil, err
 	}
 
-	url, err := s.storageUsecase.Upload(ctx, bucket, file, header)
+	objectName, err := s.storageUsecase.Upload(ctx, bucket, file, header)
 	if err != nil {
 		return nil, err
 	}
-
-	objectName := filepath.Base(url)
 
 	exists, err := s.avatarRepo.ExistsByUserID(userID)
 	if err != nil {
@@ -53,10 +51,8 @@ func (s *AvatarService) UploadAvatar(ctx context.Context, userID uint, file mult
 		if err != nil {
 			return nil, err
 		}
-		// delete old object from storage before replacing
 		_ = s.storageUsecase.Delete(ctx, existing.Bucket, existing.ObjectName)
 
-		existing.URL = url
 		existing.ObjectName = objectName
 		existing.Bucket = bucket
 		if err := s.avatarRepo.Update(existing); err != nil {
@@ -69,7 +65,6 @@ func (s *AvatarService) UploadAvatar(ctx context.Context, userID uint, file mult
 		UserID:     userID,
 		ObjectName: objectName,
 		Bucket:     bucket,
-		URL:        url,
 	}
 
 	if err := s.avatarRepo.Save(avatar); err != nil {
@@ -100,4 +95,8 @@ func (s *AvatarService) DeleteAvatarByUserID(ctx context.Context, userID uint) e
 	_ = s.storageUsecase.Delete(ctx, avatar.Bucket, avatar.ObjectName)
 
 	return s.avatarRepo.DeleteByUserID(userID)
+}
+
+func (s *AvatarService) GetURL(bucket, objectName string) string {
+	return s.storageUsecase.GetURL(bucket, objectName)
 }

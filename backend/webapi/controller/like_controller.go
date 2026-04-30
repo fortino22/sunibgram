@@ -85,7 +85,7 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
-		item := toFeedItem(&t, mediaByThread[t.ThreadID])
+		item := feedBuilder{c.mediaService}.toFeedItem(&t, mediaByThread[t.ThreadID])
 		wrapped := utils.Wrap(timestamps[i])
 		item.ActionAt = &wrapped
 		data[i] = item

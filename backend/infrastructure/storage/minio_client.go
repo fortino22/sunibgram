@@ -83,25 +83,27 @@ func (s *MinioStorage) ensureBucket(ctx context.Context, bucket string) error {
 	return nil
 }
 
-func (s *MinioStorage) Upload(ctx context.Context, bucket, objectName string, file multipart.File, size int64, contentType string) (string, error) {
+func (s *MinioStorage) Upload(ctx context.Context, bucket, objectName string, file multipart.File, size int64, contentType string) error {
 	if err := s.ensureBucket(ctx, bucket); err != nil {
-		return "", err
+		return err
 	}
 
 	_, err := s.client.PutObject(ctx, bucket, objectName, file, size, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
-		return "", fmt.Errorf("upload failed: %w", err)
+		return fmt.Errorf("upload failed: %w", err)
 	}
 
+	return nil
+}
+
+func (s *MinioStorage) GetURL(bucket, objectName string) string {
 	scheme := "http"
 	if s.useSSL {
 		scheme = "https"
 	}
-
-	url := fmt.Sprintf("%s://%s/%s/%s", scheme, s.publicEndpoint, bucket, objectName)
-	return url, nil
+	return fmt.Sprintf("%s://%s/%s/%s", scheme, s.publicEndpoint, bucket, objectName)
 }
 
 func (s *MinioStorage) Delete(ctx context.Context, bucket, objectName string) error {

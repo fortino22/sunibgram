@@ -51,7 +51,14 @@ func (s *StorageUsecase) Upload(ctx context.Context, bucket string, file multipa
 		contentType = "application/octet-stream"
 	}
 
-	return s.storage.Upload(ctx, bucket, objectName, file, header.Size, contentType)
+	if err := s.storage.Upload(ctx, bucket, objectName, file, header.Size, contentType); err != nil {
+		return "", err
+	}
+	return objectName, nil
+}
+
+func (s *StorageUsecase) GetURL(bucket, objectName string) string {
+	return s.storage.GetURL(bucket, objectName)
 }
 
 func (s *StorageUsecase) Delete(ctx context.Context, bucket, objectName string) error {

@@ -18,6 +18,8 @@ func AutoMigrate(db *gorm.DB) {
 	db.AutoMigrate(&model.Bookmark{})
 	db.AutoMigrate(&model.Repost{})
 	db.AutoMigrate(&model.VerificationCode{})
+	db.AutoMigrate(&model.UserRelationship{})
+	db.AutoMigrate(&model.UserStat{})
 
 	seedRoles(db)
 	seeder.SeedAdmin(db)

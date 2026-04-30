@@ -19,6 +19,7 @@ func Register(
 	repostCtrl *controller.RepostController,
 	emailCtrl *controller.EmailController,
 	verificationCtrl *controller.VerificationController,
+	followCtrl *controller.FollowController,
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
@@ -28,5 +29,6 @@ func Register(
 	registerAvatarRoutes(api, avatarCtrl, auth)
 	registerThreadRoutes(api, threadCtrl, threadMediaCtrl, likeCtrl, bookmarkCtrl, repostCtrl, auth)
 	registerEmailRoutes(api, emailCtrl, auth)
+	registerUserRoutes(api, followCtrl, userCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl)
 }

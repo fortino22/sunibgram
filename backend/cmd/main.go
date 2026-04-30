@@ -33,6 +33,7 @@ func main() {
 	bookmarkRepo    := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	repostRepo      := infrarepo.NewRepostRepository(writeDB, readDB, redisCache, patchCount)
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
+	followRepo       := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 
 	minioClient    := storage.NewMinioClient()
 	storageUsecase := usecase.NewStorageUsecase(minioClient)
@@ -42,7 +43,7 @@ func main() {
 
 	authService        := usecase.NewAuthService(userRepo, roleRepo, verificationRepo)
 	roleService        := usecase.NewRoleService(roleRepo)
-	userService        := usecase.NewUserService(userRepo)
+	userService        := usecase.NewUserService(userRepo, followRepo)
 	avatarService      := usecase.NewAvatarService(avatarRepo, storageUsecase)
 	threadService      := usecase.NewThreadService(threadRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
@@ -50,6 +51,7 @@ func main() {
 	bookmarkService    := usecase.NewBookmarkService(bookmarkRepo, threadRepo)
 	repostService      := usecase.NewRepostService(repostRepo, threadRepo)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
+	followService       := usecase.NewFollowService(followRepo, userRepo)
 
 	authController        := controller.NewAuthController(authService)
 	roleController        := controller.NewRoleController(roleService)
@@ -62,6 +64,7 @@ func main() {
 	repostController      := controller.NewRepostController(repostService, threadMediaService)
 	emailController        := controller.NewEmailController(emailService)
 	verificationController := controller.NewVerificationController(verificationService)
+	followController       := controller.NewFollowController(followService)
 
 	app := fiber.New()
 	router.Register(
@@ -77,6 +80,7 @@ func main() {
 		repostController,
 		emailController,
 		verificationController,
+		followController,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
