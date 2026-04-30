@@ -4,6 +4,7 @@ import "github.com/sunibgram/domain/model"
 
 type IUserRepository interface {
 	Save(user *model.User) error
+	SaveWithProfile(user *model.User, profile *model.UserProfile) error
 	FindByID(id uint) (*model.User, error)
 	FindByEmail(email string) (*model.User, error)
 	FindByUserName(username string) (*model.User, error)

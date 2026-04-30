@@ -10,28 +10,41 @@ import (
 )
 
 type AuthController struct {
-	authService service.IAuthService
+	authService    service.IAuthService
+	profileService service.IUserProfileService
 }
 
-func NewAuthController(authService service.IAuthService) *AuthController {
-	return &AuthController{authService: authService}
+func NewAuthController(authService service.IAuthService, profileService service.IUserProfileService) *AuthController {
+	return &AuthController{authService: authService, profileService: profileService}
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	var req dto.RegisterRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
-	}
-
 	user := &model.User{
-		Name:     req.Name,
-		UserName: req.UserName,
-		Email:    req.Email,
-		Password: req.Password,
+		Name:     ctx.FormValue("name"),
+		UserName: ctx.FormValue("username"),
+		Email:    ctx.FormValue("email"),
+		Password: ctx.FormValue("password"),
+	}
+	confirmPassword := ctx.FormValue("confirm_password")
+
+	if err := c.authService.Register(user, confirmPassword); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	if err := c.authService.Register(user, req.ConfirmPassword); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	input := service.UpsertProfileInput{}
+	if avatar, err := ctx.FormFile("avatar"); err == nil {
+		input.Avatar = avatar
+	}
+	if banner, err := ctx.FormFile("banner"); err == nil {
+		input.Banner = banner
+	}
+	if bio := ctx.FormValue("bio"); bio != "" {
+		input.Bio = &bio
+	}
+	if input.Avatar != nil || input.Banner != nil || input.Bio != nil {
+		if err := c.profileService.UpsertProfile(ctx.Context(), user.UserID, input); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user registered successfully"})
@@ -53,9 +66,6 @@ func (c *AuthController) ChangePassword(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.ChangePassword(claims.UserID, req.OldPassword, req.NewPassword); err != nil {
-		if err.Error() == "old password is incorrect" {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-		}
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 

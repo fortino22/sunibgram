@@ -15,6 +15,7 @@ import (
 
 var bucketWhitelist = map[string]string{
 	"avatar":     "MINIO_BUCKET_AVATAR",
+	"banner":     "MINIO_BUCKET_BANNER",
 	"post":       "MINIO_BUCKET_POST",
 	"document":   "MINIO_BUCKET_DOCUMENT",
 	"assignment": "MINIO_BUCKET_ASSIGNMENT",

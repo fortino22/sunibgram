@@ -7,12 +7,13 @@ import (
 )
 
 type UserService struct {
-	userRepo   repository.IUserRepository
-	followRepo repository.IFollowRepository
+	userRepo    repository.IUserRepository
+	followRepo  repository.IFollowRepository
+	profileRepo repository.IUserProfileRepository
 }
 
-func NewUserService(userRepo repository.IUserRepository, followRepo repository.IFollowRepository) service.IUserService {
-	return &UserService{userRepo: userRepo, followRepo: followRepo}
+func NewUserService(userRepo repository.IUserRepository, followRepo repository.IFollowRepository, profileRepo repository.IUserProfileRepository) service.IUserService {
+	return &UserService{userRepo: userRepo, followRepo: followRepo, profileRepo: profileRepo}
 }
 
 func (s *UserService) GetAllPaginated(page, limit int) ([]model.User, int64, error) {
@@ -29,14 +30,18 @@ func (s *UserService) GetByID(id uint) (*model.User, error) {
 	return s.userRepo.FindByID(id)
 }
 
-func (s *UserService) GetProfile(userID uint) (*model.User, *model.UserStat, error) {
+func (s *UserService) GetProfile(userID uint) (*model.User, *model.UserStat, *model.UserProfile, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	stat, err := s.followRepo.GetStat(userID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return user, stat, nil
+	profile, _ := s.profileRepo.FindByUserID(userID)
+	if profile == nil {
+		profile = &model.UserProfile{UserID: userID}
+	}
+	return user, stat, profile, nil
 }

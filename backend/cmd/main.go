@@ -26,7 +26,7 @@ func main() {
 
 	roleRepo        := infrarepo.NewRoleRepository(writeDB, readDB)
 	userRepo        := infrarepo.NewUserRepository(writeDB, readDB)
-	avatarRepo      := infrarepo.NewUserAvatarRepository(writeDB, readDB)
+	profileRepo     := infrarepo.NewUserProfileRepository(writeDB, readDB)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
 	likeRepo        := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
@@ -43,8 +43,8 @@ func main() {
 
 	authService        := usecase.NewAuthService(userRepo, roleRepo, verificationRepo)
 	roleService        := usecase.NewRoleService(roleRepo)
-	userService        := usecase.NewUserService(userRepo, followRepo)
-	avatarService      := usecase.NewAvatarService(avatarRepo, storageUsecase)
+	userService        := usecase.NewUserService(userRepo, followRepo, profileRepo)
+	profileService     := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, storageUsecase)
 	threadService      := usecase.NewThreadService(threadRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService        := usecase.NewLikeService(likeRepo, threadRepo)
@@ -53,10 +53,10 @@ func main() {
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService       := usecase.NewFollowService(followRepo, userRepo)
 
-	authController        := controller.NewAuthController(authService)
+	authController        := controller.NewAuthController(authService, profileService)
 	roleController        := controller.NewRoleController(roleService)
 	userController        := controller.NewUserController(userService)
-	avatarController      := controller.NewAvatarController(avatarService)
+	profileController     := controller.NewUserProfileController(profileService)
 	threadController      := controller.NewThreadController(threadService, threadMediaService)
 	threadMediaController := controller.NewThreadMediaController(threadMediaService)
 	likeController        := controller.NewLikeController(likeService, threadMediaService)
@@ -72,7 +72,7 @@ func main() {
 		authController,
 		roleController,
 		userController,
-		avatarController,
+		profileController,
 		threadController,
 		threadMediaController,
 		likeController,

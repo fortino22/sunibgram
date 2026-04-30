@@ -8,7 +8,6 @@ import (
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type UserController struct {
@@ -71,45 +70,5 @@ func (c *UserController) GetByID(ctx *fiber.Ctx) error {
 		RoleID:    user.RoleID,
 		RoleName:  user.Role.Name,
 		CreatedAt: utils.Wrap(user.CreatedAt),
-	})
-}
-
-func (c *UserController) GetProfile(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
-	}
-	user, stat, err := c.userService.GetProfile(uint(id))
-	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "user not found"})
-	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.UserProfileResponse{
-		UserID:         user.UserID,
-		Name:           user.Name,
-		Username:       user.UserName,
-		Email:          user.Email,
-		FollowerCount:  stat.FollowerCount,
-		FollowingCount: stat.FollowingCount,
-		CreatedAt:      utils.Wrap(user.CreatedAt),
-	})
-}
-
-func (c *UserController) GetMyProfile(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
-	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
-	}
-	user, stat, err := c.userService.GetProfile(claims.UserID)
-	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "user not found"})
-	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.UserProfileResponse{
-		UserID:         user.UserID,
-		Name:           user.Name,
-		Username:       user.UserName,
-		Email:          user.Email,
-		FollowerCount:  stat.FollowerCount,
-		FollowingCount: stat.FollowingCount,
-		CreatedAt:      utils.Wrap(user.CreatedAt),
 	})
 }

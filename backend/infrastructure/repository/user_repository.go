@@ -26,6 +26,16 @@ func (r *UserRepository) Save(user *model.User) error {
 	return r.writeDB.Create(user).Error
 }
 
+func (r *UserRepository) SaveWithProfile(user *model.User, profile *model.UserProfile) error {
+	return r.writeDB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
+		profile.UserID = user.UserID
+		return tx.Create(profile).Error
+	})
+}
+
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	var user model.User
 	err := r.readDB.Preload("Role").Where("email = ?", email).First(&user).Error

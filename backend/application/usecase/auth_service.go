@@ -75,7 +75,8 @@ func (s *AuthService) Register(user *model.User, confirmPassword string) error {
 	}
 	user.Password = string(hashed)
 
-	return s.userRepo.Save(user)
+	profile := &model.UserProfile{}
+	return s.userRepo.SaveWithProfile(user, profile)
 }
 
 func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword string) error {
