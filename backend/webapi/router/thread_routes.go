@@ -22,6 +22,7 @@ func registerThreadRoutes(
 	threads.Post("/", threadCtrl.Create)
 	threads.Get("/", threadCtrl.GetRoots)
 	threads.Get("/me", threadCtrl.GetMyPosts)
+	threads.Get("/me/replies", threadCtrl.GetMyReplies)
 	threads.Get("/:id", threadCtrl.GetByID)
 	threads.Get("/:id/chain", threadCtrl.GetChain)
 	threads.Put("/:id", threadCtrl.Update)

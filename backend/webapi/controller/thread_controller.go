@@ -2,6 +2,7 @@ package controller
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
@@ -154,20 +155,119 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, total, err := c.threadService.GetMyPosts(claims.UserID, page, limit)
+	threads, repostTimestamps, total, err := c.threadService.GetMyPosts(claims.UserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedThreadsResponse{
-		Data:  c.buildThreadResponses(threads),
+		Data:  c.buildMyPostResponses(threads, repostTimestamps),
 		Total: total,
 		Page:  page,
 		Limit: limit,
 	})
 }
 
-// buildThreadResponses bulk-loads media for a slice of threads in one query.
+func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+
+	threads, repostTimestamps, parents, total, err := c.threadService.GetMyReplies(claims.UserID, page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	allIDs := make([]uint, 0, len(threads)*2)
+	for _, t := range threads {
+		allIDs = append(allIDs, t.ThreadID)
+	}
+	for _, p := range parents {
+		if p != nil {
+			allIDs = append(allIDs, p.ThreadID)
+		}
+	}
+
+	allMedia, _ := c.mediaService.GetByThreadIDs(allIDs)
+	mediaByThread := make(map[uint][]model.ThreadMedia, len(allIDs))
+	for _, m := range allMedia {
+		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
+	}
+
+	data := make([]dto.FeedItemResponse, len(threads))
+	for i, t := range threads {
+		item := dto.FeedItemResponse{
+			ID:        t.ThreadID,
+			ParentID:  t.ParentID,
+			RootID:    t.RootID,
+			Content:   t.Content,
+			CreatedAt: utils.Wrap(t.CreatedAt),
+			UpdatedAt: utils.Wrap(t.UpdatedAt),
+			Author:    dto.FeedAuthor{ID: t.UserID, Username: t.User.UserName},
+			Stats:     dto.FeedStats{Likes: t.LikeCount, Reposts: t.RepostCount, Bookmarks: t.BookmarkCount},
+			Media:     toMediaResponses(mediaByThread[t.ThreadID]),
+		}
+		switch {
+		case repostTimestamps[i] != nil:
+			item.Type = "REPOST"
+			wrapped := utils.Wrap(*repostTimestamps[i])
+			item.RepostedAt = &wrapped
+		case parents[i] != nil:
+			item.Type = "REPLY"
+			p := parents[i]
+			item.ParentContext = &dto.FeedParentContext{
+				ID:        p.ThreadID,
+				ParentID:  p.ParentID,
+				RootID:    p.RootID,
+				Author:    dto.FeedAuthor{ID: p.UserID, Username: p.User.UserName},
+				Content:   p.Content,
+				Media:     toMediaResponses(mediaByThread[p.ThreadID]),
+				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount},
+				CreatedAt: utils.Wrap(p.CreatedAt),
+				UpdatedAt: utils.Wrap(p.UpdatedAt),
+			}
+		default:
+			item.Type = "POST"
+		}
+		data[i] = item
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+		Data: data,
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
+}
+
+func (c *ThreadController) buildMyPostResponses(threads []model.Thread, repostTimestamps []*time.Time) []dto.ThreadResponse {
+	ids := make([]uint, len(threads))
+	for i, t := range threads {
+		ids[i] = t.ThreadID
+	}
+
+	allMedia, _ := c.mediaService.GetByThreadIDs(ids)
+
+	mediaByThread := make(map[uint][]model.ThreadMedia, len(ids))
+	for _, m := range allMedia {
+		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
+	}
+
+	data := make([]dto.ThreadResponse, len(threads))
+	for i, t := range threads {
+		r := toThreadResponse(&t, mediaByThread[t.ThreadID])
+		if repostTimestamps[i] != nil {
+			r.IsRepost = true
+			wrapped := utils.Wrap(*repostTimestamps[i])
+			r.RepostedAt = &wrapped
+		}
+		data[i] = r
+	}
+	return data
+}
+
 func (c *ThreadController) buildThreadResponses(threads []model.Thread) []dto.ThreadResponse {
 	ids := make([]uint, len(threads))
 	for i, t := range threads {

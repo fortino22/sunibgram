@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
@@ -97,7 +98,7 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	return thread, nil
 }
 
-func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*time.Time, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -105,6 +106,16 @@ func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread
 		limit = 20
 	}
 	return s.threadRepo.FindPostsByUserID(userID, page, limit)
+}
+
+func (s *ThreadService) GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*time.Time, []*model.Thread, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return s.threadRepo.FindReplyTabByUserID(userID, page, limit)
 }
 
 func (s *ThreadService) Delete(ctx context.Context, id, userID uint) error {

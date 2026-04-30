@@ -110,78 +110,135 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 	return result.Threads, result.Total, nil
 }
 
-func (r *threadCached) FindPostsByUserID(userID uint, page, limit int) ([]model.Thread, int64, error) {
-	type entry struct {
-		threadID  uint
-		createdAt time.Time
-	}
+type userFeedEntry struct {
+	threadID   uint
+	sortedAt   time.Time
+	repostedAt *time.Time
+	parentID   *uint
+}
 
-	seen := make(map[uint]time.Time)
-
+func (r *threadCached) buildUserFeedEntries(userID uint, page, limit int) (pageEntries []userFeedEntry, threadMap map[uint]model.Thread, total int64, err error) {
 	var ownedThreads []model.Thread
-	if err := r.db.readDB.Select("thread_id, created_at").
+	if err = r.db.readDB.Select("thread_id, created_at, parent_id").
 		Where("user_id = ?", userID).
 		Find(&ownedThreads).Error; err != nil {
-		return nil, 0, err
+		return
 	}
+
+	entries := make([]userFeedEntry, 0, len(ownedThreads))
 	for _, t := range ownedThreads {
-		seen[t.ThreadID] = t.CreatedAt
+		entries = append(entries, userFeedEntry{
+			threadID: t.ThreadID,
+			sortedAt: t.CreatedAt,
+			parentID: t.ParentID,
+		})
 	}
 
 	var reposts []model.Repost
-	if err := r.db.readDB.Where("user_id = ?", userID).Find(&reposts).Error; err != nil {
-		return nil, 0, err
+	if err = r.db.readDB.Where("user_id = ?", userID).Find(&reposts).Error; err != nil {
+		return
 	}
 	for _, rp := range reposts {
-		if _, exists := seen[rp.ThreadID]; !exists {
-			seen[rp.ThreadID] = rp.CreatedAt
-		}
+		ts := rp.CreatedAt
+		entries = append(entries, userFeedEntry{
+			threadID:   rp.ThreadID,
+			sortedAt:   ts,
+			repostedAt: &ts,
+		})
 	}
 
-	merged := make([]entry, 0, len(seen))
-	for id, ts := range seen {
-		merged = append(merged, entry{threadID: id, createdAt: ts})
-	}
-	sort.Slice(merged, func(i, j int) bool {
-		return merged[i].createdAt.After(merged[j].createdAt)
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].sortedAt.After(entries[j].sortedAt)
 	})
 
-	total := int64(len(merged))
-
+	total = int64(len(entries))
 	offset := (page - 1) * limit
-	if offset >= len(merged) {
-		return nil, total, nil
+	if offset >= len(entries) {
+		return nil, nil, total, nil
 	}
 	end := offset + limit
-	if end > len(merged) {
-		end = len(merged)
+	if end > len(entries) {
+		end = len(entries)
 	}
-	page_entries := merged[offset:end]
+	pageEntries = entries[offset:end]
 
-	ids := make([]uint, len(page_entries))
-	for i, e := range page_entries {
+	ids := make([]uint, len(pageEntries))
+	for i, e := range pageEntries {
 		ids[i] = e.threadID
 	}
-
 	var threads []model.Thread
-	if err := r.db.readDB.Preload("User").
-		Where("thread_id IN ?", ids).
-		Find(&threads).Error; err != nil {
-		return nil, 0, err
+	if err = r.db.readDB.Preload("User").Where("thread_id IN ?", ids).Find(&threads).Error; err != nil {
+		return
 	}
-
-	threadMap := make(map[uint]model.Thread, len(threads))
+	threadMap = make(map[uint]model.Thread, len(threads))
 	for _, t := range threads {
 		threadMap[t.ThreadID] = t
 	}
-	sorted := make([]model.Thread, 0, len(ids))
-	for _, e := range page_entries {
+	return
+}
+
+func (r *threadCached) FindPostsByUserID(userID uint, page, limit int) ([]model.Thread, []*time.Time, int64, error) {
+	pageEntries, threadMap, total, err := r.buildUserFeedEntries(userID, page, limit)
+	if err != nil || len(pageEntries) == 0 {
+		return nil, nil, total, err
+	}
+
+	sorted := make([]model.Thread, 0, len(pageEntries))
+	timestamps := make([]*time.Time, 0, len(pageEntries))
+	for _, e := range pageEntries {
 		if t, ok := threadMap[e.threadID]; ok {
 			sorted = append(sorted, t)
+			timestamps = append(timestamps, e.repostedAt)
+		}
+	}
+	return sorted, timestamps, total, nil
+}
+
+func (r *threadCached) FindReplyTabByUserID(userID uint, page, limit int) ([]model.Thread, []*time.Time, []*model.Thread, int64, error) {
+	pageEntries, threadMap, total, err := r.buildUserFeedEntries(userID, page, limit)
+	if err != nil || len(pageEntries) == 0 {
+		return nil, nil, nil, total, err
+	}
+
+	// fetch parents for reply entries on this page
+	parentIDSet := make(map[uint]struct{})
+	for _, e := range pageEntries {
+		if e.parentID != nil {
+			parentIDSet[*e.parentID] = struct{}{}
+		}
+	}
+	parentMap := make(map[uint]*model.Thread)
+	if len(parentIDSet) > 0 {
+		pids := make([]uint, 0, len(parentIDSet))
+		for id := range parentIDSet {
+			pids = append(pids, id)
+		}
+		var parentThreads []model.Thread
+		if err = r.db.readDB.Preload("User").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+			return nil, nil, nil, 0, err
+		}
+		for i := range parentThreads {
+			parentMap[parentThreads[i].ThreadID] = &parentThreads[i]
 		}
 	}
 
-	return sorted, total, nil
+	sortedThreads := make([]model.Thread, 0, len(pageEntries))
+	repostTimestamps := make([]*time.Time, 0, len(pageEntries))
+	parents := make([]*model.Thread, 0, len(pageEntries))
+	for _, e := range pageEntries {
+		t, ok := threadMap[e.threadID]
+		if !ok {
+			continue
+		}
+		sortedThreads = append(sortedThreads, t)
+		repostTimestamps = append(repostTimestamps, e.repostedAt)
+		if e.parentID != nil {
+			parents = append(parents, parentMap[*e.parentID])
+		} else {
+			parents = append(parents, nil)
+		}
+	}
+	return sortedThreads, repostTimestamps, parents, total, nil
 }
 
 func (r *threadCached) Update(thread *model.Thread) error {
