@@ -1,6 +1,6 @@
 package dto
 
-import "time"
+import "github.com/sunibgram/dto/utils"
 
 type CreateThreadRequest struct {
 	Content  string `json:"content"`
@@ -22,8 +22,8 @@ type ThreadResponse struct {
 	LikeCount     int                   `json:"like_count"`
 	RepostCount   int                   `json:"repost_count"`
 	BookmarkCount int                   `json:"bookmark_count"`
-	CreatedAt     time.Time             `json:"created_at"`
-	UpdatedAt     time.Time             `json:"updated_at"`
+	CreatedAt     utils.FormattedTime   `json:"created_at"`
+	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
 }
 
 type PaginatedThreadsResponse struct {

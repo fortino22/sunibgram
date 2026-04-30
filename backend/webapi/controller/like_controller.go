@@ -7,6 +7,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -86,7 +87,7 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 	for i, t := range threads {
 		data[i] = dto.LikedThreadResponse{
 			ThreadResponse: toThreadResponse(&t, mediaByThread[t.ThreadID]),
-			LikedAt:        timestamps[i],
+			LikedAt:        utils.Wrap(timestamps[i]),
 		}
 	}
 

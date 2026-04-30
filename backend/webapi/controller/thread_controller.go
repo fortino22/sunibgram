@@ -7,6 +7,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -199,8 +200,8 @@ func toThreadResponse(t *model.Thread, media []model.ThreadMedia) dto.ThreadResp
 		LikeCount:     t.LikeCount,
 		RepostCount:   t.RepostCount,
 		BookmarkCount: t.BookmarkCount,
-		CreatedAt:     t.CreatedAt,
-		UpdatedAt:     t.UpdatedAt,
+		CreatedAt:     utils.Wrap(t.CreatedAt),
+		UpdatedAt:     utils.Wrap(t.UpdatedAt),
 	}
 }
 

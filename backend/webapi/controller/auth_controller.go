@@ -5,6 +5,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -109,8 +110,8 @@ func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(dto.LoginProdResponse{
 		AccessToken:           pair.AccessToken,
 		RefreshToken:          pair.RefreshToken,
-		AccessTokenExpiresAt:  pair.AccessTokenExpiresAt,
-		RefreshTokenExpiresAt: pair.RefreshTokenExpiresAt,
+		AccessTokenExpiresAt:  utils.Wrap(pair.AccessTokenExpiresAt),
+		RefreshTokenExpiresAt: utils.Wrap(pair.RefreshTokenExpiresAt),
 	})
 }
 
@@ -130,7 +131,7 @@ func (c *AuthController) Refresh(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(dto.RefreshResponse{
 		AccessToken:           pair.AccessToken,
 		RefreshToken:          pair.RefreshToken,
-		AccessTokenExpiresAt:  pair.AccessTokenExpiresAt,
-		RefreshTokenExpiresAt: pair.RefreshTokenExpiresAt,
+		AccessTokenExpiresAt:  utils.Wrap(pair.AccessTokenExpiresAt),
+		RefreshTokenExpiresAt: utils.Wrap(pair.RefreshTokenExpiresAt),
 	})
 }

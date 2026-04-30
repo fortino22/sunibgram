@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 )
 
 type UserController struct {
@@ -35,7 +36,7 @@ func (c *UserController) GetAll(ctx *fiber.Ctx) error {
 			Email:     u.Email,
 			RoleID:    u.RoleID,
 			RoleName:  u.Role.Name,
-			CreatedAt: u.CreatedAt,
+			CreatedAt: utils.Wrap(u.CreatedAt),
 		}
 	}
 
@@ -68,6 +69,6 @@ func (c *UserController) GetByID(ctx *fiber.Ctx) error {
 		Email:     user.Email,
 		RoleID:    user.RoleID,
 		RoleName:  user.Role.Name,
-		CreatedAt: user.CreatedAt,
+		CreatedAt: utils.Wrap(user.CreatedAt),
 	})
 }

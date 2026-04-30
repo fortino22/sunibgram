@@ -1,10 +1,10 @@
 package dto
 
-import "time"
+import "github.com/sunibgram/dto/utils"
 
 type BookmarkedThreadResponse struct {
 	ThreadResponse
-	BookmarkedAt time.Time `json:"bookmarked_at"`
+	BookmarkedAt utils.FormattedTime `json:"bookmarked_at"`
 }
 
 type PaginatedBookmarkedThreadsResponse struct {

@@ -1,10 +1,10 @@
 package dto
 
-import "time"
+import "github.com/sunibgram/dto/utils"
 
 type LikedThreadResponse struct {
 	ThreadResponse
-	LikedAt time.Time `json:"liked_at"`
+	LikedAt utils.FormattedTime `json:"liked_at"`
 }
 
 type PaginatedLikedThreadsResponse struct {

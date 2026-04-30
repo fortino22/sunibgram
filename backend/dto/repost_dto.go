@@ -1,10 +1,10 @@
 package dto
 
-import "time"
+import "github.com/sunibgram/dto/utils"
 
 type RepostedThreadResponse struct {
 	ThreadResponse
-	RepostedAt time.Time `json:"reposted_at"`
+	RepostedAt utils.FormattedTime `json:"reposted_at"`
 }
 
 type PaginatedRepostedThreadsResponse struct {

@@ -1,6 +1,6 @@
 package dto
 
-import "time"
+import "github.com/sunibgram/dto/utils"
 
 type RegisterRequest struct {
 	Name            string `json:"name"`
@@ -33,17 +33,17 @@ type LoginResponse struct {
 }
 
 type LoginProdResponse struct {
-	AccessToken           string    `json:"access_token"`
-	RefreshToken          string    `json:"refresh_token"`
-	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
-	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
+	AccessToken           string              `json:"access_token"`
+	RefreshToken          string              `json:"refresh_token"`
+	AccessTokenExpiresAt  utils.FormattedTime `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt utils.FormattedTime `json:"refresh_token_expires_at"`
 }
 
 type RefreshResponse struct {
-	AccessToken           string    `json:"access_token"`
-	RefreshToken          string    `json:"refresh_token"`
-	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at"`
-	RefreshTokenExpiresAt time.Time `json:"refresh_token_expires_at"`
+	AccessToken           string              `json:"access_token"`
+	RefreshToken          string              `json:"refresh_token"`
+	AccessTokenExpiresAt  utils.FormattedTime `json:"access_token_expires_at"`
+	RefreshTokenExpiresAt utils.FormattedTime `json:"refresh_token_expires_at"`
 }
 
 type UserData struct {
