@@ -1,0 +1,59 @@
+import {
+  Home,
+  Compass,
+  Users,
+  Bell,
+  Bookmark,
+  User,
+  Plus,
+  MoreHorizontal,
+  TrendingUp,
+  Search,
+  ArrowRight,
+  MessageCircle,
+  Image,
+  Video,
+  Hash,
+  BarChart2,
+  Heart,
+  Repeat2,
+  BookmarkCheck,
+  type LucideProps,
+} from 'lucide-react';
+import type { FC } from 'react';
+
+const ICON_MAP: Record<string, FC<LucideProps>> = {
+  home:         Home,
+  explore:      Compass,
+  users:        Users,
+  bell:         Bell,
+  bookmark:     Bookmark,
+  bookmarkFill: BookmarkCheck,
+  user:         User,
+  plus:         Plus,
+  more:         MoreHorizontal,
+  trending:     TrendingUp,
+  search:       Search,
+  arrowRight:   ArrowRight,
+  reply:        MessageCircle,
+  image:        Image,
+  video:        Video,
+  hash:         Hash,
+  poll:         BarChart2,
+  heart:        Heart,
+  repost:       Repeat2,
+};
+
+interface IconProps {
+  name: string;
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+  fill?: string;
+}
+
+export function Icon({ name, size = 18, color = 'currentColor', strokeWidth = 1.8, fill = 'none' }: IconProps) {
+  const LucideIcon = ICON_MAP[name];
+  if (!LucideIcon) return null;
+  return <LucideIcon size={size} color={color} strokeWidth={strokeWidth} fill={fill} />;
+}
