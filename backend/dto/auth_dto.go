@@ -30,20 +30,23 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Message     string `json:"message"`
 	AccessToken string `json:"access_token"`
+	SID         string `json:"sid"`
 }
 
 type LoginProdResponse struct {
-	AccessToken           string              `json:"access_token"`
-	RefreshToken          string              `json:"refresh_token"`
-	AccessTokenExpiresAt  utils.FormattedTime `json:"access_token_expires_at"`
-	RefreshTokenExpiresAt utils.FormattedTime `json:"refresh_token_expires_at"`
+	Message              string              `json:"message"`
+	AccessToken          string              `json:"access_token"`
+	SID                  string              `json:"sid"`
+	AccessTokenExpiresAt utils.FormattedTime `json:"access_token_expires_at"`
+}
+
+type RefreshRequest struct {
+	SID string `json:"sid"`
 }
 
 type RefreshResponse struct {
-	AccessToken           string              `json:"access_token"`
-	RefreshToken          string              `json:"refresh_token"`
-	AccessTokenExpiresAt  utils.FormattedTime `json:"access_token_expires_at"`
-	RefreshTokenExpiresAt utils.FormattedTime `json:"refresh_token_expires_at"`
+	AccessToken string `json:"access_token"`
+	SID         string `json:"sid"`
 }
 
 type UserData struct {

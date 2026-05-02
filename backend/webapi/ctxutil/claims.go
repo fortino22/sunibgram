@@ -8,6 +8,7 @@ import (
 
 type Claims struct {
 	UserID   uint
+	SID      string
 	Username string
 	Email    string
 	RoleID   uint
@@ -22,6 +23,7 @@ func Get(ctx *fiber.Ctx) (Claims, bool) {
 
 	return Claims{
 		UserID:   uint(raw["user_id"].(float64)),
+		SID:      str(raw["sid"]),
 		Username: str(raw["username"]),
 		Email:    str(raw["email"]),
 		RoleID:   uint(raw["role_id"].(float64)),

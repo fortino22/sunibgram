@@ -103,6 +103,7 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{
 		Message:     "login successful",
 		AccessToken: pair.AccessToken,
+		SID:         pair.SID,
 	})
 }
 
@@ -118,30 +119,39 @@ func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.LoginProdResponse{
-		AccessToken:           pair.AccessToken,
-		RefreshToken:          pair.RefreshToken,
-		AccessTokenExpiresAt:  utils.Wrap(pair.AccessTokenExpiresAt),
-		RefreshTokenExpiresAt: utils.Wrap(pair.RefreshTokenExpiresAt),
+		Message:              "login successful",
+		AccessToken:          pair.AccessToken,
+		SID:                  pair.SID,
+		AccessTokenExpiresAt: utils.Wrap(pair.AccessTokenExpiresAt),
 	})
 }
 
 func (c *AuthController) Refresh(ctx *fiber.Ctx) error {
-	header := ctx.Get("Authorization")
-	if len(header) < 8 || header[:7] != "Bearer " {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "missing or invalid Authorization header"})
+	var req dto.RefreshRequest
+	if err := ctx.BodyParser(&req); err != nil || req.SID == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "sid is required"})
 	}
 
-	refreshToken := header[7:]
-
-	pair, err := c.authService.RefreshToken(refreshToken)
+	pair, err := c.authService.RefreshToken(ctx.Context(), req.SID)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.RefreshResponse{
-		AccessToken:           pair.AccessToken,
-		RefreshToken:          pair.RefreshToken,
-		AccessTokenExpiresAt:  utils.Wrap(pair.AccessTokenExpiresAt),
-		RefreshTokenExpiresAt: utils.Wrap(pair.RefreshTokenExpiresAt),
+		AccessToken: pair.AccessToken,
+		SID:         pair.SID,
 	})
+}
+
+func (c *AuthController) Logout(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	if err := c.authService.Logout(ctx.Context(), claims.SID); err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "logged out successfully"})
 }

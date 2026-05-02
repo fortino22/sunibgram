@@ -9,10 +9,9 @@ import (
 const allowedEmailDomain = "@binus.ac.id"
 
 type TokenPair struct {
-	AccessToken           string
-	RefreshToken          string
-	AccessTokenExpiresAt  time.Time
-	RefreshTokenExpiresAt time.Time
+	AccessToken          string
+	SID                  string
+	AccessTokenExpiresAt time.Time
 }
 
 type User struct {

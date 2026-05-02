@@ -41,7 +41,7 @@ func main() {
 	smtpClient  := infraemail.NewSMTPClient()
 	emailService := usecase.NewEmailService(smtpClient)
 
-	authService        := usecase.NewAuthService(userRepo, roleRepo, verificationRepo)
+	authService        := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
 	roleService        := usecase.NewRoleService(roleRepo)
 	userService        := usecase.NewUserService(userRepo, followRepo, profileRepo)
 	profileService     := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, storageUsecase)

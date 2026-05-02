@@ -1,38 +1,66 @@
 package usecase
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
-
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/sunibgram/infrastructure/cache"
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	accessTokenDuration  = 15 * time.Minute
-	refreshTokenDuration = 7 * 24 * time.Hour
-)
+func accessTokenDuration() time.Duration {
+	if v := os.Getenv("JWT_ACCESS_TOKEN_DURATION"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return time.Hour
+}
+
+func sessionDuration() time.Duration {
+	if v := os.Getenv("JWT_SESSION_DURATION"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return 7 * 24 * time.Hour
+}
 
 type tokenKind string
 
-const (
-	kindAccess  tokenKind = "access"
-	kindRefresh tokenKind = "refresh"
-)
+const kindAccess tokenKind = "access"
 
 type AuthService struct {
 	userRepo         repository.IUserRepository
 	roleRepo         repository.IRoleRepository
 	verificationRepo repository.IVerificationRepository
+	cache            *cache.Cache
 }
 
-func NewAuthService(userRepo repository.IUserRepository, roleRepo repository.IRoleRepository, verificationRepo repository.IVerificationRepository) service.IAuthService {
-	return &AuthService{userRepo: userRepo, roleRepo: roleRepo, verificationRepo: verificationRepo}
+func NewAuthService(
+	userRepo repository.IUserRepository,
+	roleRepo repository.IRoleRepository,
+	verificationRepo repository.IVerificationRepository,
+	c *cache.Cache,
+) service.IAuthService {
+	return &AuthService{
+		userRepo:         userRepo,
+		roleRepo:         roleRepo,
+		verificationRepo: verificationRepo,
+		cache:            c,
+	}
+}
+
+func sessionKey(sid string) string {
+	return fmt.Sprintf("session:%s", sid)
 }
 
 func (s *AuthService) Register(user *model.User, confirmPassword string) error {
@@ -140,7 +168,13 @@ func (s *AuthService) Login(email, password string) (model.TokenPair, error) {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return model.TokenPair{}, errors.New("invalid email or password")
 	}
-	return generateTokenPair(user)
+
+	sid := uuid.NewString()
+	if err := s.cache.Set(context.Background(), sessionKey(sid), user.UserID, sessionDuration()); err != nil {
+		return model.TokenPair{}, errors.New("failed to create session")
+	}
+
+	return generateTokenPair(user, sid)
 }
 
 func (s *AuthService) LoginProd(email, password string) (*model.User, model.TokenPair, error) {
@@ -157,7 +191,12 @@ func (s *AuthService) LoginProd(email, password string) (*model.User, model.Toke
 		return nil, model.TokenPair{}, errors.New("admin access required")
 	}
 
-	pair, err := generateTokenPair(user)
+	sid := uuid.NewString()
+	if err := s.cache.Set(context.Background(), sessionKey(sid), user.UserID, sessionDuration()); err != nil {
+		return nil, model.TokenPair{}, errors.New("failed to create session")
+	}
+
+	pair, err := generateTokenPair(user, sid)
 	if err != nil {
 		return nil, model.TokenPair{}, err
 	}
@@ -165,32 +204,44 @@ func (s *AuthService) LoginProd(email, password string) (*model.User, model.Toke
 	return user, pair, nil
 }
 
-func (s *AuthService) RefreshToken(refreshToken string) (model.TokenPair, error) {
-	claims, err := parseToken(refreshToken, kindRefresh)
-	if err != nil {
-		return model.TokenPair{}, errors.New("invalid or expired refresh token")
+func (s *AuthService) RefreshToken(ctx context.Context, sid string) (model.TokenPair, error) {
+	if sid == "" {
+		return model.TokenPair{}, errors.New("sid is required")
 	}
 
-	userID, ok := claims["user_id"].(float64)
-	if !ok {
-		return model.TokenPair{}, errors.New("invalid token claims")
+	var userID uint
+	if err := s.cache.Get(ctx, sessionKey(sid), &userID); err != nil {
+		return model.TokenPair{}, errors.New("session expired or revoked")
 	}
 
-	user, err := s.userRepo.FindByID(uint(userID))
+	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return model.TokenPair{}, errors.New("user not found")
 	}
 
-	return generateTokenPair(user)
+	// Reset TTL on refresh
+	if err := s.cache.Set(ctx, sessionKey(sid), userID, sessionDuration()); err != nil {
+		return model.TokenPair{}, errors.New("failed to extend session")
+	}
+
+	return generateTokenPair(user, sid)
 }
 
-func generateTokenPair(user *model.User) (model.TokenPair, error) {
+func (s *AuthService) Logout(ctx context.Context, sid string) error {
+	if sid == "" {
+		return errors.New("invalid session")
+	}
+	return s.cache.Delete(ctx, sessionKey(sid))
+}
+
+func generateTokenPair(user *model.User, sid string) (model.TokenPair, error) {
 	secret := jwtSecret()
 	now := time.Now()
+	accessExp := now.Add(accessTokenDuration())
 
-	accessExp := now.Add(accessTokenDuration)
 	accessToken, err := signToken(jwt.MapClaims{
 		"kind":      string(kindAccess),
+		"sid":       sid,
 		"user_id":   user.UserID,
 		"username":  user.UserName,
 		"email":     user.Email,
@@ -202,21 +253,10 @@ func generateTokenPair(user *model.User) (model.TokenPair, error) {
 		return model.TokenPair{}, err
 	}
 
-	refreshExp := now.Add(refreshTokenDuration)
-	refreshToken, err := signToken(jwt.MapClaims{
-		"kind":    string(kindRefresh),
-		"user_id": user.UserID,
-		"exp":     refreshExp.Unix(),
-	}, secret)
-	if err != nil {
-		return model.TokenPair{}, err
-	}
-
 	return model.TokenPair{
-		AccessToken:           accessToken,
-		RefreshToken:          refreshToken,
-		AccessTokenExpiresAt:  accessExp,
-		RefreshTokenExpiresAt: refreshExp,
+		AccessToken:          accessToken,
+		SID:                  sid,
+		AccessTokenExpiresAt: accessExp,
 	}, nil
 }
 

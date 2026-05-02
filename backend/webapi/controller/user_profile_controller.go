@@ -66,11 +66,7 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	fp, err := c.profileService.GetProfile(claims.UserID)
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(fp))
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "profile updated successfully"})
 }
 
 func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint) error {
