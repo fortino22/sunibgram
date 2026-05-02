@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
@@ -24,12 +23,15 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		return nil, errors.New("content is required")
 	}
 
+	threadType := model.ThreadTypePost
 	var rootID *uint
+
 	if parentID != nil {
 		parent, err := s.threadRepo.FindByID(*parentID)
 		if err != nil {
 			return nil, errors.New("parent thread not found")
 		}
+		threadType = model.ThreadTypeReply
 		if parent.RootID == nil {
 			rootID = &parent.ThreadID
 		} else {
@@ -39,6 +41,7 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 
 	thread := &model.Thread{
 		UserID:   userID,
+		Type:     threadType,
 		Content:  content,
 		ParentID: parentID,
 		RootID:   rootID,
@@ -88,6 +91,9 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	if thread.UserID != userID {
 		return nil, errors.New("forbidden")
 	}
+	if thread.Type == model.ThreadTypeRepost {
+		return nil, errors.New("cannot edit a repost")
+	}
 	if strings.TrimSpace(content) == "" {
 		return nil, errors.New("content is required")
 	}
@@ -96,26 +102,6 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 		return nil, err
 	}
 	return thread, nil
-}
-
-func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*time.Time, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
-	return s.threadRepo.FindPostsByUserID(userID, page, limit)
-}
-
-func (s *ThreadService) GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*time.Time, []*model.Thread, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
-	return s.threadRepo.FindReplyTabByUserID(userID, page, limit)
 }
 
 func (s *ThreadService) Delete(ctx context.Context, id, userID uint) error {
@@ -127,4 +113,59 @@ func (s *ThreadService) Delete(ctx context.Context, id, userID uint) error {
 		return errors.New("forbidden")
 	}
 	return s.threadRepo.Delete(id)
+}
+
+func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error {
+	original, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
+		return errors.New("thread not found")
+	}
+	if original.Type == model.ThreadTypeRepost {
+		return errors.New("cannot repost a repost")
+	}
+	exists, err := s.threadRepo.ExistsRepost(userID, threadID)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errors.New("already reposted")
+	}
+	repost := &model.Thread{
+		UserID:           userID,
+		Type:             model.ThreadTypeRepost,
+		Content:          "",
+		OriginalThreadID: &original.ThreadID,
+	}
+	return s.threadRepo.Save(repost)
+}
+
+func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) error {
+	exists, err := s.threadRepo.ExistsRepost(userID, threadID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("not reposted")
+	}
+	return s.threadRepo.DeleteRepost(userID, threadID)
+}
+
+func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return s.threadRepo.FindPostsByUserID(userID, page, limit)
+}
+
+func (s *ThreadService) GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return s.threadRepo.FindReplyTabByUserID(userID, page, limit)
 }

@@ -66,17 +66,16 @@ type FeedParentContext struct {
 type FeedItemResponse struct {
 	Type          string                `json:"type"`
 	ParentContext *FeedParentContext     `json:"parent_context,omitempty"`
-	ID            uint                  `json:"id"`
-	ParentID      *uint                 `json:"parent_id"`
-	RootID        *uint                 `json:"root_id"`
-	Content       string                `json:"content"`
-	CreatedAt     utils.FormattedTime   `json:"created_at"`
-	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
-	RepostedAt    *utils.FormattedTime  `json:"reposted_at,omitempty"`
-	ActionAt      *utils.FormattedTime  `json:"action_at,omitempty"`
-	Author        FeedAuthor            `json:"author"`
-	Stats         FeedStats             `json:"stats"`
-	Media         []ThreadMediaResponse `json:"media"`
+	ID             uint                  `json:"id"`
+	ParentID       *uint                 `json:"parent_id"`
+	RootID         *uint                 `json:"root_id"`
+	Content        string                `json:"content"`
+	CreatedAt      utils.FormattedTime   `json:"created_at"`
+	UpdatedAt      utils.FormattedTime   `json:"updated_at"`
+	ActionAt       *utils.FormattedTime  `json:"action_at,omitempty"`
+	Author         FeedAuthor            `json:"author"`
+	Stats          FeedStats             `json:"stats"`
+	Media          []ThreadMediaResponse `json:"media"`
 }
 
 type FeedMeta struct {

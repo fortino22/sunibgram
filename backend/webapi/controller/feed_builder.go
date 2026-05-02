@@ -20,8 +20,24 @@ func (fb feedBuilder) toMediaResponses(media []model.ThreadMedia) []dto.ThreadMe
 }
 
 func (fb feedBuilder) toFeedItem(t *model.Thread, media []model.ThreadMedia) dto.FeedItemResponse {
+	// For reposts, surface the original thread with type=REPOST so client knows
+	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+		orig := t.OriginalThread
+		return dto.FeedItemResponse{
+			Type:      string(model.ThreadTypeRepost),
+			ID:        orig.ThreadID,
+			ParentID:  orig.ParentID,
+			RootID:    orig.RootID,
+			Content:   orig.Content,
+			CreatedAt: utils.Wrap(orig.CreatedAt),
+			UpdatedAt: utils.Wrap(orig.UpdatedAt),
+			Author:    dto.FeedAuthor{ID: orig.UserID, Username: orig.User.UserName},
+			Stats:     dto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount},
+			Media:     fb.toMediaResponses(media),
+		}
+	}
 	return dto.FeedItemResponse{
-		Type:      "POST",
+		Type:      string(t.Type),
 		ID:        t.ThreadID,
 		ParentID:  t.ParentID,
 		RootID:    t.RootID,

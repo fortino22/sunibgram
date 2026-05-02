@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"github.com/sunibgram/domain/model"
 )
@@ -14,6 +13,8 @@ type IThreadService interface {
 	GetChain(rootID uint, page, limit int) ([]model.Thread, int64, error)
 	Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error)
 	Delete(ctx context.Context, id, userID uint) error
-	GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*time.Time, int64, error)
-	GetMyReplies(userID uint, page, limit int) (threads []model.Thread, repostTimestamps []*time.Time, parents []*model.Thread, total int64, err error)
+	Repost(ctx context.Context, userID, threadID uint) error
+	Unrepost(ctx context.Context, userID, threadID uint) error
+	GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 }

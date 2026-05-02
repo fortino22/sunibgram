@@ -2,7 +2,6 @@ package controller
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
@@ -61,10 +60,8 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	data := c.buildFeedItems(threads)
-
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: data,
+		Data: c.buildFeedItems(threads),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -165,17 +162,16 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, repostTimestamps, total, err := c.threadService.GetMyPosts(claims.UserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyPosts(claims.UserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildMyPostFeedItems(threads, repostTimestamps),
+		Data: c.buildUserFeedItems(threads, parents),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -185,71 +181,16 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, repostTimestamps, parents, total, err := c.threadService.GetMyReplies(claims.UserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyReplies(claims.UserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	allIDs := make([]uint, 0, len(threads)*2)
-	for _, t := range threads {
-		allIDs = append(allIDs, t.ThreadID)
-	}
-	for _, p := range parents {
-		if p != nil {
-			allIDs = append(allIDs, p.ThreadID)
-		}
-	}
-
-	allMedia, _ := c.mediaService.GetByThreadIDs(allIDs)
-	mediaByThread := make(map[uint][]model.ThreadMedia, len(allIDs))
-	for _, m := range allMedia {
-		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
-	}
-
-	data := make([]dto.FeedItemResponse, len(threads))
-	for i, t := range threads {
-		item := dto.FeedItemResponse{
-			ID:        t.ThreadID,
-			ParentID:  t.ParentID,
-			RootID:    t.RootID,
-			Content:   t.Content,
-			CreatedAt: utils.Wrap(t.CreatedAt),
-			UpdatedAt: utils.Wrap(t.UpdatedAt),
-			Author:    dto.FeedAuthor{ID: t.UserID, Username: t.User.UserName},
-			Stats:     dto.FeedStats{Likes: t.LikeCount, Reposts: t.RepostCount, Bookmarks: t.BookmarkCount},
-			Media:     c.fb().toMediaResponses(mediaByThread[t.ThreadID]),
-		}
-		switch {
-		case repostTimestamps[i] != nil:
-			item.Type = "REPOST"
-			wrapped := utils.Wrap(*repostTimestamps[i])
-			item.RepostedAt = &wrapped
-		case parents[i] != nil:
-			item.Type = "REPLY"
-			p := parents[i]
-			item.ParentContext = &dto.FeedParentContext{
-				ID:        p.ThreadID,
-				ParentID:  p.ParentID,
-				RootID:    p.RootID,
-				Author:    dto.FeedAuthor{ID: p.UserID, Username: p.User.UserName},
-				Content:   p.Content,
-				Media:     c.fb().toMediaResponses(mediaByThread[p.ThreadID]),
-				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount},
-				CreatedAt: utils.Wrap(p.CreatedAt),
-				UpdatedAt: utils.Wrap(p.UpdatedAt),
-			}
-		default:
-			item.Type = "POST"
-		}
-		data[i] = item
-	}
-
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: data,
+		Data: c.buildUserFeedItems(threads, parents),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -278,15 +219,40 @@ func (c *ThreadController) buildFeedItems(threads []model.Thread) []dto.FeedItem
 	return data
 }
 
-func (c *ThreadController) buildMyPostFeedItems(threads []model.Thread, repostTimestamps []*time.Time) []dto.FeedItemResponse {
-	mediaByThread := c.loadMediaByThread(threads)
+func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread) []dto.FeedItemResponse {
+	// collect IDs for media batch load (threads + parent threads)
+	allIDs := make([]uint, 0, len(threads)*2)
+	for _, t := range threads {
+		allIDs = append(allIDs, t.ThreadID)
+	}
+	for _, p := range parents {
+		if p != nil {
+			allIDs = append(allIDs, p.ThreadID)
+		}
+	}
+	allMedia, _ := c.mediaService.GetByThreadIDs(allIDs)
+	mediaByThread := make(map[uint][]model.ThreadMedia, len(allIDs))
+	for _, m := range allMedia {
+		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
+	}
+
 	data := make([]dto.FeedItemResponse, len(threads))
+	fb := c.fb()
 	for i, t := range threads {
-		item := c.fb().toFeedItem(&t, mediaByThread[t.ThreadID])
-		if repostTimestamps[i] != nil {
-			item.Type = "REPOST"
-			wrapped := utils.Wrap(*repostTimestamps[i])
-			item.RepostedAt = &wrapped
+		item := fb.toFeedItem(&t, mediaByThread[t.ThreadID])
+		if parents[i] != nil {
+			p := parents[i]
+			item.ParentContext = &dto.FeedParentContext{
+				ID:        p.ThreadID,
+				ParentID:  p.ParentID,
+				RootID:    p.RootID,
+				Author:    dto.FeedAuthor{ID: p.UserID, Username: p.User.UserName},
+				Content:   p.Content,
+				Media:     fb.toMediaResponses(mediaByThread[p.ThreadID]),
+				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount},
+				CreatedAt: utils.Wrap(p.CreatedAt),
+				UpdatedAt: utils.Wrap(p.UpdatedAt),
+			}
 		}
 		data[i] = item
 	}

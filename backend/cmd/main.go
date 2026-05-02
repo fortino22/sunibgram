@@ -31,7 +31,6 @@ func main() {
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
 	likeRepo        := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo    := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
-	repostRepo      := infrarepo.NewRepostRepository(writeDB, readDB, redisCache, patchCount)
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo       := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 
@@ -49,7 +48,6 @@ func main() {
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService        := usecase.NewLikeService(likeRepo, threadRepo)
 	bookmarkService    := usecase.NewBookmarkService(bookmarkRepo, threadRepo)
-	repostService      := usecase.NewRepostService(repostRepo, threadRepo)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService       := usecase.NewFollowService(followRepo, userRepo)
 
@@ -60,7 +58,7 @@ func main() {
 	threadController := controller.NewThreadController(threadService, threadMediaService)
 	likeController   := controller.NewLikeController(likeService, threadMediaService)
 	bookmarkController    := controller.NewBookmarkController(bookmarkService, threadMediaService)
-	repostController      := controller.NewRepostController(repostService, threadMediaService)
+	repostController      := controller.NewRepostController(threadService, threadMediaService)
 	emailController        := controller.NewEmailController(emailService)
 	verificationController := controller.NewVerificationController(verificationService)
 	followController       := controller.NewFollowController(followService)
