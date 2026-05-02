@@ -7,8 +7,9 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/dto/utils"
+	dtoutils "github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
+	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type ThreadController struct {
@@ -78,7 +79,7 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 	}
 
 	media, _ := c.mediaService.GetByThreadID(uint(id))
-	return ctx.Status(fiber.StatusOK).JSON(c.fb().toFeedItem(thread, media))
+	return ctx.Status(fiber.StatusOK).JSON(c.fb().ToFeedItem(thread, media))
 }
 
 func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
@@ -208,13 +209,15 @@ func (c *ThreadController) loadMediaByThread(threads []model.Thread) map[uint][]
 	return m
 }
 
-func (c *ThreadController) fb() feedBuilder { return feedBuilder{c.mediaService} }
+func (c *ThreadController) fb() webapiutils.FeedBuilder {
+	return webapiutils.FeedBuilder{Media: c.mediaService}
+}
 
 func (c *ThreadController) buildFeedItems(threads []model.Thread) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
-		data[i] = c.fb().toFeedItem(&t, mediaByThread[t.ThreadID])
+		data[i] = c.fb().ToFeedItem(&t, mediaByThread[t.ThreadID])
 	}
 	return data
 }
@@ -239,7 +242,7 @@ func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []
 	data := make([]dto.FeedItemResponse, len(threads))
 	fb := c.fb()
 	for i, t := range threads {
-		item := fb.toFeedItem(&t, mediaByThread[t.ThreadID])
+		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 		if parents[i] != nil {
 			p := parents[i]
 			item.ParentContext = &dto.FeedParentContext{
@@ -248,10 +251,10 @@ func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []
 				RootID:    p.RootID,
 				Author:    dto.FeedAuthor{ID: p.UserID, Username: p.User.UserName},
 				Content:   p.Content,
-				Media:     fb.toMediaResponses(mediaByThread[p.ThreadID]),
+				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),
 				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount},
-				CreatedAt: utils.Wrap(p.CreatedAt),
-				UpdatedAt: utils.Wrap(p.UpdatedAt),
+				CreatedAt: dtoutils.Wrap(p.CreatedAt),
+				UpdatedAt: dtoutils.Wrap(p.UpdatedAt),
 			}
 		}
 		data[i] = item

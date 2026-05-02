@@ -7,8 +7,9 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/dto/utils"
+	dtoutils "github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
+	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type BookmarkController struct {
@@ -85,8 +86,8 @@ func (c *BookmarkController) GetMyBookmarks(ctx *fiber.Ctx) error {
 
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
-		item := feedBuilder{c.mediaService}.toFeedItem(&t, mediaByThread[t.ThreadID])
-		wrapped := utils.Wrap(timestamps[i])
+		item := webapiutils.FeedBuilder{Media: c.mediaService}.ToFeedItem(&t, mediaByThread[t.ThreadID])
+		wrapped := dtoutils.Wrap(timestamps[i])
 		item.ActionAt = &wrapped
 		data[i] = item
 	}

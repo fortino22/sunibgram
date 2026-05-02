@@ -22,7 +22,6 @@ type ThreadResponse struct {
 	LikeCount     int                   `json:"like_count"`
 	RepostCount   int                   `json:"repost_count"`
 	BookmarkCount int                   `json:"bookmark_count"`
-	IsRepost      bool                  `json:"is_repost"`
 	RepostedAt    *utils.FormattedTime  `json:"reposted_at,omitempty"`
 	CreatedAt     utils.FormattedTime   `json:"created_at"`
 	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
@@ -72,7 +71,9 @@ type FeedItemResponse struct {
 	Content        string                `json:"content"`
 	CreatedAt      utils.FormattedTime   `json:"created_at"`
 	UpdatedAt      utils.FormattedTime   `json:"updated_at"`
+	TimeAgo        string                `json:"time_ago"`
 	ActionAt       *utils.FormattedTime  `json:"action_at,omitempty"`
+	RepostedAt     *utils.FormattedTime  `json:"reposted_at,omitempty"`
 	Author         FeedAuthor            `json:"author"`
 	Stats          FeedStats             `json:"stats"`
 	Media          []ThreadMediaResponse `json:"media"`

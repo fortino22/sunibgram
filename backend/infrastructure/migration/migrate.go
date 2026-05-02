@@ -22,6 +22,7 @@ func AutoMigrate(db *gorm.DB) {
 
 	seedRoles(db)
 	seeder.SeedAdmin(db)
+	seeder.SeedDummy(db)
 }
 
 func dropBadConstraint(db *gorm.DB) {
