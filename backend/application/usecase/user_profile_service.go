@@ -4,17 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
-
-var allowedImageExts = map[string]bool{
-	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
-}
 
 type UserProfileService struct {
 	userRepo       repository.IUserRepository
@@ -47,9 +42,8 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	}
 
 	if input.Avatar != nil {
-		ext := strings.ToLower(filepath.Ext(input.Avatar.Filename))
-		if !allowedImageExts[ext] {
-			return errors.New("avatar must be jpg, jpeg, png, or webp")
+		if err := model.ValidateImageExt(input.Avatar.Filename); err != nil {
+			return err
 		}
 		bucket, err := s.storageUsecase.ResolveBucket("avatar")
 		if err != nil {
@@ -74,9 +68,8 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	}
 
 	if input.Banner != nil {
-		ext := strings.ToLower(filepath.Ext(input.Banner.Filename))
-		if !allowedImageExts[ext] {
-			return errors.New("banner must be jpg, jpeg, png, or webp")
+		if err := model.ValidateImageExt(input.Banner.Filename); err != nil {
+			return err
 		}
 		bucket, err := s.storageUsecase.ResolveBucket("banner")
 		if err != nil {

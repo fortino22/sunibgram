@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(go mod *)"
+      "Bash(go mod *)",
+      "Bash(cat)",
+      "Read(//tmp/**)"
     ]
   }
 }

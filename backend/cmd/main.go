@@ -32,7 +32,10 @@ func main() {
 	likeRepo        := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo    := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
-	followRepo       := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
+	followRepo            := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
+	communityRepo         := infrarepo.NewCommunityRepository(writeDB, readDB)
+	communityMemberRepo   := infrarepo.NewCommunityMemberRepository(writeDB, readDB)
+	communityRequestRepo  := infrarepo.NewCommunityRequestRepository(writeDB, readDB)
 
 	minioClient    := storage.NewMinioClient()
 	storageUsecase := usecase.NewStorageUsecase(minioClient)
@@ -49,7 +52,10 @@ func main() {
 	likeService        := usecase.NewLikeService(likeRepo, threadRepo)
 	bookmarkService    := usecase.NewBookmarkService(bookmarkRepo, threadRepo)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
-	followService       := usecase.NewFollowService(followRepo, userRepo)
+	followService            := usecase.NewFollowService(followRepo, userRepo)
+	communityService         := usecase.NewCommunityService(communityRepo, communityMemberRepo, storageUsecase)
+	communityMemberService   := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
+	communityRequestService  := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
 
 	authController        := controller.NewAuthController(authService, profileService)
 	roleController        := controller.NewRoleController(roleService)
@@ -61,7 +67,10 @@ func main() {
 	repostController      := controller.NewRepostController(threadService, threadMediaService)
 	emailController        := controller.NewEmailController(emailService)
 	verificationController := controller.NewVerificationController(verificationService)
-	followController       := controller.NewFollowController(followService)
+	followController             := controller.NewFollowController(followService)
+	communityController         := controller.NewCommunityController(communityService)
+	communityMemberController   := controller.NewCommunityMemberController(communityMemberService)
+	communityRequestController  := controller.NewCommunityRequestController(communityRequestService)
 
 	app := fiber.New()
 	router.Register(
@@ -77,6 +86,9 @@ func main() {
 		emailController,
 		verificationController,
 		followController,
+		communityController,
+		communityMemberController,
+		communityRequestController,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))

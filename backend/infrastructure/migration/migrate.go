@@ -19,6 +19,9 @@ func AutoMigrate(db *gorm.DB) {
 	db.AutoMigrate(&model.VerificationCode{})
 	db.AutoMigrate(&model.UserRelationship{})
 	db.AutoMigrate(&model.UserStat{})
+	db.AutoMigrate(&model.Community{})
+	db.AutoMigrate(&model.CommunityMember{})
+	db.AutoMigrate(&model.CommunityRequest{})
 
 	seedRoles(db)
 	seeder.SeedAdmin(db)

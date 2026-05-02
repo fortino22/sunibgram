@@ -19,6 +19,9 @@ func Register(
 	emailCtrl *controller.EmailController,
 	verificationCtrl *controller.VerificationController,
 	followCtrl *controller.FollowController,
+	communityCtrl *controller.CommunityController,
+	communityMemberCtrl *controller.CommunityMemberController,
+	communityRequestCtrl *controller.CommunityRequestController,
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
@@ -30,4 +33,5 @@ func Register(
 	registerEmailRoutes(api, emailCtrl, auth)
 	registerUserRoutes(api, followCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl)
+	registerCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, auth)
 }
