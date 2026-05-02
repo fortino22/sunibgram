@@ -27,13 +27,26 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
 
-	var req dto.CreateThreadRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	content := ctx.FormValue("content")
+	var parentID *uint
+	if raw := ctx.FormValue("parent_id"); raw != "" {
+		if pid, err := strconv.ParseUint(raw, 10, 64); err == nil {
+			v := uint(pid)
+			parentID = &v
+		}
 	}
 
-	if _, err := c.threadService.Create(ctx.Context(), claims.UserID, req.Content, req.ParentID); err != nil {
+	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID)
+	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	if form, err := ctx.MultipartForm(); err == nil {
+		if files := form.File["files"]; len(files) > 0 {
+			if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
+				return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			}
+		}
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "thread created successfully"})
@@ -102,16 +115,23 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
 	}
 
-	var req dto.UpdateThreadRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
-	}
+	content := ctx.FormValue("content")
 
-	if _, err := c.threadService.Update(ctx.Context(), uint(id), claims.UserID, req.Content); err != nil {
+	if _, err := c.threadService.Update(ctx.Context(), uint(id), claims.UserID, content); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	if ctx.FormValue("clear_media") == "true" {
+		_ = c.mediaService.DeleteByThread(ctx.Context(), uint(id))
+	} else if form, err := ctx.MultipartForm(); err == nil {
+		if files := form.File["files"]; len(files) > 0 {
+			if err := c.mediaService.Update(ctx.Context(), uint(id), claims.UserID, files); err != nil {
+				return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			}
+		}
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread updated successfully"})

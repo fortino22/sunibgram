@@ -8,7 +8,6 @@ import (
 func registerThreadRoutes(
 	api fiber.Router,
 	threadCtrl *controller.ThreadController,
-	threadMediaCtrl *controller.ThreadMediaController,
 	likeCtrl *controller.LikeController,
 	bookmarkCtrl *controller.BookmarkController,
 	repostCtrl *controller.RepostController,
@@ -27,10 +26,6 @@ func registerThreadRoutes(
 	threads.Get("/:id/chain", threadCtrl.GetChain)
 	threads.Put("/:id", threadCtrl.Update)
 	threads.Delete("/:id", threadCtrl.Delete)
-
-	threads.Post("/:id/media", threadMediaCtrl.Upload)
-	threads.Put("/:id/media", threadMediaCtrl.Update)
-	threads.Delete("/:id/media", threadMediaCtrl.Delete)
 
 	threads.Post("/:id/like", likeCtrl.Like)
 	threads.Delete("/:id/unlike", likeCtrl.Unlike)

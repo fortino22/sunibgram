@@ -50,9 +50,13 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	}
 	if avatar, err := ctx.FormFile("avatar"); err == nil {
 		input.Avatar = avatar
+	} else if ctx.FormValue("clear_avatar") == "true" {
+		input.ClearAvatar = true
 	}
 	if banner, err := ctx.FormFile("banner"); err == nil {
 		input.Banner = banner
+	} else if ctx.FormValue("clear_banner") == "true" {
+		input.ClearBanner = true
 	}
 	if bio := ctx.FormValue("bio"); bio != "" {
 		input.Bio = &bio

@@ -141,6 +141,29 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		}
 	}
 
+	if input.ClearAvatar || input.ClearBanner {
+		existing, _ := s.profileRepo.FindByUserID(userID)
+		if existing != nil {
+			if input.ClearAvatar && existing.AvatarObjectName != "" && existing.AvatarBucket != "" {
+				if err := s.storageUsecase.Delete(ctx, existing.AvatarBucket, existing.AvatarObjectName); err != nil {
+					return fmt.Errorf("failed to delete avatar: %w", err)
+				}
+				existing.AvatarObjectName = ""
+				existing.AvatarBucket = ""
+			}
+			if input.ClearBanner && existing.BannerObjectName != "" && existing.BannerBucket != "" {
+				if err := s.storageUsecase.Delete(ctx, existing.BannerBucket, existing.BannerObjectName); err != nil {
+					return fmt.Errorf("failed to delete banner: %w", err)
+				}
+				existing.BannerObjectName = ""
+				existing.BannerBucket = ""
+			}
+			if err := s.profileRepo.Upsert(existing); err != nil {
+				return err
+			}
+		}
+	}
+
 	mediaInput := service.UpsertProfileInput{
 		Avatar: input.Avatar,
 		Banner: input.Banner,

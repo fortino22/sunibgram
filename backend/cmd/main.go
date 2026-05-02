@@ -57,9 +57,8 @@ func main() {
 	roleController        := controller.NewRoleController(roleService)
 	userController        := controller.NewUserController(userService)
 	profileController     := controller.NewUserProfileController(profileService)
-	threadController      := controller.NewThreadController(threadService, threadMediaService)
-	threadMediaController := controller.NewThreadMediaController(threadMediaService)
-	likeController        := controller.NewLikeController(likeService, threadMediaService)
+	threadController := controller.NewThreadController(threadService, threadMediaService)
+	likeController   := controller.NewLikeController(likeService, threadMediaService)
 	bookmarkController    := controller.NewBookmarkController(bookmarkService, threadMediaService)
 	repostController      := controller.NewRepostController(repostService, threadMediaService)
 	emailController        := controller.NewEmailController(emailService)
@@ -74,7 +73,6 @@ func main() {
 		userController,
 		profileController,
 		threadController,
-		threadMediaController,
 		likeController,
 		bookmarkController,
 		repostController,

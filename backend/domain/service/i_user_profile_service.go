@@ -20,11 +20,13 @@ type UpsertProfileInput struct {
 }
 
 type UpdateProfileInput struct {
-	Name     *string
-	Username *string
-	Avatar   *multipart.FileHeader
-	Banner   *multipart.FileHeader
-	Bio      *string
+	Name        *string
+	Username    *string
+	Avatar      *multipart.FileHeader
+	Banner      *multipart.FileHeader
+	Bio         *string
+	ClearAvatar bool
+	ClearBanner bool
 }
 
 type IUserProfileService interface {

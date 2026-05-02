@@ -13,7 +13,6 @@ func Register(
 	userCtrl *controller.UserController,
 	profileCtrl *controller.UserProfileController,
 	threadCtrl *controller.ThreadController,
-	threadMediaCtrl *controller.ThreadMediaController,
 	likeCtrl *controller.LikeController,
 	bookmarkCtrl *controller.BookmarkController,
 	repostCtrl *controller.RepostController,
@@ -27,7 +26,7 @@ func Register(
 	registerAuthRoutes(api, authCtrl, auth)
 	registerVerificationRoutes(api, verificationCtrl)
 	registerProfileRoutes(api, profileCtrl, auth)
-	registerThreadRoutes(api, threadCtrl, threadMediaCtrl, likeCtrl, bookmarkCtrl, repostCtrl, auth)
+	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, repostCtrl, auth)
 	registerEmailRoutes(api, emailCtrl, auth)
 	registerUserRoutes(api, followCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl)
