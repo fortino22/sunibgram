@@ -7,6 +7,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -140,7 +141,7 @@ func toCommunityRequestResponse(r *model.CommunityRequest) dto.CommunityRequestR
 		UserID:      r.UserID,
 		Username:    r.User.UserName,
 		Status:      string(r.Status),
-		CreatedAt:   r.CreatedAt,
+		CreatedAt:   utils.Wrap(r.CreatedAt),
 	}
 }
 

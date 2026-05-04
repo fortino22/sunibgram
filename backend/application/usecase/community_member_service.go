@@ -26,11 +26,11 @@ func (s *CommunityMemberService) Join(ctx context.Context, communityID, userID u
 	if err != nil {
 		return errors.New("community not found")
 	}
-	if community.Visibility == model.CommunityVisibilityPrivate {
-		return errors.New("community is private, send a join request instead")
-	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err == nil {
 		return errors.New("already a member")
+	}
+	if community.Visibility == model.CommunityVisibilityPrivate {
+		return errors.New("community is private, send a join request instead")
 	}
 	member := &model.CommunityMember{
 		CommunityID: communityID,

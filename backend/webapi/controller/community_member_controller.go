@@ -7,6 +7,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -80,7 +81,7 @@ func toCommunityMemberResponse(m *model.CommunityMember) dto.CommunityMemberResp
 		UserID:      m.UserID,
 		Username:    m.User.UserName,
 		Role:        string(m.Role),
-		JoinedAt:    m.JoinedAt,
+		JoinedAt:    utils.Wrap(m.JoinedAt),
 	}
 }
 

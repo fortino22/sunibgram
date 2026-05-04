@@ -14,6 +14,7 @@ func registerCommunityRoutes(
 ) {
 	communities := api.Group("/communities", auth)
 
+	//communities
 	communities.Post("/", communityCtrl.Create)
 	communities.Get("/", communityCtrl.GetAll)
 	communities.Get("/me", communityCtrl.GetMyCreated)
@@ -22,10 +23,13 @@ func registerCommunityRoutes(
 	communities.Put("/:id", communityCtrl.Update)
 	communities.Delete("/:id", communityCtrl.Delete)
 
+
+	//community members
 	communities.Post("/:id/join", memberCtrl.Join)
 	communities.Delete("/:id/leave", memberCtrl.Leave)
 	communities.Get("/:id/members", memberCtrl.GetMembers)
 
+	//community join requests
 	communities.Post("/:id/requests", requestCtrl.Send)
 	communities.Delete("/:id/requests", requestCtrl.Cancel)
 	communities.Get("/:id/requests", requestCtrl.GetPending)

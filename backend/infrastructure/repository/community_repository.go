@@ -51,7 +51,7 @@ func (r *communityRepository) FindAll(page, limit int, category string) ([]model
 	var total int64
 	q := r.readDB.Model(&model.Community{})
 	if category != "" {
-		q = q.Where("category = ?", category)
+		q = q.Where("LOWER(category) = LOWER(?)", category)
 	}
 	q.Count(&total)
 	offset := (page - 1) * limit

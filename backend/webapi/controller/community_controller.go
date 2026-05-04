@@ -8,6 +8,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -204,8 +205,8 @@ func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityRes
 		AvatarURL:   avatarURL,
 		BannerURL:   bannerURL,
 		MemberCount: comm.MemberCount,
-		CreatedAt:   comm.CreatedAt,
-		UpdatedAt:   comm.UpdatedAt,
+		CreatedAt:   utils.Wrap(comm.CreatedAt),
+		UpdatedAt:   utils.Wrap(comm.UpdatedAt),
 	}
 }
 

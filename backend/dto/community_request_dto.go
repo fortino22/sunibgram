@@ -1,13 +1,13 @@
 package dto
 
-import "time"
+import "github.com/sunibgram/dto/utils"
 
 type CommunityRequestResponse struct {
-	CommunityID uint      `json:"community_id"`
-	UserID      uint      `json:"user_id"`
-	Username    string    `json:"username"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
+	CommunityID uint                `json:"community_id"`
+	UserID      uint                `json:"user_id"`
+	Username    string              `json:"username"`
+	Status      string              `json:"status"`
+	CreatedAt   utils.FormattedTime `json:"created_at"`
 }
 
 type PaginatedCommunityRequestResponse struct {

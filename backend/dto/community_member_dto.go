@@ -1,13 +1,13 @@
 package dto
 
-import "time"
+import "github.com/sunibgram/dto/utils"
 
 type CommunityMemberResponse struct {
-	CommunityID uint      `json:"community_id"`
-	UserID      uint      `json:"user_id"`
-	Username    string    `json:"username"`
-	Role        string    `json:"role"`
-	JoinedAt    time.Time `json:"joined_at"`
+	CommunityID uint                `json:"community_id"`
+	UserID      uint                `json:"user_id"`
+	Username    string              `json:"username"`
+	Role        string              `json:"role"`
+	JoinedAt    utils.FormattedTime `json:"joined_at"`
 }
 
 type PaginatedCommunityMemberResponse struct {

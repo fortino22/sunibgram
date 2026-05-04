@@ -46,7 +46,7 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 		Name:        name,
 		Description: description,
 		Rules:       rules,
-		Category:    category,
+		Category:    strings.ToLower(strings.TrimSpace(category)),
 		Visibility:  visibility,
 		MemberCount: 1,
 	}
@@ -106,7 +106,7 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	community.Name = name
 	community.Description = description
 	community.Rules = rules
-	community.Category = category
+	community.Category = strings.ToLower(strings.TrimSpace(category))
 	community.Visibility = visibility
 
 	if clearAvatar && community.AvatarObjectName != "" {

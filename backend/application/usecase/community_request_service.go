@@ -70,10 +70,10 @@ func (s *CommunityRequestService) Approve(ctx context.Context, communityID, admi
 	}
 	req, err := s.requestRepo.FindRequest(communityID, targetUserID)
 	if err != nil {
-		return errors.New("request not found")
+		return errors.New("join request does not exist")
 	}
 	if req.Status != model.CommunityRequestStatusPending {
-		return errors.New("request is not pending")
+		return errors.New("join request is already " + string(req.Status))
 	}
 	if err := s.requestRepo.UpdateStatus(communityID, targetUserID, model.CommunityRequestStatusApproved); err != nil {
 		return err
@@ -99,10 +99,10 @@ func (s *CommunityRequestService) Decline(ctx context.Context, communityID, admi
 	}
 	req, err := s.requestRepo.FindRequest(communityID, targetUserID)
 	if err != nil {
-		return errors.New("request not found")
+		return errors.New("join request does not exist")
 	}
 	if req.Status != model.CommunityRequestStatusPending {
-		return errors.New("request is not pending")
+		return errors.New("join request is already " + string(req.Status))
 	}
 	return s.requestRepo.UpdateStatus(communityID, targetUserID, model.CommunityRequestStatusDeclined)
 }
