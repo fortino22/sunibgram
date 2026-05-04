@@ -17,4 +17,6 @@ type IThreadService interface {
 	Unrepost(ctx context.Context, userID, threadID uint) error
 	GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error)
+	GetCommunityThreads(communityID uint, page, limit int) ([]model.Thread, int64, error)
 }

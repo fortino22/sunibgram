@@ -14,6 +14,8 @@ type Thread struct {
 	ThreadID         uint       `gorm:"primaryKey;autoIncrement"`
 	UserID           uint       `gorm:"not null;index"`
 	User             User       `gorm:"foreignKey:UserID;references:UserID"`
+	CommunityID      *uint      `gorm:"index"`
+	Community        *Community `gorm:"foreignKey:CommunityID;references:CommunityID"`
 	Type             ThreadType `gorm:"type:varchar(10);not null;default:'POST';index"`
 	Content          string     `gorm:"type:text;not null"`
 	ParentID         *uint      `gorm:"index"`

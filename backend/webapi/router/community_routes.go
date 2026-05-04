@@ -10,6 +10,7 @@ func registerCommunityRoutes(
 	communityCtrl *controller.CommunityController,
 	memberCtrl *controller.CommunityMemberController,
 	requestCtrl *controller.CommunityRequestController,
+	communityThreadCtrl *controller.CommunityThreadController,
 	auth fiber.Handler,
 ) {
 	communities := api.Group("/communities", auth)
@@ -37,4 +38,8 @@ func registerCommunityRoutes(
 	communities.Get("/:id/requests", requestCtrl.GetPending)
 	communities.Post("/:id/requests/:userId/approve", requestCtrl.Approve)
 	communities.Post("/:id/requests/:userId/decline", requestCtrl.Decline)
+
+	//community threads
+	communities.Post("/:id/threads", communityThreadCtrl.Create)
+	communities.Get("/:id/threads", communityThreadCtrl.GetAll)
 }

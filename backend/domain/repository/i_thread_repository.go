@@ -15,4 +15,5 @@ type IThreadRepository interface {
 	FindReplyTabByUserID(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	ExistsRepost(userID, originalThreadID uint) (bool, error)
 	DeleteRepost(userID, originalThreadID uint) error
+	FindByCommunityID(communityID uint, page, limit int) ([]model.Thread, int64, error)
 }

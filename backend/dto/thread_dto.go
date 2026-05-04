@@ -62,12 +62,18 @@ type FeedParentContext struct {
 	UpdatedAt utils.FormattedTime   `json:"updated_at"`
 }
 
+type FeedCommunity struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
 type FeedItemResponse struct {
 	Type          string                `json:"type"`
 	ParentContext *FeedParentContext     `json:"parent_context,omitempty"`
 	ID             uint                  `json:"id"`
 	ParentID       *uint                 `json:"parent_id"`
 	RootID         *uint                 `json:"root_id"`
+	Community      *FeedCommunity        `json:"community,omitempty"`
 	Content        string                `json:"content"`
 	CreatedAt      utils.FormattedTime   `json:"created_at"`
 	UpdatedAt      utils.FormattedTime   `json:"updated_at"`

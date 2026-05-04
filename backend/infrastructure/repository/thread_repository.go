@@ -46,7 +46,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
 	}
-	r.invalidate(context.Background(), thread.ThreadID, thread.RootID)
+	r.invalidate(context.Background(), thread.ThreadID, thread.RootID, thread.CommunityID)
 	return nil
 }
 
@@ -55,7 +55,7 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 	var thread model.Thread
 	key := threadKey(id)
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").First(&thread, id).Error; err != nil {
+		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").First(&thread, id).Error; err != nil {
 			return nil, err
 		}
 		r.cache.Set(ctx, key, thread, r.ttl)
@@ -78,7 +78,7 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 			Where("type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").
+		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").
 			Where("type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Order("created_at DESC").
 			Offset(offset).Limit(limit).
@@ -104,7 +104,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 		var total int64
 		r.db.readDB.Model(&model.Thread{}).Where("thread_id = ? OR root_id = ?", rootID, rootID).Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User").
+		if err := r.db.readDB.Preload("User").Preload("Community").
 			Where("thread_id = ? OR root_id = ?", rootID, rootID).
 			Order("created_at ASC").
 			Offset(offset).Limit(limit).
@@ -125,7 +125,7 @@ func (r *threadCached) findUserFeed(userID uint, types []string, page, limit int
 
 	offset := (page - 1) * limit
 	var threads []model.Thread
-	if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").
+	if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").
 		Where("user_id = ? AND type IN ?", userID, types).
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
@@ -204,7 +204,7 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	r.patchCachedCount(originalThreadID, "repost_count", -1)
 
 	ctx := context.Background()
-	r.invalidate(ctx, repost.ThreadID, nil)
+	r.invalidate(ctx, repost.ThreadID, nil, nil)
 	return nil
 }
 
@@ -218,7 +218,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	}
 	ctx := context.Background()
 	r.cache.Delete(ctx, threadKey(thread.ThreadID))
-	r.invalidate(ctx, thread.ThreadID, thread.RootID)
+	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, thread.ThreadID)
 	return nil
 }
@@ -247,7 +247,7 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 
 func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
-	r.db.readDB.Select("thread_id, root_id, type, original_thread_id").First(&thread, id)
+	r.db.readDB.Select("thread_id, root_id, type, original_thread_id, community_id").First(&thread, id)
 
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
@@ -257,7 +257,7 @@ func (r *threadCached) Delete(id uint) error {
 	}
 
 	ctx := context.Background()
-	r.invalidate(ctx, id, thread.RootID)
+	r.invalidate(ctx, id, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, id)
 
 	r.likes.deleteByThreadID(id)
@@ -265,4 +265,32 @@ func (r *threadCached) Delete(id uint) error {
 	r.reposts.deleteByThreadID(id)
 
 	return r.db.writeDB.Delete(&model.Thread{}, id).Error
+}
+
+func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]model.Thread, int64, error) {
+	type cached struct {
+		Threads []model.Thread
+		Total   int64
+	}
+	ctx := context.Background()
+	var result cached
+	key := threadCommunityKey(communityID, page, limit)
+	if err := r.cache.Get(ctx, key, &result); err != nil {
+		var threads []model.Thread
+		var total int64
+		r.db.readDB.Model(&model.Thread{}).
+			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Count(&total)
+		offset := (page - 1) * limit
+		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").
+			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Order("created_at DESC").
+			Offset(offset).Limit(limit).
+			Find(&threads).Error; err != nil {
+			return nil, 0, err
+		}
+		result = cached{Threads: threads, Total: total}
+		r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return result.Threads, result.Total, nil
 }

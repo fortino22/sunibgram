@@ -11,11 +11,21 @@ import (
 )
 
 type ThreadService struct {
-	threadRepo repository.IThreadRepository
+	threadRepo    repository.IThreadRepository
+	communityRepo repository.ICommunityRepository
+	memberRepo    repository.ICommunityMemberRepository
 }
 
-func NewThreadService(threadRepo repository.IThreadRepository) service.IThreadService {
-	return &ThreadService{threadRepo: threadRepo}
+func NewThreadService(
+	threadRepo repository.IThreadRepository,
+	communityRepo repository.ICommunityRepository,
+	memberRepo repository.ICommunityMemberRepository,
+) service.IThreadService {
+	return &ThreadService{
+		threadRepo:    threadRepo,
+		communityRepo: communityRepo,
+		memberRepo:    memberRepo,
+	}
 }
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint) (*model.Thread, error) {
@@ -168,4 +178,42 @@ func (s *ThreadService) GetMyReplies(userID uint, page, limit int) ([]model.Thre
 		limit = 20
 	}
 	return s.threadRepo.FindReplyTabByUserID(userID, page, limit)
+}
+
+func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error) {
+	if strings.TrimSpace(content) == "" {
+		return nil, errors.New("content is required")
+	}
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
+		return nil, errors.New("community not found")
+	}
+	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
+		if community.Visibility == model.CommunityVisibilityPrivate {
+			return nil, errors.New("forbidden")
+		}
+	}
+	thread := &model.Thread{
+		UserID:      userID,
+		CommunityID: &communityID,
+		Type:        model.ThreadTypePost,
+		Content:     content,
+	}
+	if err := s.threadRepo.Save(thread); err != nil {
+		return nil, err
+	}
+	return thread, nil
+}
+
+func (s *ThreadService) GetCommunityThreads(communityID uint, page, limit int) ([]model.Thread, int64, error) {
+	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+		return nil, 0, errors.New("community not found")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return s.threadRepo.FindByCommunityID(communityID, page, limit)
 }

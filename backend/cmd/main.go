@@ -50,7 +50,7 @@ func main() {
 	profileService         := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, storageUsecase)
 	verificationService    := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService          := usecase.NewFollowService(followRepo, userRepo)
-	threadService          := usecase.NewThreadService(threadRepo)
+	threadService          := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo)
 	threadMediaService     := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService            := usecase.NewLikeService(likeRepo, threadRepo)
 	bookmarkService        := usecase.NewBookmarkService(bookmarkRepo, threadRepo)
@@ -73,6 +73,7 @@ func main() {
 	communityCtrl       := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
+	communityThreadCtrl  := controller.NewCommunityThreadController(threadService, threadMediaService)
 
 	// --- Server ---
 	app := fiber.New()
@@ -92,6 +93,7 @@ func main() {
 		communityCtrl,
 		communityMemberCtrl,
 		communityRequestCtrl,
+		communityThreadCtrl,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))

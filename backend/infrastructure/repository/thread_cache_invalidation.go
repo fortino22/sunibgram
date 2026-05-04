@@ -17,13 +17,21 @@ func threadChainKey(rootID uint, page, limit int) string {
 	return fmt.Sprintf("thread:chain:%d:page:%d:limit:%d", rootID, page, limit)
 }
 
-func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *uint) {
+func threadCommunityKey(communityID uint, page, limit int) string {
+	return fmt.Sprintf("thread:community:%d:page:%d:limit:%d", communityID, page, limit)
+}
+
+func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *uint, communityID *uint) {
 	r.cache.Delete(ctx, threadKey(threadID))
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	if rootID != nil {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", *rootID))
+	if communityID != nil {
+		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:community:%d:*", *communityID))
 	} else {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", threadID))
+		r.cache.DeleteByPattern(ctx, "thread:roots:*")
+		if rootID != nil {
+			r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", *rootID))
+		} else {
+			r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", threadID))
+		}
 	}
 }
 

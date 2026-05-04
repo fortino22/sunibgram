@@ -19,6 +19,13 @@ func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []dto.ThreadMe
 	return result
 }
 
+func communityField(t *model.Thread) *dto.FeedCommunity {
+	if t.CommunityID != nil && t.Community != nil {
+		return &dto.FeedCommunity{ID: t.Community.CommunityID, Name: t.Community.Name}
+	}
+	return nil
+}
+
 func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto.FeedItemResponse {
 	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
 		orig := t.OriginalThread
@@ -28,6 +35,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 			ID:         orig.ThreadID,
 			ParentID:   orig.ParentID,
 			RootID:     orig.RootID,
+			Community:  communityField(orig),
 			Content:    orig.Content,
 			CreatedAt:  dtoutils.Wrap(orig.CreatedAt),
 			UpdatedAt:  dtoutils.Wrap(orig.UpdatedAt),
@@ -43,6 +51,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		ID:        t.ThreadID,
 		ParentID:  t.ParentID,
 		RootID:    t.RootID,
+		Community: communityField(t),
 		Content:   t.Content,
 		CreatedAt: dtoutils.Wrap(t.CreatedAt),
 		UpdatedAt: dtoutils.Wrap(t.UpdatedAt),
