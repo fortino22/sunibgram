@@ -90,7 +90,8 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	if err != nil {
 		return nil, errors.New("community not found")
 	}
-	if community.UserID != userID {
+	actor, err := s.memberRepo.FindMember(id, userID)
+	if err != nil || !isAdminOrAbove(actor.Role) {
 		return nil, errors.New("forbidden")
 	}
 	if strings.TrimSpace(name) == "" {

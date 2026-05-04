@@ -75,6 +75,70 @@ func (c *CommunityMemberController) GetMembers(ctx *fiber.Ctx) error {
 	})
 }
 
+func (c *CommunityMemberController) RemoveMember(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	}
+
+	targetID, err := strconv.ParseUint(ctx.Params("userId"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	}
+
+	if err := c.memberService.RemoveMember(ctx.Context(), uint(id), claims.UserID, uint(targetID)); err != nil {
+		if err.Error() == "forbidden" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "member removed successfully"})
+}
+
+func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	}
+
+	targetID, err := strconv.ParseUint(ctx.Params("userId"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	}
+
+	var body struct {
+		Role string `json:"role"`
+	}
+	if err := ctx.BodyParser(&body); err != nil || body.Role == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "role is required"})
+	}
+
+	role := model.CommunityMemberRole(body.Role)
+	if role != model.CommunityMemberRoleMember && role != model.CommunityMemberRoleModerator && role != model.CommunityMemberRoleAdmin {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid role"})
+	}
+
+	if err := c.memberService.UpdateRole(ctx.Context(), uint(id), claims.UserID, uint(targetID), role); err != nil {
+		if err.Error() == "forbidden" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "role updated successfully"})
+}
+
 func toCommunityMemberResponse(m *model.CommunityMember) dto.CommunityMemberResponse {
 	return dto.CommunityMemberResponse{
 		CommunityID: m.CommunityID,

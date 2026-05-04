@@ -5,9 +5,10 @@ import "time"
 type CommunityMemberRole string
 
 const (
-	CommunityMemberRoleMember CommunityMemberRole = "MEMBER"
-	CommunityMemberRoleAdmin  CommunityMemberRole = "ADMIN"
-	CommunityMemberRoleOwner  CommunityMemberRole = "OWNER"
+	CommunityMemberRoleMember    CommunityMemberRole = "MEMBER"
+	CommunityMemberRoleModerator CommunityMemberRole = "MODERATOR"
+	CommunityMemberRoleAdmin     CommunityMemberRole = "ADMIN"
+	CommunityMemberRoleOwner     CommunityMemberRole = "OWNER"
 )
 
 type CommunityMember struct {
@@ -15,6 +16,6 @@ type CommunityMember struct {
 	UserID      uint                `gorm:"primaryKey;autoIncrement:false"`
 	Community   Community           `gorm:"foreignKey:CommunityID;references:CommunityID"`
 	User        User                `gorm:"foreignKey:UserID;references:UserID"`
-	Role        CommunityMemberRole `gorm:"type:varchar(10);not null;default:'MEMBER'"`
+	Role        CommunityMemberRole `gorm:"type:varchar(12);not null;default:'MEMBER'"`
 	JoinedAt    time.Time
 }

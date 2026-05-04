@@ -54,6 +54,12 @@ func (r *communityMemberRepository) Delete(communityID, userID uint) error {
 	return result.Error
 }
 
+func (r *communityMemberRepository) UpdateRole(communityID, userID uint, role model.CommunityMemberRole) error {
+	return r.writeDB.Model(&model.CommunityMember{}).
+		Where("community_id = ? AND user_id = ?", communityID, userID).
+		UpdateColumn("role", role).Error
+}
+
 func (r *communityMemberRepository) UpdateMemberCount(communityID uint, delta int) error {
 	var expr interface{}
 	if delta >= 0 {

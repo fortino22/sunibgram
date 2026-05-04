@@ -65,7 +65,7 @@ func (s *CommunityRequestService) Approve(ctx context.Context, communityID, admi
 		return errors.New("community not found")
 	}
 	adminMember, err := s.memberRepo.FindMember(communityID, adminUserID)
-	if err != nil || (adminMember.Role != model.CommunityMemberRoleOwner && adminMember.Role != model.CommunityMemberRoleAdmin) {
+	if err != nil || !isModeratorOrAbove(adminMember.Role) {
 		return errors.New("forbidden")
 	}
 	req, err := s.requestRepo.FindRequest(communityID, targetUserID)
@@ -94,7 +94,7 @@ func (s *CommunityRequestService) Decline(ctx context.Context, communityID, admi
 		return errors.New("community not found")
 	}
 	adminMember, err := s.memberRepo.FindMember(communityID, adminUserID)
-	if err != nil || (adminMember.Role != model.CommunityMemberRoleOwner && adminMember.Role != model.CommunityMemberRoleAdmin) {
+	if err != nil || !isModeratorOrAbove(adminMember.Role) {
 		return errors.New("forbidden")
 	}
 	req, err := s.requestRepo.FindRequest(communityID, targetUserID)
@@ -112,7 +112,7 @@ func (s *CommunityRequestService) GetPending(ctx context.Context, communityID, a
 		return nil, 0, errors.New("community not found")
 	}
 	adminMember, err := s.memberRepo.FindMember(communityID, adminUserID)
-	if err != nil || (adminMember.Role != model.CommunityMemberRoleOwner && adminMember.Role != model.CommunityMemberRoleAdmin) {
+	if err != nil || !isModeratorOrAbove(adminMember.Role) {
 		return nil, 0, errors.New("forbidden")
 	}
 	if page < 1 {
