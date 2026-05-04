@@ -146,7 +146,7 @@ func (r *threadCached) findUserFeed(userID uint, types []string, page, limit int
 			pids = append(pids, id)
 		}
 		var parentThreads []model.Thread
-		if err := r.db.readDB.Preload("User").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+		if err := r.db.readDB.Preload("User").Preload("Community").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
 			return nil, nil, 0, err
 		}
 		for i := range parentThreads {

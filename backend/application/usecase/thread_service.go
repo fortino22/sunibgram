@@ -36,6 +36,8 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	threadType := model.ThreadTypePost
 	var rootID *uint
 
+	var communityID *uint
+
 	if parentID != nil {
 		parent, err := s.threadRepo.FindByID(*parentID)
 		if err != nil {
@@ -47,14 +49,21 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		} else {
 			rootID = parent.RootID
 		}
+		if parent.CommunityID != nil {
+			if _, err := s.memberRepo.FindMember(*parent.CommunityID, userID); err != nil {
+				return nil, errors.New("you must be a member of the community to reply")
+			}
+			communityID = parent.CommunityID
+		}
 	}
 
 	thread := &model.Thread{
-		UserID:   userID,
-		Type:     threadType,
-		Content:  content,
-		ParentID: parentID,
-		RootID:   rootID,
+		UserID:      userID,
+		Type:        threadType,
+		Content:     content,
+		ParentID:    parentID,
+		RootID:      rootID,
+		CommunityID: communityID,
 	}
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err

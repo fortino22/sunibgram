@@ -249,6 +249,7 @@ func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []
 				ID:        p.ThreadID,
 				ParentID:  p.ParentID,
 				RootID:    p.RootID,
+				Community: webapiutils.CommunityField(p),
 				Author:    dto.FeedAuthor{ID: p.UserID, Username: p.User.UserName},
 				Content:   p.Content,
 				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),

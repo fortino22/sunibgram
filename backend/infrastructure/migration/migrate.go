@@ -12,6 +12,7 @@ func AutoMigrate(db *gorm.DB) {
 	db.AutoMigrate(&model.Role{})
 	db.AutoMigrate(&model.User{})
 	db.AutoMigrate(&model.UserProfile{})
+	db.AutoMigrate(&model.Community{})
 	db.AutoMigrate(&model.Thread{})
 	db.AutoMigrate(&model.ThreadMedia{})
 	db.AutoMigrate(&model.Like{})
@@ -19,7 +20,6 @@ func AutoMigrate(db *gorm.DB) {
 	db.AutoMigrate(&model.VerificationCode{})
 	db.AutoMigrate(&model.UserRelationship{})
 	db.AutoMigrate(&model.UserStat{})
-	db.AutoMigrate(&model.Community{})
 	db.AutoMigrate(&model.CommunityMember{})
 	db.AutoMigrate(&model.CommunityRequest{})
 

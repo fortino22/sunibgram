@@ -54,6 +54,7 @@ type FeedParentContext struct {
 	ID        uint                  `json:"id"`
 	ParentID  *uint                 `json:"parent_id"`
 	RootID    *uint                 `json:"root_id"`
+	Community *FeedCommunity        `json:"community,omitempty"`
 	Author    FeedAuthor            `json:"author"`
 	Content   string                `json:"content"`
 	Media     []ThreadMediaResponse `json:"media"`
