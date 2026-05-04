@@ -15,10 +15,11 @@ import (
 type ThreadController struct {
 	threadService service.IThreadService
 	mediaService  service.IThreadMediaService
+	memberService service.ICommunityMemberService
 }
 
-func NewThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService) *ThreadController {
-	return &ThreadController{threadService: threadService, mediaService: mediaService}
+func NewThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, memberService service.ICommunityMemberService) *ThreadController {
+	return &ThreadController{threadService: threadService, mediaService: mediaService, memberService: memberService}
 }
 
 func (c *ThreadController) Create(ctx *fiber.Ctx) error {
@@ -68,6 +69,11 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
 	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
@@ -78,14 +84,36 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
 	}
 
+	if thread.CommunityID != nil {
+		if !c.memberService.IsMember(*thread.CommunityID, claims.UserID) {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		}
+	}
+
 	media, _ := c.mediaService.GetByThreadID(uint(id))
 	return ctx.Status(fiber.StatusOK).JSON(c.fb().ToFeedItem(thread, media))
 }
 
 func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
 	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
+	}
+
+	root, err := c.threadService.GetByID(uint(id))
+	if err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
+	}
+
+	if root.CommunityID != nil {
+		if !c.memberService.IsMember(*root.CommunityID, claims.UserID) {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		}
 	}
 
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
@@ -223,7 +251,6 @@ func (c *ThreadController) buildFeedItems(threads []model.Thread) []dto.FeedItem
 }
 
 func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread) []dto.FeedItemResponse {
-	// collect IDs for media batch load (threads + parent threads)
 	allIDs := make([]uint, 0, len(threads)*2)
 	for _, t := range threads {
 		allIDs = append(allIDs, t.ThreadID)

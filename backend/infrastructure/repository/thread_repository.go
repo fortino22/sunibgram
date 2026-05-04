@@ -75,12 +75,16 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 		var threads []model.Thread
 		var total int64
 		r.db.readDB.Model(&model.Thread{}).
-			Where("type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 			Count(&total)
 		offset := (page - 1) * limit
 		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").
-			Where("type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Order("created_at DESC").
+			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+			Order("threads.created_at DESC").
 			Offset(offset).Limit(limit).
 			Find(&threads).Error; err != nil {
 			return nil, 0, err
@@ -102,11 +106,17 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var threads []model.Thread
 		var total int64
-		r.db.readDB.Model(&model.Thread{}).Where("thread_id = ? OR root_id = ?", rootID, rootID).Count(&total)
+		r.db.readDB.Model(&model.Thread{}).
+			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
+			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+			Count(&total)
 		offset := (page - 1) * limit
 		if err := r.db.readDB.Preload("User").Preload("Community").
-			Where("thread_id = ? OR root_id = ?", rootID, rootID).
-			Order("created_at ASC").
+			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
+			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+			Order("threads.created_at ASC").
 			Offset(offset).Limit(limit).
 			Find(&threads).Error; err != nil {
 			return nil, 0, err

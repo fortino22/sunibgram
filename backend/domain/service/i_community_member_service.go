@@ -12,4 +12,5 @@ type ICommunityMemberService interface {
 	GetMembers(communityID uint, page, limit int) ([]model.CommunityMember, int64, error)
 	RemoveMember(ctx context.Context, communityID, actorUserID, targetUserID uint) error
 	UpdateRole(ctx context.Context, communityID, actorUserID, targetUserID uint, role model.CommunityMemberRole) error
+	IsMember(communityID, userID uint) bool
 }

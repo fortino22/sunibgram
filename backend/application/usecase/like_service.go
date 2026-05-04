@@ -12,15 +12,22 @@ import (
 type LikeService struct {
 	likeRepo   repository.ILikeRepository
 	threadRepo repository.IThreadRepository
+	memberRepo repository.ICommunityMemberRepository
 }
 
-func NewLikeService(likeRepo repository.ILikeRepository, threadRepo repository.IThreadRepository) service.ILikeService {
-	return &LikeService{likeRepo: likeRepo, threadRepo: threadRepo}
+func NewLikeService(likeRepo repository.ILikeRepository, threadRepo repository.IThreadRepository, memberRepo repository.ICommunityMemberRepository) service.ILikeService {
+	return &LikeService{likeRepo: likeRepo, threadRepo: threadRepo, memberRepo: memberRepo}
 }
 
 func (s *LikeService) Like(userID, threadID uint) error {
-	if _, err := s.threadRepo.FindByID(threadID); err != nil {
+	thread, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
 		return errors.New("thread not found")
+	}
+	if thread.CommunityID != nil {
+		if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
+			return errors.New("you must be a member of the community to like this thread")
+		}
 	}
 	exists, err := s.likeRepo.Exists(userID, threadID)
 	if err != nil {

@@ -142,6 +142,11 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 	if original.Type == model.ThreadTypeRepost {
 		return errors.New("cannot repost a repost")
 	}
+	if original.CommunityID != nil {
+		if _, err := s.memberRepo.FindMember(*original.CommunityID, userID); err != nil {
+			return errors.New("you must be a member of the community to repost this thread")
+		}
+	}
 	exists, err := s.threadRepo.ExistsRepost(userID, threadID)
 	if err != nil {
 		return err
@@ -193,14 +198,11 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 	if strings.TrimSpace(content) == "" {
 		return nil, errors.New("content is required")
 	}
-	community, err := s.communityRepo.FindByID(communityID)
-	if err != nil {
+	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, errors.New("community not found")
 	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
-		if community.Visibility == model.CommunityVisibilityPrivate {
-			return nil, errors.New("forbidden")
-		}
+		return nil, errors.New("forbidden")
 	}
 	thread := &model.Thread{
 		UserID:      userID,
@@ -214,9 +216,12 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 	return thread, nil
 }
 
-func (s *ThreadService) GetCommunityThreads(communityID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetCommunityThreads(communityID, userID uint, page, limit int) ([]model.Thread, int64, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
+	}
+	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
+		return nil, 0, errors.New("forbidden")
 	}
 	if page < 1 {
 		page = 1

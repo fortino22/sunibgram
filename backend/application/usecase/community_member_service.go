@@ -105,6 +105,11 @@ func (s *CommunityMemberService) RemoveMember(ctx context.Context, communityID, 
 	return s.memberRepo.UpdateMemberCount(communityID, -1)
 }
 
+func (s *CommunityMemberService) IsMember(communityID, userID uint) bool {
+	_, err := s.memberRepo.FindMember(communityID, userID)
+	return err == nil
+}
+
 func (s *CommunityMemberService) UpdateRole(ctx context.Context, communityID, actorUserID, targetUserID uint, role model.CommunityMemberRole) error {
 	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
 	if err != nil || !isAdminOrAbove(actor.Role) {

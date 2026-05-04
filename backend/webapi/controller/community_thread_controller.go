@@ -51,6 +51,11 @@ func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityThreadController) GetAll(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
 	communityID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
@@ -59,8 +64,11 @@ func (c *CommunityThreadController) GetAll(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, total, err := c.threadService.GetCommunityThreads(uint(communityID), page, limit)
+	threads, total, err := c.threadService.GetCommunityThreads(uint(communityID), claims.UserID, page, limit)
 	if err != nil {
+		if err.Error() == "forbidden" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		}
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 

@@ -12,15 +12,22 @@ import (
 type BookmarkService struct {
 	bookmarkRepo repository.IBookmarkRepository
 	threadRepo   repository.IThreadRepository
+	memberRepo   repository.ICommunityMemberRepository
 }
 
-func NewBookmarkService(bookmarkRepo repository.IBookmarkRepository, threadRepo repository.IThreadRepository) service.IBookmarkService {
-	return &BookmarkService{bookmarkRepo: bookmarkRepo, threadRepo: threadRepo}
+func NewBookmarkService(bookmarkRepo repository.IBookmarkRepository, threadRepo repository.IThreadRepository, memberRepo repository.ICommunityMemberRepository) service.IBookmarkService {
+	return &BookmarkService{bookmarkRepo: bookmarkRepo, threadRepo: threadRepo, memberRepo: memberRepo}
 }
 
 func (s *BookmarkService) Bookmark(userID, threadID uint) error {
-	if _, err := s.threadRepo.FindByID(threadID); err != nil {
+	thread, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
 		return errors.New("thread not found")
+	}
+	if thread.CommunityID != nil {
+		if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
+			return errors.New("you must be a member of the community to bookmark this thread")
+		}
 	}
 	exists, err := s.bookmarkRepo.Exists(userID, threadID)
 	if err != nil {
