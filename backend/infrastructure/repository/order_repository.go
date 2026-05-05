@@ -37,6 +37,15 @@ func (r *orderRepository) FindByOrderID(orderID string) (*model.Order, error) {
 	return &order, nil
 }
 
+func (r *orderRepository) FindPendingByUserIDAndPurpose(userID uint, purpose string) (*model.Order, error) {
+	var order model.Order
+	err := r.readDB.Where("user_id = ? AND purpose = ? AND status = 'PENDING'", userID, purpose).First(&order).Error
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
+}
+
 func (r *orderRepository) FindByUserID(userID uint, page, limit int) ([]model.Order, int64, error) {
 	var orders []model.Order
 	var total int64

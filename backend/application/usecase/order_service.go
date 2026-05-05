@@ -87,6 +87,18 @@ func (s *OrderService) CreateOrder(userID uint, amount int64, purpose, itemID, i
 }
 
 func (s *OrderService) BuyPremium(userID uint) (*service.CreateOrderResult, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+	if user.IsPremium {
+		return nil, errors.New("user already has premium")
+	}
+
+	if _, err := s.orderRepo.FindPendingByUserIDAndPurpose(userID, "PREMIUM"); err == nil {
+		return nil, errors.New("pending premium order already exists")
+	}
+
 	return s.CreateOrder(userID, PremiumAmount, "PREMIUM", "SUNIBGRAM-PREMIUM", "Sunibgram Premium")
 }
 
