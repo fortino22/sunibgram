@@ -17,6 +17,21 @@ func NewVerificationController(verificationService service.IVerificationService)
 	return &VerificationController{verificationService: verificationService}
 }
 
+func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
+	var req dto.SendVerificationRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	req.Email = strings.TrimSpace(req.Email)
+
+	if err := c.verificationService.SendCode(req.Email, model.VerificationTypeLogin); err != nil {
+		return ctx.Status(verificationErrorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "login otp sent"})
+}
+
 func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
 	var req dto.SendVerificationRequest
 	if err := ctx.BodyParser(&req); err != nil {
@@ -59,7 +74,7 @@ func verificationErrorStatus(err error) int {
 		msg == "email is required" ||
 		msg == "email already registered" ||
 		msg == "email not found" ||
-		msg == "type must be REGISTER or FORGOT_PASSWORD" ||
+		msg == "type must be REGISTER, FORGOT_PASSWORD, or LOGIN" ||
 		msg == "invalid code" ||
 		msg == "code has expired" ||
 		msg == "invalid or expired code":

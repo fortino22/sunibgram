@@ -1,18 +1,27 @@
 package middleware
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/sunibgram/infrastructure/cache"
 )
 
 const (
 	claimKindAccess = "access"
 	LocalClaims     = "claims"
 )
+
+var sessionCache *cache.Cache
+
+func Init(c *cache.Cache) {
+	sessionCache = c
+}
 
 func Auth() fiber.Handler {
 	return func(c *fiber.Ctx) error {
@@ -25,6 +34,14 @@ func Auth() fiber.Handler {
 		claims, err := parseAccessToken(tokenStr)
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": err.Error()})
+		}
+
+		sid, _ := claims["sid"].(string)
+		if sid != "" && sessionCache != nil {
+			var uid uint
+			if err := sessionCache.Get(context.Background(), fmt.Sprintf("session:%s", sid), &uid); err != nil {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "session expired or revoked"})
+			}
 		}
 
 		c.Locals(LocalClaims, claims)

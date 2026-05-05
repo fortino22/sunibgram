@@ -45,9 +45,10 @@ type FeedAuthorFaculty struct {
 }
 
 type FeedAuthor struct {
-	ID      uint                `json:"id"`
-	Username string             `json:"username"`
-	Faculty *FeedAuthorFaculty  `json:"faculty,omitempty"`
+	ID         uint               `json:"id"`
+	Username   string             `json:"username"`
+	IsVerified bool               `json:"is_verified"`
+	Faculty    *FeedAuthorFaculty `json:"faculty,omitempty"`
 }
 
 type FeedStats struct {

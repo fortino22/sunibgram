@@ -9,6 +9,7 @@ import (
 type IAuthService interface {
 	Register(user *model.User, confirmPassword string) error
 	Login(email, password string) (model.TokenPair, error)
+	LoginWithOTP(email, password, otp string) (model.TokenPair, error)
 	LoginProd(email, password string) (*model.User, model.TokenPair, error)
 	RefreshToken(ctx context.Context, sid string) (model.TokenPair, error)
 	Logout(ctx context.Context, sid string) error

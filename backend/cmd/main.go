@@ -13,6 +13,7 @@ import (
 	infrarepo "github.com/sunibgram/infrastructure/repository"
 	"github.com/sunibgram/infrastructure/storage"
 	"github.com/sunibgram/webapi/controller"
+	"github.com/sunibgram/webapi/middleware"
 	"github.com/sunibgram/webapi/router"
 )
 
@@ -24,6 +25,7 @@ func main() {
 
 	// --- Cache ---
 	redisCache := cache.New()
+	middleware.Init(redisCache)
 
 	// --- Repositories ---
 	roleRepo             := infrarepo.NewRoleRepository(writeDB, readDB)

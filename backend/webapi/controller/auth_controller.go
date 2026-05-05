@@ -129,6 +129,24 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	})
 }
 
+func (c *AuthController) LoginWithOTP(ctx *fiber.Ctx) error {
+	var req dto.LoginWithOTPRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	pair, err := c.authService.LoginWithOTP(req.Email, req.Password, req.OTP)
+	if err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{
+		Message:     "login successful",
+		AccessToken: pair.AccessToken,
+		SID:         pair.SID,
+	})
+}
+
 func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {
 	var req dto.LoginRequest
 	if err := ctx.BodyParser(&req); err != nil {

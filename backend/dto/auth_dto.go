@@ -27,6 +27,12 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type LoginWithOTPRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	OTP      string `json:"otp"`
+}
+
 type LoginResponse struct {
 	Message     string `json:"message"`
 	AccessToken string `json:"access_token"`

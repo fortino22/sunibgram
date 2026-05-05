@@ -71,6 +71,21 @@ func (c *Cache) DeleteByPattern(ctx context.Context, pattern string) error {
 	return nil
 }
 
+func (c *Cache) SAdd(ctx context.Context, key string, member string, ttl time.Duration) error {
+	if err := c.client.SAdd(ctx, key, member).Err(); err != nil {
+		return err
+	}
+	return c.client.Expire(ctx, key, ttl).Err()
+}
+
+func (c *Cache) SMembers(ctx context.Context, key string) ([]string, error) {
+	return c.client.SMembers(ctx, key).Result()
+}
+
+func (c *Cache) SRem(ctx context.Context, key string, member string) error {
+	return c.client.SRem(ctx, key, member).Err()
+}
+
 func (c *Cache) Miss(err error) bool {
 	return err == redis.Nil
 }

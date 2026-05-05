@@ -13,6 +13,7 @@ import (
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/cache"
+	"github.com/sunibgram/infrastructure/ratelimit"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -43,6 +44,7 @@ type AuthService struct {
 	roleRepo         repository.IRoleRepository
 	verificationRepo repository.IVerificationRepository
 	cache            *cache.Cache
+	otpFailLimiter   *ratelimit.RateLimiter
 }
 
 func NewAuthService(
@@ -56,11 +58,16 @@ func NewAuthService(
 		roleRepo:         roleRepo,
 		verificationRepo: verificationRepo,
 		cache:            c,
+		otpFailLimiter:   ratelimit.New(5, 10*time.Minute),
 	}
 }
 
 func sessionKey(sid string) string {
 	return fmt.Sprintf("session:%s", sid)
+}
+
+func userSessionsKey(userID uint) string {
+	return fmt.Sprintf("user_sessions:%d", userID)
 }
 
 func (s *AuthService) Register(user *model.User, confirmPassword string) error {
@@ -130,7 +137,11 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 		return err
 	}
 
-	return s.userRepo.UpdatePassword(userID, string(hashed))
+	if err := s.userRepo.UpdatePassword(userID, string(hashed)); err != nil {
+		return err
+	}
+	s.revokeAllSessions(context.Background(), userID)
+	return nil
 }
 
 func (s *AuthService) ForgotPassword(email, newPassword string) error {
@@ -157,7 +168,62 @@ func (s *AuthService) ForgotPassword(email, newPassword string) error {
 	}
 
 	_ = s.verificationRepo.DeleteByEmailAndType(email, model.VerificationTypeForgotPassword)
+	s.revokeAllSessions(context.Background(), user.UserID)
 	return nil
+}
+
+func (s *AuthService) revokeAllSessions(ctx context.Context, userID uint) {
+	sids, err := s.cache.SMembers(ctx, userSessionsKey(userID))
+	if err != nil {
+		return
+	}
+	keys := make([]string, len(sids))
+	for i, sid := range sids {
+		keys[i] = sessionKey(sid)
+	}
+	if len(keys) > 0 {
+		_ = s.cache.Delete(ctx, keys...)
+	}
+	_ = s.cache.Delete(ctx, userSessionsKey(userID))
+}
+
+func (s *AuthService) LoginWithOTP(email, password, otp string) (model.TokenPair, error) {
+	if err := s.otpFailLimiter.Check(email); err != nil {
+		return model.TokenPair{}, err
+	}
+
+	user, err := s.userRepo.FindByEmail(email)
+	if err != nil {
+		return model.TokenPair{}, errors.New("invalid email or password")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return model.TokenPair{}, errors.New("invalid email or password")
+	}
+
+	record, err := s.verificationRepo.FindLatestByEmailAndType(email, model.VerificationTypeLogin)
+	if err != nil {
+		s.otpFailLimiter.Fail(email)
+		return model.TokenPair{}, errors.New("otp not found, please request a new one")
+	}
+	if time.Now().After(record.ExpiresAt) {
+		s.otpFailLimiter.Fail(email)
+		return model.TokenPair{}, errors.New("otp has expired")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(record.Code), []byte(otp)); err != nil {
+		s.otpFailLimiter.Fail(email)
+		return model.TokenPair{}, errors.New("invalid otp")
+	}
+	_ = s.verificationRepo.DeleteByEmailAndType(email, model.VerificationTypeLogin)
+
+	sid := uuid.NewString()
+	ctx := context.Background()
+	dur := sessionDuration()
+	if err := s.cache.Set(ctx, sessionKey(sid), user.UserID, dur); err != nil {
+		return model.TokenPair{}, errors.New("failed to create session")
+	}
+	_ = s.cache.SAdd(ctx, userSessionsKey(user.UserID), sid, dur)
+
+	return generateTokenPair(user, sid)
 }
 
 func (s *AuthService) Login(email, password string) (model.TokenPair, error) {
@@ -170,9 +236,12 @@ func (s *AuthService) Login(email, password string) (model.TokenPair, error) {
 	}
 
 	sid := uuid.NewString()
-	if err := s.cache.Set(context.Background(), sessionKey(sid), user.UserID, sessionDuration()); err != nil {
+	ctx := context.Background()
+	dur := sessionDuration()
+	if err := s.cache.Set(ctx, sessionKey(sid), user.UserID, dur); err != nil {
 		return model.TokenPair{}, errors.New("failed to create session")
 	}
+	_ = s.cache.SAdd(ctx, userSessionsKey(user.UserID), sid, dur)
 
 	return generateTokenPair(user, sid)
 }
@@ -192,9 +261,12 @@ func (s *AuthService) LoginProd(email, password string) (*model.User, model.Toke
 	}
 
 	sid := uuid.NewString()
-	if err := s.cache.Set(context.Background(), sessionKey(sid), user.UserID, sessionDuration()); err != nil {
+	ctx := context.Background()
+	dur := sessionDuration()
+	if err := s.cache.Set(ctx, sessionKey(sid), user.UserID, dur); err != nil {
 		return nil, model.TokenPair{}, errors.New("failed to create session")
 	}
+	_ = s.cache.SAdd(ctx, userSessionsKey(user.UserID), sid, dur)
 
 	pair, err := generateTokenPair(user, sid)
 	if err != nil {
@@ -219,10 +291,11 @@ func (s *AuthService) RefreshToken(ctx context.Context, sid string) (model.Token
 		return model.TokenPair{}, errors.New("user not found")
 	}
 
-	// Reset TTL on refresh
-	if err := s.cache.Set(ctx, sessionKey(sid), userID, sessionDuration()); err != nil {
+	dur := sessionDuration()
+	if err := s.cache.Set(ctx, sessionKey(sid), userID, dur); err != nil {
 		return model.TokenPair{}, errors.New("failed to extend session")
 	}
+	_ = s.cache.SAdd(ctx, userSessionsKey(userID), sid, dur)
 
 	return generateTokenPair(user, sid)
 }
@@ -230,6 +303,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, sid string) (model.Token
 func (s *AuthService) Logout(ctx context.Context, sid string) error {
 	if sid == "" {
 		return errors.New("invalid session")
+	}
+	var userID uint
+	if err := s.cache.Get(ctx, sessionKey(sid), &userID); err == nil {
+		_ = s.cache.SRem(ctx, userSessionsKey(userID), sid)
 	}
 	return s.cache.Delete(ctx, sessionKey(sid))
 }

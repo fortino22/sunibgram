@@ -13,6 +13,7 @@ type VerificationType string
 const (
 	VerificationTypeRegister       VerificationType = "REGISTER"
 	VerificationTypeForgotPassword VerificationType = "FORGOT_PASSWORD"
+	VerificationTypeLogin          VerificationType = "LOGIN"
 )
 
 type VerificationCode struct {
@@ -37,9 +38,9 @@ func ValidateVerificationEmail(email string) error {
 
 func ValidateVerificationType(t VerificationType) error {
 	switch t {
-	case VerificationTypeRegister, VerificationTypeForgotPassword:
+	case VerificationTypeRegister, VerificationTypeForgotPassword, VerificationTypeLogin:
 		return nil
 	default:
-		return errors.New("type must be REGISTER or FORGOT_PASSWORD")
+		return errors.New("type must be REGISTER, FORGOT_PASSWORD, or LOGIN")
 	}
 }

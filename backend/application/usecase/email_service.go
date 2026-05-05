@@ -31,6 +31,18 @@ func (s *EmailService) SendWelcomeOTP(to, code string) error {
 	return s.client.SendMail(to, subject, body)
 }
 
+func (s *EmailService) SendLoginOTP(to, code string) error {
+	subject := "Sunibgram — Login Verification Code"
+	body := fmt.Sprintf(`
+		<div style="font-family:sans-serif;max-width:480px;margin:auto">
+			<h2>Login Verification</h2>
+			<p>Use the code below to complete your login. It expires in <strong>10 minutes</strong>.</p>
+			<div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#f4f4f4;text-align:center;border-radius:8px">%s</div>
+			<p style="color:#888;font-size:12px;margin-top:16px">If you didn't attempt to log in, please change your password immediately.</p>
+		</div>`, code)
+	return s.client.SendMail(to, subject, body)
+}
+
 func (s *EmailService) SendPasswordResetOTP(to, code string) error {
 	subject := "Sunibgram — Password Reset Code"
 	body := fmt.Sprintf(`
