@@ -39,9 +39,15 @@ type ReplyResponse struct {
 	Reply  ThreadResponse  `json:"reply"`
 }
 
+type FeedAuthorFaculty struct {
+	FacultyID   uint   `json:"faculty_id"`
+	FacultyName string `json:"faculty_name"`
+}
+
 type FeedAuthor struct {
-	ID       uint   `json:"id"`
-	Username string `json:"username"`
+	ID      uint                `json:"id"`
+	Username string             `json:"username"`
+	Faculty *FeedAuthorFaculty  `json:"faculty,omitempty"`
 }
 
 type FeedStats struct {
@@ -84,6 +90,9 @@ type FeedItemResponse struct {
 	Author         FeedAuthor            `json:"author"`
 	Stats          FeedStats             `json:"stats"`
 	Media          []ThreadMediaResponse `json:"media"`
+	IsLiked        bool                  `json:"is_liked"`
+	IsBookmarked   bool                  `json:"is_bookmarked"`
+	IsReposted     bool                  `json:"is_reposted"`
 }
 
 type FeedMeta struct {

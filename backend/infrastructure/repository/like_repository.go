@@ -17,7 +17,7 @@ type LikeRepository struct {
 
 func NewLikeRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.ILikeRepository {
 	return &LikeRepository{
-		base:       newInteractionRepo(writeDB, readDB, c, "likes"),
+		base:       newInteractionRepo(writeDB, readDB, c, "likes", &threadDB{writeDB: writeDB, readDB: readDB}),
 		patchCount: patchCount,
 	}
 }

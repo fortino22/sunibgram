@@ -174,6 +174,11 @@ func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) err
 	return s.threadRepo.DeleteRepost(userID, threadID)
 }
 
+func (s *ThreadService) IsReposted(userID, threadID uint) bool {
+	ok, _ := s.threadRepo.ExistsRepost(userID, threadID)
+	return ok
+}
+
 func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	if page < 1 {
 		page = 1

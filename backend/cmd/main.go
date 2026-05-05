@@ -38,6 +38,8 @@ func main() {
 	communityRepo        := infrarepo.NewCommunityRepository(writeDB, readDB)
 	communityMemberRepo  := infrarepo.NewCommunityMemberRepository(writeDB, readDB)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB)
+	facultyRepo          := infrarepo.NewFacultyRepository(writeDB, readDB)
+	userFacultyRepo      := infrarepo.NewUserFacultyRepository(writeDB, readDB)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -47,7 +49,7 @@ func main() {
 	authService            := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
 	roleService            := usecase.NewRoleService(roleRepo)
 	userService            := usecase.NewUserService(userRepo, followRepo, profileRepo)
-	profileService         := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, storageUsecase)
+	profileService         := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
 	verificationService    := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService          := usecase.NewFollowService(followRepo, userRepo)
 	threadService          := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo)
@@ -57,23 +59,25 @@ func main() {
 	communityService       := usecase.NewCommunityService(communityRepo, communityMemberRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
+	facultyService         := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 
 	// --- Controllers ---
-	authCtrl            := controller.NewAuthController(authService, profileService)
+	authCtrl            := controller.NewAuthController(authService, profileService, facultyService)
 	roleCtrl            := controller.NewRoleController(roleService)
 	userCtrl            := controller.NewUserController(userService)
-	profileCtrl         := controller.NewUserProfileController(profileService)
+	profileCtrl         := controller.NewUserProfileController(profileService, facultyService)
 	emailCtrl           := controller.NewEmailController(emailService)
 	verificationCtrl    := controller.NewVerificationController(verificationService)
 	followCtrl          := controller.NewFollowController(followService)
-	threadCtrl          := controller.NewThreadController(threadService, threadMediaService, communityMemberService)
+	threadCtrl          := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService)
 	likeCtrl            := controller.NewLikeController(likeService, threadMediaService)
 	bookmarkCtrl        := controller.NewBookmarkController(bookmarkService, threadMediaService)
 	repostCtrl          := controller.NewRepostController(threadService, threadMediaService)
 	communityCtrl       := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
-	communityThreadCtrl  := controller.NewCommunityThreadController(threadService, threadMediaService)
+	communityThreadCtrl  := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService)
+	facultyCtrl          := controller.NewFacultyController(facultyService)
 
 	// --- Server ---
 	app := fiber.New()
@@ -94,6 +98,7 @@ func main() {
 		communityMemberCtrl,
 		communityRequestCtrl,
 		communityThreadCtrl,
+		facultyCtrl,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))

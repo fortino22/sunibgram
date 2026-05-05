@@ -12,10 +12,11 @@ import (
 
 type UserProfileController struct {
 	profileService service.IUserProfileService
+	facultyService service.IFacultyService
 }
 
-func NewUserProfileController(profileService service.IUserProfileService) *UserProfileController {
-	return &UserProfileController{profileService: profileService}
+func NewUserProfileController(profileService service.IUserProfileService, facultyService service.IFacultyService) *UserProfileController {
+	return &UserProfileController{profileService: profileService, facultyService: facultyService}
 }
 
 func (c *UserProfileController) GetMyProfile(ctx *fiber.Ctx) error {
@@ -38,6 +39,19 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	claims, ok := ctxutil.Get(ctx)
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	var facultyID *uint
+	if raw := ctx.FormValue("faculty_id"); raw != "" {
+		fid, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty_id"})
+		}
+		v := uint(fid)
+		if _, err := c.facultyService.GetByID(v); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty not found"})
+		}
+		facultyID = &v
 	}
 
 	input := service.UpdateProfileInput{}
@@ -64,6 +78,12 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 
 	if err := c.profileService.UpdateProfile(ctx.Context(), claims.UserID, input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	if facultyID != nil {
+		if err := c.facultyService.SetUserFaculty(claims.UserID, facultyID); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "profile updated successfully"})
@@ -96,6 +116,13 @@ func (c *UserProfileController) toResponse(fp *service.FullProfile) dto.UserProf
 		followerCount = fp.Stat.FollowerCount
 		followingCount = fp.Stat.FollowingCount
 	}
+	var faculty *dto.FeedAuthorFaculty
+	if fp.UserFaculty != nil {
+		faculty = &dto.FeedAuthorFaculty{
+			FacultyID:   fp.UserFaculty.FacultyID,
+			FacultyName: fp.UserFaculty.Faculty.FacultyName,
+		}
+	}
 	return dto.UserProfileResponse{
 		UserID:         fp.User.UserID,
 		Name:           fp.User.Name,
@@ -106,6 +133,7 @@ func (c *UserProfileController) toResponse(fp *service.FullProfile) dto.UserProf
 		BannerURL:      bannerURL,
 		FollowerCount:  followerCount,
 		FollowingCount: followingCount,
+		Faculty:        faculty,
 		CreatedAt:      utils.Wrap(fp.User.CreatedAt),
 	}
 }

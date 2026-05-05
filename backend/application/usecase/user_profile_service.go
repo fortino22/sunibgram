@@ -12,23 +12,26 @@ import (
 )
 
 type UserProfileService struct {
-	userRepo       repository.IUserRepository
-	followRepo     repository.IFollowRepository
-	profileRepo    repository.IUserProfileRepository
-	storageUsecase *StorageUsecase
+	userRepo        repository.IUserRepository
+	followRepo      repository.IFollowRepository
+	profileRepo     repository.IUserProfileRepository
+	userFacultyRepo repository.IUserFacultyRepository
+	storageUsecase  *StorageUsecase
 }
 
 func NewUserProfileService(
 	userRepo repository.IUserRepository,
 	followRepo repository.IFollowRepository,
 	profileRepo repository.IUserProfileRepository,
+	userFacultyRepo repository.IUserFacultyRepository,
 	storageUsecase *StorageUsecase,
 ) service.IUserProfileService {
 	return &UserProfileService{
-		userRepo:       userRepo,
-		followRepo:     followRepo,
-		profileRepo:    profileRepo,
-		storageUsecase: storageUsecase,
+		userRepo:        userRepo,
+		followRepo:      followRepo,
+		profileRepo:     profileRepo,
+		userFacultyRepo: userFacultyRepo,
+		storageUsecase:  storageUsecase,
 	}
 }
 
@@ -181,7 +184,8 @@ func (s *UserProfileService) GetProfile(userID uint) (*service.FullProfile, erro
 	if profile == nil {
 		profile = &model.UserProfile{UserID: userID}
 	}
-	return &service.FullProfile{User: user, Stat: stat, Profile: profile}, nil
+	userFaculty, _ := s.userFacultyRepo.FindByUserID(userID)
+	return &service.FullProfile{User: user, Stat: stat, Profile: profile, UserFaculty: userFaculty}, nil
 }
 
 func (s *UserProfileService) GetURL(bucket, objectName string) string {

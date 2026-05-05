@@ -12,5 +12,6 @@ type UserProfileResponse struct {
 	BannerURL      string              `json:"banner_url"`
 	FollowerCount  int                 `json:"follower_count"`
 	FollowingCount int                 `json:"following_count"`
+	Faculty        *FeedAuthorFaculty  `json:"faculty,omitempty"`
 	CreatedAt      utils.FormattedTime `json:"created_at"`
 }

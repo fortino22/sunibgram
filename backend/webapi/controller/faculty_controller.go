@@ -1,0 +1,98 @@
+package controller
+
+import (
+	"strconv"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/sunibgram/domain/service"
+	"github.com/sunibgram/dto"
+)
+
+type FacultyController struct {
+	facultyService service.IFacultyService
+}
+
+func NewFacultyController(facultyService service.IFacultyService) *FacultyController {
+	return &FacultyController{facultyService: facultyService}
+}
+
+func (c *FacultyController) Create(ctx *fiber.Ctx) error {
+	var req dto.CreateFacultyRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+	if err := c.facultyService.Create(req.FacultyName); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "faculty created successfully"})
+}
+
+func (c *FacultyController) GetAll(ctx *fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	faculties, total, err := c.facultyService.GetAll(page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	data := make([]dto.FacultyResponse, len(faculties))
+	for i, f := range faculties {
+		data[i] = dto.FacultyResponse{
+			FacultyID:   f.FacultyID,
+			FacultyName: f.FacultyName,
+			TotalUsers:  f.TotalUsers,
+		}
+	}
+	return ctx.JSON(dto.PaginatedFacultyResponse{
+		Data: data,
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
+}
+
+func (c *FacultyController) GetByID(ctx *fiber.Ctx) error {
+	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty id"})
+	}
+	faculty, err := c.facultyService.GetByID(uint(id))
+	if err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.JSON(dto.FacultyResponse{
+		FacultyID:   faculty.FacultyID,
+		FacultyName: faculty.FacultyName,
+		TotalUsers:  faculty.TotalUsers,
+	})
+}
+
+func (c *FacultyController) Update(ctx *fiber.Ctx) error {
+	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty id"})
+	}
+	var req dto.UpdateFacultyRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+	if err := c.facultyService.Update(uint(id), req.FacultyName); err != nil {
+		if err.Error() == "faculty not found" {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.JSON(fiber.Map{"message": "faculty updated successfully"})
+}
+
+func (c *FacultyController) Delete(ctx *fiber.Ctx) error {
+	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty id"})
+	}
+	if err := c.facultyService.Delete(uint(id)); err != nil {
+		if err.Error() == "faculty not found" {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.JSON(fiber.Map{"message": "faculty deleted successfully"})
+}
+

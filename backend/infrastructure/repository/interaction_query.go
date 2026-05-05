@@ -16,20 +16,22 @@ type interactionTimestamp struct {
 }
 
 type interactionRepo struct {
-	writeDB *gorm.DB
-	readDB  *gorm.DB
-	cache   *cache.Cache
-	table   string
-	ttl     time.Duration
+	writeDB  *gorm.DB
+	readDB   *gorm.DB
+	cache    *cache.Cache
+	table    string
+	ttl      time.Duration
+	threadDB *threadDB
 }
 
-func newInteractionRepo(writeDB, readDB *gorm.DB, c *cache.Cache, table string) *interactionRepo {
+func newInteractionRepo(writeDB, readDB *gorm.DB, c *cache.Cache, table string, tdb *threadDB) *interactionRepo {
 	return &interactionRepo{
-		writeDB: writeDB,
-		readDB:  readDB,
-		cache:   c,
-		table:   table,
-		ttl:     cache.DefaultTTL,
+		writeDB:  writeDB,
+		readDB:   readDB,
+		cache:    c,
+		table:    table,
+		ttl:      cache.DefaultTTL,
+		threadDB: tdb,
 	}
 }
 
@@ -110,6 +112,7 @@ func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Th
 	if err := r.readDB.Preload("User").Where("thread_id IN ?", ids).Find(&threads).Error; err != nil {
 		return nil, nil, total, err
 	}
+	r.threadDB.attachFaculties(threads)
 
 	threadMap := make(map[uint]model.Thread, len(threads))
 	for _, t := range threads {

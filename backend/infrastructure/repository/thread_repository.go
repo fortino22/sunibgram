@@ -24,14 +24,50 @@ type threadDB struct {
 	readDB  *gorm.DB
 }
 
+// attachFaculties batch-loads user_faculties for all unique user IDs in threads
+// and attaches them to thread.User.UserFaculty (and OriginalThread.User.UserFaculty).
+func (db *threadDB) attachFaculties(threads []model.Thread) {
+	userIDs := make(map[uint]struct{})
+	for i := range threads {
+		userIDs[threads[i].UserID] = struct{}{}
+		if threads[i].OriginalThread != nil {
+			userIDs[threads[i].OriginalThread.UserID] = struct{}{}
+		}
+	}
+	if len(userIDs) == 0 {
+		return
+	}
+	ids := make([]uint, 0, len(userIDs))
+	for id := range userIDs {
+		ids = append(ids, id)
+	}
+	var faculties []model.UserFaculty
+	db.readDB.Preload("Faculty").Where("user_id IN ?", ids).Find(&faculties)
+	fm := make(map[uint]*model.UserFaculty, len(faculties))
+	for i := range faculties {
+		fm[faculties[i].UserID] = &faculties[i]
+	}
+	for i := range threads {
+		if uf, ok := fm[threads[i].UserID]; ok {
+			threads[i].User.UserFaculty = uf
+		}
+		if threads[i].OriginalThread != nil {
+			if uf, ok := fm[threads[i].OriginalThread.UserID]; ok {
+				threads[i].OriginalThread.User.UserFaculty = uf
+			}
+		}
+	}
+}
+
 func NewThreadRepository(writeDB, readDB *gorm.DB, c *cache.Cache) (domainrepo.IThreadRepository, func(uint, string, int)) {
+	tdb := &threadDB{writeDB: writeDB, readDB: readDB}
 	r := &threadCached{
-		db:        &threadDB{writeDB: writeDB, readDB: readDB},
+		db:        tdb,
 		cache:     c,
 		ttl:       cache.DefaultTTL,
-		likes:     newInteractionRepo(writeDB, readDB, c, "likes"),
-		bookmarks: newInteractionRepo(writeDB, readDB, c, "bookmarks"),
-		reposts:   newInteractionRepo(writeDB, readDB, c, "reposts"),
+		likes:     newInteractionRepo(writeDB, readDB, c, "likes", tdb),
+		bookmarks: newInteractionRepo(writeDB, readDB, c, "bookmarks", tdb),
+		reposts:   newInteractionRepo(writeDB, readDB, c, "reposts", tdb),
 	}
 	return r, r.patchCachedCount
 }
@@ -58,7 +94,14 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").First(&thread, id).Error; err != nil {
 			return nil, err
 		}
+		threads := []model.Thread{thread}
+		r.db.attachFaculties(threads)
+		thread = threads[0]
 		r.cache.Set(ctx, key, thread, r.ttl)
+	} else {
+		threads := []model.Thread{thread}
+		r.db.attachFaculties(threads)
+		thread = threads[0]
 	}
 	return &thread, nil
 }
@@ -89,6 +132,7 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 			Find(&threads).Error; err != nil {
 			return nil, 0, err
 		}
+		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
 		r.cache.Set(ctx, key, result, r.ttl)
 	}
@@ -121,6 +165,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 			Find(&threads).Error; err != nil {
 			return nil, 0, err
 		}
+		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
 		r.cache.Set(ctx, key, result, r.ttl)
 	}
@@ -142,6 +187,7 @@ func (r *threadCached) findUserFeed(userID uint, types []string, page, limit int
 		Find(&threads).Error; err != nil {
 		return nil, nil, 0, err
 	}
+	r.db.attachFaculties(threads)
 
 	parentIDSet := make(map[uint]struct{})
 	for _, t := range threads {
@@ -159,6 +205,7 @@ func (r *threadCached) findUserFeed(userID uint, types []string, page, limit int
 		if err := r.db.readDB.Preload("User").Preload("Community").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
 			return nil, nil, 0, err
 		}
+		r.db.attachFaculties(parentThreads)
 		for i := range parentThreads {
 			parentMap[parentThreads[i].ThreadID] = &parentThreads[i]
 		}
@@ -299,6 +346,7 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]m
 			Find(&threads).Error; err != nil {
 			return nil, 0, err
 		}
+		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
 		r.cache.Set(ctx, key, result, r.ttl)
 	}

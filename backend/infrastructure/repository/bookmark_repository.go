@@ -17,7 +17,7 @@ type BookmarkRepository struct {
 
 func NewBookmarkRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.IBookmarkRepository {
 	return &BookmarkRepository{
-		base:       newInteractionRepo(writeDB, readDB, c, "bookmarks"),
+		base:       newInteractionRepo(writeDB, readDB, c, "bookmarks", &threadDB{writeDB: writeDB, readDB: readDB}),
 		patchCount: patchCount,
 	}
 }

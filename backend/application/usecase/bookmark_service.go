@@ -50,6 +50,11 @@ func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
 	return s.bookmarkRepo.Delete(userID, threadID)
 }
 
+func (s *BookmarkService) IsBookmarked(userID, threadID uint) bool {
+	ok, _ := s.bookmarkRepo.Exists(userID, threadID)
+	return ok
+}
+
 func (s *BookmarkService) GetMyBookmarks(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	if page < 1 {
 		page = 1

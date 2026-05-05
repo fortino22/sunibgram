@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"strconv"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
@@ -12,13 +14,27 @@ import (
 type AuthController struct {
 	authService    service.IAuthService
 	profileService service.IUserProfileService
+	facultyService service.IFacultyService
 }
 
-func NewAuthController(authService service.IAuthService, profileService service.IUserProfileService) *AuthController {
-	return &AuthController{authService: authService, profileService: profileService}
+func NewAuthController(authService service.IAuthService, profileService service.IUserProfileService, facultyService service.IFacultyService) *AuthController {
+	return &AuthController{authService: authService, profileService: profileService, facultyService: facultyService}
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
+	var facultyID *uint
+	if raw := ctx.FormValue("faculty_id"); raw != "" {
+		fid, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty_id"})
+		}
+		v := uint(fid)
+		if _, err := c.facultyService.GetByID(v); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty not found"})
+		}
+		facultyID = &v
+	}
+
 	user := &model.User{
 		Name:     ctx.FormValue("name"),
 		UserName: ctx.FormValue("username"),
@@ -43,6 +59,12 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 	if input.Avatar != nil || input.Banner != nil || input.Bio != nil {
 		if err := c.profileService.UpsertProfile(ctx.Context(), user.UserID, input); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+	}
+
+	if facultyID != nil {
+		if err := c.facultyService.SetUserFaculty(user.UserID, facultyID); err != nil {
 			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 	}

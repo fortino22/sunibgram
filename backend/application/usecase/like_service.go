@@ -50,6 +50,11 @@ func (s *LikeService) Unlike(userID, threadID uint) error {
 	return s.likeRepo.Delete(userID, threadID)
 }
 
+func (s *LikeService) IsLiked(userID, threadID uint) bool {
+	ok, _ := s.likeRepo.Exists(userID, threadID)
+	return ok
+}
+
 func (s *LikeService) GetMyLikes(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	if page < 1 {
 		page = 1

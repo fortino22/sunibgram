@@ -15,15 +15,16 @@ type TokenPair struct {
 }
 
 type User struct {
-	UserID    uint      `gorm:"primaryKey;autoIncrement"`
-	Name      string    `gorm:"not null"`
-	UserName  string    `gorm:"uniqueIndex;not null"`
-	Email     string    `gorm:"uniqueIndex;not null"`
-	Password  string    `gorm:"not null"`
-	RoleID    uint      `gorm:"not null;default:1"`
-	Role      Role      `gorm:"foreignKey:RoleID;references:RoleID"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	UserID      uint         `gorm:"primaryKey;autoIncrement"`
+	Name        string       `gorm:"not null"`
+	UserName    string       `gorm:"uniqueIndex;not null"`
+	Email       string       `gorm:"uniqueIndex;not null"`
+	Password    string       `gorm:"not null"`
+	RoleID      uint         `gorm:"not null;default:1"`
+	Role        Role         `gorm:"foreignKey:RoleID;references:RoleID"`
+	UserFaculty *UserFaculty `gorm:"-"`
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (u *User) ValidateRegister() error {

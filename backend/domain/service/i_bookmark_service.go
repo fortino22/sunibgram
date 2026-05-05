@@ -9,5 +9,6 @@ import (
 type IBookmarkService interface {
 	Bookmark(userID, threadID uint) error
 	Unbookmark(userID, threadID uint) error
+	IsBookmarked(userID, threadID uint) bool
 	GetMyBookmarks(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error)
 }

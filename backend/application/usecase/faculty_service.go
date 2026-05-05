@@ -1,0 +1,99 @@
+package usecase
+
+import (
+	"errors"
+	"strings"
+
+	"github.com/sunibgram/domain/model"
+	"github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/domain/service"
+)
+
+type FacultyService struct {
+	facultyRepo     repository.IFacultyRepository
+	userFacultyRepo repository.IUserFacultyRepository
+}
+
+func NewFacultyService(facultyRepo repository.IFacultyRepository, userFacultyRepo repository.IUserFacultyRepository) service.IFacultyService {
+	return &FacultyService{facultyRepo: facultyRepo, userFacultyRepo: userFacultyRepo}
+}
+
+func (s *FacultyService) Create(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("faculty name is required")
+	}
+	return s.facultyRepo.Save(&model.Faculty{FacultyName: name})
+}
+
+func (s *FacultyService) GetAll(page, limit int) ([]model.Faculty, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	return s.facultyRepo.FindAll(page, limit)
+}
+
+func (s *FacultyService) GetByID(id uint) (*model.Faculty, error) {
+	f, err := s.facultyRepo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("faculty not found")
+	}
+	return f, nil
+}
+
+func (s *FacultyService) Update(id uint, name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("faculty name is required")
+	}
+	f, err := s.facultyRepo.FindByID(id)
+	if err != nil {
+		return errors.New("faculty not found")
+	}
+	f.FacultyName = name
+	return s.facultyRepo.Update(f)
+}
+
+func (s *FacultyService) Delete(id uint) error {
+	if _, err := s.facultyRepo.FindByID(id); err != nil {
+		return errors.New("faculty not found")
+	}
+	return s.facultyRepo.Delete(id)
+}
+
+// SetUserFaculty assigns or changes a user's faculty. Pass nil facultyID to clear.
+func (s *FacultyService) SetUserFaculty(userID uint, facultyID *uint) error {
+	existing, _ := s.userFacultyRepo.FindByUserID(userID)
+
+	if facultyID == nil {
+		if existing == nil {
+			return nil
+		}
+		if err := s.userFacultyRepo.Delete(userID, existing.FacultyID); err != nil {
+			return err
+		}
+		return s.facultyRepo.UpdateTotalUsers(existing.FacultyID, -1)
+	}
+
+	if _, err := s.facultyRepo.FindByID(*facultyID); err != nil {
+		return errors.New("faculty not found")
+	}
+
+	if existing != nil {
+		if existing.FacultyID == *facultyID {
+			return nil
+		}
+		if err := s.userFacultyRepo.Delete(userID, existing.FacultyID); err != nil {
+			return err
+		}
+		_ = s.facultyRepo.UpdateTotalUsers(existing.FacultyID, -1)
+	}
+
+	if err := s.userFacultyRepo.Save(&model.UserFaculty{UserID: userID, FacultyID: *facultyID}); err != nil {
+		return err
+	}
+	return s.facultyRepo.UpdateTotalUsers(*facultyID, 1)
+}

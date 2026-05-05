@@ -17,7 +17,7 @@ type RepostRepository struct {
 
 func NewRepostRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.IRepostRepository {
 	return &RepostRepository{
-		base:       newInteractionRepo(writeDB, readDB, c, "reposts"),
+		base:       newInteractionRepo(writeDB, readDB, c, "reposts", &threadDB{writeDB: writeDB, readDB: readDB}),
 		patchCount: patchCount,
 	}
 }

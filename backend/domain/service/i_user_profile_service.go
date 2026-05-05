@@ -8,9 +8,10 @@ import (
 )
 
 type FullProfile struct {
-	User    *model.User
-	Stat    *model.UserStat
-	Profile *model.UserProfile
+	User        *model.User
+	Stat        *model.UserStat
+	Profile     *model.UserProfile
+	UserFaculty *model.UserFaculty
 }
 
 type UpsertProfileInput struct {
