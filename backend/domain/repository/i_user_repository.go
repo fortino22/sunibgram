@@ -13,4 +13,5 @@ type IUserRepository interface {
 	FindAllPaginated(page, limit int) ([]model.User, int64, error)
 	UpdatePassword(userID uint, hashedPassword string) error
 	UpdateInfo(userID uint, name, username string) error
+	UpdatePremium(userID uint, premium bool) error
 }

@@ -7,7 +7,7 @@ type UserProfileResponse struct {
 	Name           string              `json:"name"`
 	Username       string              `json:"username"`
 	Email          string              `json:"email"`
-	IsVerified     bool                `json:"is_verified"`
+	IsPremium      bool                `json:"is_premium"`
 	Bio            string              `json:"bio"`
 	AvatarURL      string              `json:"avatar_url"`
 	BannerURL      string              `json:"banner_url"`

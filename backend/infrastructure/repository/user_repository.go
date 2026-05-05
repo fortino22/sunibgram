@@ -69,6 +69,10 @@ func (r *UserRepository) UpdateInfo(userID uint, name, username string) error {
 		Updates(map[string]any{"name": name, "user_name": username}).Error
 }
 
+func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
+	return r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).Update("is_premium", premium).Error
+}
+
 func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {
 	var users []model.User
 	var total int64

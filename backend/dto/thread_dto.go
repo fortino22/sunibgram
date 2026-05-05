@@ -47,7 +47,7 @@ type FeedAuthorFaculty struct {
 type FeedAuthor struct {
 	ID         uint               `json:"id"`
 	Username   string             `json:"username"`
-	IsVerified bool               `json:"is_verified"`
+	IsPremium  bool               `json:"is_premium"`
 	Faculty    *FeedAuthorFaculty `json:"faculty,omitempty"`
 }
 

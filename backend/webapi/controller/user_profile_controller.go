@@ -128,7 +128,7 @@ func (c *UserProfileController) toResponse(fp *service.FullProfile) dto.UserProf
 		Name:           fp.User.Name,
 		Username:       fp.User.UserName,
 		Email:          fp.User.Email,
-		IsVerified:     fp.User.IsVerified,
+		IsPremium:      fp.User.IsPremium,
 		Bio:            bio,
 		AvatarURL:      avatarURL,
 		BannerURL:      bannerURL,

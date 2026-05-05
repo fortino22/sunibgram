@@ -31,7 +31,7 @@ func CommunityField(t *model.Thread) *dto.FeedCommunity {
 }
 
 func AuthorField(u model.User) dto.FeedAuthor {
-	a := dto.FeedAuthor{ID: u.UserID, Username: u.UserName, IsVerified: u.IsVerified}
+	a := dto.FeedAuthor{ID: u.UserID, Username: u.UserName, IsPremium: u.IsPremium}
 	if u.UserFaculty != nil {
 		a.Faculty = &dto.FeedAuthorFaculty{
 			FacultyID:   u.UserFaculty.FacultyID,

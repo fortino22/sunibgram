@@ -42,6 +42,7 @@ func main() {
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB)
 	facultyRepo          := infrarepo.NewFacultyRepository(writeDB, readDB)
 	userFacultyRepo      := infrarepo.NewUserFacultyRepository(writeDB, readDB)
+	orderRepo            := infrarepo.NewOrderRepository(writeDB, readDB)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -62,6 +63,7 @@ func main() {
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
 	facultyService         := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
+	orderService           := usecase.NewOrderService(orderRepo, userRepo)
 
 	// --- Controllers ---
 	authCtrl            := controller.NewAuthController(authService, profileService, facultyService)
@@ -80,6 +82,7 @@ func main() {
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
 	communityThreadCtrl  := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService)
 	facultyCtrl          := controller.NewFacultyController(facultyService)
+	orderCtrl            := controller.NewOrderController(orderService)
 
 	// --- Server ---
 	app := fiber.New()
@@ -101,6 +104,7 @@ func main() {
 		communityRequestCtrl,
 		communityThreadCtrl,
 		facultyCtrl,
+		orderCtrl,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))

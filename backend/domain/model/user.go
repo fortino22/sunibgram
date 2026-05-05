@@ -21,7 +21,7 @@ type User struct {
 	Email       string       `gorm:"uniqueIndex;not null"`
 	Password    string       `gorm:"not null"`
 	RoleID      uint         `gorm:"not null;default:1"`
-	IsVerified  bool         `gorm:"not null;default:false"`
+	IsPremium   bool         `gorm:"not null;default:false"`
 	Role        Role         `gorm:"foreignKey:RoleID;references:RoleID"`
 	UserFaculty *UserFaculty `gorm:"-"`
 	CreatedAt   time.Time

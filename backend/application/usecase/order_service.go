@@ -1,0 +1,189 @@
+package usecase
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/midtrans/midtrans-go"
+	"github.com/midtrans/midtrans-go/snap"
+	"github.com/sunibgram/domain/model"
+	"github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/domain/service"
+)
+
+const PremiumAmount int64 = 10000
+
+type OrderService struct {
+	orderRepo  repository.IOrderRepository
+	userRepo   repository.IUserRepository
+	snapClient snap.Client
+}
+
+func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository) service.IOrderService {
+	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
+	envStr := os.Getenv("MIDTRANS_ENV")
+
+	env := midtrans.Sandbox
+	if envStr == "production" {
+		env = midtrans.Production
+	}
+
+	var client snap.Client
+	client.New(serverKey, env)
+
+	return &OrderService{
+		orderRepo:  orderRepo,
+		userRepo:   userRepo,
+		snapClient: client,
+	}
+}
+
+func (s *OrderService) CreateOrder(userID uint, amount int64, purpose, itemID, itemName string) (*service.CreateOrderResult, error) {
+	if amount <= 0 {
+		return nil, errors.New("amount must be greater than 0")
+	}
+
+	orderID := fmt.Sprintf("ORDER-%s-%d", uuid.NewString()[:8], time.Now().UnixMilli())
+
+	req := &snap.Request{
+		TransactionDetails: midtrans.TransactionDetails{
+			OrderID:  orderID,
+			GrossAmt: amount,
+		},
+		Items: &[]midtrans.ItemDetails{
+			{
+				ID:    itemID,
+				Name:  itemName,
+				Price: amount,
+				Qty:   1,
+			},
+		},
+	}
+
+	snapResp, err := s.snapClient.CreateTransaction(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create midtrans transaction: %w", err)
+	}
+
+	order := &model.Order{
+		OrderID: orderID,
+		UserID:  userID,
+		Amount:  amount,
+		Purpose: purpose,
+		Status:  "PENDING",
+	}
+	if err := s.orderRepo.Save(order); err != nil {
+		return nil, err
+	}
+
+	return &service.CreateOrderResult{
+		Order:      order,
+		PaymentURL: snapResp.RedirectURL,
+		Token:      snapResp.Token,
+	}, nil
+}
+
+func (s *OrderService) BuyPremium(userID uint) (*service.CreateOrderResult, error) {
+	return s.CreateOrder(userID, PremiumAmount, "PREMIUM", "SUNIBGRAM-PREMIUM", "Sunibgram Premium")
+}
+
+func (s *OrderService) GetByID(id uint) (*model.Order, error) {
+	order, err := s.orderRepo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("order not found")
+	}
+	return order, nil
+}
+
+func (s *OrderService) GetByOrderID(orderID string) (*model.Order, error) {
+	order, err := s.orderRepo.FindByOrderID(orderID)
+	if err != nil {
+		return nil, errors.New("order not found")
+	}
+	return order, nil
+}
+
+func (s *OrderService) GetByUserID(userID uint, page, limit int) ([]model.Order, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	return s.orderRepo.FindByUserID(userID, page, limit)
+}
+
+func (s *OrderService) GetAll(page, limit int) ([]model.Order, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	return s.orderRepo.FindAll(page, limit)
+}
+
+func (s *OrderService) HandleNotification(payload map[string]interface{}) error {
+	orderID, _ := payload["order_id"].(string)
+	if orderID == "" {
+		return errors.New("missing order_id in notification")
+	}
+
+	transactionStatus, _ := payload["transaction_status"].(string)
+	fraudStatus, _ := payload["fraud_status"].(string)
+	paymentType, _ := payload["payment_type"].(string)
+
+	status := resolveStatus(transactionStatus, fraudStatus)
+	if status == "" {
+		return nil
+	}
+
+	order, err := s.orderRepo.FindByOrderID(orderID)
+	if err != nil {
+		return errors.New("order not found")
+	}
+
+	if err := s.orderRepo.UpdateStatus(orderID, status, paymentType); err != nil {
+		return err
+	}
+
+	if status == "PAID" && order.Purpose == "PREMIUM" {
+		if err := s.userRepo.UpdatePremium(order.UserID, true); err != nil {
+			return fmt.Errorf("failed to set user premium: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *OrderService) CancelOrder(id uint) error {
+	order, err := s.orderRepo.FindByID(id)
+	if err != nil {
+		return errors.New("order not found")
+	}
+	if order.Status != "PENDING" {
+		return errors.New("only pending orders can be cancelled")
+	}
+	return s.orderRepo.UpdateStatus(order.OrderID, "CANCELLED", order.PaymentType)
+}
+
+func resolveStatus(transactionStatus, fraudStatus string) string {
+	switch transactionStatus {
+	case "capture":
+		if fraudStatus == "accept" {
+			return "PAID"
+		}
+		return "CANCELLED"
+	case "settlement":
+		return "PAID"
+	case "cancel", "deny", "expire":
+		return "CANCELLED"
+	case "pending":
+		return "PENDING"
+	default:
+		return ""
+	}
+}

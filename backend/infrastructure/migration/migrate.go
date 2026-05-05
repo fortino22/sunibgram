@@ -24,6 +24,7 @@ func AutoMigrate(db *gorm.DB) {
 	db.AutoMigrate(&model.CommunityRequest{})
 	db.AutoMigrate(&model.Faculty{})
 	db.AutoMigrate(&model.UserFaculty{})
+	db.AutoMigrate(&model.Order{})
 
 	seedRoles(db)
 	seeder.SeedAdmin(db)
