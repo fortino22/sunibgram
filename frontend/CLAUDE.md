@@ -1,12 +1,12 @@
-# CLAUDE.md — University Social Media App (X/Threads Clone)
+# CLAUDE.md — Sunibgram (University Social Media App)
 
-Source of truth for Claude Code. Read fully before writing code, creating files, or making architectural decisions.
+Read this fully before writing any code, creating any file, or making any architectural decision.
 
 ---
 
 ## Project Summary
 
-University-exclusive social media platform like X/Threads. Students post threads with text, photos, videos. Others comment, reply, repost, like, bookmark. **Portfolio project** — code quality, architecture, DX matter as much as features.
+University-exclusive social media platform (X/Threads clone) called **Sunibgram**. Students post threads with text/media, comment, reply, repost, like, bookmark, pin. Also supports communities, follows, premium orders, and OTP-based auth. Portfolio project — code quality and DX matter.
 
 ---
 
@@ -15,758 +15,192 @@ University-exclusive social media platform like X/Threads. Students post threads
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 15 (App Router) |
-| Language | TypeScript (strict mode) |
+| Language | TypeScript strict |
 | Styling | Tailwind CSS v3 |
 | UI Components | shadcn/ui |
 | Server State | TanStack Query v5 |
 | Client State | Zustand v4 |
 | Forms | React Hook Form + Zod |
-| Auth | NextAuth.js v5 |
+| Auth | Custom JWT (Bearer token) — **NOT NextAuth** |
 | Real-time | Socket.io client |
-| File Uploads | Uploadthing |
-| Rich Text Editor | TipTap |
 
-**Never suggest or use alternatives.** No Redux, SWR, Axios (use native fetch), Context API for global state, or unlisted libraries unless explicitly asked.
+Never use Redux, SWR, Axios, Context API for global state, or NextAuth.
 
 ---
 
-## Code Style Rules
+## API Reference
 
-### TypeScript
-- **Always strict TypeScript.** No `any`. Use `unknown` if needed.
-- Always define explicit return types.
-- `interface` for object shapes, `type` for unions and primitives.
-- Export types from `src/types/`.
+**Base URL env var:** `NEXT_PUBLIC_API_URL` → e.g. `http://localhost:3000/`  
+**Auth header:** `Authorization: Bearer {{BEARER_TOKEN}}`  
+**Variables:** `API_SUNIBGRAM`, `SID`, `BEARER_TOKEN`
 
-```typescript
-// ✅ Correct
-interface Post {
-  id: string;
-  content: string;
-  authorId: string;
-  createdAt: Date;
-  likeCount: number;
-  repostCount: number;
-}
+### Auth — `/auth`
+| Method | Endpoint | Body | Notes |
+|---|---|---|---|
+| POST | `/auth/register` | formdata: `name, username, email, password, confirm_password, avatar(file), banner(file), bio, faculty_id` | |
+| POST | `/auth/login/otp/send` | JSON: `{email}` | Send OTP first |
+| POST | `/auth/login` | JSON: `{email, password, otp}` | OTP required |
+| POST | `/auth/login/prod` | JSON: `{email, password}` | No OTP |
+| POST | `/auth/refresh` | JSON: `{sid}` | Refresh token |
+| POST | `/auth/logout` | — | Bearer required |
+| PUT | `/auth/change-password` | JSON: `{old_password, new_password, confirm_password}` | Bearer |
+| POST | `/auth/forgot-password` | JSON: `{email, new_password, confirm_password}` | |
 
-// � Wrong
-const post: any = {};
-```
+### Verification — `/verification`
+| Method | Endpoint | Body |
+|---|---|---|
+| POST | `/verification/send` | JSON: `{email, type}` — type: `REGISTER` or `FORGOT_PASSWORD` |
+| POST | `/verification/verify` | JSON: `{email, code, type}` |
 
-### Component Rules
-- **Named exports** for all components. No default exports except `app/` pages (Next.js requirement).
-- One component per file.
-- Props always typed with `interface`.
+### Profile — `/profile`
+| Method | Endpoint | Notes |
+|---|---|---|
+| GET | `/profile/me` | Bearer |
+| GET | `/profile/:userId` | Bearer |
+| PUT | `/profile/me` | formdata: `name, username, avatar(file), banner(file), bio, faculty_id, clear_avatar, clear_banner` |
 
-```typescript
-// ✅ Correct
-interface PostCardProps {
-  post: Post;
-  showActions?: boolean;
-}
+### Users — `/users`
+| Method | Endpoint |
+|---|---|
+| POST | `/users/:userId/follow` |
+| DELETE | `/users/:userId/unfollow` |
 
-export function PostCard({ post, showActions = true }: PostCardProps) { ... }
+### Threads — `/threads`
+| Method | Endpoint | Body/Query | Notes |
+|---|---|---|---|
+| GET | `/threads?page=1&limit=10` | — | All threads |
+| GET | `/threads/following` | — | Following feed |
+| GET | `/threads/me?page=1&limit=10` | — | My posts |
+| GET | `/threads/me/replies?page=1&limit=10` | — | My replies |
+| GET | `/threads/:id` | — | Single thread |
+| GET | `/threads/:id/chain?page=1&limit=10` | — | Thread with all replies |
+| POST | `/threads` | formdata: `content, files(file), parent_id(optional for comment), clear_media` | Create or comment |
+| PUT | `/threads/:id` | formdata: `content, files(file), clear_media` | |
+| DELETE | `/threads/:id` | — | |
+| POST | `/threads/:id/like` | — | |
+| DELETE | `/threads/:id/unlike` | — | |
+| POST | `/threads/:id/bookmark` | — | |
+| DELETE | `/threads/:id/unbookmark` | — | |
+| POST | `/threads/:id/repost` | — | |
+| DELETE | `/threads/:id/unrepost` | — | |
+| POST | `/threads/:id/pin` | — | |
 
-// � Wrong
-export default function PostCard(props: any) { ... }
-```
+### Pins / Likes / Bookmarks
+| Method | Endpoint |
+|---|---|
+| GET | `/pins` |
+| GET | `/likes` |
+| GET | `/bookmarks` |
 
-### File Naming
-- Components: `PascalCase.tsx` (e.g., `PostCard.tsx`)
-- Hooks: `camelCase.ts` prefixed with `use` (e.g., `usePosts.ts`)
-- Utilities: `camelCase.ts` (e.g., `formatDate.ts`)
-- Types: `camelCase.ts` (e.g., `post.ts`)
+### Communities — `/communities`
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | `/communities?category=sport` | optional filter |
+| GET | `/communities/me` | |
+| GET | `/communities/joined` | |
+| GET | `/communities/:id` | |
+| POST | `/communities` | formdata: `name, description, rules, category, visibility(PUBLIC/PRIVATE), avatar(file), banner(file)` |
+| PUT | `/communities/:id` | formdata: same as create + `clear_avatar, clear_banner` |
+| DELETE | `/communities/:id` | |
+| POST | `/communities/:id/join` | |
+| DELETE | `/communities/:id/leave` | |
+| GET | `/communities/:id/members` | |
+| DELETE | `/communities/:id/members/:userId` | Kick member |
+| PATCH | `/communities/:id/members/:userId/role` | JSON: `{role: "MEMBER"}` |
+| POST | `/communities/:id/requests` | Request to join |
+| DELETE | `/communities/:id/requests` | Cancel request |
+| GET | `/communities/:id/requests` | Get pending requests |
+| POST | `/communities/:id/requests/:userId/approve` | |
+| POST | `/communities/:id/requests/:userId/decline` | |
+| GET | `/communities/:id/threads` | |
+| POST | `/communities/:id/threads` | formdata: `content, files(file), clear_media` |
 
-### Import Order (enforce always)
-```typescript
-// 1. React
-import { useState, useEffect } from 'react';
+### Orders/Premium — `/orders`
+| Method | Endpoint |
+|---|---|
+| POST | `/orders/premium` |
+| POST | `/orders/notification` |
+| GET | `/orders/me` |
+| GET | `/orders/:id` |
+| GET | `/orders` |
+| PATCH | `/orders/:id/cancel` |
 
-// 2. Next.js
-import Image from 'next/image';
-import Link from 'next/link';
+### Admin — `/admin` (Bearer required)
+| Method | Endpoint |
+|---|---|
+| GET | `/admin/users/?page=1&limit=10` |
+| GET | `/admin/users/:id` |
+| GET | `/admin/roles/` |
+| POST | `/admin/roles/` body: `{name}` |
+| GET | `/admin/roles/:id` |
+| PUT | `/admin/roles/:id` body: `{name}` |
+| DELETE | `/admin/roles/:id` |
 
-// 3. Third-party
-import { useQuery } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+### Faculties — `/faculties` (Bearer required)
+| Method | Endpoint |
+|---|---|
+| GET | `/faculties` |
+| GET | `/faculties/:id` |
+| POST | `/faculties` body: `{faculty_name}` |
+| PUT | `/faculties/:id` body: `{faculty_name}` |
+| DELETE | `/faculties/:id` |
 
-// 4. Internal - absolute paths only
-import { PostCard } from '@/components/PostCard';
-import { usePosts } from '@/hooks/usePosts';
-import type { Post } from '@/types/post';
-```
+---
+
+## Code Style & Auth Rules
+
+- No `any` type. No raw `fetch` in components — use `api` from `lib/api.ts`.
+- Named exports for components. Default export only in `app/` pages.
+- Never `useState` for fetched data — TanStack Query only. Skeletons required.
+- Optimistic updates on all mutations (like, follow, bookmark, repost).
+- **Auth is JWT (no NextAuth).** Store `BEARER_TOKEN` + `SID` in Zustand `authStore`. `api.ts` auto-attaches `Authorization: Bearer <token>`. Refresh via `POST /auth/refresh` with `{sid}`.
 
 ---
 
 ## Project Structure
 
-Follow exactly. No files outside this structure.
-
 ```
 src/
-├── app/                            # Next.js App Router
-│   ├── layout.tsx                  # Root layout (providers, fonts)
-│   ├── page.tsx                    # Home feed (authenticated)
-│   ├── not-found.tsx
-│   ├── error.tsx
-│   ├── (auth)/                     # Route group — no shared layout with main
-│   │   ├── layout.tsx
-│   │   ├── login/
-│   │   │   └── page.tsx
-│   │   └── signup/
-│   │       └── page.tsx
-│   ├── post/
-│   │   └── [id]/
-│   │       └── page.tsx            # Single post + thread view
-│   ├── user/
-│   │   └── [username]/
-│   │       └── page.tsx            # User profile
-│   ├── bookmarks/
-│   │   └── page.tsx
-│   ├── notifications/
-│   │   └── page.tsx
-│   ├── @modal/                     # Parallel route for modals
-│   │   ├── default.tsx             # Returns null
-│   │   ├── compose/
-│   │   │   └── page.tsx            # Post composition modal
-│   │   └── reply/
-│   │       └── [id]/
-│   │           └── page.tsx        # Reply modal
-│   └── api/
-│       ├── auth/
-│       │   └── [...nextauth]/route.ts
-│       └── uploadthing/
-│           └── route.ts
-│
-├── components/
+├── app/
+│   ├── (auth)/login/ signup/
 │   ├── feed/
-│   │   ├── Feed.tsx
-│   │   ├── FeedSkeleton.tsx
-│   │   └── InfiniteScrollTrigger.tsx
-│   ├── post/
-│   │   ├── PostCard.tsx
-│   │   ├── PostActions.tsx         # Like, repost, reply, bookmark buttons
-│   │   ├── PostHeader.tsx          # Avatar, username, timestamp
-│   │   ├── PostContent.tsx         # Text, image, video
-│   │   ├── PostComposer.tsx        # TipTap editor for creating posts
-│   │   └── PostSkeleton.tsx
-│   ├── comment/
-│   │   ├── CommentThread.tsx
-│   │   ├── CommentCard.tsx
-│   │   └── CommentComposer.tsx
-│   ├── layout/
-│   │   ├── Sidebar.tsx             # Left nav sidebar
-│   │   ├── RightPanel.tsx          # Right panel (who to follow, trends)
-│   │   ├── MobileNav.tsx           # Bottom nav for mobile
-│   │   └── TopBar.tsx
-│   ├── user/
-│   │   ├── Avatar.tsx
-│   │   ├── UserCard.tsx
-│   │   └── FollowButton.tsx
-│   └── ui/                         # shadcn/ui components live here
-│
+│   ├── threads/[id]/
+│   ├── profile/[userId]/
+│   ├── communities/[id]/
+│   ├── bookmarks/
+│   ├── notifications/
+│   └── @modal/ (compose, reply)
+├── components/
+│   ├── thread/ feed/ community/ layout/ user/ ui/
 ├── hooks/
-│   ├── usePosts.ts
-│   ├── usePost.ts
-│   ├── useComments.ts
-│   ├── useCreatePost.ts
-│   ├── useLikePost.ts
-│   ├── useRepost.ts
-│   ├── useBookmark.ts
-│   ├── useFollow.ts
-│   ├── useSocket.ts
-│   └── useNotifications.ts
-│
+│   ├── useThreads useThread useCreateThread useLikeThread
+│   ├── useBookmark useRepost useFollow useProfile
+│   ├── useCommunity useNotifications useSocket
 ├── stores/
-│   ├── authStore.ts                # Zustand: current user, session
-│   └── uiStore.ts                  # Zustand: sidebar, theme, modals
-│
+│   ├── authStore.ts   (BEARER_TOKEN, SID, user)
+│   └── uiStore.ts
 ├── lib/
-│   ├── api.ts                      # Fetch wrapper with base URL + auth headers
-│   ├── queryClient.ts              # TanStack Query client config
-│   ├── socket.ts                   # Socket.io singleton client
-│   ├── uploadthing.ts              # Uploadthing config
-│   └── utils.ts                    # cn(), formatDate(), etc.
-│
-├── types/
-│   ├── post.ts
-│   ├── user.ts
-│   ├── comment.ts
-│   ├── notification.ts
-│   └── index.ts                    # Re-exports all types
-│
-└── env.ts                           # Type-safe env vars (with Zod)
+│   ├── api.ts         (fetch wrapper, auto-attach Bearer)
+│   ├── queryClient.ts
+│   └── socket.ts
+└── types/
+    ├── thread.ts user.ts community.ts notification.ts order.ts
 ```
-
----
-
-## Type Definitions
-
-Canonical types. Use everywhere. Never redefine.
-
-```typescript
-// src/types/user.ts
-export interface User {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  bio: string | null;
-  university: string;
-  followerCount: number;
-  followingCount: number;
-  createdAt: Date;
-}
-
-// src/types/post.ts
-export interface Post {
-  id: string;
-  content: string;
-  mediaUrls: string[];
-  author: User;
-  parentId: string | null;        // null = original post, string = reply
-  repostOfId: string | null;      // null = original, string = repost
-  likeCount: number;
-  repostCount: number;
-  commentCount: number;
-  bookmarkCount: number;
-  isLiked: boolean;               // by current user
-  isReposted: boolean;            // by current user
-  isBookmarked: boolean;          // by current user
-  createdAt: Date;
-}
-
-// src/types/comment.ts
-export interface Comment {
-  id: string;
-  content: string;
-  author: User;
-  postId: string;
-  parentCommentId: string | null; // null = top-level, string = reply to comment
-  likeCount: number;
-  isLiked: boolean;
-  replies?: Comment[];
-  createdAt: Date;
-}
-
-// src/types/notification.ts
-export type NotificationType = 'like' | 'comment' | 'repost' | 'follow' | 'mention';
-
-export interface Notification {
-  id: string;
-  type: NotificationType;
-  actorId: string;
-  actor: User;
-  postId?: string;
-  read: boolean;
-  createdAt: Date;
-}
-```
-
----
-
-## State Management Patterns
-
-### TanStack Query (Server State)
-
-All API data lives in TanStack Query. Never use `useState` for fetched data.
-
-```typescript
-// src/hooks/usePosts.ts
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { Post } from '@/types';
-
-export function usePosts() {
-  return useInfiniteQuery({
-    queryKey: ['posts'],
-    queryFn: ({ pageParam = 0 }) => api.get<Post[]>(`/posts?page=${pageParam}`),
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.length === 20 ? pages.length : undefined,
-    staleTime: 1000 * 60,
-  });
-}
-```
-
-**Query Key Conventions:**
-```typescript
-['posts']                        // all posts feed
-['posts', postId]                // single post
-['posts', postId, 'comments']    // comments for a post
-['user', username]               // user profile
-['user', username, 'posts']      // user's posts
-['notifications']
-['bookmarks']
-```
-
-### Zustand (Client State)
-
-Only UI state and auth in Zustand. Never store fetched data here.
-
-```typescript
-// src/stores/authStore.ts
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { User } from '@/types';
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  setUser: (user: User | null) => void;
-  logout: () => void;
-}
-
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      isAuthenticated: false,
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
-      logout: () => set({ user: null, isAuthenticated: false }),
-    }),
-    { name: 'auth-store' }
-  )
-);
-
-// src/stores/uiStore.ts
-interface UIState {
-  sidebarOpen: boolean;
-  theme: 'light' | 'dark';
-  toggleSidebar: () => void;
-  toggleTheme: () => void;
-}
-
-export const useUIStore = create<UIState>()((set) => ({
-  sidebarOpen: true,
-  theme: 'light',
-  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  toggleTheme: () => set((s) => ({ theme: s.theme === 'light' ? 'dark' : 'light' })),
-}));
-```
-
----
-
-## Mutations Pattern
-
-All mutations use TanStack Query `useMutation` with optimistic updates.
-
-```typescript
-// src/hooks/useLikePost.ts
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { Post } from '@/types';
-
-export function useLikePost() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ postId, isLiked }: { postId: string; isLiked: boolean }) =>
-      isLiked
-        ? api.delete(`/posts/${postId}/like`)
-        : api.post(`/posts/${postId}/like`),
-
-    onMutate: async ({ postId, isLiked }) => {
-      await queryClient.cancelQueries({ queryKey: ['posts', postId] });
-
-      const previousPost = queryClient.getQueryData<Post>(['posts', postId]);
-
-      queryClient.setQueryData<Post>(['posts', postId], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          isLiked: !isLiked,
-          likeCount: isLiked ? old.likeCount - 1 : old.likeCount + 1,
-        };
-      });
-
-      return { previousPost };
-    },
-
-    onError: (_err, { postId }, context) => {
-      if (context?.previousPost) {
-        queryClient.setQueryData(['posts', postId], context.previousPost);
-      }
-    },
-
-    onSettled: (_data, _error, { postId }) => {
-      queryClient.invalidateQueries({ queryKey: ['posts', postId] });
-    },
-  });
-}
-```
-
-**Same optimistic update pattern for:** repost, bookmark, follow, comment like.
-
----
-
-## Form Pattern
-
-```typescript
-// Always use React Hook Form + Zod together
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-
-const createPostSchema = z.object({
-  content: z.string().min(1, 'Post cannot be empty').max(500, 'Too long'),
-  mediaUrls: z.array(z.string().url()).max(4).optional(),
-});
-
-type CreatePostInput = z.infer<typeof createPostSchema>;
-
-export function PostComposer() {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } =
-    useForm<CreatePostInput>({
-      resolver: zodResolver(createPostSchema),
-    });
-
-  const onSubmit = handleSubmit(async (data) => {
-    await createPost(data);
-  });
-
-  return (
-    <form onSubmit={onSubmit}>
-      {/* Fields here */}
-    </form>
-  );
-}
-```
-
----
-
-## API Client
-
-All HTTP requests through `src/lib/api.ts`. Never raw fetch in components or hooks.
-
-```typescript
-// src/lib/api.ts
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    credentials: 'include',
-  });
-
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message ?? 'Request failed');
-  }
-
-  return res.json() as Promise<T>;
-}
-
-export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
-  patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
-};
-```
-
----
-
-## Real-Time (Socket.io)
-
-Socket.io for live notifications and real-time feed updates only.
-
-```typescript
-// src/lib/socket.ts — Singleton pattern
-import { io, Socket } from 'socket.io-client';
-
-let socket: Socket | null = null;
-
-export function getSocket(): Socket {
-  if (!socket) {
-    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
-      withCredentials: true,
-      autoConnect: false,
-    });
-  }
-  return socket;
-}
-
-// src/hooks/useSocket.ts
-import { useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { getSocket } from '@/lib/socket';
-import { useAuthStore } from '@/stores/authStore';
-
-export function useSocket() {
-  const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuthStore();
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const socket = getSocket();
-    socket.connect();
-
-    socket.on('post:liked', ({ postId }: { postId: string }) => {
-      queryClient.invalidateQueries({ queryKey: ['posts', postId] });
-    });
-
-    socket.on('post:commented', ({ postId }: { postId: string }) => {
-      queryClient.invalidateQueries({ queryKey: ['posts', postId, 'comments'] });
-    });
-
-    socket.on('notification:new', () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [isAuthenticated, queryClient]);
-}
-```
-
----
-
-## Component Patterns
-
-### Loading States
-Every data-fetching component must handle loading + error states.
-
-```typescript
-export function Feed() {
-  const { data, isLoading, isError, fetchNextPage, hasNextPage } = usePosts();
-
-  if (isLoading) return <FeedSkeleton />;
-  if (isError) return <ErrorState message="Failed to load posts" />;
-
-  const posts = data.pages.flatMap((page) => page);
-
-  return (
-    <div>
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
-      <InfiniteScrollTrigger
-        onIntersect={fetchNextPage}
-        disabled={!hasNextPage}
-      />
-    </div>
-  );
-}
-```
-
-### Skeleton Components
-Every data component needs corresponding skeleton.
-
-```typescript
-// components/post/PostSkeleton.tsx
-import { Skeleton } from '@/components/ui/skeleton';
-
-export function PostSkeleton() {
-  return (
-    <div className="flex gap-3 p-4 border-b">
-      <Skeleton className="h-10 w-10 rounded-full" />
-      <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-      </div>
-    </div>
-  );
-}
-```
-
-### Infinite Scroll Trigger
-```typescript
-// components/feed/InfiniteScrollTrigger.tsx
-import { useEffect, useRef } from 'react';
-
-interface InfiniteScrollTriggerProps {
-  onIntersect: () => void;
-  disabled?: boolean;
-}
-
-export function InfiniteScrollTrigger({ onIntersect, disabled }: InfiniteScrollTriggerProps) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (disabled || !ref.current) return;
-
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) onIntersect();
-    });
-
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [onIntersect, disabled]);
-
-  return <div ref={ref} className="h-1" />;
-}
-```
-
----
-
-## UI Guidelines
-
-### Design Tokens
-```css
-/* globals.css */
-:root {
-  --primary: #1d4ed8;          /* University blue */
-  --primary-hover: #1e40af;
-  --background: #ffffff;
-  --surface: #f8fafc;
-  --border: #e2e8f0;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --destructive: #ef4444;
-  --success: #22c55e;
-}
-
-.dark {
-  --background: #0f172a;
-  --surface: #1e293b;
-  --border: #334155;
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-}
-```
-
-### Layout
-- Max content width: `640px` (feed), `600px` (post detail)
-- Sidebar width: `275px` (desktop)
-- Right panel width: `350px` (desktop)
-- Mobile breakpoint: `768px` (hide sidebar, show bottom nav)
-
-### shadcn/ui Components to Install
-```bash
-npx shadcn-ui@latest add button
-npx shadcn-ui@latest add card
-npx shadcn-ui@latest add input
-npx shadcn-ui@latest add textarea
-npx shadcn-ui@latest add dialog
-npx shadcn-ui@latest add dropdown-menu
-npx shadcn-ui@latest add avatar
-npx shadcn-ui@latest add skeleton
-npx shadcn-ui@latest add toast
-npx shadcn-ui@latest add tabs
-npx shadcn-ui@latest add separator
-npx shadcn-ui@latest add tooltip
-```
-
----
-
-## Features Checklist
-
-Implement in order:
-
-### Phase 1 — Foundation
-- [ ] Next.js 15 project setup with TypeScript strict mode
-- [ ] Tailwind + shadcn/ui setup
-- [ ] TanStack Query provider + Zustand stores
-- [ ] Auth layout + login/signup pages with NextAuth.js
-- [ ] Root layout with sidebar + right panel (desktop), bottom nav (mobile)
-
-### Phase 2 — Core Features
-- [ ] Home feed with infinite scroll (`/`)
-- [ ] PostCard component with all actions (like, repost, comment, bookmark, share)
-- [ ] Single post + thread view (`/post/[id]`)
-- [ ] Create post modal with TipTap editor and image upload
-- [ ] Reply to post (parallel route modal)
-- [ ] Comment thread with nested replies (max depth 3)
-
-### Phase 3 — Social Features
-- [ ] User profile page (`/user/[username]`)
-- [ ] Follow / Unfollow with optimistic update
-- [ ] Repost + Quote repost
-- [ ] Bookmarks page
-- [ ] Notifications page
-
-### Phase 4 — Real-Time
-- [ ] Socket.io integration
-- [ ] Live like/comment counts
-- [ ] Real-time notification badge
-- [ ] Live notification feed
-
-### Phase 5 — Polish
-- [ ] Dark mode toggle
-- [ ] Image upload via Uploadthing
-- [ ] Video post support
-- [ ] Search page
-- [ ] Responsive mobile layout
 
 ---
 
 ## Environment Variables
 
 ```env
-# .env.local
-
-# Backend
-NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
-
-# Auth
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=generate-with-openssl-rand-base64-32
-
-# Uploadthing
-UPLOADTHING_SECRET=
-NEXT_PUBLIC_UPLOADTHING_APP_ID=
+NEXT_PUBLIC_API_URL=http://localhost:3000/
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
 ```
 
----
+## Feature Phases
 
-## Setup Commands
-
-```bash
-# Create project
-npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir
-
-# Install all dependencies
-npm install @tanstack/react-query @tanstack/react-query-devtools zustand \
-  react-hook-form @hookform/resolvers zod \
-  next-auth socket.io-client \
-  uploadthing @uploadthing/react \
-  @tiptap/react @tiptap/starter-kit @tiptap/extension-placeholder \
-  clsx tailwind-merge class-variance-authority
-
-# Initialize shadcn/ui
-npx shadcn-ui@latest init
-
-# Install shadcn components
-npx shadcn-ui@latest add button card input textarea dialog dropdown-menu avatar skeleton toast tabs separator tooltip
-```
-
----
-
-## Common Mistakes to Avoid
-
-| � Don't | ✅ Do |
-|---|---|
-| Use `any` type | Use explicit types or `unknown` |
-| Store API data in `useState` | Use TanStack Query |
-| Use Context API for global state | Use Zustand |
-| Use raw `fetch` in components | Use `api` from `lib/api.ts` |
-| Create new socket on each render | Use singleton from `lib/socket.ts` |
-| Skip loading/error states | Always handle all async states |
-| Default export components | Named exports (except app/ pages) |
-| Skip optimistic updates on mutations | Always add optimistic updates |
-| Inline Zod schemas | Define schemas in `lib/validators.ts` |
-| Mix server/client components blindly | Mark client components with `'use client'` |
-
----
-
-## Portfolio Notes
-
-Project demonstrates:
-1. **Modern React architecture** — Server Components, parallel routes, streaming
-2. **Professional state management** — TanStack Query for async, Zustand for UI
-3. **Real-time capability** — WebSocket integration
-4. **Type safety** — strict TypeScript end-to-end
-5. **Scalable component design** — composable, single-responsibility
-6. **Performance mindset** — optimistic updates, infinite scroll, skeletons, caching
-
-When explaining: focus on **why** each decision was made, not just what was built.
+**Phase 1:** Project setup, JWT auth (login with OTP flow, register, refresh), Zustand authStore, api wrapper  
+**Phase 2:** Thread feed (infinite scroll), create/comment/reply threads, like/bookmark/repost  
+**Phase 3:** Profile page, follow/unfollow, pins, my posts/replies tabs  
+**Phase 4:** Communities (CRUD, join/leave, requests, member management, community threads)  
+**Phase 5:** Notifications, real-time via Socket.io, premium/orders  
+**Phase 6:** Admin panel, faculties management, dark mode, mobile responsive
