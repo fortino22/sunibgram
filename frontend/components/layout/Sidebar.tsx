@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { LogOut } from 'lucide-react';
 import { Icon } from '@/components/ui/Icon';
+import { useAuthStore } from '@/stores/authStore';
 
 interface NavItem {
   id: string;
@@ -111,7 +113,19 @@ function SidebarItem({ item, active }: SidebarItemProps) {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
   const [postHovered, setPostHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const initials = user?.username
+    ? user.username.slice(0, 2).toUpperCase()
+    : '??';
+
+  const handleLogout = () => {
+    logout();
+    router.replace('/login');
+  };
 
   const isActive = (item: NavItem): boolean => {
     if (item.href === '/') return pathname === '/';
@@ -206,60 +220,109 @@ export function Sidebar() {
       </div>
 
       {/* Profile footer */}
-      <Link
-        href="/profile"
-        style={{
-          padding: '14px 12px',
-          borderTop: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          textDecoration: 'none',
-          transition: 'background 0.12s ease',
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-      >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: 'oklch(58% 0.23 270)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 500,
-            fontSize: 14,
-            color: '#fff',
-            flexShrink: 0,
-            letterSpacing: '-0.02em',
-          }}
-        >
-          FO
-        </div>
-        <div className="sidebar-label" style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ borderTop: '1px solid var(--border)', position: 'relative' }}>
+        {menuOpen && (
           <div
             style={{
-              fontWeight: 500,
-              fontSize: 14,
-              color: 'var(--text-on-dark)',
-              letterSpacing: '-0.02em',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              position: 'absolute',
+              bottom: '100%',
+              left: 8,
+              right: 8,
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: 6,
+              marginBottom: 4,
+              zIndex: 50,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
             }}
           >
-            Tinoniger
+            <button
+              onClick={handleLogout}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '9px 12px',
+                background: 'none',
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                color: 'var(--coral)',
+                fontSize: 14,
+                fontFamily: 'inherit',
+                fontWeight: 500,
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--coral-soft)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+            >
+              <LogOut size={16} />
+              <span className="sidebar-label">Sign out</span>
+            </button>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-on-dark-muted)' }}>
-            @tinohitam
+        )}
+
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          style={{
+            width: '100%',
+            padding: '14px 12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: menuOpen ? 'var(--sidebar-hover)' : 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            transition: 'background 0.12s ease',
+            textAlign: 'left',
+          }}
+          onMouseEnter={(e) => { if (!menuOpen) e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
+          onMouseLeave={(e) => { if (!menuOpen) e.currentTarget.style.background = 'none'; }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: 'oklch(58% 0.23 270)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 500,
+              fontSize: 14,
+              color: '#fff',
+              flexShrink: 0,
+              letterSpacing: '-0.02em',
+            }}
+          >
+            {initials}
           </div>
-        </div>
-        <div className="sidebar-label">
-          <Icon name="more" size={16} color="var(--text-on-dark-muted)" />
-        </div>
-      </Link>
+          <div className="sidebar-label" style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontWeight: 500,
+                fontSize: 14,
+                color: 'var(--text-on-dark)',
+                letterSpacing: '-0.02em',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {user?.username ?? '—'}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-on-dark-muted)' }}>
+              {user?.email ?? ''}
+            </div>
+          </div>
+          <div className="sidebar-label">
+            <Icon name="more" size={16} color="var(--text-on-dark-muted)" />
+          </div>
+        </button>
+      </div>
     </nav>
   );
 }
