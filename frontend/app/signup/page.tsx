@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import Image from 'next/image';
 import { register as registerAccount, sendVerification, verifyVerification } from '@/lib/services/auth';
 
 // Schemas
@@ -278,23 +279,7 @@ export default function SignupPage() {
       <div style={{ width: '100%', maxWidth: 400 }}>
         {/* Logo */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'var(--accent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 600,
-              fontSize: 22,
-              color: '#fff',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            B
-          </div>
+          <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
         </div>
 
         {/* Step 1: Registration form */}
