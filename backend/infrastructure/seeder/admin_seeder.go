@@ -40,11 +40,12 @@ func SeedAdmin(db *gorm.DB) {
 	}
 
 	admin := model.User{
-		Name:     name,
-		UserName: username,
-		Email:    email,
-		Password: string(hashed),
-		RoleID:   adminRole.RoleID,
+		Name:      name,
+		UserName:  username,
+		Email:     email,
+		Password:  string(hashed),
+		RoleID:    adminRole.RoleID,
+		IsPremium: true,
 	}
 
 	if err := db.Create(&admin).Error; err != nil {
