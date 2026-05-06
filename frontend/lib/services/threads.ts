@@ -1,5 +1,7 @@
 import { api } from '../api';
 
+export type FormattedTime = string;
+
 export interface ThreadMessageResponse {
   message: string;
 }
@@ -9,51 +11,111 @@ export interface PaginationParams {
   limit?: number;
 }
 
-export interface ThreadAuthor {
-  id: number;
-  username: string;
-  is_premium: boolean;
-}
-
-export interface ThreadItem {
-  type: 'POST';
-  id: number;
-  parent_id: null | number;
-  root_id: null | number;
-  content: string;
-  created_at: string;
-  updated_at: string;
-  time_ago: string;
-  author: ThreadAuthor;
-  stats: {
-    likes: number;
-    reposts: number;
-    bookmarks: number;
-  };
-  media: Array<{
-    media_id: number;
-    url: string;
-  }>;
-  is_liked: boolean;
-  is_bookmarked: boolean;
-  is_reposted: boolean;
-  is_pin: boolean;
-}
-
-export interface ThreadListResponse {
-  data: ThreadItem[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-  };
+export interface ThreadMediaResponse {
+  media_id: number;
+  url: string;
 }
 
 export interface ThreadResponse {
-  data: ThreadItem;
-  message?: string;
-  [key: string]: unknown;
+  thread_id: number;
+  user_id: number;
+  username: string;
+  content: string;
+  parent_id: number | null;
+  root_id: number | null;
+  media: ThreadMediaResponse[];
+  like_count: number;
+  repost_count: number;
+  bookmark_count: number;
+  reposted_at?: FormattedTime;
+  created_at: FormattedTime;
+  updated_at: FormattedTime;
 }
+
+export interface PaginatedThreadsResponse {
+  data: ThreadResponse[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ReplyResponse {
+  parent: ThreadResponse | null;
+  reply: ThreadResponse;
+}
+
+export interface FeedAuthorFaculty {
+  faculty_id: number;
+  faculty_name: string;
+}
+
+export interface FeedAuthor {
+  id: number;
+  username: string;
+  is_premium: boolean;
+  faculty?: FeedAuthorFaculty;
+}
+
+export interface FeedStats {
+  likes: number;
+  reposts: number;
+  bookmarks: number;
+}
+
+export interface FeedCommunity {
+  id: number;
+  name: string;
+}
+
+export interface FeedParentContext {
+  id: number;
+  parent_id: number | null;
+  root_id: number | null;
+  community?: FeedCommunity;
+  author: FeedAuthor;
+  content: string;
+  media: ThreadMediaResponse[];
+  stats: FeedStats;
+  created_at: FormattedTime;
+  updated_at: FormattedTime;
+}
+
+export interface FeedItemResponse {
+  type: string;
+  parent_context?: FeedParentContext;
+  id: number;
+  parent_id: number | null;
+  root_id: number | null;
+  community?: FeedCommunity;
+  content: string;
+  created_at: FormattedTime;
+  updated_at: FormattedTime;
+  time_ago: string;
+  action_at?: FormattedTime;
+  reposted_at?: FormattedTime;
+  author: FeedAuthor;
+  stats: FeedStats;
+  media: ThreadMediaResponse[];
+  is_liked?: boolean;
+  is_bookmarked?: boolean;
+  is_reposted?: boolean;
+  is_pin?: boolean;
+}
+
+export interface FeedMeta {
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedFeedResponse {
+  data: FeedItemResponse[];
+  meta: FeedMeta;
+}
+
+export type ThreadListResponse = PaginatedFeedResponse;
+
+export type ThreadItem = FeedItemResponse;
 
 export interface ThreadMutationParams {
   content: string;

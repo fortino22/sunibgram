@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { register as registerAccount, sendVerification, verifyVerification } from '@/lib/services/auth';
 
 // Schemas
@@ -310,21 +311,7 @@ export default function SignupPage() {
                 padding: '28px 24px',
               }}
             >
-              {serverError && (
-                <div
-                  style={{
-                    padding: '10px 14px',
-                    background: 'var(--coral-soft)',
-                    border: '1px solid oklch(64% 0.18 25 / 0.3)',
-                    borderRadius: 10,
-                    fontSize: 13,
-                    color: 'var(--coral)',
-                    marginBottom: 20,
-                  }}
-                >
-                  {serverError}
-                </div>
-              )}
+              <ErrorAlert message={serverError} />
 
               <form onSubmit={onStep1} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <Field label="Full Name" error={errors.name?.message}>
@@ -490,21 +477,7 @@ export default function SignupPage() {
                 padding: '28px 24px',
               }}
             >
-              {serverError && (
-                <div
-                  style={{
-                    padding: '10px 14px',
-                    background: 'var(--coral-soft)',
-                    border: '1px solid oklch(64% 0.18 25 / 0.3)',
-                    borderRadius: 10,
-                    fontSize: 13,
-                    color: 'var(--coral)',
-                    marginBottom: 20,
-                  }}
-                >
-                  {serverError}
-                </div>
-              )}
+              <ErrorAlert message={serverError} />
 
               <div style={{ marginBottom: 24 }}>
                 <OtpInput value={otp} onChange={setOtp} />

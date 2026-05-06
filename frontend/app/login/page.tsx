@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
+import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { login, loginProd, sendLoginOtp } from '@/lib/services/auth';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -242,21 +243,7 @@ export default function LoginPage() {
             padding: '28px 24px',
           }}
         >
-          {serverError && (
-            <div
-              style={{
-                padding: '10px 14px',
-                background: 'var(--coral-soft)',
-                border: '1px solid oklch(64% 0.18 25 / 0.3)',
-                borderRadius: 10,
-                fontSize: 13,
-                color: 'var(--coral)',
-                marginBottom: 20,
-              }}
-            >
-              {serverError}
-            </div>
-          )}
+          <ErrorAlert message={serverError} />
 
           {step === 'credentials' ? (
           <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
