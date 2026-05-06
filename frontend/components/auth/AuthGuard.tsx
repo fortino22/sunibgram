@@ -2,23 +2,119 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/authStore';
+import { type AuthUser, useAuthStore } from '@/stores/authStore';
 
 interface AuthGuardProps {
   children: ReactNode;
 }
 
+interface JwtPayload {
+  user_id: number;
+  username: string;
+  email: string;
+  role_id: number;
+  role_name: string;
+}
+
+interface RefreshResponse {
+  access_token: string;
+  sid?: string;
+}
+
+function isJwtPayload(value: unknown): value is JwtPayload {
+  if (typeof value !== 'object' || value === null) return false;
+
+  const payload = value as Record<string, unknown>;
+  return (
+    typeof payload.user_id === 'number' &&
+    typeof payload.username === 'string' &&
+    typeof payload.email === 'string' &&
+    typeof payload.role_id === 'number' &&
+    typeof payload.role_name === 'string'
+  );
+}
+
+function decodeJwtUser(token: string): AuthUser | null {
+  try {
+    const payload: unknown = JSON.parse(atob(token.split('.')[1]));
+    if (!isJwtPayload(payload)) return null;
+
+    return {
+      id: payload.user_id,
+      username: payload.username,
+      email: payload.email,
+      roleId: payload.role_id,
+      roleName: payload.role_name,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isRefreshResponse(value: unknown): value is RefreshResponse {
+  if (typeof value !== 'object' || value === null) return false;
+
+  const response = value as Record<string, unknown>;
+  return (
+    typeof response.access_token === 'string' &&
+    (response.sid === undefined || typeof response.sid === 'string')
+  );
+}
+
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated } = useAuthStore();
+  const { token, isAuthenticated, initialized, setToken, setUser, setInitialized, logout } =
+    useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (token) {
+        setInitialized(true);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/refresh');
+
+        if (!response.ok) {
+          throw new Error('Refresh failed');
+        }
+
+        const data: unknown = await response.json();
+        if (!isRefreshResponse(data)) {
+          throw new Error('Invalid refresh response');
+        }
+
+        if (cancelled) return;
+
+        setToken(data.access_token, data.sid ?? null);
+        setUser(decodeJwtUser(data.access_token));
+        setInitialized(true);
+      } catch {
+        if (cancelled) return;
+
+        logout();
+        setInitialized(true);
+        router.replace('/login');
+      }
+    };
+
+    void refresh();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [logout, router, setInitialized, setToken, setUser, token]);
+
+  useEffect(() => {
+    if (initialized && !isAuthenticated) {
       router.replace('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [initialized, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
+  if (!initialized || !isAuthenticated) {
     return (
       <div
         style={{

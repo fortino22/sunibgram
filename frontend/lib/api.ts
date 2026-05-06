@@ -3,6 +3,9 @@ async function request<T>(
   options: RequestInit & { token?: string } = {}
 ): Promise<T> {
   const { token, ...fetchOptions } = options;
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${baseUrl}${normalizedPath}`;
 
   const headers: Record<string, string> = {};
 
@@ -15,7 +18,7 @@ async function request<T>(
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(path, {
+  const res = await fetch(url, {
     ...fetchOptions,
     headers: { ...headers, ...(fetchOptions.headers as Record<string, string> | undefined) },
   });

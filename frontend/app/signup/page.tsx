@@ -7,7 +7,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import Image from 'next/image';
+import { register as registerAccount, sendVerification, verifyVerification } from '@/lib/services/auth';
 
 // Schemas
 
@@ -168,7 +169,7 @@ export default function SignupPage() {
     setServerError('');
     setLoading(true);
     try {
-      await api.post('/api/verification/send', { email: data.email, type: 'REGISTER' });
+      await sendVerification(data.email, 'REGISTER');
       setFormData(data);
       setStep(2);
     } catch (err) {
@@ -189,21 +190,15 @@ export default function SignupPage() {
     setServerError('');
     setLoading(true);
     try {
-      await api.post('/api/verification/verify', {
+      await verifyVerification(formData.email, code, 'REGISTER');
+      await registerAccount({
+        name: formData.name,
+        username: formData.username,
         email: formData.email,
-        code,
-        type: 'REGISTER',
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
       });
-
-      const fd = new FormData();
-      fd.append('name', formData.name);
-      fd.append('username', formData.username);
-      fd.append('email', formData.email);
-      fd.append('password', formData.password);
-      fd.append('confirm_password', formData.confirmPassword);
-
-      await api.post('/api/auth/register', fd);
-      setStep(3);
+      router.replace('/login');
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Verification failed');
     } finally {
@@ -216,7 +211,7 @@ export default function SignupPage() {
     setServerError('');
     setLoading(true);
     try {
-      await api.post('/api/verification/send', { email: formData.email, type: 'REGISTER' });
+      await sendVerification(formData.email, 'REGISTER');
       setOtp(Array(6).fill(''));
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Failed to resend');
@@ -284,23 +279,7 @@ export default function SignupPage() {
       <div style={{ width: '100%', maxWidth: 400 }}>
         {/* Logo */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'var(--accent)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 600,
-              fontSize: 22,
-              color: '#fff',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            B
-          </div>
+          <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
         </div>
 
         {/* Step 1: Registration form */}

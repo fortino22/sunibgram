@@ -1,0 +1,132 @@
+import { api } from '../api';
+
+export type VerificationType = 'REGISTER' | 'FORGOT_PASSWORD';
+
+export interface AuthSessionResponse {
+  message: string;
+  access_token: string;
+  sid: string;
+  access_token_expires_at: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface RegisterParams {
+  name: string;
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  avatar?: File | null;
+  banner?: File | null;
+  bio?: string;
+  facultyId?: number | string;
+}
+
+export interface LoginParams {
+  email: string;
+  password: string;
+  otp: string;
+}
+
+export interface ChangePasswordParams {
+  oldPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface ForgotPasswordParams {
+  email: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+function appendOptionalString(formData: FormData, key: string, value?: string | number): void {
+  if (value !== undefined && value !== '') {
+    formData.append(key, String(value));
+  }
+}
+
+export function register(params: RegisterParams): Promise<MessageResponse> {
+  const formData = new FormData();
+  formData.append('name', params.name);
+  formData.append('username', params.username);
+  formData.append('email', params.email);
+  formData.append('password', params.password);
+  formData.append('confirm_password', params.confirmPassword);
+  appendOptionalString(formData, 'bio', params.bio);
+  appendOptionalString(formData, 'faculty_id', params.facultyId);
+
+  if (params.avatar) {
+    formData.append('avatar', params.avatar);
+  }
+  if (params.banner) {
+    formData.append('banner', params.banner);
+  }
+
+  return api.post<MessageResponse>('/api/auth/register', formData);
+}
+
+export function sendLoginOtp(email: string): Promise<MessageResponse> {
+  return api.post<MessageResponse>('/api/auth/login/otp/send', { email });
+}
+
+export function login(params: LoginParams): Promise<AuthSessionResponse> {
+  return api.post<AuthSessionResponse>('/api/auth/login', {
+    email: params.email,
+    password: params.password,
+    otp: params.otp,
+  });
+}
+
+export function loginProd(email: string, password: string): Promise<AuthSessionResponse> {
+  return api.post<AuthSessionResponse>('/api/auth/login/prod', { email, password });
+}
+
+export function refreshAuth(sid: string): Promise<AuthSessionResponse> {
+  return api.post<AuthSessionResponse>('/api/auth/refresh', { sid });
+}
+
+export function logout(token: string): Promise<MessageResponse> {
+  return api.post<MessageResponse>('/api/auth/logout', undefined, token);
+}
+
+export function changePassword(
+  params: ChangePasswordParams,
+  token: string
+): Promise<MessageResponse> {
+  return api.put<MessageResponse>(
+    '/api/auth/change-password',
+    {
+      old_password: params.oldPassword,
+      new_password: params.newPassword,
+      confirm_password: params.confirmPassword,
+    },
+    token
+  );
+}
+
+export function forgotPassword(params: ForgotPasswordParams): Promise<MessageResponse> {
+  return api.post<MessageResponse>('/api/auth/forgot-password', {
+    email: params.email,
+    new_password: params.newPassword,
+    confirm_password: params.confirmPassword,
+  });
+}
+
+export function sendVerification(
+  email: string,
+  type: VerificationType
+): Promise<MessageResponse> {
+  return api.post<MessageResponse>('/api/verification/send', { email, type });
+}
+
+export function verifyVerification(
+  email: string,
+  code: string,
+  type: VerificationType
+): Promise<MessageResponse> {
+  return api.post<MessageResponse>('/api/verification/verify', { email, code, type });
+}
