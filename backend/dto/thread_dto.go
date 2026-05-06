@@ -91,10 +91,10 @@ type FeedItemResponse struct {
 	Author        FeedAuthor            `json:"author"`
 	Stats         FeedStats             `json:"stats"`
 	Media         []ThreadMediaResponse `json:"media"`
-	IsLiked       bool                  `json:"is_liked"`
-	IsBookmarked  bool                  `json:"is_bookmarked"`
-	IsReposted    bool                  `json:"is_reposted"`
-	IsPinned      bool                  `json:"is_pin"`
+	IsLiked       *bool                 `json:"is_liked,omitempty"`
+	IsBookmarked  *bool                 `json:"is_bookmarked,omitempty"`
+	IsReposted    *bool                 `json:"is_reposted,omitempty"`
+	IsPinned      *bool                 `json:"is_pin,omitempty"`
 }
 
 type FeedMeta struct {

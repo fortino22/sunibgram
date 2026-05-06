@@ -223,7 +223,7 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildUserFeedItems(threads, parents, &claims.UserID),
+		Data: c.buildUserFeedItemsWithPin(threads, parents, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -242,7 +242,7 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildUserFeedItems(threads, parents, &claims.UserID),
+		Data: c.buildUserFeedItemsWithPin(threads, parents, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -261,6 +261,13 @@ func (c *ThreadController) loadMediaByThread(threads []model.Thread) map[uint][]
 }
 
 func (c *ThreadController) fb(viewerID *uint) webapiutils.FeedBuilder {
+	return webapiutils.FeedBuilder{
+		Media:    c.mediaService,
+		ViewerID: viewerID,
+	}
+}
+
+func (c *ThreadController) fbWithPin(viewerID *uint) webapiutils.FeedBuilder {
 	return webapiutils.FeedBuilder{
 		Media:       c.mediaService,
 		LikeSvc:     c.likeService,
@@ -281,7 +288,25 @@ func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint
 	return data
 }
 
+func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
+	mediaByThread := c.loadMediaByThread(threads)
+	data := make([]dto.FeedItemResponse, len(threads))
+	fb := c.fbWithPin(viewerID)
+	for i, t := range threads {
+		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
+	}
+	return data
+}
+
 func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
+	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fb(viewerID))
+}
+
+func (c *ThreadController) buildUserFeedItemsWithPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
+	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbWithPin(viewerID))
+}
+
+func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread, parents []*model.Thread, fb webapiutils.FeedBuilder) []dto.FeedItemResponse {
 	allIDs := make([]uint, 0, len(threads)*2)
 	for _, t := range threads {
 		allIDs = append(allIDs, t.ThreadID)
@@ -298,7 +323,6 @@ func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []
 	}
 
 	data := make([]dto.FeedItemResponse, len(threads))
-	fb := c.fb(viewerID)
 	for i, t := range threads {
 		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 		if parents[i] != nil {
@@ -319,7 +343,11 @@ func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []
 		data[i] = item
 	}
 	sort.SliceStable(data, func(i, j int) bool {
-		return data[i].IsPinned && !data[j].IsPinned
+		return boolValue(data[i].IsPinned) && !boolValue(data[j].IsPinned)
 	})
 	return data
+}
+
+func boolValue(v *bool) bool {
+	return v != nil && *v
 }

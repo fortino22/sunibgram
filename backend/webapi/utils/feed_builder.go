@@ -42,22 +42,26 @@ func AuthorField(u model.User) dto.FeedAuthor {
 	return a
 }
 
-func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isReposted, isPinned bool) {
+func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isReposted, isPinned *bool) {
 	if fb.ViewerID == nil {
 		return
 	}
 	uid := *fb.ViewerID
 	if fb.LikeSvc != nil {
-		isLiked = fb.LikeSvc.IsLiked(uid, threadID)
+		v := fb.LikeSvc.IsLiked(uid, threadID)
+		isLiked = &v
 	}
 	if fb.BookmarkSvc != nil {
-		isBookmarked = fb.BookmarkSvc.IsBookmarked(uid, threadID)
+		v := fb.BookmarkSvc.IsBookmarked(uid, threadID)
+		isBookmarked = &v
 	}
 	if fb.ThreadSvc != nil {
-		isReposted = fb.ThreadSvc.IsReposted(uid, threadID)
+		v := fb.ThreadSvc.IsReposted(uid, threadID)
+		isReposted = &v
 	}
 	if fb.PinSvc != nil {
-		isPinned = fb.PinSvc.IsPinned(uid, threadID)
+		v := fb.PinSvc.IsPinned(uid, threadID)
+		isPinned = &v
 	}
 	return
 }
