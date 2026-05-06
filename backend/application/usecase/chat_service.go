@@ -10,13 +10,15 @@ import (
 	"github.com/sunibgram/domain/service"
 )
 
+
 type ChatService struct {
-	chatRepo repository.IChatRepository
-	roomRepo repository.IChatRoomRepository
+	chatRepo     repository.IChatRepository
+	roomRepo     repository.IChatRoomRepository
+	chatReadRepo repository.IChatReadRepository
 }
 
-func NewChatService(chatRepo repository.IChatRepository, roomRepo repository.IChatRoomRepository) service.IChatService {
-	return &ChatService{chatRepo: chatRepo, roomRepo: roomRepo}
+func NewChatService(chatRepo repository.IChatRepository, roomRepo repository.IChatRoomRepository, chatReadRepo repository.IChatReadRepository) service.IChatService {
+	return &ChatService{chatRepo: chatRepo, roomRepo: roomRepo, chatReadRepo: chatReadRepo}
 }
 
 func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string) (*model.Chat, error) {
@@ -62,9 +64,90 @@ func (s *ChatService) Unsend(ctx context.Context, chatID, senderID uint) error {
 	return s.chatRepo.SoftDelete(chatID)
 }
 
+func (s *ChatService) UpdateMessage(ctx context.Context, chatID, senderID uint, message string) error {
+	trimmed := strings.TrimSpace(message)
+	if trimmed == "" {
+		return errors.New("message must not be empty")
+	}
+
+	chat, err := s.chatRepo.FindByID(chatID)
+	if err != nil {
+		return errors.New("chat not found")
+	}
+	if chat.SenderID != senderID {
+		return errors.New("forbidden")
+	}
+	return s.chatRepo.UpdateMessage(chatID, trimmed)
+}
+
 func (s *ChatService) MarkRead(roomID, userID uint) error {
 	if !s.roomRepo.IsMember(roomID, userID) {
 		return errors.New("forbidden")
 	}
-	return s.chatRepo.MarkRoomRead(roomID, userID)
+
+	room, err := s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return errors.New("chat room not found")
+	}
+	if room.Type == model.ChatRoomTypePrivate {
+		return s.chatRepo.MarkRoomRead(roomID, userID)
+	}
+
+	chats, _, err := s.chatRepo.FindByRoomID(roomID, 1, 100000)
+	if err != nil {
+		return err
+	}
+	for i := range chats {
+		if chats[i].SenderID == userID {
+			continue
+		}
+		if err := s.chatReadRepo.MarkRead(chats[i].ChatID, userID); err != nil {
+			return err
+		}
+		if s.chatReadRepo.CountReads(chats[i].ChatID) >= s.roomRepo.CountMembers(roomID)-1 {
+			_ = s.chatRepo.UpdateIsRead(chats[i].ChatID)
+		}
+	}
+	return nil
+}
+
+func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs []uint, userID uint) ([]service.ChatMarkResult, error) {
+	if !s.roomRepo.IsMember(roomID, userID) {
+		return nil, errors.New("forbidden")
+	}
+	room, err := s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return nil, errors.New("chat room not found")
+	}
+
+	results := make([]service.ChatMarkResult, 0, len(chatIDs))
+	for _, chatID := range chatIDs {
+		chat, err := s.chatRepo.FindByID(chatID)
+		if err != nil {
+			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "not_found"})
+			continue
+		}
+		if chat.RoomID != roomID || chat.SenderID == userID {
+			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "skipped"})
+			continue
+		}
+		if chat.IsRead {
+			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "already_read"})
+			continue
+		}
+		if room.Type == model.ChatRoomTypePrivate {
+			if err := s.chatRepo.UpdateIsRead(chatID); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := s.chatReadRepo.MarkRead(chatID, userID); err != nil {
+				return nil, err
+			}
+			if s.chatReadRepo.CountReads(chatID) >= s.roomRepo.CountMembers(roomID)-1 {
+				_ = s.chatRepo.UpdateIsRead(chatID)
+			}
+		}
+		results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "marked"})
+	}
+	return results, nil
 }

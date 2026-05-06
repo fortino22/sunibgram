@@ -14,5 +14,7 @@ func registerChatRoutes(api fiber.Router, chatRoomCtrl *controller.ChatRoomContr
 	chats.Get("/rooms/:id", chatRoomCtrl.GetByID)
 	chats.Post("/rooms/:room_id/messages", chatCtrl.Send)
 	chats.Get("/rooms/:room_id/messages", chatCtrl.GetMessages)
+	chats.Patch("/messages/:id", chatCtrl.EditMessage)
+	chats.Post("/messages/read", chatCtrl.MarkMessagesRead)
 	chats.Delete("/messages/:id", chatCtrl.Unsend)
 }

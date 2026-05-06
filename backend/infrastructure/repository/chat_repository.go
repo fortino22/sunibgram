@@ -69,3 +69,15 @@ func (r *ChatRepository) MarkRoomRead(roomID, userID uint) error {
 		Where("room_id = ? AND sender_id != ? AND is_read = false AND deleted_at IS NULL", roomID, userID).
 		Update("is_read", true).Error
 }
+
+func (r *ChatRepository) UpdateMessage(chatID uint, message string) error {
+	return r.writeDB.Model(&model.Chat{}).
+		Where("chat_id = ? AND deleted_at IS NULL", chatID).
+		Update("message", message).Error
+}
+
+func (r *ChatRepository) UpdateIsRead(chatID uint) error {
+	return r.writeDB.Model(&model.Chat{}).
+		Where("chat_id = ? AND deleted_at IS NULL", chatID).
+		Update("is_read", true).Error
+}

@@ -48,6 +48,7 @@ func main() {
 	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB)
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
 	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
+	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -71,7 +72,7 @@ func main() {
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo)
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
-	chatService := usecase.NewChatService(chatRepo, chatRoomRepo)
+	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
 
 	// --- Controllers ---

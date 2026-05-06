@@ -55,6 +55,16 @@ func (r *ChatRoomRepository) IsMember(roomID, userID uint) bool {
 	return count > 0
 }
 
+func (r *ChatRoomRepository) CountMembers(roomID uint) int64 {
+	var count int64
+	if err := r.readDB.Table("chat_room_members").
+		Where("room_id = ?", roomID).
+		Count(&count).Error; err != nil {
+		return 0
+	}
+	return count
+}
+
 func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 	member := model.ChatRoomMember{RoomID: roomID, UserID: userID, JoinedAt: time.Now()}
 	return r.writeDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&member).Error

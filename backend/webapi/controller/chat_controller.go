@@ -75,11 +75,11 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	chats, total, err := c.chatService.GetMessages(uint(roomID), claims.UserID, page, limit)
-	if err != nil {
+	if err := c.chatService.MarkRead(uint(roomID), claims.UserID); err != nil {
 		return chatError(ctx, err)
 	}
-	if err := c.chatService.MarkRead(uint(roomID), claims.UserID); err != nil {
+	chats, total, err := c.chatService.GetMessages(uint(roomID), claims.UserID, page, limit)
+	if err != nil {
 		return chatError(ctx, err)
 	}
 
@@ -110,6 +110,53 @@ func (c *ChatController) Unsend(ctx *fiber.Ctx) error {
 		return chatError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "chat unsent successfully"})
+}
+
+func (c *ChatController) EditMessage(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat id"})
+	}
+
+	var req dto.EditMessageRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	if err := c.chatService.UpdateMessage(ctx.Context(), uint(id), claims.UserID, req.Message); err != nil {
+		return chatError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "chat updated successfully"})
+}
+
+func (c *ChatController) MarkMessagesRead(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	var req dto.MarkMessagesReadRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+	if req.RoomID == 0 || len(req.ChatIDs) == 0 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	results, err := c.chatService.MarkMessagesRead(ctx.Context(), req.RoomID, req.ChatIDs, claims.UserID)
+	if err != nil {
+		return chatError(ctx, err)
+	}
+	data := make([]fiber.Map, len(results))
+	for i, r := range results {
+		data[i] = fiber.Map{"chat_id": r.ChatID, "status": r.Status}
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"results": data})
 }
 
 func (c *ChatController) loadMediaByChat(chats []model.Chat) map[uint][]model.ChatMedia {

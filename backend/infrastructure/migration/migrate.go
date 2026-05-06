@@ -33,6 +33,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.ChatRoomMember{},
 		&model.Chat{},
 		&model.ChatMedia{},
+		&model.ChatRead{},
 	}
 
 	for _, m := range models {

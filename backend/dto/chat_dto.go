@@ -45,3 +45,12 @@ type CreateGroupChatRoomRequest struct {
 type SendMessageRequest struct {
 	Message *string `json:"message"`
 }
+
+type EditMessageRequest struct {
+	Message string `json:"message"`
+}
+
+type MarkMessagesReadRequest struct {
+	RoomID  uint   `json:"room_id"`
+	ChatIDs []uint `json:"chat_ids"`
+}
