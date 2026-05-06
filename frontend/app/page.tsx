@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { ThreadCard } from '@/components/thread/ThreadCard';
 import { Icon } from '@/components/ui/Icon';
+import { useThreads } from '@/hooks/useThreads';
+import type { ThreadItem } from '@/lib/services/threads';
 
 type FeedTabId = 'for-you' | 'following' | 'cs' | 'events';
 
@@ -205,6 +208,7 @@ function PostComposerShell() {
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<FeedTabId>('for-you');
+  const threadsQuery = useThreads();
 
   return (
     <div>
@@ -247,8 +251,27 @@ export default function HomePage() {
       {/* Composer shell */}
       <PostComposerShell />
 
-      {/* Empty feed state */}
-      <EmptyFeed tab={activeTab} />
+      {activeTab === 'for-you' ? (
+        <div>
+          {threadsQuery.isLoading
+            ? Array.from({ length: 3 }, (_, index) => (
+                <div
+                  key={index}
+                  style={{
+                    background: 'var(--bg-subtle)',
+                    borderRadius: '8px',
+                    height: 80,
+                    marginBottom: 8,
+                  }}
+                />
+              ))
+            : threadsQuery.data?.data.map((thread: ThreadItem) => (
+                <ThreadCard key={thread.id} thread={thread} />
+              ))}
+        </div>
+      ) : (
+        <EmptyFeed tab={activeTab} />
+      )}
     </div>
   );
 }
