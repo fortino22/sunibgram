@@ -149,7 +149,7 @@ export function Sidebar() {
               letterSpacing: '-0.02em',
             }}
           >
-            Binusgram
+            Sunibgram
           </span>
         </div>
         <div

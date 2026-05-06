@@ -1,37 +1,19 @@
 'use client';
 
-import type { CSSProperties, MouseEvent } from 'react';
 import { Bookmark, Heart, MessageCircle, Repeat2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import type { ThreadItem } from '@/lib/services/threads';
+import { ActionButton } from './ActionButton';
 
 interface ThreadCardProps {
   thread: ThreadItem;
-}
-
-const actionButtonStyle: CSSProperties = {
-  border: 0,
-  borderRadius: 999,
-  background: 'transparent',
-  color: 'inherit',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  minWidth: 44,
-  height: 32,
-  padding: '0 8px',
-  font: 'inherit',
-};
-
-function setHoverBackground(event: MouseEvent<HTMLButtonElement>, hovered: boolean) {
-  event.currentTarget.style.background = hovered ? 'var(--bg-subtle)' : 'transparent';
 }
 
 function truncate(value: string, maxLength = 140) {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }
 
-function mediaGridStyle(count: number): CSSProperties {
+function mediaGridStyle(count: number): React.CSSProperties {
   return {
     display: 'grid',
     gridTemplateColumns: count === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
@@ -40,9 +22,8 @@ function mediaGridStyle(count: number): CSSProperties {
   };
 }
 
-function mediaImageStyle(count: number): CSSProperties {
+function mediaImageStyle(count: number): React.CSSProperties {
   const maxHeight = count === 1 ? 400 : count === 2 ? 250 : 200;
-
   return {
     width: '100%',
     maxHeight,
@@ -54,6 +35,7 @@ function mediaImageStyle(count: number): CSSProperties {
 }
 
 export function ThreadCard({ thread }: ThreadCardProps) {
+  const router = useRouter();
   const isLiked = thread.is_liked === true;
   const isReposted = thread.is_reposted === true;
   const isBookmarked = thread.is_bookmarked === true;
@@ -62,10 +44,12 @@ export function ThreadCard({ thread }: ThreadCardProps) {
 
   return (
     <article
+      onClick={() => router.push(`/thread/${thread.id}`)}
       style={{
         borderBottom: '1px solid var(--border)',
         padding: 16,
         background: 'var(--bg-card)',
+        cursor: 'pointer',
       }}
     >
       {isRepost && (
@@ -193,52 +177,36 @@ export function ThreadCard({ thread }: ThreadCardProps) {
               maxWidth: 360,
             }}
           >
-            <button
-              type="button"
+            <ActionButton
               aria-label="Like"
-              onClick={() => {}}
-              onMouseEnter={(event) => setHoverBackground(event, true)}
-              onMouseLeave={(event) => setHoverBackground(event, false)}
-              style={{ ...actionButtonStyle, color: isLiked ? '#f04452' : 'var(--text-tertiary)' }}
+              onClick={(e) => e.stopPropagation()}
+              color={isLiked ? '#f04452' : undefined}
             >
               <Heart size={18} strokeWidth={2} fill={isLiked ? '#f04452' : 'none'} />
               <span>{thread.stats.likes}</span>
-            </button>
+            </ActionButton>
 
-            <button
-              type="button"
-              aria-label="Comment"
-              onClick={() => {}}
-              onMouseEnter={(event) => setHoverBackground(event, true)}
-              onMouseLeave={(event) => setHoverBackground(event, false)}
-              style={actionButtonStyle}
-            >
+            <ActionButton aria-label="Comment" onClick={(e) => e.stopPropagation()}>
               <MessageCircle size={18} strokeWidth={2} />
-            </button>
+            </ActionButton>
 
-            <button
-              type="button"
+            <ActionButton
               aria-label="Repost"
-              onClick={() => {}}
-              onMouseEnter={(event) => setHoverBackground(event, true)}
-              onMouseLeave={(event) => setHoverBackground(event, false)}
-              style={{ ...actionButtonStyle, color: isReposted ? 'var(--accent)' : 'var(--text-tertiary)' }}
+              onClick={(e) => e.stopPropagation()}
+              color={isReposted ? 'var(--accent)' : undefined}
             >
               <Repeat2 size={18} strokeWidth={2} />
               <span>{thread.stats.reposts}</span>
-            </button>
+            </ActionButton>
 
-            <button
-              type="button"
+            <ActionButton
               aria-label="Bookmark"
-              onClick={() => {}}
-              onMouseEnter={(event) => setHoverBackground(event, true)}
-              onMouseLeave={(event) => setHoverBackground(event, false)}
-              style={{ ...actionButtonStyle, color: isBookmarked ? 'var(--accent)' : 'var(--text-tertiary)' }}
+              onClick={(e) => e.stopPropagation()}
+              color={isBookmarked ? 'var(--accent)' : undefined}
             >
               <Bookmark size={18} strokeWidth={2} fill={isBookmarked ? 'var(--accent)' : 'none'} />
               <span>{thread.stats.bookmarks}</span>
-            </button>
+            </ActionButton>
           </div>
         </div>
       </div>
