@@ -52,15 +52,14 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 		return chatError(ctx, err)
 	}
 
-	uploads := make([]model.ChatMedia, 0)
 	if len(files) > 0 {
-		uploads, err = c.chatMediaService.Upload(ctx.Context(), chat.ChatID, claims.UserID, files)
+		_, err = c.chatMediaService.Upload(ctx.Context(), chat.ChatID, claims.UserID, files)
 		if err != nil {
 			return chatError(ctx, err)
 		}
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(c.toChatResponse(chat, uploads))
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "chat sent successfully"})
 }
 
 func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {

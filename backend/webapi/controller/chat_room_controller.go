@@ -34,7 +34,7 @@ func (c *ChatRoomController) CreatePrivate(ctx *fiber.Ctx) error {
 	if err != nil {
 		return chatError(ctx, err)
 	}
-	return ctx.Status(fiber.StatusCreated).JSON(toChatRoomResponse(room))
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"room_id": room.RoomID})
 }
 
 func (c *ChatRoomController) CreateGroup(ctx *fiber.Ctx) error {
@@ -52,7 +52,7 @@ func (c *ChatRoomController) CreateGroup(ctx *fiber.Ctx) error {
 	if err != nil {
 		return chatError(ctx, err)
 	}
-	return ctx.Status(fiber.StatusCreated).JSON(toChatRoomResponse(room))
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"room_id": room.RoomID})
 }
 
 func (c *ChatRoomController) GetMyRooms(ctx *fiber.Ctx) error {
