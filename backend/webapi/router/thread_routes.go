@@ -13,12 +13,13 @@ func registerThreadRoutes(
 	threadPinCtrl *controller.ThreadPinController,
 	repostCtrl *controller.RepostController,
 	auth fiber.Handler,
+	optionalAuth fiber.Handler,
 ) {
 	api.Get("/likes", auth, likeCtrl.GetMyLikes)
 	api.Get("/bookmarks", auth, bookmarkCtrl.GetMyBookmarks)
 
 	threads := api.Group("/threads")
-	threads.Get("/", threadCtrl.GetRoots)
+	threads.Get("/", optionalAuth, threadCtrl.GetRoots)
 
 	threadsAuth := api.Group("/threads", auth)
 	threadsAuth.Post("/", threadCtrl.Create)

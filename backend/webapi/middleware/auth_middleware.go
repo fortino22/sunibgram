@@ -49,6 +49,32 @@ func Auth() fiber.Handler {
 	}
 }
 
+func OptionalAuth() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		header := c.Get("Authorization")
+		if !strings.HasPrefix(header, "Bearer ") {
+			return c.Next()
+		}
+
+		tokenStr := strings.TrimPrefix(header, "Bearer ")
+		claims, err := parseAccessToken(tokenStr)
+		if err != nil {
+			return c.Next()
+		}
+
+		sid, _ := claims["sid"].(string)
+		if sid != "" && sessionCache != nil {
+			var uid uint
+			if err := sessionCache.Get(context.Background(), fmt.Sprintf("session:%s", sid), &uid); err != nil {
+				return c.Next()
+			}
+		}
+
+		c.Locals(LocalClaims, claims)
+		return c.Next()
+	}
+}
+
 func AdminOnly() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		claims, ok := c.Locals(LocalClaims).(jwt.MapClaims)

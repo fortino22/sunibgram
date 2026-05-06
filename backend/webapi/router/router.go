@@ -29,11 +29,12 @@ func Register(
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
+	optionalAuth := middleware.OptionalAuth()
 
 	registerAuthRoutes(api, authCtrl, verificationCtrl, auth)
 	registerVerificationRoutes(api, verificationCtrl)
 	registerProfileRoutes(api, profileCtrl, auth)
-	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, auth)
+	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, auth, optionalAuth)
 	registerEmailRoutes(api, emailCtrl, auth)
 	registerUserRoutes(api, followCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl)

@@ -58,6 +58,12 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	var viewerID *uint
+	if ok {
+		viewerID = &claims.UserID
+	}
+
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
@@ -66,8 +72,13 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
+	data := c.buildFeedItemsNoPin(threads, viewerID)
+	if viewerID == nil {
+		c.ensureFalseViewerFlags(data)
+	}
+
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildFeedItems(threads, nil),
+		Data: data,
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -95,7 +106,7 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 	}
 
 	media, _ := c.mediaService.GetByThreadID(uint(id))
-	return ctx.Status(fiber.StatusOK).JSON(c.fb(&claims.UserID).ToFeedItem(thread, media))
+	return ctx.Status(fiber.StatusOK).JSON(c.fbNoPin(&claims.UserID).ToFeedItem(thread, media))
 }
 
 func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
@@ -129,7 +140,7 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildFeedItems(threads, &claims.UserID),
+		Data: c.buildFeedItemsNoPin(threads, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -204,7 +215,7 @@ func (c *ThreadController) GetFollowingFeed(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildUserFeedItems(threads, parents, &claims.UserID),
+		Data: c.buildUserFeedItemsNoPin(threads, parents, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -278,10 +289,30 @@ func (c *ThreadController) fbWithPin(viewerID *uint) webapiutils.FeedBuilder {
 	}
 }
 
+func (c *ThreadController) fbNoPin(viewerID *uint) webapiutils.FeedBuilder {
+	return webapiutils.FeedBuilder{
+		Media:       c.mediaService,
+		LikeSvc:     c.likeService,
+		BookmarkSvc: c.bookmarkService,
+		ThreadSvc:   c.threadService,
+		ViewerID:    viewerID,
+	}
+}
+
 func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	data := make([]dto.FeedItemResponse, len(threads))
 	fb := c.fb(viewerID)
+	for i, t := range threads {
+		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
+	}
+	return data
+}
+
+func (c *ThreadController) buildFeedItemsNoPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
+	mediaByThread := c.loadMediaByThread(threads)
+	data := make([]dto.FeedItemResponse, len(threads))
+	fb := c.fbNoPin(viewerID)
 	for i, t := range threads {
 		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 	}
@@ -300,6 +331,10 @@ func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerI
 
 func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fb(viewerID))
+}
+
+func (c *ThreadController) buildUserFeedItemsNoPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
+	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbNoPin(viewerID))
 }
 
 func (c *ThreadController) buildUserFeedItemsWithPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
@@ -350,4 +385,19 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 
 func boolValue(v *bool) bool {
 	return v != nil && *v
+}
+
+func (c *ThreadController) ensureFalseViewerFlags(data []dto.FeedItemResponse) {
+	falseVal := false
+	for i := range data {
+		if data[i].IsLiked == nil {
+			data[i].IsLiked = &falseVal
+		}
+		if data[i].IsBookmarked == nil {
+			data[i].IsBookmarked = &falseVal
+		}
+		if data[i].IsReposted == nil {
+			data[i].IsReposted = &falseVal
+		}
+	}
 }
