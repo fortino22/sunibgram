@@ -370,7 +370,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 				Author:    webapiutils.AuthorField(p.User),
 				Content:   p.Content,
 				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),
-				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount},
+				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
 				CreatedAt: dtoutils.Wrap(p.CreatedAt),
 				UpdatedAt: dtoutils.Wrap(p.UpdatedAt),
 			}

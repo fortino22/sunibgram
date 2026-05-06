@@ -22,6 +22,7 @@ type ThreadResponse struct {
 	LikeCount     int                   `json:"like_count"`
 	RepostCount   int                   `json:"repost_count"`
 	BookmarkCount int                   `json:"bookmark_count"`
+	CommentCount  int                   `json:"comment_count"`
 	RepostedAt    *utils.FormattedTime  `json:"reposted_at,omitempty"`
 	CreatedAt     utils.FormattedTime   `json:"created_at"`
 	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
@@ -55,6 +56,7 @@ type FeedStats struct {
 	Likes     int `json:"likes"`
 	Reposts   int `json:"reposts"`
 	Bookmarks int `json:"bookmarks"`
+	Comments  int `json:"comments"`
 }
 
 type FeedParentContext struct {

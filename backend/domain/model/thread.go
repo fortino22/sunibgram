@@ -25,6 +25,7 @@ type Thread struct {
 	LikeCount        int        `gorm:"not null;default:0"`
 	RepostCount      int        `gorm:"not null;default:0"`
 	BookmarkCount    int        `gorm:"not null;default:0"`
+	CommentCount     int        `gorm:"not null;default:0"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

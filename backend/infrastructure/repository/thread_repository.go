@@ -82,6 +82,12 @@ func (r *threadCached) Save(thread *model.Thread) error {
 			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
 	}
+	if thread.ParentID != nil {
+		r.db.writeDB.Model(&model.Thread{}).
+			Where("thread_id = ?", *thread.ParentID).
+			UpdateColumn("comment_count", gorm.Expr("comment_count + 1"))
+		r.patchCachedCount(*thread.ParentID, "comment_count", 1)
+	}
 	r.invalidate(context.Background(), thread.ThreadID, thread.RootID, thread.CommunityID)
 	return nil
 }
@@ -296,6 +302,8 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 		thread.RepostCount = max(thread.RepostCount+delta, 0)
 	case "bookmark_count":
 		thread.BookmarkCount = max(thread.BookmarkCount+delta, 0)
+	case "comment_count":
+		thread.CommentCount = max(thread.CommentCount+delta, 0)
 	}
 	r.cache.Set(ctx, key, thread, r.ttl)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
@@ -304,13 +312,19 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 
 func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
-	r.db.readDB.Select("thread_id, root_id, type, original_thread_id, community_id").First(&thread, id)
+	r.db.readDB.Select("thread_id, parent_id, root_id, type, original_thread_id, community_id").First(&thread, id)
 
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", -1)
+	}
+	if thread.ParentID != nil {
+		r.db.writeDB.Model(&model.Thread{}).
+			Where("thread_id = ?", *thread.ParentID).
+			UpdateColumn("comment_count", gorm.Expr("GREATEST(comment_count - 1, 0)"))
+		r.patchCachedCount(*thread.ParentID, "comment_count", -1)
 	}
 
 	ctx := context.Background()
