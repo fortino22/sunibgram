@@ -13,12 +13,24 @@ import (
 )
 
 type LikeController struct {
-	likeService  service.ILikeService
-	mediaService service.IThreadMediaService
+	likeService     service.ILikeService
+	bookmarkService service.IBookmarkService
+	threadService   service.IThreadService
+	mediaService    service.IThreadMediaService
 }
 
-func NewLikeController(likeService service.ILikeService, mediaService service.IThreadMediaService) *LikeController {
-	return &LikeController{likeService: likeService, mediaService: mediaService}
+func NewLikeController(
+	likeService service.ILikeService,
+	bookmarkService service.IBookmarkService,
+	threadService service.IThreadService,
+	mediaService service.IThreadMediaService,
+) *LikeController {
+	return &LikeController{
+		likeService:     likeService,
+		bookmarkService: bookmarkService,
+		threadService:   threadService,
+		mediaService:    mediaService,
+	}
 }
 
 func (c *LikeController) Like(ctx *fiber.Ctx) error {
@@ -85,7 +97,13 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 	}
 
 	data := make([]dto.FeedItemResponse, len(threads))
-	fb := webapiutils.FeedBuilder{Media: c.mediaService, LikeSvc: c.likeService, ViewerID: &claims.UserID}
+	fb := webapiutils.FeedBuilder{
+		Media:       c.mediaService,
+		LikeSvc:     c.likeService,
+		BookmarkSvc: c.bookmarkService,
+		ThreadSvc:   c.threadService,
+		ViewerID:    &claims.UserID,
+	}
 	for i, t := range threads {
 		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 		wrapped := dtoutils.Wrap(timestamps[i])

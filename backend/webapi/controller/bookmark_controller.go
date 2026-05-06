@@ -14,11 +14,23 @@ import (
 
 type BookmarkController struct {
 	bookmarkService service.IBookmarkService
+	likeService     service.ILikeService
+	threadService   service.IThreadService
 	mediaService    service.IThreadMediaService
 }
 
-func NewBookmarkController(bookmarkService service.IBookmarkService, mediaService service.IThreadMediaService) *BookmarkController {
-	return &BookmarkController{bookmarkService: bookmarkService, mediaService: mediaService}
+func NewBookmarkController(
+	bookmarkService service.IBookmarkService,
+	likeService service.ILikeService,
+	threadService service.IThreadService,
+	mediaService service.IThreadMediaService,
+) *BookmarkController {
+	return &BookmarkController{
+		bookmarkService: bookmarkService,
+		likeService:     likeService,
+		threadService:   threadService,
+		mediaService:    mediaService,
+	}
 }
 
 func (c *BookmarkController) Bookmark(ctx *fiber.Ctx) error {
@@ -85,7 +97,13 @@ func (c *BookmarkController) GetMyBookmarks(ctx *fiber.Ctx) error {
 	}
 
 	data := make([]dto.FeedItemResponse, len(threads))
-	fb := webapiutils.FeedBuilder{Media: c.mediaService, BookmarkSvc: c.bookmarkService, ViewerID: &claims.UserID}
+	fb := webapiutils.FeedBuilder{
+		Media:       c.mediaService,
+		LikeSvc:     c.likeService,
+		BookmarkSvc: c.bookmarkService,
+		ThreadSvc:   c.threadService,
+		ViewerID:    &claims.UserID,
+	}
 	for i, t := range threads {
 		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 		wrapped := dtoutils.Wrap(timestamps[i])
