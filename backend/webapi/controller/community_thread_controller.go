@@ -10,14 +10,15 @@ import (
 )
 
 type CommunityThreadController struct {
-	threadService   service.IThreadService
-	mediaService    service.IThreadMediaService
-	likeService     service.ILikeService
-	bookmarkService service.IBookmarkService
+	threadService    service.IThreadService
+	mediaService     service.IThreadMediaService
+	likeService      service.ILikeService
+	bookmarkService  service.IBookmarkService
+	threadPinService service.IThreadPinService
 }
 
-func NewCommunityThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService) *CommunityThreadController {
-	return &CommunityThreadController{threadService: threadService, mediaService: mediaService, likeService: likeService, bookmarkService: bookmarkService}
+func NewCommunityThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService) *CommunityThreadController {
+	return &CommunityThreadController{threadService: threadService, mediaService: mediaService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService}
 }
 
 func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
@@ -74,9 +75,9 @@ func (c *CommunityThreadController) GetAll(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	tc := &ThreadController{threadService: c.threadService, mediaService: c.mediaService, likeService: c.likeService, bookmarkService: c.bookmarkService}
+	tc := &ThreadController{threadService: c.threadService, mediaService: c.mediaService, likeService: c.likeService, bookmarkService: c.bookmarkService, threadPinService: c.threadPinService}
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: tc.buildFeedItems(threads, &claims.UserID),
+		Data: tc.buildFeedItemsWithPin(threads, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
