@@ -10,11 +10,13 @@ func registerThreadRoutes(
 	threadCtrl *controller.ThreadController,
 	likeCtrl *controller.LikeController,
 	bookmarkCtrl *controller.BookmarkController,
+	threadPinCtrl *controller.ThreadPinController,
 	repostCtrl *controller.RepostController,
 	auth fiber.Handler,
 ) {
 	api.Get("/likes", auth, likeCtrl.GetMyLikes)
 	api.Get("/bookmarks", auth, bookmarkCtrl.GetMyBookmarks)
+	api.Get("/pins", auth, threadPinCtrl.GetMyPins)
 
 	threads := api.Group("/threads")
 	threads.Get("/", threadCtrl.GetRoots)
@@ -28,6 +30,8 @@ func registerThreadRoutes(
 	threadsAuth.Get("/:id/chain", threadCtrl.GetChain)
 	threadsAuth.Put("/:id", threadCtrl.Update)
 	threadsAuth.Delete("/:id", threadCtrl.Delete)
+	threadsAuth.Post("/:id/pin", threadPinCtrl.Pin)
+	threadsAuth.Delete("/:id/unpin", threadPinCtrl.Unpin)
 
 	threads.Post("/:id/like", likeCtrl.Like)
 	threads.Delete("/:id/unlike", likeCtrl.Unlike)

@@ -20,7 +20,7 @@ import (
 func main() {
 	// --- Database ---
 	writeDB := config.NewPostgresWrite()
-	readDB  := config.NewPostgresRead()
+	readDB := config.NewPostgresRead()
 	migration.AutoMigrate(writeDB)
 
 	// --- Cache ---
@@ -28,61 +28,64 @@ func main() {
 	middleware.Init(redisCache)
 
 	// --- Repositories ---
-	roleRepo             := infrarepo.NewRoleRepository(writeDB, readDB)
-	userRepo             := infrarepo.NewUserRepository(writeDB, readDB)
-	profileRepo          := infrarepo.NewUserProfileRepository(writeDB, readDB)
-	verificationRepo     := infrarepo.NewVerificationRepository(writeDB, readDB)
-	followRepo           := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
+	roleRepo := infrarepo.NewRoleRepository(writeDB, readDB)
+	userRepo := infrarepo.NewUserRepository(writeDB, readDB)
+	profileRepo := infrarepo.NewUserProfileRepository(writeDB, readDB)
+	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
+	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
-	threadMediaRepo      := infrarepo.NewThreadMediaRepository(writeDB, readDB)
-	likeRepo             := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
-	bookmarkRepo         := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
-	communityRepo        := infrarepo.NewCommunityRepository(writeDB, readDB)
-	communityMemberRepo  := infrarepo.NewCommunityMemberRepository(writeDB, readDB)
+	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
+	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
+	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
+	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
+	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB)
+	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB)
-	facultyRepo          := infrarepo.NewFacultyRepository(writeDB, readDB)
-	userFacultyRepo      := infrarepo.NewUserFacultyRepository(writeDB, readDB)
-	orderRepo            := infrarepo.NewOrderRepository(writeDB, readDB)
+	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB)
+	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB)
+	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
-	emailService   := usecase.NewEmailService(infraemail.NewSMTPClient())
+	emailService := usecase.NewEmailService(infraemail.NewSMTPClient())
 
 	// --- Usecases ---
-	authService            := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
-	roleService            := usecase.NewRoleService(roleRepo)
-	userService            := usecase.NewUserService(userRepo, followRepo, profileRepo)
-	profileService         := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
-	verificationService    := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
-	followService          := usecase.NewFollowService(followRepo, userRepo)
-	threadService          := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo)
-	threadMediaService     := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
-	likeService            := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo)
-	bookmarkService        := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo)
-	communityService       := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, storageUsecase)
+	authService := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
+	roleService := usecase.NewRoleService(roleRepo)
+	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
+	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
+	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
+	followService := usecase.NewFollowService(followRepo, userRepo)
+	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo)
+	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
+	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo)
+	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo)
+	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
+	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
-	facultyService         := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
-	orderService           := usecase.NewOrderService(orderRepo, userRepo)
+	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
+	orderService := usecase.NewOrderService(orderRepo, userRepo)
 
 	// --- Controllers ---
-	authCtrl            := controller.NewAuthController(authService, profileService, facultyService)
-	roleCtrl            := controller.NewRoleController(roleService)
-	userCtrl            := controller.NewUserController(userService)
-	profileCtrl         := controller.NewUserProfileController(profileService, facultyService)
-	emailCtrl           := controller.NewEmailController(emailService)
-	verificationCtrl    := controller.NewVerificationController(verificationService)
-	followCtrl          := controller.NewFollowController(followService)
-	threadCtrl          := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService)
-	likeCtrl            := controller.NewLikeController(likeService, threadMediaService)
-	bookmarkCtrl        := controller.NewBookmarkController(bookmarkService, threadMediaService)
-	repostCtrl          := controller.NewRepostController(threadService, threadMediaService)
-	communityCtrl       := controller.NewCommunityController(communityService)
+	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
+	roleCtrl := controller.NewRoleController(roleService)
+	userCtrl := controller.NewUserController(userService)
+	profileCtrl := controller.NewUserProfileController(profileService, facultyService)
+	emailCtrl := controller.NewEmailController(emailService)
+	verificationCtrl := controller.NewVerificationController(verificationService)
+	followCtrl := controller.NewFollowController(followService)
+	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService)
+	likeCtrl := controller.NewLikeController(likeService, threadMediaService)
+	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, threadMediaService)
+	threadPinCtrl := controller.NewThreadPinController(threadPinService, threadMediaService)
+	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
+	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
-	communityThreadCtrl  := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService)
-	facultyCtrl          := controller.NewFacultyController(facultyService)
-	orderCtrl            := controller.NewOrderController(orderService)
+	communityThreadCtrl := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService)
+	facultyCtrl := controller.NewFacultyController(facultyService)
+	orderCtrl := controller.NewOrderController(orderService)
 
 	// --- Server ---
 	app := fiber.New()
@@ -95,6 +98,7 @@ func main() {
 		threadCtrl,
 		likeCtrl,
 		bookmarkCtrl,
+		threadPinCtrl,
 		repostCtrl,
 		emailCtrl,
 		verificationCtrl,
