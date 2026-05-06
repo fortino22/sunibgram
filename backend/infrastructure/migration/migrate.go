@@ -9,7 +9,6 @@ import (
 )
 
 func AutoMigrate(db *gorm.DB) {
-	// Disable FK constraint creation during migration to avoid GORM reverse-FK bugs.
 	db.DisableForeignKeyConstraintWhenMigrating = true
 
 	models := []any{
