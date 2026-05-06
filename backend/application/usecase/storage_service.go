@@ -17,6 +17,7 @@ var bucketWhitelist = map[string]string{
 	"avatar":           "MINIO_BUCKET_AVATAR",
 	"banner":           "MINIO_BUCKET_BANNER",
 	"post":             "MINIO_BUCKET_POST",
+	"chat":             "MINIO_BUCKET_CHAT",
 	"community_avatar": "MINIO_BUCKET_COMMUNITY_AVATAR",
 	"community_banner": "MINIO_BUCKET_COMMUNITY_BANNER",
 }

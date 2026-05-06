@@ -23,7 +23,6 @@ func ValidateThreadMediaExt(filename string) error {
 type ThreadMedia struct {
 	MediaID    uint   `gorm:"primaryKey;autoIncrement"`
 	ThreadID   uint   `gorm:"not null;index"`
-	Thread     Thread `gorm:"foreignKey:ThreadID;references:ThreadID"`
 	ObjectName string `gorm:"not null"`
 	Bucket     string `gorm:"not null"`
 	CreatedAt  time.Time

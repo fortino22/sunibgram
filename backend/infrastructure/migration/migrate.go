@@ -1,42 +1,50 @@
 package migration
 
 import (
+	"log"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/infrastructure/seeder"
 	"gorm.io/gorm"
 )
 
 func AutoMigrate(db *gorm.DB) {
-	dropBadConstraint(db)
+	// Disable FK constraint creation during migration to avoid GORM reverse-FK bugs.
+	db.DisableForeignKeyConstraintWhenMigrating = true
 
-	db.AutoMigrate(&model.Role{})
-	db.AutoMigrate(&model.User{})
-	db.AutoMigrate(&model.UserProfile{})
-	db.AutoMigrate(&model.Community{})
-	db.AutoMigrate(&model.Thread{})
-	db.AutoMigrate(&model.ThreadMedia{})
-	db.AutoMigrate(&model.Like{})
-	db.AutoMigrate(&model.Bookmark{})
-	db.AutoMigrate(&model.ThreadPin{})
-	db.AutoMigrate(&model.VerificationCode{})
-	db.AutoMigrate(&model.UserRelationship{})
-	db.AutoMigrate(&model.UserStat{})
-	db.AutoMigrate(&model.CommunityMember{})
-	db.AutoMigrate(&model.CommunityRequest{})
-	db.AutoMigrate(&model.Faculty{})
-	db.AutoMigrate(&model.UserFaculty{})
-	db.AutoMigrate(&model.Order{})
+	models := []any{
+		&model.Role{},
+		&model.User{},
+		&model.UserProfile{},
+		&model.Community{},
+		&model.Thread{},
+		&model.ThreadMedia{},
+		&model.Like{},
+		&model.Bookmark{},
+		&model.ThreadPin{},
+		&model.VerificationCode{},
+		&model.UserRelationship{},
+		&model.UserStat{},
+		&model.CommunityMember{},
+		&model.CommunityRequest{},
+		&model.Faculty{},
+		&model.UserFaculty{},
+		&model.Order{},
+		&model.ChatRoom{},
+		&model.ChatRoomMember{},
+		&model.Chat{},
+		&model.ChatMedia{},
+	}
+
+	for _, m := range models {
+		if err := db.AutoMigrate(m); err != nil {
+			log.Fatalf("AutoMigrate %T: %v", m, err)
+		}
+	}
 
 	seedRoles(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)
-}
-
-func dropBadConstraint(db *gorm.DB) {
-	// Drop the incorrectly created FK that references users from roles table.
-	// This only runs if the constraint exists; errors are ignored safely.
-	db.Exec(`ALTER TABLE roles DROP CONSTRAINT IF EXISTS fk_users_role`)
-	db.Exec(`ALTER TABLE users DROP CONSTRAINT IF EXISTS fk_users_role`)
 }
 
 func seedRoles(db *gorm.DB) {

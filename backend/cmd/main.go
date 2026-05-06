@@ -45,6 +45,9 @@ func main() {
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB)
 	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
+	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB)
+	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
+	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -67,6 +70,9 @@ func main() {
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo)
+	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
+	chatService := usecase.NewChatService(chatRepo, chatRoomRepo)
+	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
 
 	// --- Controllers ---
 	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
@@ -87,6 +93,8 @@ func main() {
 	communityThreadCtrl := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService, threadPinService)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
+	chatRoomCtrl := controller.NewChatRoomController(chatRoomService)
+	chatCtrl := controller.NewChatController(chatService, chatMediaService)
 
 	// --- Server ---
 	app := fiber.New()
@@ -96,7 +104,7 @@ func main() {
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
 	}))
-	
+
 	router.Register(
 		app,
 		authCtrl,
@@ -117,6 +125,8 @@ func main() {
 		communityThreadCtrl,
 		facultyCtrl,
 		orderCtrl,
+		chatRoomCtrl,
+		chatCtrl,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
