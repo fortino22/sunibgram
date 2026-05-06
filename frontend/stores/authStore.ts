@@ -11,9 +11,10 @@ export interface AuthUser {
 
 interface AuthState {
   token: string | null;
+  sid: string | null;
   user: AuthUser | null;
   isAuthenticated: boolean;
-  setToken: (token: string) => void;
+  setToken: (token: string, sid: string) => void;
   logout: () => void;
 }
 
@@ -36,13 +37,14 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       token: null,
+      sid: null,
       user: null,
       isAuthenticated: false,
-      setToken: (token: string) => {
+      setToken: (token: string, sid: string) => {
         const user = decodeJwtUser(token);
-        set({ token, user, isAuthenticated: !!user });
+        set({ token, sid, user, isAuthenticated: !!user });
       },
-      logout: () => set({ token: null, user: null, isAuthenticated: false }),
+      logout: () => set({ token: null, sid: null, user: null, isAuthenticated: false }),
     }),
     { name: 'auth-store' }
   )
