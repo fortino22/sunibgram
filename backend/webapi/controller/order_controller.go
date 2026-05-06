@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"crypto/sha512"
+	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,42 +19,6 @@ type OrderController struct {
 
 func NewOrderController(orderService service.IOrderService) *OrderController {
 	return &OrderController{orderService: orderService}
-}
-
-func (c *OrderController) Create(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
-	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
-	}
-
-	var req dto.CreateOrderRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
-	}
-
-	purpose := req.Purpose
-	if purpose == "" {
-		purpose = "GENERAL"
-	}
-	itemID := req.ItemID
-	if itemID == "" {
-		itemID = "SUNIBGRAM-ORDER"
-	}
-	itemName := req.ItemName
-	if itemName == "" {
-		itemName = "Sunibgram Order"
-	}
-
-	result, err := c.orderService.CreateOrder(claims.UserID, req.Amount, purpose, itemID, itemName)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
-
-	return ctx.Status(fiber.StatusCreated).JSON(dto.CreateOrderResponse{
-		Order:      toOrderResponse(result.Order),
-		PaymentURL: result.PaymentURL,
-		Token:      result.Token,
-	})
 }
 
 func (c *OrderController) BuyPremium(ctx *fiber.Ctx) error {
@@ -163,11 +130,32 @@ func (c *OrderController) MidtransNotification(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
 	}
 
+	if err := verifyMidtransSignature(payload); err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "invalid signature"})
+	}
+
 	if err := c.orderService.HandleNotification(payload); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.SendStatus(fiber.StatusOK)
+}
+
+func verifyMidtransSignature(payload map[string]interface{}) error {
+	orderID, _ := payload["order_id"].(string)
+	statusCode, _ := payload["status_code"].(string)
+	grossAmount, _ := payload["gross_amount"].(string)
+	incomingSig, _ := payload["signature_key"].(string)
+
+	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
+	raw := orderID + statusCode + grossAmount + serverKey
+	hash := sha512.Sum512([]byte(raw))
+	expected := fmt.Sprintf("%x", hash)
+
+	if incomingSig != expected {
+		return fmt.Errorf("signature mismatch")
+	}
+	return nil
 }
 
 func toOrderResponse(o *model.Order) dto.OrderResponse {

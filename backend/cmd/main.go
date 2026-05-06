@@ -59,7 +59,7 @@ func main() {
 	threadMediaService     := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService            := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo)
 	bookmarkService        := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo)
-	communityService       := usecase.NewCommunityService(communityRepo, communityMemberRepo, storageUsecase)
+	communityService       := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
 	facultyService         := usecase.NewFacultyService(facultyRepo, userFacultyRepo)

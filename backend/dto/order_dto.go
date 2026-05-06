@@ -2,13 +2,6 @@ package dto
 
 import "time"
 
-type CreateOrderRequest struct {
-	Amount   int64  `json:"amount"`
-	Purpose  string `json:"purpose"`
-	ItemID   string `json:"item_id"`
-	ItemName string `json:"item_name"`
-}
-
 type OrderResponse struct {
 	ID          uint      `json:"id"`
 	OrderID     string    `json:"order_id"`

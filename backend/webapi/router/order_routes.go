@@ -12,11 +12,10 @@ func registerOrderRoutes(api fiber.Router, orderCtrl *controller.OrderController
 	orders.Post("/notification", orderCtrl.MidtransNotification)
 
 	orders.Use(auth)
-	orders.Post("", orderCtrl.Create)
 	orders.Post("/premium", orderCtrl.BuyPremium)
 	orders.Get("/me", orderCtrl.GetMyOrders)
-	orders.Get("/:id", orderCtrl.GetByID)
 	orders.Patch("/:id/cancel", orderCtrl.Cancel)
 
 	orders.Get("", middleware.AdminOnly(), orderCtrl.GetAll)
+	orders.Get("/:id", middleware.AdminOnly(), orderCtrl.GetByID)
 }

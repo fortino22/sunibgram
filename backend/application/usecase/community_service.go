@@ -15,22 +15,33 @@ import (
 type CommunityService struct {
 	communityRepo  repository.ICommunityRepository
 	memberRepo     repository.ICommunityMemberRepository
+	userRepo       repository.IUserRepository
 	storageUsecase *StorageUsecase
 }
 
 func NewCommunityService(
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
+	userRepo repository.IUserRepository,
 	storageUsecase *StorageUsecase,
 ) service.ICommunityService {
 	return &CommunityService{
 		communityRepo:  communityRepo,
 		memberRepo:     memberRepo,
+		userRepo:       userRepo,
 		storageUsecase: storageUsecase,
 	}
 }
 
 func (s *CommunityService) Create(ctx context.Context, userID uint, name, description, rules, category string, visibility model.CommunityVisibility, avatar, banner *multipart.FileHeader) (*model.Community, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+	if !user.IsPremium {
+		return nil, errors.New("only premium users can create communities")
+	}
+
 	if strings.TrimSpace(name) == "" {
 		return nil, errors.New("name is required")
 	}
@@ -153,7 +164,8 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	if err != nil {
 		return errors.New("community not found")
 	}
-	if community.UserID != userID {
+	actor, err := s.memberRepo.FindMember(id, userID)
+	if err != nil || !isAdminOrAbove(actor.Role) {
 		return errors.New("forbidden")
 	}
 	if community.AvatarObjectName != "" {
