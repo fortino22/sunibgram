@@ -107,12 +107,25 @@ export default function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
+  const setSessionCookie = async (sid: string) => {
+    const response = await fetch('/api/auth/set-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create session');
+    }
+  };
+
   const onSubmit = handleSubmit(async (data) => {
     setServerError('');
     try {
       if (data.email === 'admin@binus.ac.id') {
         const res = await loginProd(data.email, data.password);
         setToken(res.access_token, res.sid);
+        await setSessionCookie(res.sid);
         router.replace('/');
         return;
       }
@@ -143,6 +156,7 @@ export default function LoginPage() {
         otp: code,
       });
       setToken(res.access_token, res.sid);
+      await setSessionCookie(res.sid);
       router.replace('/');
     } catch (err) {
       setServerError(err instanceof Error ? err.message : 'Verification failed');

@@ -123,7 +123,8 @@ export function Sidebar() {
     ? user.username.slice(0, 2).toUpperCase()
     : '??';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch('/api/auth/clear-session', { method: 'POST' });
     logout();
     router.replace('/login');
   };
