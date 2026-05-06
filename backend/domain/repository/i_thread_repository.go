@@ -16,4 +16,5 @@ type IThreadRepository interface {
 	ExistsRepost(userID, originalThreadID uint) (bool, error)
 	DeleteRepost(userID, originalThreadID uint) error
 	FindByCommunityID(communityID uint, page, limit int) ([]model.Thread, int64, error)
+	FindFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 }

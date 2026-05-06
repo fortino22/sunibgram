@@ -18,7 +18,7 @@ type dummyAccount struct {
 }
 
 var dummyAccounts = []dummyAccount{
-	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "user"},
+	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "admin"},
 }
 
 func SeedDummy(db *gorm.DB) {

@@ -324,6 +324,71 @@ func (r *threadCached) Delete(id uint) error {
 	return r.db.writeDB.Delete(&model.Thread{}, id).Error
 }
 
+func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+	types := []string{
+		string(model.ThreadTypePost),
+		string(model.ThreadTypeRepost),
+		string(model.ThreadTypeReply),
+	}
+
+	var total int64
+	r.db.readDB.Model(&model.Thread{}).
+		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
+		Where("user_relationships.follower_id = ? AND threads.type IN ?", userID, types).
+		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
+			model.CommunityVisibilityPublic, userID).
+		Count(&total)
+
+	offset := (page - 1) * limit
+	var threads []model.Thread
+	if err := r.db.readDB.
+		Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").
+		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
+		Where("user_relationships.follower_id = ? AND threads.type IN ?", userID, types).
+		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
+			model.CommunityVisibilityPublic, userID).
+		Order("threads.created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&threads).Error; err != nil {
+		return nil, nil, 0, err
+	}
+	r.db.attachFaculties(threads)
+
+	parentIDSet := make(map[uint]struct{})
+	for _, t := range threads {
+		if t.ParentID != nil {
+			parentIDSet[*t.ParentID] = struct{}{}
+		}
+	}
+	parentMap := make(map[uint]*model.Thread)
+	if len(parentIDSet) > 0 {
+		pids := make([]uint, 0, len(parentIDSet))
+		for id := range parentIDSet {
+			pids = append(pids, id)
+		}
+		var parentThreads []model.Thread
+		if err := r.db.readDB.Preload("User").Preload("Community").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+			return nil, nil, 0, err
+		}
+		r.db.attachFaculties(parentThreads)
+		for i := range parentThreads {
+			parentMap[parentThreads[i].ThreadID] = &parentThreads[i]
+		}
+	}
+
+	parents := make([]*model.Thread, len(threads))
+	for i, t := range threads {
+		if t.ParentID != nil {
+			parents[i] = parentMap[*t.ParentID]
+		}
+	}
+	return threads, parents, total, nil
+}
+
 func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread

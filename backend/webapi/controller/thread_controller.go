@@ -188,6 +188,25 @@ func (c *ThreadController) Delete(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread deleted successfully"})
 }
 
+func (c *ThreadController) GetFollowingFeed(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+
+	threads, parents, total, err := c.threadService.GetFollowingFeed(claims.UserID, page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+		Data: c.buildUserFeedItems(threads, parents, &claims.UserID),
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
+}
+
 func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	claims, ok := ctxutil.Get(ctx)
 	if !ok {

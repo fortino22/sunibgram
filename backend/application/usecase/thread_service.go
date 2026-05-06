@@ -236,3 +236,13 @@ func (s *ThreadService) GetCommunityThreads(communityID, userID uint, page, limi
 	}
 	return s.threadRepo.FindByCommunityID(communityID, page, limit)
 }
+
+func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	return s.threadRepo.FindFollowingFeed(userID, page, limit)
+}

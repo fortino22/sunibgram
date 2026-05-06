@@ -3,7 +3,8 @@
     "allow": [
       "Bash(go mod *)",
       "Bash(cat)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Skill(codex:setup)"
     ]
   }
 }
