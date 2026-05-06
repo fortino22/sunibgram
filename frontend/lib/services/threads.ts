@@ -11,29 +11,42 @@ export interface PaginationParams {
 
 export interface ThreadAuthor {
   id: number;
-  name?: string;
   username: string;
-  email?: string;
-  avatar?: string | null;
-  [key: string]: unknown;
+  is_premium: boolean;
 }
 
 export interface ThreadItem {
+  type: 'POST';
   id: number;
+  parent_id: null | number;
+  root_id: null | number;
   content: string;
-  author?: ThreadAuthor;
-  parent_id?: number | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
+  created_at: string;
+  updated_at: string;
+  time_ago: string;
+  author: ThreadAuthor;
+  stats: {
+    likes: number;
+    reposts: number;
+    bookmarks: number;
+  };
+  media: Array<{
+    media_id: number;
+    url: string;
+  }>;
+  is_liked: boolean;
+  is_bookmarked: boolean;
+  is_reposted: boolean;
+  is_pin: boolean;
 }
 
 export interface ThreadListResponse {
   data: ThreadItem[];
-  page?: number;
-  limit?: number;
-  total?: number;
-  [key: string]: unknown;
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+  };
 }
 
 export interface ThreadResponse {

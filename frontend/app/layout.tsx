@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { DM_Sans } from 'next/font/google';
 import './globals.css';
 import { MainWrapper } from '@/components/layout/MainWrapper';
+import { Providers } from '@/components/Providers';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -20,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={dmSans.variable}>
       <body>
-        <MainWrapper>{children}</MainWrapper>
+        <Providers>
+          <MainWrapper>{children}</MainWrapper>
+        </Providers>
       </body>
     </html>
   );
