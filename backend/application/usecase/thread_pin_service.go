@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"errors"
-	"time"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
@@ -46,14 +45,4 @@ func (s *ThreadPinService) Unpin(userID, threadID uint) error {
 func (s *ThreadPinService) IsPinned(userID, threadID uint) bool {
 	ok, _ := s.threadPinRepo.ExistsPin(userID, threadID)
 	return ok
-}
-
-func (s *ThreadPinService) GetMyPins(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
-	return s.threadPinRepo.FindByUserID(userID, page, limit)
 }

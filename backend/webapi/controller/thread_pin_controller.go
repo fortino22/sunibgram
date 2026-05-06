@@ -4,21 +4,17 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	dtoutils "github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
-	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type ThreadPinController struct {
 	threadPinService service.IThreadPinService
-	mediaService     service.IThreadMediaService
 }
 
-func NewThreadPinController(threadPinService service.IThreadPinService, mediaService service.IThreadMediaService) *ThreadPinController {
-	return &ThreadPinController{threadPinService: threadPinService, mediaService: mediaService}
+func NewThreadPinController(threadPinService service.IThreadPinService) *ThreadPinController {
+	return &ThreadPinController{threadPinService: threadPinService}
 }
 
 func (c *ThreadPinController) Pin(ctx *fiber.Ctx) error {
@@ -58,43 +54,4 @@ func (c *ThreadPinController) Unpin(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "unpinned successfully"})
-}
-
-func (c *ThreadPinController) GetMyPins(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
-	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
-	}
-
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
-
-	threads, timestamps, total, err := c.threadPinService.GetMyPins(claims.UserID, page, limit)
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
-
-	ids := make([]uint, len(threads))
-	for i, t := range threads {
-		ids[i] = t.ThreadID
-	}
-	allMedia, _ := c.mediaService.GetByThreadIDs(ids)
-	mediaByThread := make(map[uint][]model.ThreadMedia, len(ids))
-	for _, m := range allMedia {
-		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
-	}
-
-	data := make([]dto.FeedItemResponse, len(threads))
-	fb := webapiutils.FeedBuilder{Media: c.mediaService, ViewerID: &claims.UserID}
-	for i, t := range threads {
-		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-		wrapped := dtoutils.Wrap(timestamps[i])
-		item.ActionAt = &wrapped
-		data[i] = item
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: data,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
-	})
 }

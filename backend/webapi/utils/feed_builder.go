@@ -8,11 +8,12 @@ import (
 )
 
 type FeedBuilder struct {
-	Media        service.IThreadMediaService
-	LikeSvc      service.ILikeService
-	BookmarkSvc  service.IBookmarkService
-	ThreadSvc    service.IThreadService
-	ViewerID     *uint
+	Media       service.IThreadMediaService
+	LikeSvc     service.ILikeService
+	BookmarkSvc service.IBookmarkService
+	ThreadSvc   service.IThreadService
+	PinSvc      service.IThreadPinService
+	ViewerID    *uint
 }
 
 func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []dto.ThreadMediaResponse {
@@ -41,7 +42,7 @@ func AuthorField(u model.User) dto.FeedAuthor {
 	return a
 }
 
-func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isReposted bool) {
+func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isReposted, isPinned bool) {
 	if fb.ViewerID == nil {
 		return
 	}
@@ -55,6 +56,9 @@ func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isRepos
 	if fb.ThreadSvc != nil {
 		isReposted = fb.ThreadSvc.IsReposted(uid, threadID)
 	}
+	if fb.PinSvc != nil {
+		isPinned = fb.PinSvc.IsPinned(uid, threadID)
+	}
 	return
 }
 
@@ -62,7 +66,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
 		orig := t.OriginalThread
 		repostedAt := dtoutils.Wrap(t.CreatedAt)
-		isLiked, isBookmarked, isReposted := fb.viewerFlags(orig.ThreadID)
+		isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(orig.ThreadID)
 		return dto.FeedItemResponse{
 			Type:         string(model.ThreadTypeRepost),
 			ID:           orig.ThreadID,
@@ -80,9 +84,10 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 			IsLiked:      isLiked,
 			IsBookmarked: isBookmarked,
 			IsReposted:   isReposted,
+			IsPinned:     isPinned,
 		}
 	}
-	isLiked, isBookmarked, isReposted := fb.viewerFlags(t.ThreadID)
+	isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(t.ThreadID)
 	return dto.FeedItemResponse{
 		Type:         string(t.Type),
 		ID:           t.ThreadID,
@@ -99,5 +104,6 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		IsLiked:      isLiked,
 		IsBookmarked: isBookmarked,
 		IsReposted:   isReposted,
+		IsPinned:     isPinned,
 	}
 }

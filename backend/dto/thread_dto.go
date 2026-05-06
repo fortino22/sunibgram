@@ -45,10 +45,10 @@ type FeedAuthorFaculty struct {
 }
 
 type FeedAuthor struct {
-	ID         uint               `json:"id"`
-	Username   string             `json:"username"`
-	IsPremium  bool               `json:"is_premium"`
-	Faculty    *FeedAuthorFaculty `json:"faculty,omitempty"`
+	ID        uint               `json:"id"`
+	Username  string             `json:"username"`
+	IsPremium bool               `json:"is_premium"`
+	Faculty   *FeedAuthorFaculty `json:"faculty,omitempty"`
 }
 
 type FeedStats struct {
@@ -77,23 +77,24 @@ type FeedCommunity struct {
 
 type FeedItemResponse struct {
 	Type          string                `json:"type"`
-	ParentContext *FeedParentContext     `json:"parent_context,omitempty"`
-	ID             uint                  `json:"id"`
-	ParentID       *uint                 `json:"parent_id"`
-	RootID         *uint                 `json:"root_id"`
-	Community      *FeedCommunity        `json:"community,omitempty"`
-	Content        string                `json:"content"`
-	CreatedAt      utils.FormattedTime   `json:"created_at"`
-	UpdatedAt      utils.FormattedTime   `json:"updated_at"`
-	TimeAgo        string                `json:"time_ago"`
-	ActionAt       *utils.FormattedTime  `json:"action_at,omitempty"`
-	RepostedAt     *utils.FormattedTime  `json:"reposted_at,omitempty"`
-	Author         FeedAuthor            `json:"author"`
-	Stats          FeedStats             `json:"stats"`
-	Media          []ThreadMediaResponse `json:"media"`
-	IsLiked        bool                  `json:"is_liked"`
-	IsBookmarked   bool                  `json:"is_bookmarked"`
-	IsReposted     bool                  `json:"is_reposted"`
+	ParentContext *FeedParentContext    `json:"parent_context,omitempty"`
+	ID            uint                  `json:"id"`
+	ParentID      *uint                 `json:"parent_id"`
+	RootID        *uint                 `json:"root_id"`
+	Community     *FeedCommunity        `json:"community,omitempty"`
+	Content       string                `json:"content"`
+	CreatedAt     utils.FormattedTime   `json:"created_at"`
+	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
+	TimeAgo       string                `json:"time_ago"`
+	ActionAt      *utils.FormattedTime  `json:"action_at,omitempty"`
+	RepostedAt    *utils.FormattedTime  `json:"reposted_at,omitempty"`
+	Author        FeedAuthor            `json:"author"`
+	Stats         FeedStats             `json:"stats"`
+	Media         []ThreadMediaResponse `json:"media"`
+	IsLiked       bool                  `json:"is_liked"`
+	IsBookmarked  bool                  `json:"is_bookmarked"`
+	IsReposted    bool                  `json:"is_reposted"`
+	IsPinned      bool                  `json:"is_pin"`
 }
 
 type FeedMeta struct {

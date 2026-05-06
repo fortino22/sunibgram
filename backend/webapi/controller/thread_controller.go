@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"sort"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -13,15 +14,16 @@ import (
 )
 
 type ThreadController struct {
-	threadService   service.IThreadService
-	mediaService    service.IThreadMediaService
-	memberService   service.ICommunityMemberService
-	likeService     service.ILikeService
-	bookmarkService service.IBookmarkService
+	threadService    service.IThreadService
+	mediaService     service.IThreadMediaService
+	memberService    service.ICommunityMemberService
+	likeService      service.ILikeService
+	bookmarkService  service.IBookmarkService
+	threadPinService service.IThreadPinService
 }
 
-func NewThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, memberService service.ICommunityMemberService, likeService service.ILikeService, bookmarkService service.IBookmarkService) *ThreadController {
-	return &ThreadController{threadService: threadService, mediaService: mediaService, memberService: memberService, likeService: likeService, bookmarkService: bookmarkService}
+func NewThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, memberService service.ICommunityMemberService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService) *ThreadController {
+	return &ThreadController{threadService: threadService, mediaService: mediaService, memberService: memberService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService}
 }
 
 func (c *ThreadController) Create(ctx *fiber.Ctx) error {
@@ -264,6 +266,7 @@ func (c *ThreadController) fb(viewerID *uint) webapiutils.FeedBuilder {
 		LikeSvc:     c.likeService,
 		BookmarkSvc: c.bookmarkService,
 		ThreadSvc:   c.threadService,
+		PinSvc:      c.threadPinService,
 		ViewerID:    viewerID,
 	}
 }
@@ -315,5 +318,8 @@ func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []
 		}
 		data[i] = item
 	}
+	sort.SliceStable(data, func(i, j int) bool {
+		return data[i].IsPinned && !data[j].IsPinned
+	})
 	return data
 }
