@@ -29,6 +29,9 @@ func (c *ThreadPinController) Pin(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.threadPinService.Pin(claims.UserID, uint(threadID)); err != nil {
+		if err.Error() == "forbidden" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
 		if err.Error() == "thread not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 		}

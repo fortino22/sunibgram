@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/sunibgram/application/usecase"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/config"
@@ -89,6 +90,13 @@ func main() {
 
 	// --- Server ---
 	app := fiber.New()
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:3000",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+		AllowCredentials: true,
+	}))
+	
 	router.Register(
 		app,
 		authCtrl,

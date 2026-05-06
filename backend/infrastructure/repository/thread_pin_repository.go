@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"errors"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"gorm.io/gorm"
@@ -32,4 +34,16 @@ func (r *ThreadPinRepository) ExistsPin(userID, threadID uint) (bool, error) {
 		Where("user_id = ? AND thread_id = ?", userID, threadID).
 		Count(&count).Error
 	return count > 0, err
+}
+
+func (r *ThreadPinRepository) FindPinnedByUserID(userID uint) (*model.ThreadPin, error) {
+	var pin model.ThreadPin
+	err := r.readDB.Where("user_id = ?", userID).First(&pin).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &pin, nil
 }

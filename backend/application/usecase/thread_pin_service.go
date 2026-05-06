@@ -18,16 +18,24 @@ func NewThreadPinService(threadPinRepo repository.IThreadPinRepository, threadRe
 }
 
 func (s *ThreadPinService) Pin(userID, threadID uint) error {
-	if _, err := s.threadRepo.FindByID(threadID); err != nil {
+	thread, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
 		return errors.New("thread not found")
 	}
-	exists, err := s.threadPinRepo.ExistsPin(userID, threadID)
+	if thread.UserID != userID {
+		return errors.New("forbidden")
+	}
+
+	pinned, err := s.threadPinRepo.FindPinnedByUserID(userID)
 	if err != nil {
 		return err
 	}
-	if exists {
-		return errors.New("already pinned")
+	if pinned != nil {
+		if err := s.threadPinRepo.Unpin(userID, pinned.ThreadID); err != nil {
+			return err
+		}
 	}
+
 	return s.threadPinRepo.Pin(&model.ThreadPin{UserID: userID, ThreadID: threadID})
 }
 
