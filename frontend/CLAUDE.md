@@ -16,8 +16,8 @@ University-exclusive social media platform (X/Threads clone). Students post thre
 |---|---|
 | Framework | Next.js 15 (App Router) |
 | Language | TypeScript strict |
-| Styling | Tailwind CSS v3 |
-| UI Components | shadcn/ui |
+| Styling | Tailwind CSS **v4** + CSS custom properties (`var(--*)`) for colors |
+| UI Primitives | shadcn/ui pattern — Radix primitives in `components/ui/`, `cn()` from `lib/utils.ts` |
 | Server State | TanStack Query v5 |
 | Client State | Zustand v4 |
 | Forms | React Hook Form + Zod |
@@ -26,15 +26,22 @@ University-exclusive social media platform (X/Threads clone). Students post thre
 
 Never use: Redux, SWR, Axios, Context API for global state, NextAuth.
 
+### Styling Rules
+- **Layout/spacing/sizing** → Tailwind classes (`flex`, `gap-3`, `p-4`, `rounded-full`, etc.)
+- **Colors** → CSS custom properties via inline `style` (`color: 'var(--text)'`, `background: 'var(--bg-card)'`)
+- **Never** hardcode color values directly — always reference a CSS variable
+- `cn()` from `lib/utils.ts` for merging Tailwind classes conditionally
+
 ---
 
 ## Architecture Rules
 
-### Three-Layer Component Model
+### Two-Layer Component Model
 
-1. **Page** (`app/**/page.tsx`) — 50-150 lines.200 lines acceptable. Composes sections only. No logic, no fetching.
-2. **Section** (`components/[feature]/[Name]Section.tsx`) — Owns one concern. Calls hooks, handles loading/error.
-3. **Atom** (`components/[feature]/[Name].tsx`) — Pure presentational. Props only. No fetching.
+1. **Page** (`app/**/page.tsx`) — Max 150–200 lines. Owns one route's concern: calls hooks, handles loading/error/skeleton states, composes atoms. No raw `fetch()`.
+2. **Atom** (`components/[feature]/[Name].tsx`) — Pure presentational. Props only. No fetching, no hooks (except purely UI hooks like `useMediaQuery`).
+
+**Rule:** If a page grows past 200 lines, extract atoms — not sections. Extract into `components/[feature]/[Name].tsx` only when it's reused elsewhere OR genuinely too complex to inline.
 
 ### Hard Rules
 
@@ -42,13 +49,29 @@ Never use: Redux, SWR, Axios, Context API for global state, NextAuth.
 - Hook files: max ~80 lines.
 - No `any`. No raw `fetch()` in components. No `useState` for server data.
 - Named exports for components. Default export only in `app/` pages.
-- Every data-fetching section needs a skeleton. Never show blank screen.
+- Every data-fetching page needs a skeleton. Never show blank screen.
 - Optimistic updates (`onMutate`/`onError`) on: like, bookmark, repost, follow.
 - Check `components/shared/` before creating any new component.
 
 ### Shared Components (never inline these)
 
-`<Avatar />` · `<UserHandle />` · `<MediaGrid />` · `<ActionBar />` · `<InfiniteList />` · `<EmptyState />` · `<RelativeTime />` · `<FacultyBadge />` · `<OptimisticToggle />`
+| Component | Location | Purpose |
+|---|---|---|
+| `<Avatar />` | `components/shared/Avatar.tsx` | User avatar with image/initial fallback — uses Radix Avatar |
+| `<ActionBar />` | `components/shared/ActionBar.tsx` | Reply/repost/like/bookmark row — uses `<ActionButton />` |
+| `<EmptyState />` | `components/shared/EmptyState.tsx` | Centered empty message + subtitle |
+| `<ActionButton />` | `components/thread/ActionButton.tsx` | Single icon button with hover state |
+| `<UserHandle />` | `components/shared/` | @username link (create when needed) |
+| `<MediaGrid />` | `components/shared/` | Image/video grid (create when needed) |
+| `<RelativeTime />` | `components/shared/` | time_ago display (create when needed) |
+| `<FacultyBadge />` | `components/shared/` | Faculty pill badge (create when needed) |
+| `<InfiniteList />` | `components/shared/` | Infinite scroll wrapper (create when needed) |
+
+### UI Primitives (`components/ui/`)
+
+Radix-based, styled to our design system. Currently available:
+- `avatar.tsx` — `AvatarRoot`, `AvatarImage`, `AvatarFallback` (Radix `@radix-ui/react-avatar`)
+- `Icon.tsx` — Lucide icon wrapper
 
 ### API & State
 
@@ -70,29 +93,84 @@ src/
 │   ├── bookmarks/      notifications/
 │   ├── admin/          users/  faculties/
 │   └── @modal/compose/ reply/[id]/
+│
 ├── components/
-│   ├── thread/         ← Card, Header, Body, Actions, Composer, ReplyList, ReplyItem + skeletons/
-│   ├── profile/        ← Header, Avatar, Banner, Bio, Stats, Tabs, EditModal + skeletons/
-│   ├── community/      ← Card, Header, MemberList, MemberItem, ThreadSection, RequestList + skeletons/
-│   ├── layout/         ← AppShell, Sidebar, BottomNav, TopBar, RightPanel
-│   ├── user/           ← UserCard, UserHandle, FollowButton
-│   ├── shared/         ← Avatar, MediaGrid, ActionBar, InfiniteList, EmptyState, RelativeTime, FacultyBadge
-│   └── ui/             ← shadcn/ui + custom primitives
+│   ├── auth/
+│   │   ├── AuthGuard.tsx          ← redirect-if-unauthenticated wrapper
+│   │   ├── schemas.ts             ← zod schemas for login, register, forgot-password
+│   │   ├── LoginForm.tsx
+│   │   ├── RegisterForm.tsx
+│   │   ├── OtpInput.tsx
+│   │   └── ForgotPasswordForm.tsx
+│   ├── thread/
+│   │   ├── ThreadCard.tsx
+│   │   ├── ThreadHeader.tsx
+│   │   ├── ThreadBody.tsx
+│   │   ├── ThreadActions.tsx
+│   │   ├── ThreadComposer.tsx
+│   │   ├── ThreadReplyItem.tsx
+│   │   └── skeletons/             ← ThreadCardSkeleton, ThreadFeedSkeleton
+│   ├── profile/
+│   │   ├── ProfileAvatar.tsx
+│   │   ├── ProfileBanner.tsx
+│   │   ├── ProfileBio.tsx
+│   │   ├── ProfileStats.tsx
+│   │   ├── ProfileTabs.tsx
+│   │   ├── ProfileEditModal.tsx
+│   │   ├── schemas.ts             ← zod schema for profile edit
+│   │   └── skeletons/             ← ProfileHeaderSkeleton
+│   ├── community/
+│   │   ├── CommunityCard.tsx
+│   │   ├── CommunityHeader.tsx
+│   │   ├── CommunityMemberItem.tsx
+│   │   ├── CommunityRequestItem.tsx
+│   │   ├── CommunityComposer.tsx
+│   │   ├── schemas.ts             ← zod schema for create/edit community
+│   │   └── skeletons/             ← CommunityCardSkeleton
+│   ├── layout/
+│   │   ├── AppShell.tsx
+│   │   ├── Sidebar.tsx
+│   │   ├── BottomNav.tsx
+│   │   ├── TopBar.tsx
+│   │   └── RightPanel.tsx
+│   ├── user/
+│   │   ├── UserCard.tsx
+│   │   ├── UserHandle.tsx
+│   │   └── FollowButton.tsx
+│   ├── shared/
+│   │   ├── Avatar.tsx
+│   │   ├── MediaGrid.tsx
+│   │   ├── ActionBar.tsx
+│   │   ├── InfiniteList.tsx
+│   │   ├── EmptyState.tsx
+│   │   ├── RelativeTime.tsx
+│   │   ├── FacultyBadge.tsx
+│   │   └── OptimisticToggle.tsx
+│   └── ui/                        ← shadcn/ui + custom primitives
+│
 ├── hooks/
-│   ├── thread/         ← useThreadFeed, useThread, useCreateThread, useThreadLike, useThreadBookmark, useThreadRepost
-│   ├── profile/        ← useProfile, useMyProfile, useUpdateProfile
-│   ├── community/      ← useCommunities, useCommunity, useCommunityThreads, useJoinCommunity
-│   ├── auth/           ← useLogin, useRegister, useLogout, useRefreshToken
-│   └── notifications/  ← useNotifications, useSocket
+│   ├── thread/    ← useThreadFeed, useThread, useCreateThread, useThreadLike, useThreadBookmark, useThreadRepost
+│   ├── profile/   ← useProfile, useMyProfile, useUpdateProfile
+│   ├── community/ ← useCommunities, useCommunity, useCommunityThreads, useJoinCommunity
+│   ├── auth/      ← useLogin, useRegister, useLogout, useRefreshToken
+│   └── notifications/ ← useNotifications, useSocket
+│
 ├── stores/
 │   ├── authStore.ts    ← BEARER_TOKEN, SID, user
 │   └── uiStore.ts      ← sidebar, modal, composer draft
+│
 ├── lib/
 │   ├── api.ts          ← base fetch wrapper
 │   ├── api/            ← threads, auth, profile, communities, orders, admin, faculties
 │   ├── queryClient.ts
 │   └── socket.ts
+│
 └── types/              ← thread, user, community, notification, order
+
+**Component folder rules:**
+- `schemas.ts` lives inside the feature folder that owns the form, not in `lib/`
+- Guards and route-protection wrappers live in `components/auth/`
+- Skeletons always in `[feature]/skeletons/`, never mixed with atom files
 
 ---
 
