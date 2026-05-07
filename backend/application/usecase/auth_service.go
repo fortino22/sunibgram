@@ -13,6 +13,7 @@ import (
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/cache"
+	"github.com/sunibgram/infrastructure/config"
 	"github.com/sunibgram/infrastructure/ratelimit"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -111,7 +112,10 @@ func (s *AuthService) Register(user *model.User, confirmPassword string) error {
 	user.Password = string(hashed)
 
 	profile := &model.UserProfile{}
-	return s.userRepo.SaveWithProfile(user, profile)
+	if err := s.userRepo.SaveWithProfile(user, profile); err != nil {
+		return err
+	}
+	return config.NewPostgresWrite().Create(&model.UserSettings{UserID: user.UserID}).Error
 }
 
 func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword string) error {

@@ -31,6 +31,7 @@ func main() {
 	// --- Repositories ---
 	roleRepo := infrarepo.NewRoleRepository(writeDB, readDB)
 	userRepo := infrarepo.NewUserRepository(writeDB, readDB)
+	userSettingsRepo := infrarepo.NewUserSettingsRepository(writeDB, readDB)
 	profileRepo := infrarepo.NewUserProfileRepository(writeDB, readDB)
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
@@ -58,6 +59,7 @@ func main() {
 	authService := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
 	roleService := usecase.NewRoleService(roleRepo)
 	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
+	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo)
 	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService := usecase.NewFollowService(followRepo, userRepo)
@@ -79,6 +81,7 @@ func main() {
 	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
 	roleCtrl := controller.NewRoleController(roleService)
 	userCtrl := controller.NewUserController(userService)
+	userSettingsCtrl := controller.NewUserSettingsController(userSettingsService)
 	profileCtrl := controller.NewUserProfileController(profileService, facultyService)
 	emailCtrl := controller.NewEmailController(emailService)
 	verificationCtrl := controller.NewVerificationController(verificationService)
@@ -111,6 +114,7 @@ func main() {
 		authCtrl,
 		roleCtrl,
 		userCtrl,
+		userSettingsCtrl,
 		profileCtrl,
 		threadCtrl,
 		likeCtrl,

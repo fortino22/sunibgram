@@ -14,6 +14,7 @@ func AutoMigrate(db *gorm.DB) {
 	models := []any{
 		&model.Role{},
 		&model.User{},
+		&model.UserSettings{},
 		&model.UserProfile{},
 		&model.Community{},
 		&model.Thread{},
