@@ -45,7 +45,7 @@ func main() {
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB)
 	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
-	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB)
+	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB, redisCache)
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
 	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
 	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)

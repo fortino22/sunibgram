@@ -1,10 +1,13 @@
 package repository
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -12,10 +15,11 @@ import (
 type ChatRoomRepository struct {
 	writeDB *gorm.DB
 	readDB  *gorm.DB
+	cache   *cache.Cache
 }
 
-func NewChatRoomRepository(writeDB, readDB *gorm.DB) domainrepo.IChatRoomRepository {
-	return &ChatRoomRepository{writeDB: writeDB, readDB: readDB}
+func NewChatRoomRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IChatRoomRepository {
+	return &ChatRoomRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 
 func (r *ChatRoomRepository) Save(room *model.ChatRoom) error {
@@ -24,7 +28,16 @@ func (r *ChatRoomRepository) Save(room *model.ChatRoom) error {
 
 func (r *ChatRoomRepository) FindByID(id uint) (*model.ChatRoom, error) {
 	var room model.ChatRoom
+	ctx := context.Background()
+	key := fmt.Sprintf("chat:room:%d", id)
+	if err := r.cache.Get(ctx, key, &room); err == nil {
+		return &room, nil
+	}
+
 	err := r.readDB.First(&room, id).Error
+	if err == nil {
+		_ = r.cache.Set(ctx, key, room, cache.DefaultTTL)
+	}
 	return &room, err
 }
 
@@ -46,13 +59,22 @@ func (r *ChatRoomRepository) FindByUserID(userID uint, page, limit int) ([]model
 }
 
 func (r *ChatRoomRepository) IsMember(roomID, userID uint) bool {
+	ctx := context.Background()
+	key := fmt.Sprintf("chat:member:%d:%d", roomID, userID)
+	var cached bool
+	if err := r.cache.Get(ctx, key, &cached); err == nil {
+		return cached
+	}
+
 	var count int64
 	if err := r.readDB.Model(&model.ChatRoomMember{}).
 		Where("room_id = ? AND user_id = ?", roomID, userID).
 		Count(&count).Error; err != nil {
 		return false
 	}
-	return count > 0
+	isMember := count > 0
+	_ = r.cache.Set(ctx, key, isMember, cache.DefaultTTL)
+	return isMember
 }
 
 func (r *ChatRoomRepository) CountMembers(roomID uint) int64 {
@@ -73,6 +95,10 @@ func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 	}
 	if result.RowsAffected > 0 {
 		r.writeDB.Model(&model.ChatRoom{}).Where("room_id = ?", roomID).UpdateColumn("member_count", gorm.Expr("member_count + 1"))
+		_ = r.cache.Delete(context.Background(),
+			fmt.Sprintf("chat:member:%d:%d", roomID, userID),
+			fmt.Sprintf("chat:room:%d", roomID),
+		)
 	}
 	return nil
 }

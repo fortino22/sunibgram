@@ -57,6 +57,17 @@ func (r *ChatRepository) FindByID(id uint) (*model.Chat, error) {
 	return &chat, err
 }
 
+func (r *ChatRepository) FindByIDs(ids []uint) ([]model.Chat, error) {
+	if len(ids) == 0 {
+		return []model.Chat{}, nil
+	}
+	var chats []model.Chat
+	err := r.readDB.Preload("Sender").
+		Where("chat_id IN ? AND deleted_at IS NULL", ids).
+		Find(&chats).Error
+	return chats, err
+}
+
 func (r *ChatRepository) SoftDelete(id uint) error {
 	now := time.Now()
 	return r.writeDB.Model(&model.Chat{}).
