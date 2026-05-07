@@ -278,7 +278,7 @@ function ProfileThreadCard({ thread }: { thread: ThreadItem }) {
           <ActionBtn
             icon={<Repeat2 size={15} strokeWidth={1.8} />}
             label={String(thread.stats.reposts)}
-            active={thread.is_reposted}
+            active={thread.is_reposted ?? false}
             activeColor="var(--green)"
           />
           <ActionBtn
@@ -291,7 +291,7 @@ function ProfileThreadCard({ thread }: { thread: ThreadItem }) {
               />
             }
             label={String(thread.stats.likes)}
-            active={thread.is_liked}
+            active={thread.is_liked ?? false}
             activeColor="var(--coral)"
           />
           <ActionBtn
@@ -304,7 +304,7 @@ function ProfileThreadCard({ thread }: { thread: ThreadItem }) {
               />
             }
             label={String(thread.stats.bookmarks)}
-            active={thread.is_bookmarked}
+            active={thread.is_bookmarked ?? false}
             activeColor="var(--accent)"
           />
         </div>
