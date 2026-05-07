@@ -10,6 +10,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+ARG API_URL=http://app:8080
+ENV API_URL=$API_URL
+
 # next.config.ts must include output: 'standalone' for this production image.
 RUN npm run build
 

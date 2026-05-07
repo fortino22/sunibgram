@@ -1,12 +1,12 @@
-# CLAUDE.md — Sunibgram (University Social Media App)
+# CLAUDE.md — Sunibgram
 
-Read this fully before writing any code, creating any file, or making any architectural decision.
+Read fully before writing any code or making any architectural decision.
 
 ---
 
 ## Project Summary
 
-University-exclusive social media platform (X/Threads clone) called **Sunibgram**. Students post threads with text/media, comment, reply, repost, like, bookmark, pin. Also supports communities, follows, premium orders, and OTP-based auth. Portfolio project — code quality and DX matter.
+University-exclusive social media platform (X/Threads clone). Students post threads with text/media, comment, reply, repost, like, bookmark, pin. Supports communities, follows, premium orders, OTP-based auth.
 
 ---
 
@@ -21,171 +21,101 @@ University-exclusive social media platform (X/Threads clone) called **Sunibgram*
 | Server State | TanStack Query v5 |
 | Client State | Zustand v4 |
 | Forms | React Hook Form + Zod |
-| Auth | Custom JWT (Bearer token) — **NOT NextAuth** |
+| Auth | Custom JWT — **NOT NextAuth** |
 | Real-time | Socket.io client |
 
-Never use Redux, SWR, Axios, Context API for global state, or NextAuth.
+Never use: Redux, SWR, Axios, Context API for global state, NextAuth.
+
+---
+
+## Architecture Rules
+
+### Three-Layer Component Model
+
+1. **Page** (`app/**/page.tsx`) — 50-150 lines.200 lines acceptable. Composes sections only. No logic, no fetching.
+2. **Section** (`components/[feature]/[Name]Section.tsx`) — Owns one concern. Calls hooks, handles loading/error.
+3. **Atom** (`components/[feature]/[Name].tsx`) — Pure presentational. Props only. No fetching.
+
+### Hard Rules
+
+- Component files: max ~100–150 lines. Exceed it → split.
+- Hook files: max ~80 lines.
+- No `any`. No raw `fetch()` in components. No `useState` for server data.
+- Named exports for components. Default export only in `app/` pages.
+- Every data-fetching section needs a skeleton. Never show blank screen.
+- Optimistic updates (`onMutate`/`onError`) on: like, bookmark, repost, follow.
+- Check `components/shared/` before creating any new component.
+
+### Shared Components (never inline these)
+
+`<Avatar />` · `<UserHandle />` · `<MediaGrid />` · `<ActionBar />` · `<InfiniteList />` · `<EmptyState />` · `<RelativeTime />` · `<FacultyBadge />` · `<OptimisticToggle />`
+
+### API & State
+
+- `lib/api.ts` — base fetch wrapper only (Bearer attach, token refresh)
+- `lib/api/[feature].ts` — typed endpoint functions per feature
+- Hooks import from `lib/api/[feature].ts`, never from `lib/api.ts` directly
+- Server data → TanStack Query. Auth state → `authStore`. UI state → `uiStore`. Forms → RHF local.
+
+---
+
+## Project Structure
+src/
+├── app/
+│   ├── (auth)/login/   signup/
+│   ├── feed/
+│   ├── threads/[id]/
+│   ├── profile/[userId]/
+│   ├── communities/    [id]/
+│   ├── bookmarks/      notifications/
+│   ├── admin/          users/  faculties/
+│   └── @modal/compose/ reply/[id]/
+├── components/
+│   ├── thread/         ← Card, Header, Body, Actions, Composer, ReplyList, ReplyItem + skeletons/
+│   ├── profile/        ← Header, Avatar, Banner, Bio, Stats, Tabs, EditModal + skeletons/
+│   ├── community/      ← Card, Header, MemberList, MemberItem, ThreadSection, RequestList + skeletons/
+│   ├── layout/         ← AppShell, Sidebar, BottomNav, TopBar, RightPanel
+│   ├── user/           ← UserCard, UserHandle, FollowButton
+│   ├── shared/         ← Avatar, MediaGrid, ActionBar, InfiniteList, EmptyState, RelativeTime, FacultyBadge
+│   └── ui/             ← shadcn/ui + custom primitives
+├── hooks/
+│   ├── thread/         ← useThreadFeed, useThread, useCreateThread, useThreadLike, useThreadBookmark, useThreadRepost
+│   ├── profile/        ← useProfile, useMyProfile, useUpdateProfile
+│   ├── community/      ← useCommunities, useCommunity, useCommunityThreads, useJoinCommunity
+│   ├── auth/           ← useLogin, useRegister, useLogout, useRefreshToken
+│   └── notifications/  ← useNotifications, useSocket
+├── stores/
+│   ├── authStore.ts    ← BEARER_TOKEN, SID, user
+│   └── uiStore.ts      ← sidebar, modal, composer draft
+├── lib/
+│   ├── api.ts          ← base fetch wrapper
+│   ├── api/            ← threads, auth, profile, communities, orders, admin, faculties
+│   ├── queryClient.ts
+│   └── socket.ts
+└── types/              ← thread, user, community, notification, order
 
 ---
 
 ## API Reference
 
-**Base URL env var:** `NEXT_PUBLIC_API_URL` → e.g. `http://localhost:3000/`  
-**Auth header:** `Authorization: Bearer {{BEARER_TOKEN}}`  
-**Variables:** `API_SUNIBGRAM`, `SID`, `BEARER_TOKEN`
+**Base URL:** `NEXT_PUBLIC_API_URL` · **Auth:** `Authorization: Bearer <token>`
 
-### Auth — `/auth`
-| Method | Endpoint | Body | Notes |
-|---|---|---|---|
-| POST | `/auth/register` | formdata: `name, username, email, password, confirm_password, avatar(file), banner(file), bio, faculty_id` | |
-| POST | `/auth/login/otp/send` | JSON: `{email}` | Send OTP first |
-| POST | `/auth/login` | JSON: `{email, password, otp}` | OTP required |
-| POST | `/auth/login/prod` | JSON: `{email, password}` | No OTP |
-| POST | `/auth/refresh` | JSON: `{sid}` | Refresh token |
-| POST | `/auth/logout` | — | Bearer required |
-| PUT | `/auth/change-password` | JSON: `{old_password, new_password, confirm_password}` | Bearer |
-| POST | `/auth/forgot-password` | JSON: `{email, new_password, confirm_password}` | |
-
-### Verification — `/verification`
-| Method | Endpoint | Body |
-|---|---|---|
-| POST | `/verification/send` | JSON: `{email, type}` — type: `REGISTER` or `FORGOT_PASSWORD` |
-| POST | `/verification/verify` | JSON: `{email, code, type}` |
-
-### Profile — `/profile`
-| Method | Endpoint | Notes |
-|---|---|---|
-| GET | `/profile/me` | Bearer |
-| GET | `/profile/:userId` | Bearer |
-| PUT | `/profile/me` | formdata: `name, username, avatar(file), banner(file), bio, faculty_id, clear_avatar, clear_banner` |
-
-### Users — `/users`
-| Method | Endpoint |
+| Group | Key Endpoints |
 |---|---|
-| POST | `/users/:userId/follow` |
-| DELETE | `/users/:userId/unfollow` |
+| Auth | POST /auth/login · /auth/login/otp/send · /auth/register · /auth/refresh · /auth/logout · /auth/forgot-password |
+| Verification | POST /verification/send · /verification/verify |
+| Profile | GET/PUT /profile/me · GET /profile/:userId |
+| Users | POST/DELETE /users/:userId/follow\|unfollow |
+| Threads | GET /threads · /threads/following · /threads/me · /threads/:id · /threads/:id/chain |
+| Thread Actions | POST/DELETE /threads/:id/like\|bookmark\|repost · POST /threads/:id/pin |
+| Thread CRUD | POST /threads · PUT /threads/:id · DELETE /threads/:id |
+| Feeds | GET /pins · /likes · /bookmarks |
+| Communities | CRUD /communities · /communities/:id/join\|leave\|members\|requests\|threads |
+| Orders | POST /orders/premium · GET /orders/me · PATCH /orders/:id/cancel |
+| Admin | GET/POST/PUT/DELETE /admin/users · /admin/roles |
+| Faculties | GET/POST/PUT/DELETE /faculties |
 
-### Threads — `/threads`
-| Method | Endpoint | Body/Query | Notes |
-|---|---|---|---|
-| GET | `/threads?page=1&limit=10` | — | All threads |
-| GET | `/threads/following` | — | Following feed |
-| GET | `/threads/me?page=1&limit=10` | — | My posts |
-| GET | `/threads/me/replies?page=1&limit=10` | — | My replies |
-| GET | `/threads/:id` | — | Single thread |
-| GET | `/threads/:id/chain?page=1&limit=10` | — | Thread with all replies |
-| POST | `/threads` | formdata: `content, files(file), parent_id(optional for comment), clear_media` | Create or comment |
-| PUT | `/threads/:id` | formdata: `content, files(file), clear_media` | |
-| DELETE | `/threads/:id` | — | |
-| POST | `/threads/:id/like` | — | |
-| DELETE | `/threads/:id/unlike` | — | |
-| POST | `/threads/:id/bookmark` | — | |
-| DELETE | `/threads/:id/unbookmark` | — | |
-| POST | `/threads/:id/repost` | — | |
-| DELETE | `/threads/:id/unrepost` | — | |
-| POST | `/threads/:id/pin` | — | |
-
-### Pins / Likes / Bookmarks
-| Method | Endpoint |
-|---|---|
-| GET | `/pins` |
-| GET | `/likes` |
-| GET | `/bookmarks` |
-
-### Communities — `/communities`
-| Method | Endpoint | Body |
-|---|---|---|
-| GET | `/communities?category=sport` | optional filter |
-| GET | `/communities/me` | |
-| GET | `/communities/joined` | |
-| GET | `/communities/:id` | |
-| POST | `/communities` | formdata: `name, description, rules, category, visibility(PUBLIC/PRIVATE), avatar(file), banner(file)` |
-| PUT | `/communities/:id` | formdata: same as create + `clear_avatar, clear_banner` |
-| DELETE | `/communities/:id` | |
-| POST | `/communities/:id/join` | |
-| DELETE | `/communities/:id/leave` | |
-| GET | `/communities/:id/members` | |
-| DELETE | `/communities/:id/members/:userId` | Kick member |
-| PATCH | `/communities/:id/members/:userId/role` | JSON: `{role: "MEMBER"}` |
-| POST | `/communities/:id/requests` | Request to join |
-| DELETE | `/communities/:id/requests` | Cancel request |
-| GET | `/communities/:id/requests` | Get pending requests |
-| POST | `/communities/:id/requests/:userId/approve` | |
-| POST | `/communities/:id/requests/:userId/decline` | |
-| GET | `/communities/:id/threads` | |
-| POST | `/communities/:id/threads` | formdata: `content, files(file), clear_media` |
-
-### Orders/Premium — `/orders`
-| Method | Endpoint |
-|---|---|
-| POST | `/orders/premium` |
-| POST | `/orders/notification` |
-| GET | `/orders/me` |
-| GET | `/orders/:id` |
-| GET | `/orders` |
-| PATCH | `/orders/:id/cancel` |
-
-### Admin — `/admin` (Bearer required)
-| Method | Endpoint |
-|---|---|
-| GET | `/admin/users/?page=1&limit=10` |
-| GET | `/admin/users/:id` |
-| GET | `/admin/roles/` |
-| POST | `/admin/roles/` body: `{name}` |
-| GET | `/admin/roles/:id` |
-| PUT | `/admin/roles/:id` body: `{name}` |
-| DELETE | `/admin/roles/:id` |
-
-### Faculties — `/faculties` (Bearer required)
-| Method | Endpoint |
-|---|---|
-| GET | `/faculties` |
-| GET | `/faculties/:id` |
-| POST | `/faculties` body: `{faculty_name}` |
-| PUT | `/faculties/:id` body: `{faculty_name}` |
-| DELETE | `/faculties/:id` |
-
----
-
-## Code Style & Auth Rules
-
-- No `any` type. No raw `fetch` in components — use `api` from `lib/api.ts`.
-- Named exports for components. Default export only in `app/` pages.
-- Never `useState` for fetched data — TanStack Query only. Skeletons required.
-- Optimistic updates on all mutations (like, follow, bookmark, repost).
-- **Auth is JWT (no NextAuth).** Store `BEARER_TOKEN` + `SID` in Zustand `authStore`. `api.ts` auto-attaches `Authorization: Bearer <token>`. Refresh via `POST /auth/refresh` with `{sid}`.
-
----
-
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── (auth)/login/ signup/
-│   ├── feed/
-│   ├── threads/[id]/
-│   ├── profile/[userId]/
-│   ├── communities/[id]/
-│   ├── bookmarks/
-│   ├── notifications/
-│   └── @modal/ (compose, reply)
-├── components/
-│   ├── thread/ feed/ community/ layout/ user/ ui/
-├── hooks/
-│   ├── useThreads useThread useCreateThread useLikeThread
-│   ├── useBookmark useRepost useFollow useProfile
-│   ├── useCommunity useNotifications useSocket
-├── stores/
-│   ├── authStore.ts   (BEARER_TOKEN, SID, user)
-│   └── uiStore.ts
-├── lib/
-│   ├── api.ts         (fetch wrapper, auto-attach Bearer)
-│   ├── queryClient.ts
-│   └── socket.ts
-└── types/
-    ├── thread.ts user.ts community.ts notification.ts order.ts
-```
+Thread & community POST/PUT use `multipart/form-data`. All others JSON. Bearer required on all except login/register/forgot-password.
 
 ---
 
@@ -196,11 +126,15 @@ NEXT_PUBLIC_API_URL=http://localhost:3000/
 NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
 ```
 
+---
+
 ## Feature Phases
 
-**Phase 1:** Project setup, JWT auth (login with OTP flow, register, refresh), Zustand authStore, api wrapper  
-**Phase 2:** Thread feed (infinite scroll), create/comment/reply threads, like/bookmark/repost  
-**Phase 3:** Profile page, follow/unfollow, pins, my posts/replies tabs  
-**Phase 4:** Communities (CRUD, join/leave, requests, member management, community threads)  
-**Phase 5:** Notifications, real-time via Socket.io, premium/orders  
-**Phase 6:** Admin panel, faculties management, dark mode, mobile responsive
+| Phase | Scope |
+|---|---|
+| 1 | Setup, JWT auth (OTP login, register, refresh), authStore, api wrapper |
+| 2 | Thread feed (infinite scroll), create/comment/reply, like/bookmark/repost |
+| 3 | Profile, follow/unfollow, pins, my posts/replies tabs |
+| 4 | Communities (CRUD, join/leave, requests, members, community threads) |
+| 5 | Notifications, Socket.io real-time, premium/orders |
+| 6 | Admin panel, faculties, dark mode, mobile responsive |
