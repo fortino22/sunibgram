@@ -67,7 +67,7 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, total, err := c.threadService.GetRoots(page, limit)
+	threads, total, err := c.threadService.GetRoots(ctx.Context(), viewerID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -134,8 +134,11 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, total, err := c.threadService.GetChain(uint(id), page, limit)
+	threads, total, err := c.threadService.GetChain(ctx.Context(), uint(id), claims.UserID, page, limit)
 	if err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -239,7 +242,7 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, parents, total, err := c.threadService.GetMyPosts(targetUserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyPosts(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -269,7 +272,7 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, parents, total, err := c.threadService.GetMyReplies(targetUserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyReplies(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}

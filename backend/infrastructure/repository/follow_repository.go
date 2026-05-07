@@ -86,6 +86,25 @@ func (r *followRepository) Exists(followerID, followingID uint) (bool, error) {
 	return count > 0, nil
 }
 
+func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint, targetIDs []uint) (map[uint]bool, error) {
+	result := make(map[uint]bool, len(targetIDs))
+	if len(targetIDs) == 0 {
+		return result, nil
+	}
+
+	var followingIDs []uint
+	if err := r.readDB.WithContext(ctx).
+		Model(&model.UserRelationship{}).
+		Where("follower_id = ? AND following_id IN ?", followerID, targetIDs).
+		Pluck("following_id", &followingIDs).Error; err != nil {
+		return nil, err
+	}
+	for _, id := range followingIDs {
+		result[id] = true
+	}
+	return result, nil
+}
+
 func (r *followRepository) GetStat(userID uint) (*model.UserStat, error) {
 	ctx := context.Background()
 	key := userStatKey(userID)

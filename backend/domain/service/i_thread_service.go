@@ -9,16 +9,16 @@ import (
 type IThreadService interface {
 	Create(ctx context.Context, userID uint, content string, parentID *uint) (*model.Thread, error)
 	GetByID(id uint) (*model.Thread, error)
-	GetRoots(page, limit int) ([]model.Thread, int64, error)
-	GetChain(rootID uint, page, limit int) ([]model.Thread, int64, error)
+	GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error)
+	GetChain(ctx context.Context, rootID, requesterID uint, page, limit int) ([]model.Thread, int64, error)
 	Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error)
 	Delete(ctx context.Context, id, userID uint) error
 	Repost(ctx context.Context, userID, threadID uint) error
 	Unrepost(ctx context.Context, userID, threadID uint) error
 	IsReposted(userID, threadID uint) bool
 	CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error
-	GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
-	GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error)
 	GetCommunityThreads(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)

@@ -96,20 +96,31 @@ func (s *ThreadService) GetByID(id uint) (*model.Thread, error) {
 	return s.threadRepo.FindByID(id)
 }
 
-func (s *ThreadService) GetRoots(page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error) {
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	return s.threadRepo.FindRoots(page, limit)
+	threads, _, err := s.threadRepo.FindRoots(page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := s.filterViewableThreads(ctx, requesterID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, int64(len(filtered)), nil
 }
 
-func (s *ThreadService) GetChain(rootID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetChain(ctx context.Context, rootID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
 	root, err := s.threadRepo.FindByID(rootID)
 	if err != nil {
 		return nil, 0, errors.New("thread not found")
+	}
+	if err := s.canViewPrivateUser(ctx, &requesterID, root.UserID); err != nil {
+		return nil, 0, err
 	}
 	if root.ParentID != nil {
 		return nil, 0, errors.New("thread is not a root post")
@@ -120,7 +131,15 @@ func (s *ThreadService) GetChain(rootID uint, page, limit int) ([]model.Thread, 
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	return s.threadRepo.FindByRootID(rootID, page, limit)
+	threads, _, err := s.threadRepo.FindByRootID(rootID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := s.filterViewableThreads(ctx, &requesterID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, int64(len(filtered)), nil
 }
 
 func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error) {
@@ -201,7 +220,58 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 }
 
 func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error {
-	if requesterID == targetUserID {
+	return s.canViewPrivateUser(ctx, &requesterID, targetUserID)
+}
+
+func (s *ThreadService) filterViewableThreads(ctx context.Context, requesterID *uint, threads []model.Thread) ([]model.Thread, error) {
+	targetIDs := make([]uint, 0, len(threads))
+	seen := make(map[uint]struct{}, len(threads))
+	for _, thread := range threads {
+		if requesterID != nil && thread.UserID == *requesterID {
+			continue
+		}
+		if _, ok := seen[thread.UserID]; ok {
+			continue
+		}
+		seen[thread.UserID] = struct{}{}
+		targetIDs = append(targetIDs, thread.UserID)
+	}
+
+	privacyMap, err := s.settingsRepo.GetPrivacyMapByUserIDs(ctx, targetIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	privateIDs := make([]uint, 0, len(privacyMap))
+	for _, id := range targetIDs {
+		if privacyMap[id] {
+			privateIDs = append(privateIDs, id)
+		}
+	}
+
+	followingSet := map[uint]bool{}
+	if requesterID != nil {
+		followingSet, err = s.followRepo.GetFollowingSet(ctx, *requesterID, privateIDs)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	filtered := make([]model.Thread, 0, len(threads))
+	for _, thread := range threads {
+		if requesterID != nil && thread.UserID == *requesterID {
+			filtered = append(filtered, thread)
+			continue
+		}
+		if !privacyMap[thread.UserID] || followingSet[thread.UserID] {
+			filtered = append(filtered, thread)
+		}
+	}
+	return filtered, nil
+}
+
+func (s *ThreadService) canViewPrivateUser(ctx context.Context, requesterID *uint, targetUserID uint) error {
+	if requesterID != nil && *requesterID == targetUserID {
 		return nil
 	}
 	isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, targetUserID)
@@ -211,7 +281,10 @@ func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, tar
 	if !isPrivate {
 		return nil
 	}
-	following, err := s.followRepo.Exists(requesterID, targetUserID)
+	if requesterID == nil {
+		return errors.New("this account is private")
+	}
+	following, err := s.followRepo.Exists(*requesterID, targetUserID)
 	if err != nil {
 		return err
 	}
@@ -221,24 +294,75 @@ func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, tar
 	return nil
 }
 
-func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	return s.threadRepo.FindPostsByUserID(userID, page, limit)
+	threads, parents, _, err := s.threadRepo.FindPostsByUserID(userID, page, limit)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return s.filterUserFeed(ctx, requesterID, threads, parents)
 }
 
-func (s *ThreadService) GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	return s.threadRepo.FindReplyTabByUserID(userID, page, limit)
+	threads, parents, _, err := s.threadRepo.FindReplyTabByUserID(userID, page, limit)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return s.filterUserFeed(ctx, requesterID, threads, parents)
+}
+
+func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []model.Thread, parents []*model.Thread) ([]model.Thread, []*model.Thread, int64, error) {
+	filteredThreads, err := s.filterViewableThreads(ctx, &requesterID, threads)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	allowedThreadIDs := make(map[uint]struct{}, len(filteredThreads))
+	for _, thread := range filteredThreads {
+		allowedThreadIDs[thread.ThreadID] = struct{}{}
+	}
+
+	parentThreads := make([]model.Thread, 0, len(parents))
+	for _, parent := range parents {
+		if parent != nil {
+			parentThreads = append(parentThreads, *parent)
+		}
+	}
+	filteredParents, err := s.filterViewableThreads(ctx, &requesterID, parentThreads)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	allowedParentIDs := make(map[uint]struct{}, len(filteredParents))
+	for _, parent := range filteredParents {
+		allowedParentIDs[parent.ThreadID] = struct{}{}
+	}
+
+	outThreads := make([]model.Thread, 0, len(threads))
+	outParents := make([]*model.Thread, 0, len(parents))
+	for i, thread := range threads {
+		if _, ok := allowedThreadIDs[thread.ThreadID]; !ok {
+			continue
+		}
+		parent := parents[i]
+		if parent != nil {
+			if _, ok := allowedParentIDs[parent.ThreadID]; !ok {
+				continue
+			}
+		}
+		outThreads = append(outThreads, thread)
+		outParents = append(outParents, parent)
+	}
+	return outThreads, outParents, int64(len(outThreads)), nil
 }
 
 func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error) {
