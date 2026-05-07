@@ -63,17 +63,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-        
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #   container_name: sunibgram_frontend
-  #   env_file:
-  #     - ./frontend/.env.docker
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - app
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: sunibgram_frontend
+    env_file:
+      - ./frontend/.env.docker
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app
 
 volumes:
   postgres_data:

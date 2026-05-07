@@ -1,11 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft, Bookmark, Heart, MessageCircle, Repeat2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Avatar } from '@/components/shared/Avatar';
 import type { ThreadItem } from '@/lib/services/threads';
-import { ActionButton } from './ActionButton';
+import { ThreadActions } from './ThreadActions';
+import { ThreadBody } from './ThreadBody';
+import { ThreadComposer } from './ThreadComposer';
+import { ThreadHeader } from './ThreadHeader';
 import { ReplyTree } from './ReplyTree';
+import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
 
 interface ThreadDetailViewProps {
   root: ThreadItem;
@@ -33,10 +38,7 @@ function tabStyle(active: boolean): React.CSSProperties {
 export function ThreadDetailView({ root, replies, totalReplies }: ThreadDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ReplyTab>('top');
-  const isLiked = root.is_liked === true;
-  const isReposted = root.is_reposted === true;
-  const isBookmarked = root.is_bookmarked === true;
-  const authorInitial = root.author.username.charAt(0).toUpperCase();
+  const author = getThreadAuthor(root);
 
   const sortedReplies =
     activeTab === 'latest'
@@ -45,153 +47,52 @@ export function ThreadDetailView({ root, replies, totalReplies }: ThreadDetailVi
 
   return (
     <main
+      className="mx-auto min-h-screen max-w-[600px]"
       style={{
-        maxWidth: 600,
-        margin: '0 auto',
-        minHeight: '100vh',
         background: 'var(--bg-card)',
         borderLeft: '1px solid var(--border)',
         borderRight: '1px solid var(--border)',
       }}
     >
       <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 18,
-          padding: '12px 16px',
-          background: 'oklch(10.5% 0.005 260 / 0.92)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid var(--border)',
-        }}
+        className="sticky top-0 z-20 flex items-center gap-[18px] border-b px-4 py-3"
+        style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
       >
         <button
           type="button"
           aria-label="Back"
           onClick={() => router.back()}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full"
           style={{
-            width: 36,
-            height: 36,
-            border: 0,
-            borderRadius: '50%',
             background: 'transparent',
             color: 'var(--text)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
           }}
         >
           <ArrowLeft size={20} strokeWidth={2.2} />
         </button>
-        <div style={{ color: 'var(--text)', fontSize: 20, fontWeight: 700 }}>Thread</div>
+        <div className="text-xl font-bold" style={{ color: 'var(--text)' }}>Thread</div>
       </header>
 
-      <section style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-          <div
-            aria-hidden="true"
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background: 'oklch(58% 0.23 270)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              fontWeight: 700,
-              fontSize: 18,
-            }}
-          >
-            {authorInitial}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: 'var(--text)', fontWeight: 700, fontSize: 16 }}>
-              @{root.author.username}
-            </div>
-            {root.author.faculty && (
-              <span
-                style={{
-                  display: 'inline-block',
-                  marginTop: 3,
-                  color: 'var(--accent)',
-                  background: 'var(--bg-subtle)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 999,
-                  padding: '2px 8px',
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                {root.author.faculty.faculty_name}
-              </span>
-            )}
+      <section className="border-b p-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="mb-3.5 flex gap-3">
+          <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size={48} />
+          <div className="min-w-0 flex-1">
+            <ThreadHeader author={author} showFaculty />
           </div>
         </div>
 
-        <div
-          style={{
-            color: 'var(--text)',
-            fontSize: 18,
-            lineHeight: 1.6,
-            whiteSpace: 'pre-wrap',
-            overflowWrap: 'break-word',
-          }}
-        >
-          {root.content}
-        </div>
-
-        {root.media.length > 0 && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: root.media.length === 1 ? '1fr' : 'repeat(2, minmax(0, 1fr))',
-              gap: 8,
-              marginTop: 14,
-            }}
-          >
-            {root.media.map((m) => (
-              <img
-                key={m.media_id}
-                src={m.url}
-                alt=""
-                style={{
-                  width: '100%',
-                  maxHeight: root.media.length === 1 ? 420 : 220,
-                  borderRadius: 8,
-                  objectFit: 'cover',
-                  background: 'var(--bg-subtle)',
-                }}
-              />
-            ))}
-          </div>
-        )}
+        <ThreadBody content={root.content} media={root.media} />
 
         <div
-          style={{
-            color: 'var(--text-tertiary)',
-            fontSize: 13,
-            marginTop: 14,
-            paddingBottom: 14,
-            borderBottom: '1px solid var(--border)',
-          }}
+          className="mt-3.5 border-b pb-3.5 text-[13px]"
+          style={{ color: 'var(--text-tertiary)', borderColor: 'var(--border)' }}
         >
           {root.time_ago}
         </div>
 
         <div
-          style={{
-            display: 'flex',
-            gap: 20,
-            paddingTop: 10,
-            color: 'var(--text-tertiary)',
-            fontSize: 14,
-          }}
+          className="flex gap-5 pt-2.5 text-sm"
+          style={{ color: 'var(--text-tertiary)' }}
         >
           <span>
             <strong style={{ color: 'var(--text)' }}>{root.stats.likes}</strong> Likes
@@ -204,65 +105,24 @@ export function ThreadDetailView({ root, replies, totalReplies }: ThreadDetailVi
           </span>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 4,
-            marginTop: 10,
-            paddingTop: 10,
-            borderTop: '1px solid var(--border)',
-            color: 'var(--text-tertiary)',
-          }}
-        >
-          <ActionButton aria-label="Like" color={isLiked ? '#f04452' : undefined}>
-            <Heart size={20} strokeWidth={2} fill={isLiked ? '#f04452' : 'none'} />
-          </ActionButton>
-          <ActionButton aria-label="Comment">
-            <MessageCircle size={20} strokeWidth={2} />
-          </ActionButton>
-          <ActionButton aria-label="Repost" color={isReposted ? 'var(--accent)' : undefined}>
-            <Repeat2 size={20} strokeWidth={2} />
-          </ActionButton>
-          <ActionButton aria-label="Bookmark" color={isBookmarked ? 'var(--accent)' : undefined}>
-            <Bookmark size={20} strokeWidth={2} fill={isBookmarked ? 'var(--accent)' : 'none'} />
-          </ActionButton>
-        </div>
-      </section>
-
-      <section style={{ display: 'flex', gap: 12, padding: 16, borderBottom: '1px solid var(--border)' }}>
-        <div
-          aria-hidden="true"
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: '50%',
-            background: 'oklch(58% 0.23 270)',
-            flexShrink: 0,
-          }}
-        />
-        <textarea
-          placeholder={`Reply to @${root.author.username}...`}
-          rows={3}
-          style={{
-            flex: 1,
-            resize: 'vertical',
-            minHeight: 76,
-            border: 0,
-            outline: 'none',
-            background: 'transparent',
-            color: 'var(--text)',
-            font: 'inherit',
-            fontSize: 15,
-            lineHeight: 1.5,
-          }}
+        <ThreadActions
+          likes={root.stats.likes}
+          reposts={root.stats.reposts}
+          bookmarks={root.stats.bookmarks}
+          isLiked={root.is_liked === true}
+          isReposted={root.is_reposted === true}
+          isBookmarked={root.is_bookmarked === true}
+          className="justify-start gap-1"
         />
       </section>
 
-      <section style={{ borderBottom: '1px solid var(--border)' }}>
-        <div style={{ padding: '14px 16px 0', color: 'var(--text)', fontWeight: 700, fontSize: 16 }}>
+      <ThreadComposer placeholder={`Reply to @${root.author.username}...`} />
+
+      <section className="border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="px-4 pt-3.5 text-base font-bold" style={{ color: 'var(--text)' }}>
           {totalReplies} {totalReplies === 1 ? 'Reply' : 'Replies'}
         </div>
-        <div style={{ display: 'flex', marginTop: 2 }}>
+        <div className="mt-0.5 flex">
           <button type="button" onClick={() => setActiveTab('top')} style={tabStyle(activeTab === 'top')}>
             Top
           </button>
