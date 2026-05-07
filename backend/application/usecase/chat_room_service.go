@@ -73,27 +73,44 @@ func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name 
 	return room, nil
 }
 
-func (s *ChatRoomService) AddMemberToGroup(ctx context.Context, roomID, requesterID, newUserID uint) (*model.ChatRoom, error) {
+func (s *ChatRoomService) AddMemberToGroup(ctx context.Context, roomID, requesterID uint, newUserIDs []uint) (*model.ChatRoom, []uint, error) {
+	if len(newUserIDs) == 0 {
+		return nil, []uint{}, errors.New("user_ids required")
+	}
 	if !s.roomRepo.IsMember(roomID, requesterID) {
-		return nil, errors.New("forbidden")
+		return nil, []uint{}, errors.New("forbidden")
 	}
 	room, err := s.roomRepo.FindByID(roomID)
 	if err != nil {
-		return nil, errors.New("chat room not found")
+		return nil, []uint{}, errors.New("chat room not found")
 	}
 	if room.Type != model.ChatRoomTypeGroup {
-		return nil, errors.New("room is not a group")
+		return nil, []uint{}, errors.New("room is not a group")
 	}
-	if _, err := s.userRepo.FindByID(newUserID); err != nil {
-		return nil, errors.New("target user not found")
+
+	seen := make(map[uint]struct{}, len(newUserIDs))
+	alreadyMembers := []uint{}
+	for _, id := range newUserIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		if _, err := s.userRepo.FindByID(id); err != nil {
+			return nil, []uint{}, errors.New("target user not found")
+		}
+		if s.roomRepo.IsMember(roomID, id) {
+			alreadyMembers = append(alreadyMembers, id)
+			continue
+		}
+		if err := s.roomRepo.AddMember(roomID, id); err != nil {
+			return nil, []uint{}, err
+		}
 	}
-	if s.roomRepo.IsMember(roomID, newUserID) {
-		return nil, errors.New("user already a member")
+	room, err = s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return nil, []uint{}, err
 	}
-	if err := s.roomRepo.AddMember(roomID, newUserID); err != nil {
-		return nil, err
-	}
-	return s.roomRepo.FindByID(roomID)
+	return room, alreadyMembers, nil
 }
 
 func (s *ChatRoomService) UpdateGroup(ctx context.Context, roomID, requesterID uint, name string, description *string) error {

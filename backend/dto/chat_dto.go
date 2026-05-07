@@ -50,7 +50,7 @@ type UpdateGroupChatRoomRequest struct {
 }
 
 type AddGroupMemberRequest struct {
-	UserID uint `json:"user_id"`
+	UserIDs []uint `json:"user_ids"`
 }
 
 type SendMessageRequest struct {

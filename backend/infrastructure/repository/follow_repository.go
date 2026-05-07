@@ -99,6 +99,46 @@ func (r *followRepository) GetStat(userID uint) (*model.UserStat, error) {
 	return &stat, nil
 }
 
+func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]model.User, int64, error) {
+	var total int64
+	if err := r.readDB.Model(&model.UserRelationship{}).
+		Where("follower_id = ?", userID).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var users []model.User
+	offset := (page - 1) * limit
+	err := r.readDB.Model(&model.User{}).
+		Joins("JOIN user_relationships ON user_relationships.following_id = users.user_id").
+		Where("user_relationships.follower_id = ?", userID).
+		Preload("Role").
+		Order("user_relationships.created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&users).Error
+	return users, total, err
+}
+
+func (r *followRepository) GetFollowers(userID uint, page, limit int) ([]model.User, int64, error) {
+	var total int64
+	if err := r.readDB.Model(&model.UserRelationship{}).
+		Where("following_id = ?", userID).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var users []model.User
+	offset := (page - 1) * limit
+	err := r.readDB.Model(&model.User{}).
+		Joins("JOIN user_relationships ON user_relationships.follower_id = users.user_id").
+		Where("user_relationships.following_id = ?", userID).
+		Preload("Role").
+		Order("user_relationships.created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&users).Error
+	return users, total, err
+}
+
 func (r *followRepository) patchStatCache(userID uint, followerDelta, followingDelta int) {
 	ctx := context.Background()
 	key := userStatKey(userID)

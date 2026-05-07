@@ -38,6 +38,15 @@ func (r *UserProfileRepository) FindByUserID(userID uint) (*model.UserProfile, e
 	return &profile, err
 }
 
+func (r *UserProfileRepository) FindByUserIDs(ids []uint) ([]model.UserProfile, error) {
+	if len(ids) == 0 {
+		return []model.UserProfile{}, nil
+	}
+	var profiles []model.UserProfile
+	err := r.readDB.Where("user_id IN ?", ids).Find(&profiles).Error
+	return profiles, err
+}
+
 func (r *UserProfileRepository) ExistsByUserID(userID uint) (bool, error) {
 	var count int64
 	err := r.readDB.Model(&model.UserProfile{}).Where("user_id = ?", userID).Count(&count).Error

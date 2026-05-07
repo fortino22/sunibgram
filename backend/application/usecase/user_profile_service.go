@@ -188,6 +188,10 @@ func (s *UserProfileService) GetProfile(userID uint) (*service.FullProfile, erro
 	return &service.FullProfile{User: user, Stat: stat, Profile: profile, UserFaculty: userFaculty}, nil
 }
 
+func (s *UserProfileService) GetProfiles(userIDs []uint) ([]model.UserProfile, error) {
+	return s.profileRepo.FindByUserIDs(userIDs)
+}
+
 func (s *UserProfileService) GetURL(bucket, objectName string) string {
 	return s.storageUsecase.GetURL(bucket, objectName)
 }

@@ -71,11 +71,17 @@ func (c *ChatRoomController) AddMember(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
 	}
 
-	room, err := c.chatRoomService.AddMemberToGroup(ctx.Context(), uint(id), claims.UserID, req.UserID)
+	_, alreadyMembers, err := c.chatRoomService.AddMemberToGroup(ctx.Context(), uint(id), claims.UserID, req.UserIDs)
 	if err != nil {
 		return chatError(ctx, err)
 	}
-	return ctx.Status(fiber.StatusOK).JSON(toChatRoomResponse(room))
+	if alreadyMembers == nil {
+		alreadyMembers = []uint{}
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message":         "members added successfully",
+		"already_members": alreadyMembers,
+	})
 }
 
 func (c *ChatRoomController) UpdateGroup(ctx *fiber.Ctx) error {
