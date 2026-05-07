@@ -16,6 +16,7 @@ type IThreadService interface {
 	Repost(ctx context.Context, userID, threadID uint) error
 	Unrepost(ctx context.Context, userID, threadID uint) error
 	IsReposted(userID, threadID uint) bool
+	CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error
 	GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMyReplies(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error)

@@ -14,17 +14,23 @@ type ThreadService struct {
 	threadRepo    repository.IThreadRepository
 	communityRepo repository.ICommunityRepository
 	memberRepo    repository.ICommunityMemberRepository
+	settingsRepo  repository.IUserSettingsRepository
+	followRepo    repository.IFollowRepository
 }
 
 func NewThreadService(
 	threadRepo repository.IThreadRepository,
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
+	settingsRepo repository.IUserSettingsRepository,
+	followRepo repository.IFollowRepository,
 ) service.IThreadService {
 	return &ThreadService{
 		threadRepo:    threadRepo,
 		communityRepo: communityRepo,
 		memberRepo:    memberRepo,
+		settingsRepo:  settingsRepo,
+		followRepo:    followRepo,
 	}
 }
 
@@ -42,6 +48,21 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		parent, err := s.threadRepo.FindByID(*parentID)
 		if err != nil {
 			return nil, errors.New("parent thread not found")
+		}
+		if parent.UserID != userID {
+			isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, parent.UserID)
+			if err != nil {
+				return nil, err
+			}
+			if isPrivate {
+				following, err := s.followRepo.Exists(userID, parent.UserID)
+				if err != nil {
+					return nil, err
+				}
+				if !following {
+					return nil, errors.New("this account is private")
+				}
+			}
 		}
 		threadType = model.ThreadTypeReply
 		if parent.RootID == nil {
@@ -177,6 +198,27 @@ func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) err
 func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 	ok, _ := s.threadRepo.ExistsRepost(userID, threadID)
 	return ok
+}
+
+func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error {
+	if requesterID == targetUserID {
+		return nil
+	}
+	isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+	if !isPrivate {
+		return nil
+	}
+	following, err := s.followRepo.Exists(requesterID, targetUserID)
+	if err != nil {
+		return err
+	}
+	if !following {
+		return errors.New("this account is private")
+	}
+	return nil
 }
 
 func (s *ThreadService) GetMyPosts(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {

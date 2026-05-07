@@ -63,7 +63,7 @@ func main() {
 	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService := usecase.NewFollowService(followRepo, userRepo)
-	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo)
+	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo)
 	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo)

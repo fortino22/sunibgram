@@ -225,10 +225,21 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
+	id, err := strconv.ParseUint(ctx.Params("userID"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	}
+	targetUserID := uint(id)
+	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, parents, total, err := c.threadService.GetMyPosts(claims.UserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyPosts(targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -244,10 +255,21 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
+	id, err := strconv.ParseUint(ctx.Params("userID"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	}
+	targetUserID := uint(id)
+	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, parents, total, err := c.threadService.GetMyReplies(claims.UserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyReplies(targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}

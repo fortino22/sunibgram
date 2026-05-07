@@ -24,6 +24,16 @@ func (r *UserSettingsRepository) GetUserSettingByUserID(ctx context.Context, use
 	return &setting, err
 }
 
+func (r *UserSettingsRepository) IsUserPrivate(ctx context.Context, userID uint) (bool, error) {
+	var setting model.UserSettings
+	err := r.readDB.WithContext(ctx).
+		Model(&model.UserSettings{}).
+		Select("is_private").
+		Where("user_id = ?", userID).
+		Scan(&setting).Error
+	return setting.IsPrivate, err
+}
+
 func (r *UserSettingsRepository) UpdateUserSetting(ctx context.Context, setting *model.UserSettings) error {
 	return r.writeDB.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}},
