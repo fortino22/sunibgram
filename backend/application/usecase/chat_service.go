@@ -115,9 +115,20 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 	}
 
 	results := make([]service.ChatMarkResult, 0, len(chatIDs))
+	chats, err := s.chatRepo.FindByIDs(chatIDs)
+	if err != nil {
+		for _, chatID := range chatIDs {
+			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "not_found"})
+		}
+		return results, nil
+	}
+	chatByID := make(map[uint]*model.Chat, len(chats))
+	for i := range chats {
+		chatByID[chats[i].ChatID] = &chats[i]
+	}
 	for _, chatID := range chatIDs {
-		chat, err := s.chatRepo.FindByID(chatID)
-		if err != nil {
+		chat, ok := chatByID[chatID]
+		if !ok {
 			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "not_found"})
 			continue
 		}
