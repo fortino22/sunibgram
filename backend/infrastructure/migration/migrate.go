@@ -42,6 +42,8 @@ func AutoMigrate(db *gorm.DB) {
 		}
 	}
 
+	db.Exec("UPDATE chat_rooms SET member_count = (SELECT COUNT(*) FROM chat_room_members WHERE chat_room_members.room_id = chat_rooms.room_id)")
+
 	seedRoles(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)

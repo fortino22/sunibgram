@@ -10,7 +10,6 @@ import (
 	"github.com/sunibgram/domain/service"
 )
 
-
 type ChatService struct {
 	chatRepo     repository.IChatRepository
 	roomRepo     repository.IChatRoomRepository
@@ -93,19 +92,14 @@ func (s *ChatService) MarkRead(roomID, userID uint) error {
 		return s.chatRepo.MarkRoomRead(roomID, userID)
 	}
 
-	chats, _, err := s.chatRepo.FindByRoomID(roomID, 1, 100000)
+	inserted, err := s.chatReadRepo.BatchMarkRead(roomID, userID)
 	if err != nil {
 		return err
 	}
-	for i := range chats {
-		if chats[i].SenderID == userID {
-			continue
-		}
-		if err := s.chatReadRepo.MarkRead(chats[i].ChatID, userID); err != nil {
-			return err
-		}
-		if s.chatReadRepo.CountReads(chats[i].ChatID) >= s.roomRepo.CountMembers(roomID)-1 {
-			_ = s.chatRepo.UpdateIsRead(chats[i].ChatID)
+	memberCount := int64(room.MemberCount)
+	for _, chatID := range inserted {
+		if s.chatReadRepo.CountReads(chatID) >= memberCount-1 {
+			_ = s.chatRepo.UpdateIsRead(chatID)
 		}
 	}
 	return nil
@@ -143,7 +137,7 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 			if err := s.chatReadRepo.MarkRead(chatID, userID); err != nil {
 				return nil, err
 			}
-			if s.chatReadRepo.CountReads(chatID) >= s.roomRepo.CountMembers(roomID)-1 {
+			if s.chatReadRepo.CountReads(chatID) >= int64(room.MemberCount)-1 {
 				_ = s.chatRepo.UpdateIsRead(chatID)
 			}
 		}

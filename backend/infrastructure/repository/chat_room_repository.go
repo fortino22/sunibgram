@@ -67,7 +67,14 @@ func (r *ChatRoomRepository) CountMembers(roomID uint) int64 {
 
 func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 	member := model.ChatRoomMember{RoomID: roomID, UserID: userID, JoinedAt: time.Now()}
-	return r.writeDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&member).Error
+	result := r.writeDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&member)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected > 0 {
+		r.writeDB.Model(&model.ChatRoom{}).Where("room_id = ?", roomID).UpdateColumn("member_count", gorm.Expr("member_count + 1"))
+	}
+	return nil
 }
 
 func (r *ChatRoomRepository) FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error) {
