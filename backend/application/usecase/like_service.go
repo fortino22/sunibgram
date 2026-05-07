@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -10,19 +11,36 @@ import (
 )
 
 type LikeService struct {
-	likeRepo   repository.ILikeRepository
-	threadRepo repository.IThreadRepository
-	memberRepo repository.ICommunityMemberRepository
+	likeRepo     repository.ILikeRepository
+	threadRepo   repository.IThreadRepository
+	memberRepo   repository.ICommunityMemberRepository
+	settingsRepo repository.IUserSettingsRepository
+	followRepo   repository.IFollowRepository
 }
 
-func NewLikeService(likeRepo repository.ILikeRepository, threadRepo repository.IThreadRepository, memberRepo repository.ICommunityMemberRepository) service.ILikeService {
-	return &LikeService{likeRepo: likeRepo, threadRepo: threadRepo, memberRepo: memberRepo}
+func NewLikeService(
+	likeRepo repository.ILikeRepository,
+	threadRepo repository.IThreadRepository,
+	memberRepo repository.ICommunityMemberRepository,
+	settingsRepo repository.IUserSettingsRepository,
+	followRepo repository.IFollowRepository,
+) service.ILikeService {
+	return &LikeService{
+		likeRepo:     likeRepo,
+		threadRepo:   threadRepo,
+		memberRepo:   memberRepo,
+		settingsRepo: settingsRepo,
+		followRepo:   followRepo,
+	}
 }
 
 func (s *LikeService) Like(userID, threadID uint) error {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return errors.New("thread not found")
+	}
+	if err := canViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
+		return err
 	}
 	if thread.CommunityID != nil {
 		if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
@@ -40,6 +58,13 @@ func (s *LikeService) Like(userID, threadID uint) error {
 }
 
 func (s *LikeService) Unlike(userID, threadID uint) error {
+	thread, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
+		return errors.New("thread not found")
+	}
+	if err := canViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
+		return err
+	}
 	exists, err := s.likeRepo.Exists(userID, threadID)
 	if err != nil {
 		return err

@@ -119,7 +119,7 @@ func (s *ThreadService) GetChain(ctx context.Context, rootID, requesterID uint, 
 	if err != nil {
 		return nil, 0, errors.New("thread not found")
 	}
-	if err := s.canViewPrivateUser(ctx, &requesterID, root.UserID); err != nil {
+	if err := canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, root.UserID); err != nil {
 		return nil, 0, err
 	}
 	if root.ParentID != nil {
@@ -182,6 +182,9 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 	if original.Type == model.ThreadTypeRepost {
 		return errors.New("cannot repost a repost")
 	}
+	if err := canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &userID, original.UserID); err != nil {
+		return err
+	}
 	if original.CommunityID != nil {
 		if _, err := s.memberRepo.FindMember(*original.CommunityID, userID); err != nil {
 			return errors.New("you must be a member of the community to repost this thread")
@@ -220,7 +223,7 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 }
 
 func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error {
-	return s.canViewPrivateUser(ctx, &requesterID, targetUserID)
+	return canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, targetUserID)
 }
 
 func (s *ThreadService) filterViewableThreads(ctx context.Context, requesterID *uint, threads []model.Thread) ([]model.Thread, error) {
@@ -270,11 +273,17 @@ func (s *ThreadService) filterViewableThreads(ctx context.Context, requesterID *
 	return filtered, nil
 }
 
-func (s *ThreadService) canViewPrivateUser(ctx context.Context, requesterID *uint, targetUserID uint) error {
+func canViewPrivateUser(
+	ctx context.Context,
+	settingsRepo repository.IUserSettingsRepository,
+	followRepo repository.IFollowRepository,
+	requesterID *uint,
+	targetUserID uint,
+) error {
 	if requesterID != nil && *requesterID == targetUserID {
 		return nil
 	}
-	isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, targetUserID)
+	isPrivate, err := settingsRepo.IsUserPrivate(ctx, targetUserID)
 	if err != nil {
 		return err
 	}
@@ -284,7 +293,7 @@ func (s *ThreadService) canViewPrivateUser(ctx context.Context, requesterID *uin
 	if requesterID == nil {
 		return errors.New("this account is private")
 	}
-	following, err := s.followRepo.Exists(*requesterID, targetUserID)
+	following, err := followRepo.Exists(*requesterID, targetUserID)
 	if err != nil {
 		return err
 	}
