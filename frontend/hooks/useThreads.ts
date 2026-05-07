@@ -8,7 +8,7 @@ export function useThreads(page = 1, limit = 10) {
   const token = useAuthStore((state) => state.token);
 
   return useQuery<ThreadListResponse>({
-    queryKey: ['threads', page, limit],
+    queryKey: ['threads', 'feed', page, limit],
     queryFn: () => {
       if (token === null) {
         throw new Error('Authentication token is required to fetch threads.');

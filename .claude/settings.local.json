@@ -4,7 +4,8 @@
       "Bash(go mod *)",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "Skill(codex:setup)"
+      "Skill(codex:setup)",
+      "Bash(node C:/Users/ASUS/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs task --write '<task> *)"
     ]
   }
 }
