@@ -3,11 +3,12 @@ package dto
 import "github.com/sunibgram/dto/utils"
 
 type ChatRoomResponse struct {
-	RoomID    uint                `json:"room_id"`
-	Name      *string             `json:"name,omitempty"`
-	Type      string              `json:"type"`
-	CreatedAt utils.FormattedTime `json:"created_at"`
-	UpdatedAt utils.FormattedTime `json:"updated_at"`
+	RoomID      uint                `json:"room_id"`
+	Name        *string             `json:"name,omitempty"`
+	Description *string             `json:"description,omitempty"`
+	Type        string              `json:"type"`
+	CreatedAt   utils.FormattedTime `json:"created_at"`
+	UpdatedAt   utils.FormattedTime `json:"updated_at"`
 }
 
 type ChatMediaResponse struct {
@@ -38,8 +39,18 @@ type CreatePrivateChatRoomRequest struct {
 }
 
 type CreateGroupChatRoomRequest struct {
-	Name      string `json:"name"`
-	MemberIDs []uint `json:"member_ids"`
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+	MemberIDs   []uint  `json:"member_ids"`
+}
+
+type UpdateGroupChatRoomRequest struct {
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
+}
+
+type AddGroupMemberRequest struct {
+	UserID uint `json:"user_id"`
 }
 
 type SendMessageRequest struct {

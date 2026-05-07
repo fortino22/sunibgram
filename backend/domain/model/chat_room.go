@@ -12,6 +12,7 @@ const (
 type ChatRoom struct {
 	RoomID      uint         `gorm:"primaryKey;autoIncrement"`
 	Name        *string      `gorm:"type:varchar(100)"`
+	Description *string      `gorm:"type:text"`
 	Type        ChatRoomType `gorm:"type:varchar(10);not null"`
 	MemberCount int          `gorm:"not null;default:0"`
 	CreatedAt   time.Time
