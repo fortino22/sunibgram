@@ -23,6 +23,21 @@ func (r *ChatReadRepository) MarkRead(chatID, userID uint) error {
 	return r.writeDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&read).Error
 }
 
+func (r *ChatReadRepository) BatchMarkRead(roomID, userID uint) ([]uint, error) {
+	var chatIDs []uint
+	err := r.writeDB.Raw(`
+		INSERT INTO chat_reads (chat_id, user_id, read_at)
+		SELECT chat_id, ?, NOW()
+		FROM chats
+		WHERE room_id = ?
+			AND sender_id != ?
+			AND deleted_at IS NULL
+		ON CONFLICT (chat_id, user_id) DO NOTHING
+		RETURNING chat_id
+	`, userID, roomID, userID).Scan(&chatIDs).Error
+	return chatIDs, err
+}
+
 func (r *ChatReadRepository) HasRead(chatID, userID uint) bool {
 	var count int64
 	if err := r.readDB.Model(&model.ChatRead{}).
