@@ -47,9 +47,17 @@ On "New" → add `--fresh` to the forwarded prompt.
 Invoke `Agent` with:
 - `subagent_type: "codex:codex-rescue"`
 - `description`: short description of the task (3–5 words)
-- `prompt`: the `--resume` or `--fresh` flag (if any) + the raw user message verbatim
+- `prompt`: the `--resume` or `--fresh` flag (if any) + the following preamble + the raw user message verbatim
 
-Do NOT paraphrase, shorten, or annotate the user's message. Pass it exactly as typed.
+**Preamble to prepend (always include, verbatim):**
+```
+CRITICAL RULE — NO ASSUMPTIONS:
+If you need any clarification, missing context, file contents, architecture details, or are unsure about ANYTHING — stop and ask Claude. Do NOT guess. Do NOT proceed on assumptions. Ask Claude directly and wait for the answer before continuing.
+
+---
+```
+
+Do NOT paraphrase, shorten, or annotate the user's message. Pass it exactly as typed after the preamble.
 
 ### Step 4 — Return output verbatim
 
@@ -60,7 +68,7 @@ Take the Agent result and return it to the user **exactly as-is**. No summary, n
 ## Rules
 
 - Never ask the user to approve Bash or Agent tool calls — those are pre-allowed for this skill.
-- Never ask for clarification before sending. If the message is ambiguous, send it to Codex as-is — Codex will ask.
+- Never ask for clarification before sending. If the message is ambiguous, send it to Codex as-is — Codex will ask Claude, not guess.
 - Never run `/codex:rescue` as a Skill. Always use `Agent(subagent_type: "codex:codex-rescue")`.
 - One `AskUserQuestion` max per invocation (the resume/fresh choice). No other questions.
 - If the user included `--resume` or `--fresh` in their message, skip Step 2 and use that flag directly.
