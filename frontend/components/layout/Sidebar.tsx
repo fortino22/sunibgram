@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { LogOut } from 'lucide-react';
+import { Avatar } from '@/components/shared/Avatar';
 import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -118,15 +119,35 @@ export function Sidebar() {
   const { user, logout } = useAuthStore();
   const [postHovered, setPostHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-
-  const initials = user?.username
-    ? user.username.slice(0, 2).toUpperCase()
-    : '??';
+  const userWithAvatar = user as (typeof user & {
+    avatar_url?: string | null;
+    image_url?: string | null;
+    profile_image_url?: string | null;
+    profileImageUrl?: string | null;
+  }) | null;
+  const avatarSrc =
+    userWithAvatar?.profile_image_url ??
+    userWithAvatar?.profileImageUrl ??
+    userWithAvatar?.avatar_url ??
+    userWithAvatar?.image_url ??
+    null;
 
   const handleLogout = async () => {
     await fetch('/api/auth/clear-session', { method: 'POST' });
     logout();
     router.replace('/login');
+  };
+
+  const handleNewPostClick = () => {
+    if (pathname === '/') {
+      const composer = document.getElementById('create-post-box');
+      composer?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const textarea = composer?.querySelector<HTMLTextAreaElement>('textarea');
+      textarea?.focus();
+      return;
+    }
+
+    router.push('/#create-post-box');
   };
 
   const isActive = (item: NavItem): boolean => {
@@ -177,6 +198,8 @@ export function Sidebar() {
         {/* New Post button */}
         <div style={{ marginTop: 16, padding: '0 2px' }}>
           <button
+            type="button"
+            onClick={handleNewPostClick}
             onMouseEnter={() => setPostHovered(true)}
             onMouseLeave={() => setPostHovered(false)}
             style={{
@@ -267,24 +290,7 @@ export function Sidebar() {
           onMouseEnter={(e) => { if (!menuOpen) e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
           onMouseLeave={(e) => { if (!menuOpen) e.currentTarget.style.background = 'none'; }}
         >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: '50%',
-              background: 'oklch(58% 0.23 270)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 500,
-              fontSize: 14,
-              color: '#fff',
-              flexShrink: 0,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {initials}
-          </div>
+          <Avatar username={user?.username ?? 'Current user'} avatarUrl={avatarSrc} size={36} />
           <div className="sidebar-label" style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{

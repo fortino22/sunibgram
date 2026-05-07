@@ -43,13 +43,13 @@ func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, target
 	return room, nil
 }
 
-func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name string, memberIDs []uint) (*model.ChatRoom, error) {
+func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name string, description *string, memberIDs []uint) (*model.ChatRoom, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("name is required")
 	}
 
-	room := &model.ChatRoom{Name: &name, Type: model.ChatRoomTypeGroup}
+	room := &model.ChatRoom{Name: &name, Description: description, Type: model.ChatRoomTypeGroup}
 	if err := s.roomRepo.Save(room); err != nil {
 		return nil, err
 	}
@@ -71,6 +71,64 @@ func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name 
 		seen[id] = struct{}{}
 	}
 	return room, nil
+}
+
+func (s *ChatRoomService) AddMemberToGroup(ctx context.Context, roomID, requesterID uint, newUserIDs []uint) (*model.ChatRoom, []uint, error) {
+	if len(newUserIDs) == 0 {
+		return nil, []uint{}, errors.New("user_ids required")
+	}
+	if !s.roomRepo.IsMember(roomID, requesterID) {
+		return nil, []uint{}, errors.New("forbidden")
+	}
+	room, err := s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return nil, []uint{}, errors.New("chat room not found")
+	}
+	if room.Type != model.ChatRoomTypeGroup {
+		return nil, []uint{}, errors.New("room is not a group")
+	}
+
+	seen := make(map[uint]struct{}, len(newUserIDs))
+	alreadyMembers := []uint{}
+	for _, id := range newUserIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		if _, err := s.userRepo.FindByID(id); err != nil {
+			return nil, []uint{}, errors.New("target user not found")
+		}
+		if s.roomRepo.IsMember(roomID, id) {
+			alreadyMembers = append(alreadyMembers, id)
+			continue
+		}
+		if err := s.roomRepo.AddMember(roomID, id); err != nil {
+			return nil, []uint{}, err
+		}
+	}
+	room, err = s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return nil, []uint{}, err
+	}
+	return room, alreadyMembers, nil
+}
+
+func (s *ChatRoomService) UpdateGroup(ctx context.Context, roomID, requesterID uint, name string, description *string) error {
+	if !s.roomRepo.IsMember(roomID, requesterID) {
+		return errors.New("forbidden")
+	}
+	room, err := s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return errors.New("chat room not found")
+	}
+	if room.Type != model.ChatRoomTypeGroup {
+		return errors.New("room is not a group")
+	}
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" {
+		return errors.New("name is required")
+	}
+	return s.roomRepo.UpdateGroup(roomID, trimmedName, description)
 }
 
 func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]model.ChatRoom, int64, error) {

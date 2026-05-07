@@ -31,3 +31,35 @@ func (s *FollowService) Unfollow(followerID, followingID uint) error {
 func (s *FollowService) GetStat(userID uint) (*model.UserStat, error) {
 	return s.followRepo.GetStat(userID)
 }
+
+func (s *FollowService) GetFollowing(userID uint, page, limit int) ([]model.User, int64, error) {
+	if _, err := s.userRepo.FindByID(userID); err != nil {
+		return nil, 0, errors.New("user not found")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	return s.followRepo.GetFollowing(userID, page, limit)
+}
+
+func (s *FollowService) GetFollowers(userID uint, page, limit int) ([]model.User, int64, error) {
+	if _, err := s.userRepo.FindByID(userID); err != nil {
+		return nil, 0, errors.New("user not found")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	return s.followRepo.GetFollowers(userID, page, limit)
+}

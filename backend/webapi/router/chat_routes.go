@@ -12,6 +12,8 @@ func registerChatRoutes(api fiber.Router, chatRoomCtrl *controller.ChatRoomContr
 	chats.Post("/rooms/group", chatRoomCtrl.CreateGroup)
 	chats.Get("/rooms", chatRoomCtrl.GetMyRooms)
 	chats.Get("/rooms/:id", chatRoomCtrl.GetByID)
+	chats.Post("/rooms/:id/members", chatRoomCtrl.AddMember)
+	chats.Patch("/rooms/:id", chatRoomCtrl.UpdateGroup)
 	chats.Post("/rooms/:room_id/messages", chatCtrl.Send)
 	chats.Get("/rooms/:room_id/messages", chatCtrl.GetMessages)
 	chats.Patch("/messages/:id", chatCtrl.EditMessage)

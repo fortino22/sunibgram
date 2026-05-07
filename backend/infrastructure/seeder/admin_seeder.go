@@ -22,13 +22,17 @@ func SeedAdmin(db *gorm.DB) {
 	name := strings.TrimSpace(os.Getenv("ADMIN_NAME"))
 	username := strings.TrimSpace(os.Getenv("ADMIN_USERNAME"))
 
-
 	var existing model.User
 	if err := db.Where("email = ?", email).First(&existing).Error; err == nil {
 		var existingProfile model.UserProfile
 		if err := db.Where("user_id = ?", existing.UserID).First(&existingProfile).Error; err != nil {
 			profile := model.UserProfile{UserID: existing.UserID}
 			db.Create(&profile)
+		}
+		var existingSettings model.UserSettings
+		if err := db.Where("user_id = ?", existing.UserID).First(&existingSettings).Error; err != nil {
+			settings := model.UserSettings{UserID: existing.UserID}
+			db.Create(&settings)
 		}
 		return
 	}
@@ -56,6 +60,11 @@ func SeedAdmin(db *gorm.DB) {
 	profile := model.UserProfile{UserID: admin.UserID}
 	if err := db.Create(&profile).Error; err != nil {
 		log.Printf("admin seeder: failed to create admin profile: %v", err)
+	}
+
+	settings := model.UserSettings{UserID: admin.UserID}
+	if err := db.Create(&settings).Error; err != nil {
+		log.Printf("admin seeder: failed to create admin settings: %v", err)
 	}
 
 	log.Println("admin seeder: admin user created")

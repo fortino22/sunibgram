@@ -103,6 +103,16 @@ func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 	return nil
 }
 
+func (r *ChatRoomRepository) UpdateGroup(roomID uint, name string, description *string) error {
+	err := r.writeDB.Model(&model.ChatRoom{}).
+		Where("room_id = ?", roomID).
+		Updates(map[string]any{"name": name, "description": description}).Error
+	if err != nil {
+		return err
+	}
+	return r.cache.Delete(context.Background(), fmt.Sprintf("chat:room:%d", roomID))
+}
+
 func (r *ChatRoomRepository) FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error) {
 	var room model.ChatRoom
 	err := r.readDB.Table("chat_rooms").

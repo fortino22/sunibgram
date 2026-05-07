@@ -1,40 +1,44 @@
-import { AvatarRoot, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import type { CSSProperties } from 'react';
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
+const DEFAULT_AVATAR_SRC = '/assets/sunibgram/default-profile.jpg';
+
 const SIZE_MAP = {
-  sm: { px: 32, font: 13 },
-  md: { px: 40, font: 15 },
-  lg: { px: 84, font: 30 },
+  sm: 32,
+  md: 40,
+  lg: 84,
 } as const;
 
 interface AvatarProps {
   username: string;
   avatarUrl?: string | null;
-  size?: keyof typeof SIZE_MAP;
+  size?: keyof typeof SIZE_MAP | number;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
+}
+
+function resolveSize(size: AvatarProps['size']): number {
+  return typeof size === 'number' ? size : SIZE_MAP[size ?? 'md'];
 }
 
 export function Avatar({ username, avatarUrl, size = 'md', className, style }: AvatarProps) {
-  const { px, font } = SIZE_MAP[size];
-  const initial = username.charAt(0).toUpperCase();
+  const resolvedSize = resolveSize(size);
 
   return (
     <AvatarRoot
       className={cn('shrink-0', className)}
-      style={{ width: px, height: px, ...style }}
+      style={{ width: resolvedSize, height: resolvedSize, ...style }}
     >
-      {avatarUrl && <AvatarImage src={avatarUrl} alt={username} />}
+      <AvatarImage src={avatarUrl ?? DEFAULT_AVATAR_SRC} alt={`${username} profile image`} />
       <AvatarFallback
+        className="text-xs font-semibold"
         style={{
-          background: 'oklch(58% 0.23 270)',
-          color: '#fff',
-          fontWeight: 700,
-          fontSize: font,
-          letterSpacing: '-0.02em',
+          background: 'var(--bg-subtle)',
+          color: 'var(--text-secondary)',
         }}
       >
-        {initial}
+        {username.charAt(0).toUpperCase()}
       </AvatarFallback>
     </AvatarRoot>
   );

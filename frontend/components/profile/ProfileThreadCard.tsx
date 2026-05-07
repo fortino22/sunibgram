@@ -2,6 +2,7 @@ import { MoreHorizontal } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
 import type { ThreadItem } from '@/lib/services/threads';
+import { getAuthorAvatarUrl, getThreadAuthor } from '@/components/thread/threadUtils';
 
 interface ProfileThreadCardProps {
   thread: ThreadItem;
@@ -9,6 +10,8 @@ interface ProfileThreadCardProps {
 }
 
 export function ProfileThreadCard({ thread, replyingTo }: ProfileThreadCardProps) {
+  const author = getThreadAuthor(thread);
+
   return (
     <article
       style={{
@@ -32,7 +35,7 @@ export function ProfileThreadCard({ thread, replyingTo }: ProfileThreadCardProps
       )}
 
       <div style={{ padding: '14px 20px', display: 'flex', gap: 12 }}>
-        <Avatar username={thread.author.username} avatarUrl={null} size="md" />
+        <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
 
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Author row */}
@@ -116,9 +119,15 @@ export function ProfileThreadCard({ thread, replyingTo }: ProfileThreadCardProps
 
           <ActionBar
             stats={thread.stats}
+<<<<<<< HEAD
             isLiked={!!thread.is_liked}
             isReposted={!!thread.is_reposted}
             isBookmarked={!!thread.is_bookmarked}
+=======
+            isLiked={thread.is_liked ?? false}
+            isReposted={thread.is_reposted ?? false}
+            isBookmarked={thread.is_bookmarked ?? false}
+>>>>>>> 4a056c4b78820fe60a51d8fdd714dccfda03f9f2
             size="sm"
           />
         </div>

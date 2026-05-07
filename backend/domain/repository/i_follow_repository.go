@@ -7,4 +7,6 @@ type IFollowRepository interface {
 	Unfollow(followerID, followingID uint) error
 	Exists(followerID, followingID uint) (bool, error)
 	GetStat(userID uint) (*model.UserStat, error)
+	GetFollowing(userID uint, page, limit int) ([]model.User, int64, error)
+	GetFollowers(userID uint, page, limit int) ([]model.User, int64, error)
 }
