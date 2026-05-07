@@ -116,9 +116,9 @@ export function ProfileThreadCard({ thread, replyingTo }: ProfileThreadCardProps
 
           <ActionBar
             stats={thread.stats}
-            isLiked={thread.is_liked}
-            isReposted={thread.is_reposted}
-            isBookmarked={thread.is_bookmarked}
+            isLiked={!!thread.is_liked}
+            isReposted={!!thread.is_reposted}
+            isBookmarked={!!thread.is_bookmarked}
             size="sm"
           />
         </div>
