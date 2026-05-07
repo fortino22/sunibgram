@@ -16,8 +16,8 @@ University-exclusive social media platform (X/Threads clone). Students post thre
 |---|---|
 | Framework | Next.js 15 (App Router) |
 | Language | TypeScript strict |
-| Styling | Tailwind CSS v3 |
-| UI Components | shadcn/ui |
+| Styling | Tailwind CSS **v4** + CSS custom properties (`var(--*)`) for colors |
+| UI Primitives | shadcn/ui pattern — Radix primitives in `components/ui/`, `cn()` from `lib/utils.ts` |
 | Server State | TanStack Query v5 |
 | Client State | Zustand v4 |
 | Forms | React Hook Form + Zod |
@@ -25,6 +25,12 @@ University-exclusive social media platform (X/Threads clone). Students post thre
 | Real-time | Socket.io client |
 
 Never use: Redux, SWR, Axios, Context API for global state, NextAuth.
+
+### Styling Rules
+- **Layout/spacing/sizing** → Tailwind classes (`flex`, `gap-3`, `p-4`, `rounded-full`, etc.)
+- **Colors** → CSS custom properties via inline `style` (`color: 'var(--text)'`, `background: 'var(--bg-card)'`)
+- **Never** hardcode color values directly — always reference a CSS variable
+- `cn()` from `lib/utils.ts` for merging Tailwind classes conditionally
 
 ---
 
@@ -48,7 +54,23 @@ Never use: Redux, SWR, Axios, Context API for global state, NextAuth.
 
 ### Shared Components (never inline these)
 
-`<Avatar />` · `<UserHandle />` · `<MediaGrid />` · `<ActionBar />` · `<InfiniteList />` · `<EmptyState />` · `<RelativeTime />` · `<FacultyBadge />` · `<OptimisticToggle />`
+| Component | Location | Purpose |
+|---|---|---|
+| `<Avatar />` | `components/shared/Avatar.tsx` | User avatar with image/initial fallback — uses Radix Avatar |
+| `<ActionBar />` | `components/shared/ActionBar.tsx` | Reply/repost/like/bookmark row — uses `<ActionButton />` |
+| `<EmptyState />` | `components/shared/EmptyState.tsx` | Centered empty message + subtitle |
+| `<ActionButton />` | `components/thread/ActionButton.tsx` | Single icon button with hover state |
+| `<UserHandle />` | `components/shared/` | @username link (create when needed) |
+| `<MediaGrid />` | `components/shared/` | Image/video grid (create when needed) |
+| `<RelativeTime />` | `components/shared/` | time_ago display (create when needed) |
+| `<FacultyBadge />` | `components/shared/` | Faculty pill badge (create when needed) |
+| `<InfiniteList />` | `components/shared/` | Infinite scroll wrapper (create when needed) |
+
+### UI Primitives (`components/ui/`)
+
+Radix-based, styled to our design system. Currently available:
+- `avatar.tsx` — `AvatarRoot`, `AvatarImage`, `AvatarFallback` (Radix `@radix-ui/react-avatar`)
+- `Icon.tsx` — Lucide icon wrapper
 
 ### API & State
 
@@ -60,39 +82,41 @@ Never use: Redux, SWR, Axios, Context API for global state, NextAuth.
 ---
 
 ## Project Structure
-src/
-├── app/
-│   ├── (auth)/login/   signup/
-│   ├── feed/
-│   ├── threads/[id]/
-│   ├── profile/[userId]/
-│   ├── communities/    [id]/
-│   ├── bookmarks/      notifications/
-│   ├── admin/          users/  faculties/
-│   └── @modal/compose/ reply/[id]/
-├── components/
-│   ├── thread/         ← Card, Header, Body, Actions, Composer, ReplyList, ReplyItem + skeletons/
-│   ├── profile/        ← Header, Avatar, Banner, Bio, Stats, Tabs, EditModal + skeletons/
-│   ├── community/      ← Card, Header, MemberList, MemberItem, ThreadSection, RequestList + skeletons/
-│   ├── layout/         ← AppShell, Sidebar, BottomNav, TopBar, RightPanel
-│   ├── user/           ← UserCard, UserHandle, FollowButton
-│   ├── shared/         ← Avatar, MediaGrid, ActionBar, InfiniteList, EmptyState, RelativeTime, FacultyBadge
-│   └── ui/             ← shadcn/ui + custom primitives
-├── hooks/
-│   ├── thread/         ← useThreadFeed, useThread, useCreateThread, useThreadLike, useThreadBookmark, useThreadRepost
-│   ├── profile/        ← useProfile, useMyProfile, useUpdateProfile
-│   ├── community/      ← useCommunities, useCommunity, useCommunityThreads, useJoinCommunity
-│   ├── auth/           ← useLogin, useRegister, useLogout, useRefreshToken
-│   └── notifications/  ← useNotifications, useSocket
-├── stores/
-│   ├── authStore.ts    ← BEARER_TOKEN, SID, user
-│   └── uiStore.ts      ← sidebar, modal, composer draft
-├── lib/
-│   ├── api.ts          ← base fetch wrapper
-│   ├── api/            ← threads, auth, profile, communities, orders, admin, faculties
-│   ├── queryClient.ts
-│   └── socket.ts
-└── types/              ← thread, user, community, notification, order
+
+> ⚠️ Actual current paths — no `src/` prefix.
+
+```
+app/
+├── login/              ✅ done
+├── signup/             ✅ done
+├── profile/            ✅ done (mock data, not yet connected to API)
+├── explore/            stub
+├── communities/        stub
+├── bookmarks/          stub
+├── notifications/      stub
+├── page.tsx            ✅ home feed (connected)
+components/
+├── auth/               ← AuthGuard.tsx
+├── layout/             ← MainWrapper, Sidebar, RightPanel
+├── thread/             ← ThreadCard, ActionButton, ReplyTree, ThreadDetailView
+├── profile/            ← ProfilePageHeader, ProfileBanner, ProfileInfo, ProfileTabs, ProfileThreadCard
+├── shared/             ← Avatar, ActionBar, EmptyState  (add more here before inlining)
+└── ui/                 ← avatar.tsx (Radix), Icon.tsx, ErrorAlert.tsx
+hooks/
+└── useThreads.ts       ✅
+stores/
+└── authStore.ts        ✅
+lib/
+├── api.ts              ← base fetch wrapper (Bearer attach)
+├── utils.ts            ← cn() helper (clsx + tailwind-merge)
+└── services/           ← auth, threads, profile, communities, orders, faculties
+```
+
+Future folders to create when implementing those features:
+- `hooks/profile/`, `hooks/community/`, `hooks/auth/`
+- `lib/api/` (typed endpoint files, replacing `lib/services/`)
+- `components/community/`, `components/user/`
+- `types/` (shared TypeScript interfaces)
 
 ---
 
