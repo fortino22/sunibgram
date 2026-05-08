@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -56,4 +57,29 @@ func (r *ChatReadRepository) CountReads(chatID uint) int64 {
 		return 0
 	}
 	return count
+}
+
+func (r *ChatReadRepository) CountReadsBatch(ctx context.Context, chatIDs []uint) (map[uint]int64, error) {
+	counts := make(map[uint]int64, len(chatIDs))
+	if len(chatIDs) == 0 {
+		return counts, nil
+	}
+
+	var rows []struct {
+		ChatID uint
+		Count  int64
+	}
+	if err := r.readDB.WithContext(ctx).
+		Table("chat_reads").
+		Select("chat_id, COUNT(*) AS count").
+		Where("chat_id IN ?", chatIDs).
+		Group("chat_id").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	for _, row := range rows {
+		counts[row.ChatID] = row.Count
+	}
+	return counts, nil
 }

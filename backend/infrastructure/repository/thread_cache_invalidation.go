@@ -23,15 +23,15 @@ func threadCommunityKey(communityID uint, page, limit int) string {
 
 func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *uint, communityID *uint) {
 	r.cache.Delete(ctx, threadKey(threadID))
-	if communityID != nil {
+
+	treeID := threadID
+	if rootID != nil && *rootID != 0 {
+		treeID = *rootID
+	}
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", treeID))
+
+	if communityID != nil && *communityID != 0 {
 		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:community:%d:*", *communityID))
-	} else {
-		r.cache.DeleteByPattern(ctx, "thread:roots:*")
-		if rootID != nil {
-			r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", *rootID))
-		} else {
-			r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", threadID))
-		}
 	}
 }
 

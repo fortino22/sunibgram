@@ -105,8 +105,12 @@ func (s *ChatService) MarkRead(roomID, userID uint) error {
 		return err
 	}
 	memberCount := int64(room.MemberCount)
+	readCounts, err := s.chatReadRepo.CountReadsBatch(context.Background(), inserted)
+	if err != nil {
+		return err
+	}
 	for _, chatID := range inserted {
-		if s.chatReadRepo.CountReads(chatID) >= memberCount-1 {
+		if readCounts[chatID] >= memberCount-1 {
 			_ = s.chatRepo.UpdateIsRead(chatID)
 		}
 	}
