@@ -87,7 +87,6 @@ func (r *threadCached) Save(thread *model.Thread) error {
 			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
 		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
-		r.cache.DeleteByPattern(ctx, "thread:roots:*")
 		var orig model.Thread
 		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
 			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
@@ -100,6 +99,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 		r.patchCachedCount(*thread.ParentID, "comment_count", 1)
 	}
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	return nil
 }
 
@@ -312,6 +312,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	r.cache.Delete(ctx, threadKey(thread.ThreadID))
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, thread.ThreadID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	return nil
 }
 
@@ -341,11 +342,13 @@ func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
 	r.db.readDB.Select("thread_id, parent_id, root_id, type, original_thread_id, community_id").First(&thread, id)
 
+	ctx := context.Background()
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", -1)
+		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
 	}
 	if thread.ParentID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
@@ -354,9 +357,9 @@ func (r *threadCached) Delete(id uint) error {
 		r.patchCachedCount(*thread.ParentID, "comment_count", -1)
 	}
 
-	ctx := context.Background()
 	r.invalidate(ctx, id, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, id)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 
 	r.likes.deleteByThreadID(id)
 	r.bookmarks.deleteByThreadID(id)
