@@ -32,6 +32,10 @@ func userStatKey(userID uint) string {
 	return fmt.Sprintf("user:stat:%d", userID)
 }
 
+func followListKey(userID uint, listType string, page, limit int) string {
+	return fmt.Sprintf("follows:user:%d:%s:page:%d:limit:%d", userID, listType, page, limit)
+}
+
 func (r *followRepository) Follow(followerID, followingID uint) error {
 	if followerID == followingID {
 		return errors.New("cannot follow yourself")
@@ -57,6 +61,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	// patch Redis cache for both
 	r.patchStatCache(followerID, 0, 1)
 	r.patchStatCache(followingID, 1, 0)
+	r.invalidateFollowLists(followerID, followingID)
 	return nil
 }
 
@@ -75,6 +80,7 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 
 	r.patchStatCache(followerID, 0, -1)
 	r.patchStatCache(followingID, -1, 0)
+	r.invalidateFollowLists(followerID, followingID)
 	return nil
 }
 
@@ -119,43 +125,77 @@ func (r *followRepository) GetStat(userID uint) (*model.UserStat, error) {
 }
 
 func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]model.User, int64, error) {
-	var total int64
-	if err := r.readDB.Model(&model.UserRelationship{}).
-		Where("follower_id = ?", userID).
-		Count(&total).Error; err != nil {
-		return nil, 0, err
+	type cached struct {
+		Users []model.User
+		Total int64
 	}
 
-	var users []model.User
-	offset := (page - 1) * limit
-	err := r.readDB.Model(&model.User{}).
-		Joins("JOIN user_relationships ON user_relationships.following_id = users.user_id").
-		Where("user_relationships.follower_id = ?", userID).
-		Preload("Role").
-		Order("user_relationships.created_at DESC").
-		Offset(offset).Limit(limit).
-		Find(&users).Error
-	return users, total, err
+	ctx := context.Background()
+	var result cached
+	key := followListKey(userID, "following", page, limit)
+	if err := r.cache.Get(ctx, key, &result); err != nil {
+		var total int64
+		if err := r.readDB.Model(&model.UserRelationship{}).
+			Where("follower_id = ?", userID).
+			Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+
+		var users []model.User
+		offset := (page - 1) * limit
+		if err := r.readDB.Model(&model.User{}).
+			Joins("JOIN user_relationships ON user_relationships.following_id = users.user_id").
+			Where("user_relationships.follower_id = ?", userID).
+			Preload("Role").
+			Order("user_relationships.created_at DESC").
+			Offset(offset).Limit(limit).
+			Find(&users).Error; err != nil {
+			return nil, 0, err
+		}
+		result = cached{Users: users, Total: total}
+		r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return result.Users, result.Total, nil
 }
 
 func (r *followRepository) GetFollowers(userID uint, page, limit int) ([]model.User, int64, error) {
-	var total int64
-	if err := r.readDB.Model(&model.UserRelationship{}).
-		Where("following_id = ?", userID).
-		Count(&total).Error; err != nil {
-		return nil, 0, err
+	type cached struct {
+		Users []model.User
+		Total int64
 	}
 
-	var users []model.User
-	offset := (page - 1) * limit
-	err := r.readDB.Model(&model.User{}).
-		Joins("JOIN user_relationships ON user_relationships.follower_id = users.user_id").
-		Where("user_relationships.following_id = ?", userID).
-		Preload("Role").
-		Order("user_relationships.created_at DESC").
-		Offset(offset).Limit(limit).
-		Find(&users).Error
-	return users, total, err
+	ctx := context.Background()
+	var result cached
+	key := followListKey(userID, "followers", page, limit)
+	if err := r.cache.Get(ctx, key, &result); err != nil {
+		var total int64
+		if err := r.readDB.Model(&model.UserRelationship{}).
+			Where("following_id = ?", userID).
+			Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+
+		var users []model.User
+		offset := (page - 1) * limit
+		if err := r.readDB.Model(&model.User{}).
+			Joins("JOIN user_relationships ON user_relationships.follower_id = users.user_id").
+			Where("user_relationships.following_id = ?", userID).
+			Preload("Role").
+			Order("user_relationships.created_at DESC").
+			Offset(offset).Limit(limit).
+			Find(&users).Error; err != nil {
+			return nil, 0, err
+		}
+		result = cached{Users: users, Total: total}
+		r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return result.Users, result.Total, nil
+}
+
+func (r *followRepository) invalidateFollowLists(followerID, followingID uint) {
+	ctx := context.Background()
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("follows:user:%d:following:*", followerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("follows:user:%d:followers:*", followingID))
 }
 
 func (r *followRepository) patchStatCache(userID uint, followerDelta, followingDelta int) {
