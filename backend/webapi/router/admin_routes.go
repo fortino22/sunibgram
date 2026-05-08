@@ -6,7 +6,7 @@ import (
 	"github.com/sunibgram/webapi/middleware"
 )
 
-func registerAdminRoutes(api fiber.Router, roleCtrl *controller.RoleController, userCtrl *controller.UserController) {
+func registerAdminRoutes(api fiber.Router, roleCtrl *controller.RoleController, userCtrl *controller.UserController, cacheCtrl *controller.CacheController) {
 	admin := api.Group("/admin", middleware.Auth(), middleware.AdminOnly())
 
 	roles := admin.Group("/roles")
@@ -19,4 +19,7 @@ func registerAdminRoutes(api fiber.Router, roleCtrl *controller.RoleController, 
 	users := admin.Group("/users")
 	users.Get("/", userCtrl.GetAll)
 	users.Get("/:id", userCtrl.GetByID)
+
+	cache := admin.Group("/cache")
+	cache.Post("/clear", cacheCtrl.Clear)
 }

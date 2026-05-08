@@ -50,6 +50,10 @@ func (c *Cache) Delete(ctx context.Context, keys ...string) error {
 	return c.client.Del(ctx, keys...).Err()
 }
 
+func (c *Cache) FlushDB(ctx context.Context) error {
+	return c.client.FlushDB(ctx).Err()
+}
+
 // DeleteByPattern removes all keys matching a glob pattern (e.g. "thread:roots:*").
 func (c *Cache) DeleteByPattern(ctx context.Context, pattern string) error {
 	var cursor uint64

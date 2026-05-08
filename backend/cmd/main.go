@@ -31,6 +31,7 @@ func main() {
 	middleware.Init(redisCache)
 
 	// --- Repositories ---
+	cacheRepo := infrarepo.NewCacheRepository(redisCache)
 	roleRepo := infrarepo.NewRoleRepository(writeDB, readDB)
 	userRepo := infrarepo.NewUserRepository(writeDB, readDB, redisCache)
 	userSettingsRepo := infrarepo.NewUserSettingsRepository(writeDB, readDB, redisCache)
@@ -58,6 +59,7 @@ func main() {
 	emailService := usecase.NewEmailService(infraemail.NewSMTPClient())
 
 	// --- Usecases ---
+	cacheService := usecase.NewCacheService(cacheRepo)
 	authService := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
 	roleService := usecase.NewRoleService(roleRepo)
 	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
@@ -81,6 +83,7 @@ func main() {
 	socketHub := infrasocket.NewHub()
 
 	// --- Controllers ---
+	cacheCtrl := controller.NewCacheController(cacheService)
 	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
 	roleCtrl := controller.NewRoleController(roleService)
 	userCtrl := controller.NewUserController(userService)
@@ -118,6 +121,7 @@ func main() {
 		authCtrl,
 		roleCtrl,
 		userCtrl,
+		cacheCtrl,
 		userSettingsCtrl,
 		profileCtrl,
 		threadCtrl,
