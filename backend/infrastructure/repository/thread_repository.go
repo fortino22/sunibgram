@@ -104,6 +104,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 		return
 	}
 	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 }
 
 func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
