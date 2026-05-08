@@ -10,5 +10,6 @@ type IChatRoomRepository interface {
 	CountMembers(roomID uint) int64
 	AddMember(roomID, userID uint) error
 	UpdateGroup(roomID uint, name string, description *string) error
+	DeleteGroup(roomID uint) error
 	FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error)
 }

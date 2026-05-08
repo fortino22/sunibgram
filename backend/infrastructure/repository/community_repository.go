@@ -97,7 +97,12 @@ func (r *communityRepository) Update(community *model.Community) error {
 func (r *communityRepository) Delete(id uint) error {
 	var community model.Community
 	_ = r.writeDB.Select("community_id", "user_id").First(&community, id).Error
-	if err := r.writeDB.Delete(&model.Community{}, id).Error; err != nil {
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("community_id = ?", id).Delete(&model.CommunityMember{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.Community{}, id).Error
+	}); err != nil {
 		return err
 	}
 	r.invalidateCommunityDelete(id, community.UserID)

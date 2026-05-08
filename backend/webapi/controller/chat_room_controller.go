@@ -123,6 +123,30 @@ func (c *ChatRoomController) UpdateGroup(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "group updated successfully"})
 }
 
+func (c *ChatRoomController) DeleteGroup(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat room id"})
+	}
+
+	if err := c.chatRoomService.DeleteGroup(ctx.Context(), uint(id), claims.UserID); err != nil {
+		return chatError(ctx, err)
+	}
+	if c.hub != nil {
+		c.hub.Broadcast(uint(id), "group_chat_deleted", fiber.Map{
+			"room_id":    uint(id),
+			"deleted_by": claims.UserID,
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "group deleted successfully"})
+}
+
 func (c *ChatRoomController) GetMyRooms(ctx *fiber.Ctx) error {
 	claims, ok := ctxutil.Get(ctx)
 	if !ok {
