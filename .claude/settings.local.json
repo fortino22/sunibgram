@@ -5,7 +5,11 @@
       "Bash(cat)",
       "Read(//tmp/**)",
       "Skill(codex:setup)",
-      "Bash(node C:/Users/ASUS/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs task --write '<task> *)"
+      "Bash(node C:/Users/ASUS/.claude/plugins/cache/openai-codex/codex/1.0.4/scripts/codex-companion.mjs task --write '<task> *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\backend\" -Recurse -Filter \"*.go\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\backend\\\\webapi\\\\router\" -File)",
+      "Bash(Select-Object Name, FullName)"
     ]
   }
 }

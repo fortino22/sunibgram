@@ -8,10 +8,7 @@ export function useMyProfile() {
   const token = useAuthStore((s) => s.token);
   return useQuery<UserProfile>({
     queryKey: ['profile', 'me'],
-    queryFn: async () => {
-      const res = await getMyProfile(token!);
-      return res.data;
-    },
+    queryFn: () => getMyProfile(token!),
     enabled: !!token,
     staleTime: 60_000,
   });

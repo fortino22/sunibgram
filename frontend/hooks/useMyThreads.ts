@@ -6,9 +6,10 @@ import { useAuthStore } from '@/stores/authStore';
 
 export function useMyThreads() {
   const token = useAuthStore((s) => s.token);
+  const userId = useAuthStore((s) => s.user?.id);
   return useQuery<ThreadListResponse>({
     queryKey: ['threads', 'me'],
-    queryFn: () => getMyThreads({ limit: 20 }, token!),
-    enabled: !!token,
+    queryFn: () => getMyThreads(userId!, { limit: 20 }, token!),
+    enabled: !!token && !!userId,
   });
 }

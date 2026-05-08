@@ -4,6 +4,24 @@ export interface ProfileMessageResponse {
   message: string;
 }
 
+// Exact shape the backend returns for profile endpoints
+interface BackendProfileResponse {
+  user_id: number;
+  name?: string;
+  username: string;
+  email?: string;
+  is_premium?: boolean;
+  bio?: string;
+  avatar_url?: string | null;
+  banner_url?: string | null;
+  follower_count?: number;
+  following_count?: number;
+  faculty?: { faculty_id: number; faculty_name: string } | null;
+  created_at?: string;
+  is_following?: boolean;
+}
+
+// Frontend model — used throughout components
 export interface UserProfile {
   id: number;
   name?: string;
@@ -20,10 +38,22 @@ export interface UserProfile {
   created_at?: string;
 }
 
-export interface ProfileResponse {
-  data: UserProfile;
-  message?: string;
-  [key: string]: unknown;
+function mapProfile(raw: BackendProfileResponse): UserProfile {
+  return {
+    id: raw.user_id,
+    name: raw.name,
+    username: raw.username,
+    email: raw.email,
+    avatar: raw.avatar_url ?? null,
+    banner: raw.banner_url ?? null,
+    bio: raw.bio ?? null,
+    faculty_id: raw.faculty?.faculty_id ?? null,
+    faculty: raw.faculty ?? null,
+    followers_count: raw.follower_count ?? 0,
+    following_count: raw.following_count ?? 0,
+    is_following: raw.is_following,
+    created_at: raw.created_at,
+  };
 }
 
 export interface UpdateProfileParams {
@@ -67,18 +97,20 @@ async function putFormData<T>(path: string, formData: FormData, token: string): 
   return res.json() as Promise<T>;
 }
 
-export function getMyProfile(token: string): Promise<ProfileResponse> {
-  return api.get<ProfileResponse>('/api/profile/me', token);
+export async function getMyProfile(token: string): Promise<UserProfile> {
+  const raw = await api.get<BackendProfileResponse>('/api/profile/me', token);
+  return mapProfile(raw);
 }
 
-export function getProfile(userId: number | string, token: string): Promise<ProfileResponse> {
-  return api.get<ProfileResponse>(`/api/profile/${userId}`, token);
+export async function getProfile(userId: number | string, token: string): Promise<UserProfile> {
+  const raw = await api.get<BackendProfileResponse>(`/api/profile/${userId}`, token);
+  return mapProfile(raw);
 }
 
-export function updateMyProfile(
+export async function updateMyProfile(
   params: UpdateProfileParams,
   token: string
-): Promise<ProfileResponse> {
+): Promise<UserProfile> {
   const formData = new FormData();
   appendOptionalString(formData, 'name', params.name);
   appendOptionalString(formData, 'username', params.username);
@@ -94,7 +126,8 @@ export function updateMyProfile(
     formData.append('banner', params.banner);
   }
 
-  return putFormData<ProfileResponse>('/api/profile/me', formData, token);
+  const raw = await putFormData<BackendProfileResponse>('/api/profile/me', formData, token);
+  return mapProfile(raw);
 }
 
 export function followUser(userId: number | string, token: string): Promise<ProfileMessageResponse> {

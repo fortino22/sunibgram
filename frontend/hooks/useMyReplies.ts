@@ -6,9 +6,10 @@ import { useAuthStore } from '@/stores/authStore';
 
 export function useMyReplies() {
   const token = useAuthStore((s) => s.token);
+  const userId = useAuthStore((s) => s.user?.id);
   return useQuery<ThreadListResponse>({
     queryKey: ['threads', 'me', 'replies'],
-    queryFn: () => getMyReplies({ limit: 20 }, token!),
-    enabled: !!token,
+    queryFn: () => getMyReplies(userId!, { limit: 20 }, token!),
+    enabled: !!token && !!userId,
   });
 }

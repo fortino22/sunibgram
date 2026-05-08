@@ -13,6 +13,12 @@ COPY . .
 ARG API_URL=http://app:8080
 ENV API_URL=$API_URL
 
+# These are baked into the client bundle at build time
+ARG NEXT_PUBLIC_API_URL=http://localhost:8080
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SOCKET_URL=http://localhost:8080
+ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+
 # next.config.ts must include output: 'standalone' for this production image.
 RUN npm run build
 
