@@ -13,7 +13,11 @@ export interface UserProfile {
   banner?: string | null;
   bio?: string | null;
   faculty_id?: number | null;
-  [key: string]: unknown;
+  faculty?: { faculty_id: number; faculty_name: string } | null;
+  followers_count?: number;
+  following_count?: number;
+  is_following?: boolean;
+  created_at?: string;
 }
 
 export interface ProfileResponse {

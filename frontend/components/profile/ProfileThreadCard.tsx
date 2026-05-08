@@ -7,9 +7,12 @@ import { getAuthorAvatarUrl, getThreadAuthor } from '@/components/thread/threadU
 interface ProfileThreadCardProps {
   thread: ThreadItem;
   replyingTo?: string;
+  onLike?: () => void;
+  onRepost?: () => void;
+  onBookmark?: () => void;
 }
 
-export function ProfileThreadCard({ thread, replyingTo }: ProfileThreadCardProps) {
+export function ProfileThreadCard({ thread, replyingTo, onLike, onRepost, onBookmark }: ProfileThreadCardProps) {
   const author = getThreadAuthor(thread);
 
   return (
@@ -119,15 +122,12 @@ export function ProfileThreadCard({ thread, replyingTo }: ProfileThreadCardProps
 
           <ActionBar
             stats={thread.stats}
-<<<<<<< HEAD
             isLiked={!!thread.is_liked}
             isReposted={!!thread.is_reposted}
             isBookmarked={!!thread.is_bookmarked}
-=======
-            isLiked={thread.is_liked ?? false}
-            isReposted={thread.is_reposted ?? false}
-            isBookmarked={thread.is_bookmarked ?? false}
->>>>>>> 4a056c4b78820fe60a51d8fdd714dccfda03f9f2
+            onLike={onLike}
+            onRepost={onRepost}
+            onBookmark={onBookmark}
             size="sm"
           />
         </div>

@@ -19,9 +19,10 @@ interface ProfileInfoProps {
   isOwn: boolean;
   isFollowing: boolean;
   onFollowToggle: () => void;
+  onEditClick?: () => void;
 }
 
-export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle }: ProfileInfoProps) {
+export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditClick }: ProfileInfoProps) {
   return (
     <div style={{ position: 'relative', padding: '0 20px' }}>
       {/* Avatar overlaps banner */}
@@ -43,6 +44,7 @@ export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle }: Profil
         {isOwn ? (
           <button
             type="button"
+            onClick={onEditClick}
             style={{
               background: 'none',
               border: '1px solid var(--border-strong)',
