@@ -12,10 +12,12 @@ import (
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
+	infrasocket "github.com/sunibgram/infrastructure/socket"
 	"github.com/sunibgram/infrastructure/storage"
 	"github.com/sunibgram/webapi/controller"
 	"github.com/sunibgram/webapi/middleware"
 	"github.com/sunibgram/webapi/router"
+	webapisocket "github.com/sunibgram/webapi/socket"
 )
 
 func main() {
@@ -76,6 +78,7 @@ func main() {
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
+	socketHub := infrasocket.NewHub()
 
 	// --- Controllers ---
 	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
@@ -97,8 +100,8 @@ func main() {
 	communityThreadCtrl := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService, threadPinService)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
-	chatRoomCtrl := controller.NewChatRoomController(chatRoomService)
-	chatCtrl := controller.NewChatController(chatService, chatMediaService)
+	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
+	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
 
 	// --- Server ---
 	app := fiber.New()
@@ -108,6 +111,7 @@ func main() {
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
 	}))
+	webapisocket.Mount(app, socketHub, chatRoomService, redisCache)
 
 	router.Register(
 		app,
