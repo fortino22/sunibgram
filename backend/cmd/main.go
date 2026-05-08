@@ -32,9 +32,9 @@ func main() {
 
 	// --- Repositories ---
 	roleRepo := infrarepo.NewRoleRepository(writeDB, readDB)
-	userRepo := infrarepo.NewUserRepository(writeDB, readDB)
-	userSettingsRepo := infrarepo.NewUserSettingsRepository(writeDB, readDB)
-	profileRepo := infrarepo.NewUserProfileRepository(writeDB, readDB)
+	userRepo := infrarepo.NewUserRepository(writeDB, readDB, redisCache)
+	userSettingsRepo := infrarepo.NewUserSettingsRepository(writeDB, readDB, redisCache)
+	profileRepo := infrarepo.NewUserProfileRepository(writeDB, readDB, redisCache)
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
