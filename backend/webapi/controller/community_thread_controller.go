@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/webapi/ctxutil"
@@ -33,6 +34,10 @@ func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
 	}
 
 	content := ctx.FormValue("content")
+	files := threadMediaFiles(ctx)
+	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
 
 	thread, err := c.threadService.CreateCommunityThread(ctx.Context(), uint(communityID), claims.UserID, content)
 	if err != nil {
@@ -42,11 +47,9 @@ func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	if form, err := ctx.MultipartForm(); err == nil {
-		if files := form.File["files"]; len(files) > 0 {
-			if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
-				return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-			}
+	if len(files) > 0 {
+		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 	}
 

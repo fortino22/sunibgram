@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"mime/multipart"
 	"sort"
 	"strconv"
 
@@ -33,6 +34,11 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 	}
 
 	content := ctx.FormValue("content")
+	files := threadMediaFiles(ctx)
+	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
 	var parentID *uint
 	if raw := ctx.FormValue("parent_id"); raw != "" {
 		if pid, err := strconv.ParseUint(raw, 10, 64); err == nil {
@@ -46,11 +52,9 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	if form, err := ctx.MultipartForm(); err == nil {
-		if files := form.File["files"]; len(files) > 0 {
-			if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
-				return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-			}
+	if len(files) > 0 {
+		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -410,6 +414,14 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 
 func boolValue(v *bool) bool {
 	return v != nil && *v
+}
+
+func threadMediaFiles(ctx *fiber.Ctx) []*multipart.FileHeader {
+	form, err := ctx.MultipartForm()
+	if err != nil || form == nil {
+		return nil
+	}
+	return form.File["files"]
 }
 
 func (c *ThreadController) ensureFalseViewerFlags(data []dto.FeedItemResponse) {

@@ -2,10 +2,14 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
 )
+
+// MaxThreadMediaItems is the business limit for media attached to a thread.
+const MaxThreadMediaItems = 4
 
 var allowedThreadMediaExts = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
@@ -16,6 +20,13 @@ func ValidateThreadMediaExt(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if !allowedThreadMediaExts[ext] {
 		return errors.New("unsupported file type: " + filename)
+	}
+	return nil
+}
+
+func ValidateThreadMediaCount(count int) error {
+	if count > MaxThreadMediaItems {
+		return fmt.Errorf("thread can have at most %d media items", MaxThreadMediaItems)
 	}
 	return nil
 }
