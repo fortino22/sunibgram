@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -13,16 +14,33 @@ type BookmarkService struct {
 	bookmarkRepo repository.IBookmarkRepository
 	threadRepo   repository.IThreadRepository
 	memberRepo   repository.ICommunityMemberRepository
+	settingsRepo repository.IUserSettingsRepository
+	followRepo   repository.IFollowRepository
 }
 
-func NewBookmarkService(bookmarkRepo repository.IBookmarkRepository, threadRepo repository.IThreadRepository, memberRepo repository.ICommunityMemberRepository) service.IBookmarkService {
-	return &BookmarkService{bookmarkRepo: bookmarkRepo, threadRepo: threadRepo, memberRepo: memberRepo}
+func NewBookmarkService(
+	bookmarkRepo repository.IBookmarkRepository,
+	threadRepo repository.IThreadRepository,
+	memberRepo repository.ICommunityMemberRepository,
+	settingsRepo repository.IUserSettingsRepository,
+	followRepo repository.IFollowRepository,
+) service.IBookmarkService {
+	return &BookmarkService{
+		bookmarkRepo: bookmarkRepo,
+		threadRepo:   threadRepo,
+		memberRepo:   memberRepo,
+		settingsRepo: settingsRepo,
+		followRepo:   followRepo,
+	}
 }
 
 func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return errors.New("thread not found")
+	}
+	if err := canViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
+		return err
 	}
 	if thread.CommunityID != nil {
 		if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
@@ -36,10 +54,21 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 	if exists {
 		return errors.New("already bookmarked")
 	}
-	return s.bookmarkRepo.Save(&model.Bookmark{UserID: userID, ThreadID: threadID})
+	if err := s.bookmarkRepo.Save(&model.Bookmark{UserID: userID, ThreadID: threadID}); err != nil {
+		return err
+	}
+	s.threadRepo.InvalidateThread(threadID)
+	return nil
 }
 
 func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
+	thread, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
+		return errors.New("thread not found")
+	}
+	if err := canViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
+		return err
+	}
 	exists, err := s.bookmarkRepo.Exists(userID, threadID)
 	if err != nil {
 		return err
@@ -47,7 +76,11 @@ func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
 	if !exists {
 		return errors.New("not bookmarked")
 	}
-	return s.bookmarkRepo.Delete(userID, threadID)
+	if err := s.bookmarkRepo.Delete(userID, threadID); err != nil {
+		return err
+	}
+	s.threadRepo.InvalidateThread(threadID)
+	return nil
 }
 
 func (s *BookmarkService) IsBookmarked(userID, threadID uint) bool {

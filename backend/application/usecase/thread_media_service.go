@@ -25,6 +25,10 @@ func NewThreadMediaService(
 }
 
 func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) ([]model.ThreadMedia, error) {
+	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+		return nil, err
+	}
+
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return nil, errors.New("thread not found")
@@ -70,6 +74,10 @@ func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, 
 
 // Update deletes all existing media for the thread and uploads the new set.
 func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) error {
+	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+		return err
+	}
+
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return errors.New("thread not found")

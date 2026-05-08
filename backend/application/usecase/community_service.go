@@ -10,6 +10,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
+	"gorm.io/gorm"
 )
 
 type CommunityService struct {
@@ -80,16 +81,18 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 		community.BannerBucket = bucket
 	}
 
-	if err := s.communityRepo.Save(community); err != nil {
-		return nil, err
-	}
+	if err := s.communityRepo.Transaction(func(tx *gorm.DB) error {
+		if err := s.communityRepo.SaveWithTx(tx, community); err != nil {
+			return err
+		}
 
-	member := &model.CommunityMember{
-		CommunityID: community.CommunityID,
-		UserID:      userID,
-		Role:        model.CommunityMemberRoleOwner,
-	}
-	if err := s.memberRepo.Save(member); err != nil {
+		member := &model.CommunityMember{
+			CommunityID: community.CommunityID,
+			UserID:      userID,
+			Role:        model.CommunityMemberRoleOwner,
+		}
+		return s.memberRepo.SaveWithTx(tx, member)
+	}); err != nil {
 		return nil, err
 	}
 

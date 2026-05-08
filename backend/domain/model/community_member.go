@@ -12,8 +12,8 @@ const (
 )
 
 type CommunityMember struct {
-	CommunityID uint                `gorm:"primaryKey;autoIncrement:false"`
-	UserID      uint                `gorm:"primaryKey;autoIncrement:false"`
+	CommunityID uint                `gorm:"primaryKey;autoIncrement:false;uniqueIndex:idx_community_member,priority:1"`
+	UserID      uint                `gorm:"primaryKey;autoIncrement:false;uniqueIndex:idx_community_member,priority:2"`
 	Community   Community           `gorm:"foreignKey:CommunityID;references:CommunityID"`
 	User        User                `gorm:"foreignKey:UserID;references:UserID"`
 	Role        CommunityMemberRole `gorm:"type:varchar(12);not null;default:'MEMBER'"`

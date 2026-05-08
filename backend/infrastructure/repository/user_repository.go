@@ -1,8 +1,13 @@
 package repository
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 
 	"gorm.io/gorm"
 )
@@ -10,16 +15,38 @@ import (
 type UserRepository struct {
 	writeDB *gorm.DB
 	readDB  *gorm.DB
+	cache   *cache.Cache
+	ttl     time.Duration
 }
 
-func NewUserRepository(writeDB *gorm.DB, readDB *gorm.DB) domainrepo.IUserRepository {
-	return &UserRepository{writeDB: writeDB, readDB: readDB}
+func userKey(userID uint) string {
+	return fmt.Sprintf("user:id:%d", userID)
+}
+
+func NewUserRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IUserRepository {
+	var redisCache *cache.Cache
+	if len(c) > 0 {
+		redisCache = c[0]
+	}
+	return &UserRepository{writeDB: writeDB, readDB: readDB, cache: redisCache, ttl: cache.DefaultTTL}
 }
 
 func (r *UserRepository) FindByID(id uint) (*model.User, error) {
+	ctx := context.Background()
 	var user model.User
-	err := r.readDB.Preload("Role").First(&user, id).Error
-	return &user, err
+	key := userKey(id)
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &user); err == nil {
+			return &user, nil
+		}
+	}
+	if err := r.readDB.Preload("Role").First(&user, id).Error; err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		r.cache.Set(ctx, key, user, r.ttl)
+	}
+	return &user, nil
 }
 
 func (r *UserRepository) Save(user *model.User) error {
@@ -61,16 +88,28 @@ func (r *UserRepository) ExistsByUserName(username string) (bool, error) {
 }
 
 func (r *UserRepository) UpdatePassword(userID uint, hashedPassword string) error {
-	return r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).Update("password", hashedPassword).Error
+	if err := r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).Update("password", hashedPassword).Error; err != nil {
+		return err
+	}
+	r.invalidateUser(userID)
+	return nil
 }
 
 func (r *UserRepository) UpdateInfo(userID uint, name, username string) error {
-	return r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).
-		Updates(map[string]any{"name": name, "user_name": username}).Error
+	if err := r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).
+		Updates(map[string]any{"name": name, "user_name": username}).Error; err != nil {
+		return err
+	}
+	r.invalidateUser(userID)
+	return nil
 }
 
 func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
-	return r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).Update("is_premium", premium).Error
+	if err := r.writeDB.Model(&model.User{}).Where("user_id = ?", userID).Update("is_premium", premium).Error; err != nil {
+		return err
+	}
+	r.invalidateUser(userID)
+	return nil
 }
 
 func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {
@@ -85,4 +124,11 @@ func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64,
 
 	err := r.readDB.Preload("Role").Offset(offset).Limit(limit).Find(&users).Error
 	return users, total, err
+}
+
+func (r *UserRepository) invalidateUser(userID uint) {
+	if r.cache == nil {
+		return
+	}
+	r.cache.Delete(context.Background(), userKey(userID))
 }

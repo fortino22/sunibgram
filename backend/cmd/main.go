@@ -12,10 +12,12 @@ import (
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
+	infrasocket "github.com/sunibgram/infrastructure/socket"
 	"github.com/sunibgram/infrastructure/storage"
 	"github.com/sunibgram/webapi/controller"
 	"github.com/sunibgram/webapi/middleware"
 	"github.com/sunibgram/webapi/router"
+	webapisocket "github.com/sunibgram/webapi/socket"
 )
 
 func main() {
@@ -30,9 +32,9 @@ func main() {
 
 	// --- Repositories ---
 	roleRepo := infrarepo.NewRoleRepository(writeDB, readDB)
-	userRepo := infrarepo.NewUserRepository(writeDB, readDB)
-	userSettingsRepo := infrarepo.NewUserSettingsRepository(writeDB, readDB)
-	profileRepo := infrarepo.NewUserProfileRepository(writeDB, readDB)
+	userRepo := infrarepo.NewUserRepository(writeDB, readDB, redisCache)
+	userSettingsRepo := infrarepo.NewUserSettingsRepository(writeDB, readDB, redisCache)
+	profileRepo := infrarepo.NewUserProfileRepository(writeDB, readDB, redisCache)
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
@@ -40,9 +42,9 @@ func main() {
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
-	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB)
-	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB)
-	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB)
+	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
+	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
+	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB)
 	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
@@ -63,10 +65,10 @@ func main() {
 	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService := usecase.NewFollowService(followRepo, userRepo)
-	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo)
+	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
-	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo)
-	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo)
+	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo)
+	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo)
 	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
 	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
@@ -76,6 +78,7 @@ func main() {
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
+	socketHub := infrasocket.NewHub()
 
 	// --- Controllers ---
 	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
@@ -97,8 +100,8 @@ func main() {
 	communityThreadCtrl := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService, threadPinService)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
-	chatRoomCtrl := controller.NewChatRoomController(chatRoomService)
-	chatCtrl := controller.NewChatController(chatService, chatMediaService)
+	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
+	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
 
 	// --- Server ---
 	app := fiber.New()
@@ -108,6 +111,7 @@ func main() {
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
 	}))
+	webapisocket.Mount(app, socketHub, chatRoomService, redisCache)
 
 	router.Register(
 		app,

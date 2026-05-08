@@ -1,8 +1,11 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -10,26 +13,39 @@ import (
 type UserProfileRepository struct {
 	writeDB *gorm.DB
 	readDB  *gorm.DB
+	cache   *cache.Cache
 }
 
-func NewUserProfileRepository(writeDB *gorm.DB, readDB *gorm.DB) domainrepo.IUserProfileRepository {
-	return &UserProfileRepository{writeDB: writeDB, readDB: readDB}
+func NewUserProfileRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IUserProfileRepository {
+	var redisCache *cache.Cache
+	if len(c) > 0 {
+		redisCache = c[0]
+	}
+	return &UserProfileRepository{writeDB: writeDB, readDB: readDB, cache: redisCache}
 }
 
 func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 	if profile.ProfileID != 0 {
-		return r.writeDB.Model(profile).Updates(map[string]any{
+		if err := r.writeDB.Model(profile).Updates(map[string]any{
 			"avatar_object_name": profile.AvatarObjectName,
 			"avatar_bucket":      profile.AvatarBucket,
 			"banner_object_name": profile.BannerObjectName,
 			"banner_bucket":      profile.BannerBucket,
 			"bio":                profile.Bio,
-		}).Error
+		}).Error; err != nil {
+			return err
+		}
+		r.invalidateUser(profile.UserID)
+		return nil
 	}
-	return r.writeDB.Clauses(clause.OnConflict{
+	if err := r.writeDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"avatar_object_name", "avatar_bucket", "banner_object_name", "banner_bucket", "bio", "updated_at"}),
-	}).Create(profile).Error
+	}).Create(profile).Error; err != nil {
+		return err
+	}
+	r.invalidateUser(profile.UserID)
+	return nil
 }
 
 func (r *UserProfileRepository) FindByUserID(userID uint) (*model.UserProfile, error) {
@@ -51,4 +67,11 @@ func (r *UserProfileRepository) ExistsByUserID(userID uint) (bool, error) {
 	var count int64
 	err := r.readDB.Model(&model.UserProfile{}).Where("user_id = ?", userID).Count(&count).Error
 	return count > 0, err
+}
+
+func (r *UserProfileRepository) invalidateUser(userID uint) {
+	if r.cache == nil {
+		return
+	}
+	r.cache.Delete(context.Background(), userKey(userID))
 }

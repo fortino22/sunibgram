@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"mime/multipart"
 	"sort"
 	"strconv"
 
@@ -33,6 +34,11 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 	}
 
 	content := ctx.FormValue("content")
+	files := threadMediaFiles(ctx)
+	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
 	var parentID *uint
 	if raw := ctx.FormValue("parent_id"); raw != "" {
 		if pid, err := strconv.ParseUint(raw, 10, 64); err == nil {
@@ -46,11 +52,9 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	if form, err := ctx.MultipartForm(); err == nil {
-		if files := form.File["files"]; len(files) > 0 {
-			if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
-				return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-			}
+	if len(files) > 0 {
+		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -67,7 +71,7 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, total, err := c.threadService.GetRoots(page, limit)
+	threads, total, err := c.threadService.GetRoots(ctx.Context(), viewerID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -134,8 +138,11 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, total, err := c.threadService.GetChain(uint(id), page, limit)
+	threads, total, err := c.threadService.GetChain(ctx.Context(), uint(id), claims.UserID, page, limit)
 	if err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -225,10 +232,21 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
+	id, err := strconv.ParseUint(ctx.Params("userID"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	}
+	targetUserID := uint(id)
+	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, parents, total, err := c.threadService.GetMyPosts(claims.UserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyPosts(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -244,10 +262,21 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
+	id, err := strconv.ParseUint(ctx.Params("userID"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	}
+	targetUserID := uint(id)
+	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	threads, parents, total, err := c.threadService.GetMyReplies(claims.UserID, page, limit)
+	threads, parents, total, err := c.threadService.GetMyReplies(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -385,6 +414,14 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 
 func boolValue(v *bool) bool {
 	return v != nil && *v
+}
+
+func threadMediaFiles(ctx *fiber.Ctx) []*multipart.FileHeader {
+	form, err := ctx.MultipartForm()
+	if err != nil || form == nil {
+		return nil
+	}
+	return form.File["files"]
 }
 
 func (c *ThreadController) ensureFalseViewerFlags(data []dto.FeedItemResponse) {

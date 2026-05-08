@@ -39,6 +39,14 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 	return chat, nil
 }
 
+func (s *ChatService) GetByID(ctx context.Context, chatID uint) (*model.Chat, error) {
+	chat, err := s.chatRepo.FindByID(chatID)
+	if err != nil {
+		return nil, errors.New("chat not found")
+	}
+	return chat, nil
+}
+
 func (s *ChatService) GetMessages(roomID, userID uint, page, limit int) ([]model.Chat, int64, error) {
 	if !s.roomRepo.IsMember(roomID, userID) {
 		return nil, 0, errors.New("forbidden")
@@ -97,8 +105,12 @@ func (s *ChatService) MarkRead(roomID, userID uint) error {
 		return err
 	}
 	memberCount := int64(room.MemberCount)
+	readCounts, err := s.chatReadRepo.CountReadsBatch(context.Background(), inserted)
+	if err != nil {
+		return err
+	}
 	for _, chatID := range inserted {
-		if s.chatReadRepo.CountReads(chatID) >= memberCount-1 {
+		if readCounts[chatID] >= memberCount-1 {
 			_ = s.chatRepo.UpdateIsRead(chatID)
 		}
 	}
@@ -133,11 +145,11 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 			continue
 		}
 		if chat.RoomID != roomID || chat.SenderID == userID {
-			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "skipped"})
+			results = append(results, service.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "skipped"})
 			continue
 		}
 		if chat.IsRead {
-			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "already_read"})
+			results = append(results, service.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "already_read"})
 			continue
 		}
 		if room.Type == model.ChatRoomTypePrivate {
@@ -152,7 +164,7 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 				_ = s.chatRepo.UpdateIsRead(chatID)
 			}
 		}
-		results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "marked"})
+		results = append(results, service.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "marked"})
 	}
 	return results, nil
 }

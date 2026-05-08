@@ -12,11 +12,11 @@ const (
 
 type Thread struct {
 	ThreadID         uint       `gorm:"primaryKey;autoIncrement"`
-	UserID           uint       `gorm:"not null;index"`
+	UserID           uint       `gorm:"not null;index;index:idx_thread_user_type,priority:1"`
 	User             User       `gorm:"foreignKey:UserID;references:UserID"`
-	CommunityID      *uint      `gorm:"index"`
+	CommunityID      *uint      `gorm:"index;index:idx_thread_feed,priority:2"`
 	Community        *Community `gorm:"foreignKey:CommunityID;references:CommunityID"`
-	Type             ThreadType `gorm:"type:varchar(10);not null;default:'POST';index"`
+	Type             ThreadType `gorm:"type:varchar(10);not null;default:'POST';index;index:idx_thread_user_type,priority:2;index:idx_thread_feed,priority:1"`
 	Content          string     `gorm:"type:text;not null"`
 	ParentID         *uint      `gorm:"index"`
 	RootID           *uint      `gorm:"index"`
@@ -26,6 +26,6 @@ type Thread struct {
 	RepostCount      int        `gorm:"not null;default:0"`
 	BookmarkCount    int        `gorm:"not null;default:0"`
 	CommentCount     int        `gorm:"not null;default:0"`
-	CreatedAt        time.Time
+	CreatedAt        time.Time  `gorm:"index:idx_thread_user_type,priority:3,sort:desc;index:idx_thread_feed,priority:3,sort:desc"`
 	UpdatedAt        time.Time
 }

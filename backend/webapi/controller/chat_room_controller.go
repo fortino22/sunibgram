@@ -13,10 +13,15 @@ import (
 
 type ChatRoomController struct {
 	chatRoomService service.IChatRoomService
+	hub             service.IHub
 }
 
-func NewChatRoomController(chatRoomService service.IChatRoomService) *ChatRoomController {
-	return &ChatRoomController{chatRoomService: chatRoomService}
+func NewChatRoomController(chatRoomService service.IChatRoomService, hubs ...service.IHub) *ChatRoomController {
+	var hub service.IHub
+	if len(hubs) > 0 {
+		hub = hubs[0]
+	}
+	return &ChatRoomController{chatRoomService: chatRoomService, hub: hub}
 }
 
 func (c *ChatRoomController) CreatePrivate(ctx *fiber.Ctx) error {
@@ -71,13 +76,25 @@ func (c *ChatRoomController) AddMember(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
 	}
 
-	_, alreadyMembers, err := c.chatRoomService.AddMemberToGroup(ctx.Context(), uint(id), claims.UserID, req.UserIDs)
+	room, alreadyMembers, err := c.chatRoomService.AddMemberToGroup(ctx.Context(), uint(id), claims.UserID, req.UserIDs)
 	if err != nil {
 		return chatError(ctx, err)
 	}
 	if alreadyMembers == nil {
 		alreadyMembers = []uint{}
 	}
+
+	addedUserIDs := addedMembers(req.UserIDs, alreadyMembers)
+	if c.hub != nil && len(addedUserIDs) > 0 {
+		c.hub.Broadcast(uint(id), "room:member_added", fiber.Map{
+			"room_id":         room.RoomID,
+			"added_user_ids":  addedUserIDs,
+			"added_by":        claims.UserID,
+			"already_members": alreadyMembers,
+			"room":            toChatRoomResponse(room),
+		})
+	}
+
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"message":         "members added successfully",
 		"already_members": alreadyMembers,
@@ -157,4 +174,25 @@ func toChatRoomResponse(room *model.ChatRoom) dto.ChatRoomResponse {
 		CreatedAt:   dtoutils.Wrap(room.CreatedAt),
 		UpdatedAt:   dtoutils.Wrap(room.UpdatedAt),
 	}
+}
+
+func addedMembers(requested, alreadyMembers []uint) []uint {
+	already := make(map[uint]struct{}, len(alreadyMembers))
+	for _, id := range alreadyMembers {
+		already[id] = struct{}{}
+	}
+
+	seen := make(map[uint]struct{}, len(requested))
+	added := make([]uint, 0, len(requested))
+	for _, id := range requested {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		if _, ok := already[id]; ok {
+			continue
+		}
+		added = append(added, id)
+	}
+	return added
 }

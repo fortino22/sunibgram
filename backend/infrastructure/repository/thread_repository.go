@@ -24,8 +24,12 @@ type threadDB struct {
 	readDB  *gorm.DB
 }
 
-// attachFaculties batch-loads user_faculties for all unique user IDs in threads
-// and attaches them to thread.User.UserFaculty (and OriginalThread.User.UserFaculty).
+const threadFeedTTL = 60 * time.Second
+
+func preloadThreadUser(db *gorm.DB) *gorm.DB {
+	return db.Select("user_id", "name", "user_name", "is_premium")
+}
+
 func (db *threadDB) attachFaculties(threads []model.Thread) {
 	userIDs := make(map[uint]struct{})
 	for i := range threads {
@@ -76,11 +80,17 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	if err := r.db.writeDB.Create(thread).Error; err != nil {
 		return err
 	}
+	ctx := context.Background()
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
+		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
+		var orig model.Thread
+		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
+			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
+		}
 	}
 	if thread.ParentID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
@@ -88,8 +98,21 @@ func (r *threadCached) Save(thread *model.Thread) error {
 			UpdateColumn("comment_count", gorm.Expr("comment_count + 1"))
 		r.patchCachedCount(*thread.ParentID, "comment_count", 1)
 	}
-	r.invalidate(context.Background(), thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	return nil
+}
+
+func (r *threadCached) InvalidateThread(threadID uint) {
+	ctx := context.Background()
+	thread, err := r.FindByID(threadID)
+	if err != nil {
+		r.cache.Delete(ctx, threadKey(threadID))
+		return
+	}
+	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	r.invalidateInteractions(ctx, threadID)
 }
 
 func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
@@ -97,7 +120,7 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 	var thread model.Thread
 	key := threadKey(id)
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").First(&thread, id).Error; err != nil {
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").First(&thread, id).Error; err != nil {
 			return nil, err
 		}
 		threads := []model.Thread{thread}
@@ -129,7 +152,7 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
@@ -140,7 +163,7 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 		}
 		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
-		r.cache.Set(ctx, key, result, r.ttl)
+		r.cache.Set(ctx, key, result, threadFeedTTL)
 	}
 	return result.Threads, result.Total, nil
 }
@@ -162,7 +185,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User").Preload("Community").
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
@@ -173,7 +196,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 		}
 		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
-		r.cache.Set(ctx, key, result, r.ttl)
+		r.cache.Set(ctx, key, result, threadFeedTTL)
 	}
 	return result.Threads, result.Total, nil
 }
@@ -186,7 +209,7 @@ func (r *threadCached) findUserFeed(userID uint, types []string, page, limit int
 
 	offset := (page - 1) * limit
 	var threads []model.Thread
-	if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").
+	if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").
 		Where("user_id = ? AND type IN ?", userID, types).
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
@@ -208,7 +231,7 @@ func (r *threadCached) findUserFeed(userID uint, types []string, page, limit int
 			pids = append(pids, id)
 		}
 		var parentThreads []model.Thread
-		if err := r.db.readDB.Preload("User").Preload("Community").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
 			return nil, nil, 0, err
 		}
 		r.db.attachFaculties(parentThreads)
@@ -268,6 +291,12 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 
 	ctx := context.Background()
 	r.invalidate(ctx, repost.ThreadID, nil, nil)
+	r.invalidateInteractions(ctx, originalThreadID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	var orig model.Thread
+	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {
+		r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
+	}
 	return nil
 }
 
@@ -283,6 +312,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	r.cache.Delete(ctx, threadKey(thread.ThreadID))
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, thread.ThreadID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	return nil
 }
 
@@ -291,7 +321,7 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 	key := threadKey(threadID)
 	var thread model.Thread
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := r.db.readDB.Preload("User").First(&thread, threadID).Error; err != nil {
+		if err := r.db.readDB.Preload("User", preloadThreadUser).First(&thread, threadID).Error; err != nil {
 			return
 		}
 	}
@@ -306,19 +336,19 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 		thread.CommentCount = max(thread.CommentCount+delta, 0)
 	}
 	r.cache.Set(ctx, key, thread, r.ttl)
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	r.cache.DeleteByPattern(ctx, "thread:chain:*")
 }
 
 func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
 	r.db.readDB.Select("thread_id, parent_id, root_id, type, original_thread_id, community_id").First(&thread, id)
 
+	ctx := context.Background()
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", -1)
+		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
 	}
 	if thread.ParentID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
@@ -327,9 +357,9 @@ func (r *threadCached) Delete(id uint) error {
 		r.patchCachedCount(*thread.ParentID, "comment_count", -1)
 	}
 
-	ctx := context.Background()
 	r.invalidate(ctx, id, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, id)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 
 	r.likes.deleteByThreadID(id)
 	r.bookmarks.deleteByThreadID(id)
@@ -358,7 +388,7 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 	offset := (page - 1) * limit
 	var threads []model.Thread
 	if err := r.db.readDB.
-		Preload("User").Preload("OriginalThread.User").Preload("Community").Preload("OriginalThread.Community").
+		Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
@@ -385,7 +415,7 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 			pids = append(pids, id)
 		}
 		var parentThreads []model.Thread
-		if err := r.db.readDB.Preload("User").Preload("Community").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
 			return nil, nil, 0, err
 		}
 		r.db.attachFaculties(parentThreads)
@@ -418,7 +448,7 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]m
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User").Preload("OriginalThread.User").
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Order("created_at DESC").
 			Offset(offset).Limit(limit).
@@ -427,7 +457,7 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]m
 		}
 		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
-		r.cache.Set(ctx, key, result, r.ttl)
+		r.cache.Set(ctx, key, result, threadFeedTTL)
 	}
 	return result.Threads, result.Total, nil
 }

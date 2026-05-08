@@ -16,10 +16,15 @@ import (
 type ChatController struct {
 	chatService      service.IChatService
 	chatMediaService service.IChatMediaService
+	hub              service.IHub
 }
 
-func NewChatController(chatService service.IChatService, chatMediaService service.IChatMediaService) *ChatController {
-	return &ChatController{chatService: chatService, chatMediaService: chatMediaService}
+func NewChatController(chatService service.IChatService, chatMediaService service.IChatMediaService, hubs ...service.IHub) *ChatController {
+	var hub service.IHub
+	if len(hubs) > 0 {
+		hub = hubs[0]
+	}
+	return &ChatController{chatService: chatService, chatMediaService: chatMediaService, hub: hub}
 }
 
 func (c *ChatController) Send(ctx *fiber.Ctx) error {
@@ -52,12 +57,15 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 		return chatError(ctx, err)
 	}
 
+	var media []model.ChatMedia
 	if len(files) > 0 {
-		_, err = c.chatMediaService.Upload(ctx.Context(), chat.ChatID, claims.UserID, files)
+		media, err = c.chatMediaService.Upload(ctx.Context(), chat.ChatID, claims.UserID, files)
 		if err != nil {
 			return chatError(ctx, err)
 		}
 	}
+
+	c.broadcastRoom(chat.RoomID, "message:new", c.toChatResponse(chat, media))
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "chat sent successfully"})
 }
@@ -106,9 +114,22 @@ func (c *ChatController) Unsend(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat id"})
 	}
 
+	chat, err := c.chatService.GetByID(ctx.Context(), uint(id))
+	if err != nil {
+		return chatError(ctx, err)
+	}
+
 	if err := c.chatService.Unsend(ctx.Context(), uint(id), claims.UserID); err != nil {
 		return chatError(ctx, err)
 	}
+
+	c.broadcastRoom(chat.RoomID, "message:deleted", fiber.Map{
+		"chat_id":    chat.ChatID,
+		"room_id":    chat.RoomID,
+		"sender_id":  chat.SenderID,
+		"deleted_by": claims.UserID,
+	})
+
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "chat unsent successfully"})
 }
 
@@ -128,9 +149,22 @@ func (c *ChatController) EditMessage(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
 
+	chat, err := c.chatService.GetByID(ctx.Context(), uint(id))
+	if err != nil {
+		return chatError(ctx, err)
+	}
+
 	if err := c.chatService.UpdateMessage(ctx.Context(), uint(id), claims.UserID, req.Message); err != nil {
 		return chatError(ctx, err)
 	}
+
+	c.broadcastRoom(chat.RoomID, "message:edited", fiber.Map{
+		"chat_id":   chat.ChatID,
+		"room_id":   chat.RoomID,
+		"sender_id": chat.SenderID,
+		"message":   strings.TrimSpace(req.Message),
+	})
+
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "chat updated successfully"})
 }
 
@@ -156,7 +190,39 @@ func (c *ChatController) MarkMessagesRead(ctx *fiber.Ctx) error {
 	for i, r := range results {
 		data[i] = fiber.Map{"chat_id": r.ChatID, "status": r.Status}
 	}
+
+	c.broadcastReadReceipts(req.RoomID, claims.UserID, results)
+
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"results": data})
+}
+
+func (c *ChatController) broadcastRoom(roomID uint, event string, payload any) {
+	if c.hub == nil {
+		return
+	}
+	c.hub.Broadcast(roomID, event, payload)
+}
+
+func (c *ChatController) broadcastReadReceipts(roomID, readBy uint, results []service.ChatMarkResult) {
+	if c.hub == nil {
+		return
+	}
+
+	chatIDsBySender := make(map[uint][]uint)
+	for _, result := range results {
+		if result.Status != "marked" || result.SenderID == 0 {
+			continue
+		}
+		chatIDsBySender[result.SenderID] = append(chatIDsBySender[result.SenderID], result.ChatID)
+	}
+
+	for senderID, chatIDs := range chatIDsBySender {
+		c.hub.EmitToUser(senderID, "message:read", fiber.Map{
+			"room_id":  roomID,
+			"chat_ids": chatIDs,
+			"read_by":  readBy,
+		})
+	}
 }
 
 func (c *ChatController) loadMediaByChat(chats []model.Chat) map[uint][]model.ChatMedia {
