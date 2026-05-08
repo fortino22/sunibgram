@@ -19,8 +19,12 @@ func NewCommunityMemberRepository(writeDB, readDB *gorm.DB) domainrepo.ICommunit
 }
 
 func (r *communityMemberRepository) Save(member *model.CommunityMember) error {
+	return r.SaveWithTx(r.writeDB, member)
+}
+
+func (r *communityMemberRepository) SaveWithTx(tx *gorm.DB, member *model.CommunityMember) error {
 	member.JoinedAt = time.Now()
-	return r.writeDB.Create(member).Error
+	return tx.Create(member).Error
 }
 
 func (r *communityMemberRepository) FindMember(communityID, userID uint) (*model.CommunityMember, error) {

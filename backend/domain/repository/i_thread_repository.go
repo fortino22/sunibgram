@@ -6,6 +6,7 @@ import (
 
 type IThreadRepository interface {
 	Save(thread *model.Thread) error
+	InvalidateThread(threadID uint)
 	FindByID(id uint) (*model.Thread, error)
 	FindRoots(page, limit int) ([]model.Thread, int64, error)
 	FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error)

@@ -39,20 +39,20 @@ func (r *interactionRepo) listKey(userID uint, page, limit int) string {
 	return fmt.Sprintf("%s:user:%d:page:%d:limit:%d", r.table, userID, page, limit)
 }
 
+func (r *interactionRepo) threadCacheKeysKey(threadID uint) string {
+	return fmt.Sprintf("%s:thread:%d:cache_keys", r.table, threadID)
+}
+
 func (r *interactionRepo) invalidateUser(ctx context.Context, userID uint) {
 	r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", r.table, userID))
 }
 
 func (r *interactionRepo) invalidateByThreadID(ctx context.Context, threadID uint) {
-	var userIDs []uint
-	r.readDB.Table(r.table).
-		Select("user_id").
-		Where("thread_id = ?", threadID).
-		Pluck("user_id", &userIDs)
-
-	for _, uid := range userIDs {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", r.table, uid))
+	setKey := r.threadCacheKeysKey(threadID)
+	if cacheKeys, err := r.cache.SMembers(ctx, setKey); err == nil && len(cacheKeys) > 0 {
+		r.cache.Delete(ctx, cacheKeys...)
 	}
+	r.cache.Delete(ctx, setKey)
 }
 
 func (r *interactionRepo) deleteByThreadID(threadID uint) error {
@@ -125,11 +125,18 @@ func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Th
 		timestamps[i] = orderMap[id]
 	}
 
-	r.cache.Set(context.Background(), key, cachedResult{
+	ctx := context.Background()
+	if err := r.cache.Set(ctx, key, cachedResult{
 		Threads:    sorted,
 		Timestamps: timestamps,
 		Total:      total,
-	}, r.ttl)
+	}, r.ttl); err == nil {
+		for _, threadID := range ids {
+			if threadID != 0 {
+				r.cache.SAdd(ctx, r.threadCacheKeysKey(threadID), key, 24*time.Hour)
+			}
+		}
+	}
 
 	return sorted, timestamps, total, nil
 }

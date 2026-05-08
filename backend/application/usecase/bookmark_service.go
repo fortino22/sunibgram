@@ -54,7 +54,11 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 	if exists {
 		return errors.New("already bookmarked")
 	}
-	return s.bookmarkRepo.Save(&model.Bookmark{UserID: userID, ThreadID: threadID})
+	if err := s.bookmarkRepo.Save(&model.Bookmark{UserID: userID, ThreadID: threadID}); err != nil {
+		return err
+	}
+	s.threadRepo.InvalidateThread(threadID)
+	return nil
 }
 
 func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
@@ -72,7 +76,11 @@ func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
 	if !exists {
 		return errors.New("not bookmarked")
 	}
-	return s.bookmarkRepo.Delete(userID, threadID)
+	if err := s.bookmarkRepo.Delete(userID, threadID); err != nil {
+		return err
+	}
+	s.threadRepo.InvalidateThread(threadID)
+	return nil
 }
 
 func (s *BookmarkService) IsBookmarked(userID, threadID uint) bool {

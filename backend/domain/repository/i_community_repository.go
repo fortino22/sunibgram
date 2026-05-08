@@ -1,9 +1,14 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import (
+	"github.com/sunibgram/domain/model"
+	"gorm.io/gorm"
+)
 
 type ICommunityRepository interface {
 	Save(community *model.Community) error
+	SaveWithTx(tx *gorm.DB, community *model.Community) error
+	Transaction(fn func(tx *gorm.DB) error) error
 	FindByID(id uint) (*model.Community, error)
 	Update(community *model.Community) error
 	Delete(id uint) error

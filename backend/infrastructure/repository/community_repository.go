@@ -16,7 +16,15 @@ func NewCommunityRepository(writeDB, readDB *gorm.DB) domainrepo.ICommunityRepos
 }
 
 func (r *communityRepository) Save(community *model.Community) error {
-	return r.writeDB.Create(community).Error
+	return r.SaveWithTx(r.writeDB, community)
+}
+
+func (r *communityRepository) SaveWithTx(tx *gorm.DB, community *model.Community) error {
+	return tx.Create(community).Error
+}
+
+func (r *communityRepository) Transaction(fn func(tx *gorm.DB) error) error {
+	return r.writeDB.Transaction(fn)
 }
 
 func (r *communityRepository) FindByID(id uint) (*model.Community, error) {

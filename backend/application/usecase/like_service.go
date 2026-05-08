@@ -54,7 +54,11 @@ func (s *LikeService) Like(userID, threadID uint) error {
 	if exists {
 		return errors.New("already liked")
 	}
-	return s.likeRepo.Save(&model.Like{UserID: userID, ThreadID: threadID})
+	if err := s.likeRepo.Save(&model.Like{UserID: userID, ThreadID: threadID}); err != nil {
+		return err
+	}
+	s.threadRepo.InvalidateThread(threadID)
+	return nil
 }
 
 func (s *LikeService) Unlike(userID, threadID uint) error {
@@ -72,7 +76,11 @@ func (s *LikeService) Unlike(userID, threadID uint) error {
 	if !exists {
 		return errors.New("not liked")
 	}
-	return s.likeRepo.Delete(userID, threadID)
+	if err := s.likeRepo.Delete(userID, threadID); err != nil {
+		return err
+	}
+	s.threadRepo.InvalidateThread(threadID)
+	return nil
 }
 
 func (s *LikeService) IsLiked(userID, threadID uint) bool {

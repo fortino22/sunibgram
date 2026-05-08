@@ -30,8 +30,6 @@ func preloadThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
-// attachFaculties batch-loads user_faculties for all unique user IDs in threads
-// and attaches them to thread.User.UserFaculty (and OriginalThread.User.UserFaculty).
 func (db *threadDB) attachFaculties(threads []model.Thread) {
 	userIDs := make(map[uint]struct{})
 	for i := range threads {
@@ -96,6 +94,16 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	}
 	r.invalidate(context.Background(), thread.ThreadID, thread.RootID, thread.CommunityID)
 	return nil
+}
+
+func (r *threadCached) InvalidateThread(threadID uint) {
+	ctx := context.Background()
+	thread, err := r.FindByID(threadID)
+	if err != nil {
+		r.cache.Delete(ctx, threadKey(threadID))
+		return
+	}
+	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
 }
 
 func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
