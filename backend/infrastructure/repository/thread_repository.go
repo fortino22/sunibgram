@@ -80,11 +80,18 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	if err := r.db.writeDB.Create(thread).Error; err != nil {
 		return err
 	}
+	ctx := context.Background()
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
+		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
+		r.cache.DeleteByPattern(ctx, "thread:roots:*")
+		var orig model.Thread
+		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
+			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
+		}
 	}
 	if thread.ParentID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
@@ -92,7 +99,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 			UpdateColumn("comment_count", gorm.Expr("comment_count + 1"))
 		r.patchCachedCount(*thread.ParentID, "comment_count", 1)
 	}
-	r.invalidate(context.Background(), thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	return nil
 }
 
@@ -105,6 +112,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	}
 	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	r.invalidateInteractions(ctx, threadID)
 }
 
 func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
@@ -283,6 +291,12 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 
 	ctx := context.Background()
 	r.invalidate(ctx, repost.ThreadID, nil, nil)
+	r.invalidateInteractions(ctx, originalThreadID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	var orig model.Thread
+	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {
+		r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
+	}
 	return nil
 }
 
