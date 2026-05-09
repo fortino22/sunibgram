@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { MoreHorizontal } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
@@ -7,12 +8,13 @@ import { getAuthorAvatarUrl, getThreadAuthor } from '@/components/thread/threadU
 interface ProfileThreadCardProps {
   thread: ThreadItem;
   replyingTo?: string;
+  replyingToId?: number;
   onLike?: () => void;
   onRepost?: () => void;
   onBookmark?: () => void;
 }
 
-export function ProfileThreadCard({ thread, replyingTo, onLike, onRepost, onBookmark }: ProfileThreadCardProps) {
+export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, onRepost, onBookmark }: ProfileThreadCardProps) {
   const author = getThreadAuthor(thread);
 
   return (
@@ -33,7 +35,13 @@ export function ProfileThreadCard({ thread, replyingTo, onLike, onRepost, onBook
           }}
         >
           Replying to{' '}
-          <span style={{ color: 'var(--accent)', cursor: 'pointer' }}>@{replyingTo}</span>
+          {replyingToId ? (
+            <Link href={`/profile/${replyingToId}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+              @{replyingTo}
+            </Link>
+          ) : (
+            <span style={{ color: 'var(--accent)' }}>@{replyingTo}</span>
+          )}
         </div>
       )}
 

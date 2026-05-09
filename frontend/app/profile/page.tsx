@@ -8,6 +8,7 @@ import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
 import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
+import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileSkeleton } from '@/components/profile/skeletons/ProfileSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useMyProfile } from '@/hooks/useMyProfile';
@@ -23,14 +24,16 @@ interface ConnectedCardProps {
   thread: ThreadItem;
   queryKey: QueryKey;
   replyingTo?: string;
+  replyingToId?: number;
 }
 
-function ConnectedCard({ thread, queryKey, replyingTo }: ConnectedCardProps) {
+function ConnectedCard({ thread, queryKey, replyingTo, replyingToId }: ConnectedCardProps) {
   const { like, repost, bookmark } = useThreadActions(thread.id, queryKey);
   return (
     <ProfileThreadCard
       thread={thread}
       replyingTo={replyingTo}
+      replyingToId={replyingToId}
       onLike={() => like.mutate(!!thread.is_liked)}
       onRepost={() => repost.mutate(!!thread.is_reposted)}
       onBookmark={() => bookmark.mutate(!!thread.is_bookmarked)}
@@ -43,6 +46,7 @@ function ConnectedCard({ thread, queryKey, replyingTo }: ConnectedCardProps) {
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('threads');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [followModal, setFollowModal] = useState<'followers' | 'following' | null>(null);
 
   const { data: profile, isLoading } = useMyProfile();
   const threadsQuery = useMyThreads();
@@ -79,6 +83,8 @@ export default function ProfilePage() {
         isFollowing={false}
         onFollowToggle={() => {}}
         onEditClick={() => setShowEditModal(true)}
+        onFollowersClick={() => setFollowModal('followers')}
+        onFollowingClick={() => setFollowModal('following')}
       />
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -97,6 +103,7 @@ export default function ProfilePage() {
               thread={t}
               queryKey={['threads', 'me', 'replies']}
               replyingTo={t.parent_context?.author.username}
+              replyingToId={t.parent_context?.author.id}
             />
           ))
       )}
@@ -115,6 +122,9 @@ export default function ProfilePage() {
 
       {showEditModal && (
         <ProfileEditModal profile={profile} onClose={() => setShowEditModal(false)} />
+      )}
+      {followModal && (
+        <FollowListModal userId={profile.id} type={followModal} onClose={() => setFollowModal(null)} />
       )}
     </div>
   );

@@ -20,9 +20,11 @@ interface ProfileInfoProps {
   isFollowing: boolean;
   onFollowToggle: () => void;
   onEditClick?: () => void;
+  onFollowersClick?: () => void;
+  onFollowingClick?: () => void;
 }
 
-export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditClick }: ProfileInfoProps) {
+export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditClick, onFollowersClick, onFollowingClick }: ProfileInfoProps) {
   return (
     <div style={{ position: 'relative', padding: '0 20px' }}>
       {/* Avatar overlaps banner */}
@@ -134,13 +136,13 @@ export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditCl
         </div>
 
         <div style={{ display: 'flex', gap: 20, marginTop: 14 }}>
-          <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <button type="button" onClick={onFollowingClick} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
               {user.following.toLocaleString()}
             </span>
             <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Following</span>
           </button>
-          <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <button type="button" onClick={onFollowersClick} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
               {user.followers.toLocaleString()}
             </span>
