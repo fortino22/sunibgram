@@ -67,34 +67,34 @@ function TrendCard({ trend, last }: { trend: TrendItem; last: boolean }) {
 }
 
 export function RightPanel() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
+  const [exploreQuery, setExploreQuery] = useState('');
+  const [exploreFocused, setExploreFocused] = useState(false);
 
   return (
     <aside className="right-panel">
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Search */}
+        {/* Explore */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: searchFocused ? 'var(--bg-card)' : 'var(--bg-subtle)',
-            border: `1.5px solid ${searchFocused ? 'var(--accent)' : 'var(--border)'}`,
+            background: exploreFocused ? 'var(--bg-card)' : 'var(--bg-subtle)',
+            border: `1.5px solid ${exploreFocused ? 'var(--accent)' : 'var(--border)'}`,
             borderRadius: 9999,
             padding: '8px 14px',
             transition: 'all 0.15s ease',
-            boxShadow: searchFocused ? '0 0 0 3px oklch(64% 0.22 270 / 0.15)' : 'none',
+            boxShadow: exploreFocused ? '0 0 0 3px oklch(64% 0.22 270 / 0.15)' : 'none',
           }}
         >
-          <Icon name="search" size={15} color="var(--text-tertiary)" />
+          <Icon name="explore" size={15} color="var(--text-tertiary)" />
           <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-            placeholder="Search campus…"
+            value={exploreQuery}
+            onChange={(e) => setExploreQuery(e.target.value)}
+            onFocus={() => setExploreFocused(true)}
+            onBlur={() => setExploreFocused(false)}
+            placeholder="Explore campus..."
             style={{
               border: 'none',
               background: 'transparent',

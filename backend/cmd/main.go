@@ -39,6 +39,7 @@ func main() {
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
+	exploreRepo := infrarepo.NewExploreRepository(readDB, redisCache)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
@@ -68,6 +69,7 @@ func main() {
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService := usecase.NewFollowService(followRepo, userRepo)
 	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo)
+	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo)
 	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo)
@@ -93,6 +95,7 @@ func main() {
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
 	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService)
+	exploreCtrl := controller.NewExploreController(exploreService, profileService)
 	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
 	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
@@ -124,6 +127,7 @@ func main() {
 		cacheCtrl,
 		userSettingsCtrl,
 		profileCtrl,
+		exploreCtrl,
 		threadCtrl,
 		likeCtrl,
 		bookmarkCtrl,

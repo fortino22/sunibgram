@@ -14,6 +14,7 @@ func Register(
 	cacheCtrl *controller.CacheController,
 	userSettingsCtrl *controller.UserSettingsController,
 	profileCtrl *controller.UserProfileController,
+	exploreCtrl *controller.ExploreController,
 	threadCtrl *controller.ThreadController,
 	likeCtrl *controller.LikeController,
 	bookmarkCtrl *controller.BookmarkController,
@@ -39,6 +40,7 @@ func Register(
 	registerVerificationRoutes(api, verificationCtrl)
 	registerUserSettingsRoutes(api, userSettingsCtrl, auth)
 	registerProfileRoutes(api, profileCtrl, auth)
+	registerExploreRoutes(api, exploreCtrl, optionalAuth)
 	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, auth, optionalAuth)
 	registerEmailRoutes(api, emailCtrl, auth)
 	registerUserRoutes(api, followCtrl, auth)
