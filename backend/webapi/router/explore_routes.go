@@ -5,6 +5,6 @@ import (
 	"github.com/sunibgram/webapi/controller"
 )
 
-func registerExploreRoutes(api fiber.Router, ctrl *controller.ExploreController, optionalAuth fiber.Handler) {
-	api.Get("/explore/search", optionalAuth, ctrl.ExploreSearch)
+func registerExploreRoutes(api fiber.Router, ctrl *controller.ExploreController, auth fiber.Handler) {
+	api.Get("/explore/search", auth, ctrl.ExploreSearch)
 }
