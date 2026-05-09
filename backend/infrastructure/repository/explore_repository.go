@@ -92,8 +92,10 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 			(user_relationships.following_id IS NOT NULL) AS is_following
 		`).
+		Joins("JOIN roles ON roles.role_id = users.role_id").
 		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
 		Joins("LEFT JOIN user_relationships ON user_relationships.following_id = users.user_id AND user_relationships.follower_id = ?", viewerID).
+		Where("roles.name <> ?", "admin").
 		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\' OR user_profiles.bio ILIKE ? ESCAPE '\\'", pattern, pattern, pattern).
 		Order("users.is_premium DESC, users.created_at DESC").
 		Limit(limit).

@@ -1,8 +1,8 @@
 package dto
 
 type ExploreResponse struct {
-	Users   []ExploreUserResponse   `json:"users"`
 	Threads []ExploreThreadResponse `json:"threads"`
+	Users   []ExploreUserResponse   `json:"users"`
 }
 
 type ExploreUserResponse struct {
