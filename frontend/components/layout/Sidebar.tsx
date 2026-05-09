@@ -8,6 +8,7 @@ import { LogOut } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
+import { useMyProfile } from '@/hooks/useMyProfile';
 
 interface NavItem {
   id: string;
@@ -117,20 +118,10 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const { data: profile } = useMyProfile();
   const [postHovered, setPostHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const userWithAvatar = user as (typeof user & {
-    avatar_url?: string | null;
-    image_url?: string | null;
-    profile_image_url?: string | null;
-    profileImageUrl?: string | null;
-  }) | null;
-  const avatarSrc =
-    userWithAvatar?.profile_image_url ??
-    userWithAvatar?.profileImageUrl ??
-    userWithAvatar?.avatar_url ??
-    userWithAvatar?.image_url ??
-    null;
+  const avatarSrc = profile?.avatar ?? null;
 
   const handleLogout = async () => {
     await fetch('/api/auth/clear-session', { method: 'POST' });
