@@ -62,6 +62,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	r.patchStatCache(followerID, 0, 1)
 	r.patchStatCache(followingID, 1, 0)
 	r.invalidateFollowLists(followerID, followingID)
+	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 
@@ -81,6 +82,7 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 	r.patchStatCache(followerID, 0, -1)
 	r.patchStatCache(followingID, -1, 0)
 	r.invalidateFollowLists(followerID, followingID)
+	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 

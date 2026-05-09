@@ -36,6 +36,7 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 			return err
 		}
 		r.invalidateUser(profile.UserID)
+		invalidateExploreCache(context.Background(), r.cache)
 		return nil
 	}
 	if err := r.writeDB.Clauses(clause.OnConflict{
@@ -45,6 +46,7 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 		return err
 	}
 	r.invalidateUser(profile.UserID)
+	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 

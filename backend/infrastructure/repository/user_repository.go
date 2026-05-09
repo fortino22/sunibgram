@@ -50,17 +50,25 @@ func (r *UserRepository) FindByID(id uint) (*model.User, error) {
 }
 
 func (r *UserRepository) Save(user *model.User) error {
-	return r.writeDB.Create(user).Error
+	if err := r.writeDB.Create(user).Error; err != nil {
+		return err
+	}
+	invalidateExploreCache(context.Background(), r.cache)
+	return nil
 }
 
 func (r *UserRepository) SaveWithProfile(user *model.User, profile *model.UserProfile) error {
-	return r.writeDB.Transaction(func(tx *gorm.DB) error {
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(user).Error; err != nil {
 			return err
 		}
 		profile.UserID = user.UserID
 		return tx.Create(profile).Error
-	})
+	}); err != nil {
+		return err
+	}
+	invalidateExploreCache(context.Background(), r.cache)
+	return nil
 }
 
 func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
@@ -101,6 +109,7 @@ func (r *UserRepository) UpdateInfo(userID uint, name, username string) error {
 		return err
 	}
 	r.invalidateUser(userID)
+	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 
@@ -109,6 +118,7 @@ func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
 		return err
 	}
 	r.invalidateUser(userID)
+	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 

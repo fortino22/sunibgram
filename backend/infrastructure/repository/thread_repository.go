@@ -100,6 +100,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	}
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	invalidateExploreCache(ctx, r.cache)
 	return nil
 }
 
@@ -297,6 +298,7 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {
 		r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
 	}
+	invalidateExploreCache(ctx, r.cache)
 	return nil
 }
 
@@ -313,6 +315,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, thread.ThreadID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	invalidateExploreCache(ctx, r.cache)
 	return nil
 }
 
@@ -365,7 +368,11 @@ func (r *threadCached) Delete(id uint) error {
 	r.bookmarks.deleteByThreadID(id)
 	r.reposts.deleteByThreadID(id)
 
-	return r.db.writeDB.Delete(&model.Thread{}, id).Error
+	if err := r.db.writeDB.Delete(&model.Thread{}, id).Error; err != nil {
+		return err
+	}
+	invalidateExploreCache(ctx, r.cache)
+	return nil
 }
 
 func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
