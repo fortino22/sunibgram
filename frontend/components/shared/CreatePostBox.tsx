@@ -9,7 +9,8 @@ import {
   useState,
 } from 'react';
 import { useCreateThread } from '@/hooks/thread/useCreateThread';
-import { type AuthUser, useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/stores/authStore';
+import { useMyProfile } from '@/hooks/useMyProfile';
 import { Avatar } from './Avatar';
 
 type PreviewKind = 'image' | 'video' | 'file';
@@ -18,13 +19,6 @@ interface FilePreview {
   file: File;
   kind: PreviewKind;
   url: string;
-}
-
-interface UserWithOptionalAvatar {
-  avatar_url?: string | null;
-  image_url?: string | null;
-  profile_image_url?: string | null;
-  profileImageUrl?: string | null;
 }
 
 function getPreviewKind(file: File): PreviewKind {
@@ -48,8 +42,9 @@ function isSameFile(left: File, right: File): boolean {
 }
 
 export function CreatePostBox() {
-  const user = useAuthStore((state) => state.user) as (AuthUser & UserWithOptionalAvatar) | null;
+  const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
+  const { data: profile } = useMyProfile();
   const createThreadMutation = useCreateThread();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
@@ -68,8 +63,7 @@ export function CreatePostBox() {
     };
   }, []);
 
-  const avatarSrc =
-    user?.profile_image_url ?? user?.profileImageUrl ?? user?.avatar_url ?? user?.image_url ?? null;
+  const avatarSrc = profile?.avatar ?? null;
   const selectedFiles = previews.map((preview) => preview.file);
   const isPending = createThreadMutation.isPending;
   const normalizedContent = content.trim();
