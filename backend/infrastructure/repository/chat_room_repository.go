@@ -113,6 +113,42 @@ func (r *ChatRoomRepository) UpdateGroup(roomID uint, name string, description *
 	return r.cache.Delete(context.Background(), fmt.Sprintf("chat:room:%d", roomID))
 }
 
+func (r *ChatRoomRepository) DeleteGroup(roomID uint) error {
+	ctx := context.Background()
+	var userIDs []uint
+	if err := r.readDB.Model(&model.ChatRoomMember{}).
+		Where("room_id = ?", roomID).
+		Pluck("user_id", &userIDs).Error; err != nil {
+		return err
+	}
+
+	err := r.writeDB.Transaction(func(tx *gorm.DB) error {
+		chatIDs := tx.Model(&model.Chat{}).Select("chat_id").Where("room_id = ?", roomID)
+		if err := tx.Where("chat_id IN (?)", chatIDs).Delete(&model.ChatRead{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("chat_id IN (?)", chatIDs).Delete(&model.ChatMedia{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", roomID).Delete(&model.Chat{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("room_id = ?", roomID).Delete(&model.ChatRoomMember{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.ChatRoom{}, "room_id = ? AND type = ?", roomID, model.ChatRoomTypeGroup).Error
+	})
+	if err != nil {
+		return err
+	}
+
+	keys := []string{fmt.Sprintf("chat:room:%d", roomID)}
+	for _, userID := range userIDs {
+		keys = append(keys, fmt.Sprintf("chat:member:%d:%d", roomID, userID))
+	}
+	return r.cache.Delete(ctx, keys...)
+}
+
 func (r *ChatRoomRepository) FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error) {
 	var room model.ChatRoom
 	err := r.readDB.Table("chat_rooms").

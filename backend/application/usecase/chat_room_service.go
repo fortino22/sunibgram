@@ -131,6 +131,20 @@ func (s *ChatRoomService) UpdateGroup(ctx context.Context, roomID, requesterID u
 	return s.roomRepo.UpdateGroup(roomID, trimmedName, description)
 }
 
+func (s *ChatRoomService) DeleteGroup(ctx context.Context, roomID, requesterID uint) error {
+	if !s.roomRepo.IsMember(roomID, requesterID) {
+		return errors.New("forbidden")
+	}
+	room, err := s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return errors.New("chat room not found")
+	}
+	if room.Type != model.ChatRoomTypeGroup {
+		return errors.New("room is not a group")
+	}
+	return s.roomRepo.DeleteGroup(roomID)
+}
+
 func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]model.ChatRoom, int64, error) {
 	if page < 1 {
 		page = 1
