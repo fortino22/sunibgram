@@ -3,7 +3,6 @@ package repository
 import (
 	"time"
 
-	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
@@ -29,38 +28,6 @@ func preloadThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
-func (db *threadDB) attachFaculties(threads []model.Thread) {
-	userIDs := make(map[uint]struct{})
-	for i := range threads {
-		userIDs[threads[i].UserID] = struct{}{}
-		if threads[i].OriginalThread != nil {
-			userIDs[threads[i].OriginalThread.UserID] = struct{}{}
-		}
-	}
-	if len(userIDs) == 0 {
-		return
-	}
-	ids := make([]uint, 0, len(userIDs))
-	for id := range userIDs {
-		ids = append(ids, id)
-	}
-	var faculties []model.UserFaculty
-	db.readDB.Preload("Faculty").Where("user_id IN ?", ids).Find(&faculties)
-	fm := make(map[uint]*model.UserFaculty, len(faculties))
-	for i := range faculties {
-		fm[faculties[i].UserID] = &faculties[i]
-	}
-	for i := range threads {
-		if uf, ok := fm[threads[i].UserID]; ok {
-			threads[i].User.UserFaculty = uf
-		}
-		if threads[i].OriginalThread != nil {
-			if uf, ok := fm[threads[i].OriginalThread.UserID]; ok {
-				threads[i].OriginalThread.User.UserFaculty = uf
-			}
-		}
-	}
-}
 
 func NewThreadRepository(writeDB, readDB *gorm.DB, c *cache.Cache) (domainrepo.IThreadRepository, func(uint, string, int)) {
 	tdb := &threadDB{writeDB: writeDB, readDB: readDB}

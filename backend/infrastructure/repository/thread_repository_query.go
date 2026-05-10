@@ -11,17 +11,10 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 	var thread model.Thread
 	key := threadKey(id)
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").First(&thread, id).Error; err != nil {
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").First(&thread, id).Error; err != nil {
 			return nil, err
 		}
-		threads := []model.Thread{thread}
-		r.db.attachFaculties(threads)
-		thread = threads[0]
 		r.cache.Set(ctx, key, thread, r.ttl)
-	} else {
-		threads := []model.Thread{thread}
-		r.db.attachFaculties(threads)
-		thread = threads[0]
 	}
 	return &thread, nil
 }
@@ -43,7 +36,7 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
@@ -52,7 +45,6 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 			Find(&threads).Error; err != nil {
 			return nil, 0, err
 		}
-		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
 		r.cache.Set(ctx, key, result, threadFeedTTL)
 	}
@@ -76,7 +68,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").Preload("User.UserFaculty.Faculty").
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
@@ -85,7 +77,6 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 			Find(&threads).Error; err != nil {
 			return nil, 0, err
 		}
-		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
 		r.cache.Set(ctx, key, result, threadFeedTTL)
 	}
@@ -107,14 +98,13 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]m
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).
+		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Order("created_at DESC").
 			Offset(offset).Limit(limit).
 			Find(&threads).Error; err != nil {
 			return nil, 0, err
 		}
-		r.db.attachFaculties(threads)
 		result = cached{Threads: threads, Total: total}
 		r.cache.Set(ctx, key, result, threadFeedTTL)
 	}
