@@ -30,6 +30,8 @@ func (r *threadCached) Save(thread *model.Thread) error {
 		r.patchCachedCount(*thread.ParentID, "comment_count", 1)
 	}
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.invalidateUserFeedCache(ctx, thread.UserID)
+	r.invalidateUserMediaCache(ctx, thread.UserID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreCache(ctx, r.cache)
 	return nil
@@ -59,6 +61,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	r.cache.Delete(ctx, threadKey(thread.ThreadID))
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, thread.ThreadID)
+	r.invalidateUserFeedCache(ctx, thread.UserID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreCache(ctx, r.cache)
 	return nil
@@ -84,11 +87,12 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 		thread.CommentCount = max(thread.CommentCount+delta, 0)
 	}
 	r.cache.Set(ctx, key, thread, r.ttl)
+	r.invalidateFeedCachesByThreadID(ctx, threadID)
 }
 
 func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
-	r.db.readDB.Select("thread_id, parent_id, root_id, type, original_thread_id, community_id").First(&thread, id)
+	r.db.readDB.Select("thread_id, user_id, parent_id, root_id, type, original_thread_id, community_id").First(&thread, id)
 
 	ctx := context.Background()
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
@@ -107,6 +111,8 @@ func (r *threadCached) Delete(id uint) error {
 
 	r.invalidate(ctx, id, thread.RootID, thread.CommunityID)
 	r.invalidateInteractions(ctx, id)
+	r.invalidateUserFeedCache(ctx, thread.UserID)
+	r.invalidateUserMediaCache(ctx, thread.UserID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 
 	r.likes.deleteByThreadID(id)

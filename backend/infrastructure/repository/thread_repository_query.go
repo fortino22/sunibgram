@@ -46,7 +46,11 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 			return nil, 0, err
 		}
 		result = cached{Threads: threads, Total: total}
-		r.cache.Set(ctx, key, result, threadFeedTTL)
+		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+			for _, t := range result.Threads {
+				r.trackFeedCacheKey(ctx, t.ThreadID, key)
+			}
+		}
 	}
 	return result.Threads, result.Total, nil
 }
@@ -78,7 +82,11 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 			return nil, 0, err
 		}
 		result = cached{Threads: threads, Total: total}
-		r.cache.Set(ctx, key, result, threadFeedTTL)
+		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+			for _, t := range result.Threads {
+				r.trackFeedCacheKey(ctx, t.ThreadID, key)
+			}
+		}
 	}
 	return result.Threads, result.Total, nil
 }
@@ -106,7 +114,11 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]m
 			return nil, 0, err
 		}
 		result = cached{Threads: threads, Total: total}
-		r.cache.Set(ctx, key, result, threadFeedTTL)
+		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+			for _, t := range result.Threads {
+				r.trackFeedCacheKey(ctx, t.ThreadID, key)
+			}
+		}
 	}
 	return result.Threads, result.Total, nil
 }
