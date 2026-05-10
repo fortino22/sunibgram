@@ -200,6 +200,7 @@ func (r *communityRepository) invalidateCommunityCreate(creatorID uint) {
 	ctx := context.Background()
 	_ = r.cache.DeleteByPattern(ctx, "community:list:*")
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:created:%d:*", creatorID))
+	invalidateExploreCache(ctx, r.cache)
 }
 
 func (r *communityRepository) invalidateCommunityUpdate(id, creatorID uint) {
@@ -210,6 +211,7 @@ func (r *communityRepository) invalidateCommunityUpdate(id, creatorID uint) {
 	_ = r.cache.Delete(ctx, communityIDKey(id))
 	_ = r.cache.DeleteByPattern(ctx, "community:list:*")
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:created:%d:*", creatorID))
+	invalidateExploreCache(ctx, r.cache)
 }
 
 func (r *communityRepository) invalidateCommunityDelete(id, creatorID uint) {
@@ -217,5 +219,7 @@ func (r *communityRepository) invalidateCommunityDelete(id, creatorID uint) {
 	if r.cache == nil {
 		return
 	}
-	_ = r.cache.DeleteByPattern(context.Background(), "community:joined:*")
+	ctx := context.Background()
+	_ = r.cache.DeleteByPattern(ctx, "community:joined:*")
+	invalidateExploreCache(ctx, r.cache)
 }

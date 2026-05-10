@@ -15,6 +15,15 @@ type ExploreThreadResult struct {
 	Content string
 }
 
+type ExploreCommunityResult struct {
+	CommunityID      uint
+	Name             string
+	AvatarObjectName string
+	AvatarBucket     string
+	MemberCount      int
+	IsJoin           bool
+}
+
 type ExploreResult struct {
 	Users   []ExploreUserResult
 	Threads []ExploreThreadResult

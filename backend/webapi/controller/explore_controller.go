@@ -2,21 +2,38 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type ExploreController struct {
-	exploreService service.IExploreService
-	profileService service.IUserProfileService
+	exploreService   service.IExploreService
+	profileService   service.IUserProfileService
+	mediaService     service.IThreadMediaService
+	likeService      service.ILikeService
+	bookmarkService  service.IBookmarkService
+	threadService    service.IThreadService
+	communityService service.ICommunityService
 }
 
-func NewExploreController(exploreService service.IExploreService, profileService service.IUserProfileService) *ExploreController {
+func NewExploreController(
+	exploreService service.IExploreService,
+	profileService service.IUserProfileService,
+	mediaService service.IThreadMediaService,
+	likeService service.ILikeService,
+	bookmarkService service.IBookmarkService,
+	threadService service.IThreadService,
+	communityService service.ICommunityService,
+) *ExploreController {
 	return &ExploreController{
-		exploreService: exploreService,
-		profileService: profileService,
+		exploreService:   exploreService,
+		profileService:   profileService,
+		mediaService:     mediaService,
+		likeService:      likeService,
+		bookmarkService:  bookmarkService,
+		threadService:    threadService,
+		communityService: communityService,
 	}
 }
 
@@ -37,37 +54,67 @@ func (c *ExploreController) ExploreSearch(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(result))
 }
 
-func (c *ExploreController) toResponse(result *model.ExploreResult) dto.ExploreResponse {
-	return dto.ExploreResponse{
-		Users:   c.toUserResponses(result.Users),
-		Threads: c.toThreadResponses(result.Threads),
+func (c *ExploreController) GetTop(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
+
+	threads, total, err := c.exploreService.GetTopPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	if err != nil {
+		return exploreError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, total, &claims.UserID))
 }
 
-func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []dto.ExploreUserResponse {
-	responses := make([]dto.ExploreUserResponse, len(users))
-	for i, item := range users {
-		avatarURL := ""
-		if item.AvatarObjectName != "" {
-			avatarURL = c.profileService.GetURL(item.AvatarBucket, item.AvatarObjectName)
-		}
-
-		responses[i] = dto.ExploreUserResponse{
-			UserID:      item.UserID,
-			Profile:     avatarURL,
-			Username:    item.Username,
-			Name:        item.Name,
-			IsPremium:   item.IsPremium,
-			IsFollowing: item.IsFollowing,
-		}
+func (c *ExploreController) GetLatest(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-	return responses
+
+	threads, total, err := c.exploreService.GetLatestPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	if err != nil {
+		return exploreError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, total, &claims.UserID))
 }
 
-func (c *ExploreController) toThreadResponses(threads []model.ExploreThreadResult) []dto.ExploreThreadResponse {
-	responses := make([]dto.ExploreThreadResponse, len(threads))
-	for i, thread := range threads {
-		responses[i] = dto.ExploreThreadResponse{Content: thread.Content}
+func (c *ExploreController) GetPeople(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-	return responses
+
+	users, err := c.exploreService.GetPeople(ctx.Context(), ctx.Query("q"), claims.UserID)
+	if err != nil {
+		return exploreError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toPeopleResponses(users)})
+}
+
+func (c *ExploreController) GetMedia(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	threads, total, err := c.exploreService.GetMediaPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	if err != nil {
+		return exploreError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, total, &claims.UserID))
+}
+
+func (c *ExploreController) GetCommunities(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	communities, _, err := c.exploreService.GetCommunities(ctx.Context(), ctx.Query("q"), claims.UserID)
+	if err != nil {
+		return exploreError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toExploreCommunityResponses(communities)})
 }

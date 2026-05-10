@@ -111,3 +111,18 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		IsPinned:     isPinned,
 	}
 }
+
+func EnsureFalseViewerFlags(data []dto.FeedItemResponse) {
+	falseVal := false
+	for i := range data {
+		if data[i].IsLiked == nil {
+			data[i].IsLiked = &falseVal
+		}
+		if data[i].IsBookmarked == nil {
+			data[i].IsBookmarked = &falseVal
+		}
+		if data[i].IsReposted == nil {
+			data[i].IsReposted = &falseVal
+		}
+	}
+}

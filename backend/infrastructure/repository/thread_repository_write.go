@@ -47,6 +47,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	r.invalidateInteractions(ctx, threadID)
+	invalidateExploreCache(ctx, r.cache)
 }
 
 func (r *threadCached) Update(thread *model.Thread) error {

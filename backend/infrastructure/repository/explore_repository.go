@@ -37,6 +37,16 @@ type exploreThreadRow struct {
 	Content string
 }
 
+type cachedExploreThreads struct {
+	Threads []model.Thread
+	Total   int64
+}
+
+type cachedExploreCommunities struct {
+	Communities []model.ExploreCommunityResult
+	Total       int64
+}
+
 func NewExploreRepository(readDB *gorm.DB, c *cache.Cache) domainrepo.IExploreRepository {
 	return &exploreRepository{readDB: readDB, cache: c, ttl: exploreTTL}
 }
@@ -69,6 +79,180 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 		r.cache.Set(ctx, key, result, r.ttl)
 	}
 	return &result, nil
+}
+
+func (r *exploreRepository) FindTopPosts(ctx context.Context, query string, limit int) ([]model.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "top", query, []string{string(model.ThreadTypePost)}, limit, false, "(threads.like_count + threads.comment_count + threads.repost_count) DESC, threads.created_at DESC")
+}
+
+func (r *exploreRepository) FindLatestPosts(ctx context.Context, query string, limit int) ([]model.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "latest", query, []string{string(model.ThreadTypePost)}, limit, false, "threads.created_at DESC")
+}
+
+func (r *exploreRepository) FindPeople(ctx context.Context, query string, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreSectionKey("people", query, fmt.Sprintf("%d", requesterID), limit)
+	var users []model.ExploreUserResult
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &users); err == nil {
+			return users, nil
+		}
+	}
+
+	users, err := r.exploreUsers(ctx, query, &requesterID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, users, r.ttl)
+	}
+	return users, nil
+}
+
+func (r *exploreRepository) FindMediaPosts(ctx context.Context, query string, limit int) ([]model.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "media", query, []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}, limit, true, "MAX(threads.created_at) DESC")
+}
+
+func (r *exploreRepository) FindCommunities(ctx context.Context, query string, requesterID uint, limit int) ([]model.ExploreCommunityResult, int64, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreSectionKey("communities", query, fmt.Sprintf("%d", requesterID), limit)
+	var result cachedExploreCommunities
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &result); err == nil {
+			return result.Communities, result.Total, nil
+		}
+	}
+
+	pattern := likePattern(query)
+	base := r.readDB.WithContext(ctx).
+		Model(&model.Community{}).
+		Where("communities.name ILIKE ? ESCAPE '\\' OR communities.description ILIKE ? ESCAPE '\\' OR communities.category ILIKE ? ESCAPE '\\'", pattern, pattern, pattern)
+
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var communities []model.ExploreCommunityResult
+	if err := base.
+		Select(`
+			communities.community_id,
+			communities.name,
+			COALESCE(communities.avatar_object_name, '') AS avatar_object_name,
+			COALESCE(communities.avatar_bucket, '') AS avatar_bucket,
+			communities.member_count,
+			(community_members.user_id IS NOT NULL) AS is_join
+		`).
+		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id AND community_members.user_id = ?", requesterID).
+		Order("communities.member_count DESC, communities.created_at DESC").
+		Limit(limit).
+		Scan(&communities).Error; err != nil {
+		return nil, 0, err
+	}
+
+	result = cachedExploreCommunities{Communities: communities, Total: total}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return communities, total, nil
+}
+
+func (r *exploreRepository) findExploreThreads(ctx context.Context, section, query string, types []string, limit int, mediaOnly bool, order string) ([]model.Thread, int64, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreSectionKey(section, query, "all", limit)
+	var result cachedExploreThreads
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &result); err == nil {
+			return result.Threads, result.Total, nil
+		}
+	}
+
+	base := r.exploreThreadBase(ctx, query, types)
+	if mediaOnly {
+		base = base.Joins("JOIN thread_media ON thread_media.thread_id = threads.thread_id")
+	}
+
+	var total int64
+	countQuery := base
+	if mediaOnly {
+		countQuery = countQuery.Distinct("threads.thread_id")
+	}
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var ids []uint
+	idQuery := base.Select("threads.thread_id")
+	if mediaOnly {
+		idQuery = idQuery.Group("threads.thread_id")
+	}
+	if err := idQuery.Order(order).Limit(limit).Pluck("threads.thread_id", &ids).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(ids) == 0 {
+		result = cachedExploreThreads{Threads: []model.Thread{}, Total: total}
+		if r.cache != nil {
+			_ = r.cache.Set(ctx, key, result, r.ttl)
+		}
+		return result.Threads, result.Total, nil
+	}
+
+	threads, err := r.loadThreadsByIDs(ctx, ids)
+	if err != nil {
+		return nil, 0, err
+	}
+	result = cachedExploreThreads{Threads: threads, Total: total}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return result.Threads, result.Total, nil
+}
+
+func (r *exploreRepository) exploreThreadBase(ctx context.Context, query string, types []string) *gorm.DB {
+	pattern := likePattern(query)
+	return r.readDB.WithContext(ctx).
+		Model(&model.Thread{}).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.type IN ?", types).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("threads.content ILIKE ? ESCAPE '\\'", pattern)
+}
+
+func (r *exploreRepository) loadThreadsByIDs(ctx context.Context, ids []uint) ([]model.Thread, error) {
+	var rows []model.Thread
+	if err := r.readDB.WithContext(ctx).
+		Preload("User", preloadThreadUser).
+		Preload("OriginalThread.User", preloadThreadUser).
+		Preload("Community").
+		Preload("OriginalThread.Community").
+		Preload("User.UserFaculty.Faculty").
+		Preload("OriginalThread.User.UserFaculty.Faculty").
+		Where("threads.thread_id IN ?", ids).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	byID := make(map[uint]model.Thread, len(rows))
+	for _, row := range rows {
+		byID[row.ThreadID] = row
+	}
+
+	threads := make([]model.Thread, 0, len(ids))
+	for _, id := range ids {
+		if thread, ok := byID[id]; ok {
+			threads = append(threads, thread)
+		}
+	}
+	return threads, nil
 }
 
 const defaultRepositoryExploreLimit = 20
@@ -149,8 +333,15 @@ func exploreKey(query string, requesterID *uint, limit int) string {
 	if requesterID != nil {
 		viewer = fmt.Sprintf("%d", *requesterID)
 	}
+	return exploreSectionKey("", query, viewer, limit)
+}
+
+func exploreSectionKey(section, query, viewer string, limit int) string {
 	sum := sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))
-	return fmt.Sprintf("explore:%s:viewer:%s:limit:%d", hex.EncodeToString(sum[:]), viewer, limit)
+	if section == "" {
+		return fmt.Sprintf("explore:%s:viewer:%s:limit:%d", hex.EncodeToString(sum[:]), viewer, limit)
+	}
+	return fmt.Sprintf("explore:%s:%s:viewer:%s:limit:%d", section, hex.EncodeToString(sum[:]), viewer, limit)
 }
 
 func likePattern(query string) string {

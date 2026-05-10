@@ -10,74 +10,34 @@ import (
 )
 
 func (c *ThreadController) loadMediaByThread(threads []model.Thread) map[uint][]model.ThreadMedia {
-	ids := make([]uint, len(threads))
-	for i, t := range threads {
-		ids[i] = t.ThreadID
-	}
-	allMedia, _ := c.mediaService.GetByThreadIDs(ids)
-	m := make(map[uint][]model.ThreadMedia, len(ids))
-	for _, media := range allMedia {
-		m[media.ThreadID] = append(m[media.ThreadID], media)
-	}
-	return m
+	return loadThreadMediaByThread(c.mediaService, threads)
 }
 
 func (c *ThreadController) fb(viewerID *uint) webapiutils.FeedBuilder {
-	return webapiutils.FeedBuilder{
-		Media:    c.mediaService,
-		ViewerID: viewerID,
-	}
+	return newFeedBuilder(c.mediaService, nil, nil, nil, nil, viewerID)
 }
 
 func (c *ThreadController) fbWithPin(viewerID *uint) webapiutils.FeedBuilder {
-	return webapiutils.FeedBuilder{
-		Media:       c.mediaService,
-		LikeSvc:     c.likeService,
-		BookmarkSvc: c.bookmarkService,
-		ThreadSvc:   c.threadService,
-		PinSvc:      c.threadPinService,
-		ViewerID:    viewerID,
-	}
+	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, c.threadPinService, viewerID)
 }
 
 func (c *ThreadController) fbNoPin(viewerID *uint) webapiutils.FeedBuilder {
-	return webapiutils.FeedBuilder{
-		Media:       c.mediaService,
-		LikeSvc:     c.likeService,
-		BookmarkSvc: c.bookmarkService,
-		ThreadSvc:   c.threadService,
-		ViewerID:    viewerID,
-	}
+	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, viewerID)
 }
 
 func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
-	data := make([]dto.FeedItemResponse, len(threads))
-	fb := c.fb(viewerID)
-	for i, t := range threads {
-		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-	}
-	return data
+	return buildFeedItemsFromThreads(threads, mediaByThread, c.fb(viewerID))
 }
 
 func (c *ThreadController) buildFeedItemsNoPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
-	data := make([]dto.FeedItemResponse, len(threads))
-	fb := c.fbNoPin(viewerID)
-	for i, t := range threads {
-		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-	}
-	return data
+	return buildFeedItemsFromThreads(threads, mediaByThread, c.fbNoPin(viewerID))
 }
 
 func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
-	data := make([]dto.FeedItemResponse, len(threads))
-	fb := c.fbWithPin(viewerID)
-	for i, t := range threads {
-		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-	}
-	return data
+	return buildFeedItemsFromThreads(threads, mediaByThread, c.fbWithPin(viewerID))
 }
 
 func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
@@ -102,11 +62,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 			allIDs = append(allIDs, p.ThreadID)
 		}
 	}
-	allMedia, _ := c.mediaService.GetByThreadIDs(allIDs)
-	mediaByThread := make(map[uint][]model.ThreadMedia, len(allIDs))
-	for _, m := range allMedia {
-		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
-	}
+	mediaByThread := loadThreadMediaByID(c.mediaService, allIDs)
 
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
@@ -129,26 +85,11 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 		data[i] = item
 	}
 	sort.SliceStable(data, func(i, j int) bool {
-		return boolValue(data[i].IsPinned) && !boolValue(data[j].IsPinned)
+		return boolPtrValue(data[i].IsPinned) && !boolPtrValue(data[j].IsPinned)
 	})
 	return data
 }
 
-func boolValue(v *bool) bool {
-	return v != nil && *v
-}
-
 func (c *ThreadController) ensureFalseViewerFlags(data []dto.FeedItemResponse) {
-	falseVal := false
-	for i := range data {
-		if data[i].IsLiked == nil {
-			data[i].IsLiked = &falseVal
-		}
-		if data[i].IsBookmarked == nil {
-			data[i].IsBookmarked = &falseVal
-		}
-		if data[i].IsReposted == nil {
-			data[i].IsReposted = &falseVal
-		}
-	}
+	ensureFalseFeedViewerFlags(data)
 }
