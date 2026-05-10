@@ -12,8 +12,9 @@ type IThreadRepository interface {
 	FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error)
 	Update(thread *model.Thread) error
 	Delete(id uint) error
-	FindPostsByUserID(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
-	FindReplyTabByUserID(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	FindPostsByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	FindReplyTabByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	FindMediaByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	ExistsRepost(userID, originalThreadID uint) (bool, error)
 	DeleteRepost(userID, originalThreadID uint) error
 	FindByCommunityID(communityID uint, page, limit int) ([]model.Thread, int64, error)
