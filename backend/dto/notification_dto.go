@@ -25,29 +25,12 @@ type NotificationSenderResponse struct {
 	Faculty   *NotificationFacultyResponse `json:"faculty,omitempty"`
 }
 
-type NotificationResponse struct {
-	ID              uint                       `json:"id"`
-	Type            string                     `json:"type"`
-	Message         string                     `json:"message"`
-	SenderUserID    uint                       `json:"sender_user_id"`
-	ActorUserID     uint                       `json:"actor_user_id"`
-	RecipientUserID uint                       `json:"recipient_user_id"`
-	ReferenceID     *uint                      `json:"reference_id,omitempty"`
-	CreatedAt       time.Time                  `json:"created_at"`
-	IsRead          bool                       `json:"is_read"`
-	Sender          NotificationSenderResponse `json:"sender"`
-}
-
 type NotificationListResponse struct {
-	ID              uint      `json:"id"`
-	Type            string    `json:"type"`
-	Message         string    `json:"message"`
-	SenderUserID    uint      `json:"sender_user_id"`
-	ActorUserID     uint      `json:"actor_user_id"`
-	RecipientUserID uint      `json:"recipient_user_id"`
-	ReferenceID     *uint     `json:"reference_id,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
-	IsRead          bool      `json:"is_read"`
+	ID        uint                       `json:"id"`
+	Type      string                     `json:"type"`
+	Message   string                     `json:"message"`
+	CreatedAt time.Time                  `json:"created_at"`
+	Actor     NotificationSenderResponse `json:"actor"`
 }
 
 type NotificationListMeta struct {

@@ -43,6 +43,7 @@ func (r *notificationRepository) Delete(id uint) error {
 func (r *notificationRepository) GetNotificationsByRecipientUserID(ctx context.Context, recipientUserID string, limit, offset int) ([]model.Notification, error) {
 	var notifications []model.Notification
 	err := r.readDB.WithContext(ctx).
+		Select("id", "type", "message", "sender_user_id", "created_at").
 		Where("recipient_user_id = ?", recipientUserID).
 		Order("created_at DESC").
 		Limit(limit).

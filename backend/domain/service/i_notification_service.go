@@ -10,13 +10,13 @@ type CreateNotificationInput struct {
 	ReferenceID     *uint
 }
 
-type CreateNotificationResult struct {
+type NotificationListItem struct {
 	Notification *model.Notification
-	Sender       *model.NotificationSender
+	Actor        *model.NotificationSender
 }
 
 type INotificationService interface {
-	SendNotification(input CreateNotificationInput) (*CreateNotificationResult, error)
-	GetNotificationsByRecipientUserID(recipientUserID string, limit, offset int) ([]model.Notification, error)
+	SendNotification(input CreateNotificationInput) error
+	GetNotificationsByRecipientUserID(recipientUserID string, limit, offset int) ([]NotificationListItem, error)
 	DeleteNotification(id, requesterID uint, isAdmin bool) error
 }

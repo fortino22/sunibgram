@@ -34,25 +34,24 @@ func NewNotificationService(
 	}
 }
 
-func (s *NotificationService) SendNotification(input service.CreateNotificationInput) (*service.CreateNotificationResult, error) {
+func (s *NotificationService) SendNotification(input service.CreateNotificationInput) error {
 	input.Type = strings.TrimSpace(input.Type)
 	input.Message = strings.TrimSpace(input.Message)
 	if input.Type == "" {
-		return nil, errors.New("notification type is required")
+		return errors.New("notification type is required")
 	}
 	if input.Message == "" {
-		return nil, errors.New("message is required")
+		return errors.New("message is required")
 	}
 	if input.SenderUserID == 0 || input.RecipientUserID == 0 {
-		return nil, errors.New("sender_user_id and recipient_user_id are required")
+		return errors.New("sender_user_id and recipient_user_id are required")
 	}
 	if _, err := s.userRepo.FindByID(input.RecipientUserID); err != nil {
-		return nil, errors.New("recipient user not found")
+		return errors.New("recipient user not found")
 	}
 
-	sender, err := s.senderProfile(input.SenderUserID)
-	if err != nil {
-		return nil, err
+	if _, err := s.senderProfile(input.SenderUserID); err != nil {
+		return err
 	}
 
 	notification := &model.Notification{
@@ -64,14 +63,10 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 		ReferenceID:     input.ReferenceID,
 		IsRead:          false,
 	}
-	if err := s.notificationRepo.Save(notification); err != nil {
-		return nil, err
-	}
-
-	return &service.CreateNotificationResult{Notification: notification, Sender: sender}, nil
+	return s.notificationRepo.Save(notification)
 }
 
-func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID string, limit, offset int) ([]model.Notification, error) {
+func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID string, limit, offset int) ([]service.NotificationListItem, error) {
 	if recipientUserID == "" {
 		return nil, errors.New("recipient user id is required")
 	}
@@ -81,7 +76,23 @@ func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID 
 	if offset < 0 {
 		offset = 0
 	}
-	return s.notificationRepo.GetNotificationsByRecipientUserID(context.Background(), recipientUserID, limit, offset)
+	notifications, err := s.notificationRepo.GetNotificationsByRecipientUserID(context.Background(), recipientUserID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]service.NotificationListItem, len(notifications))
+	for i := range notifications {
+		actor, err := s.senderProfile(notifications[i].SenderUserID)
+		if err != nil {
+			return nil, err
+		}
+		items[i] = service.NotificationListItem{
+			Notification: &notifications[i],
+			Actor:        actor,
+		}
+	}
+	return items, nil
 }
 
 func (s *NotificationService) DeleteNotification(id, requesterID uint, isAdmin bool) error {

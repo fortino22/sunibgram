@@ -32,18 +32,17 @@ func (c *NotificationController) Send(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 	}
 
-	result, err := c.notificationService.SendNotification(service.CreateNotificationInput{
+	if err := c.notificationService.SendNotification(service.CreateNotificationInput{
 		Type:            req.Type,
 		Message:         req.Message,
 		SenderUserID:    req.SenderUserID,
 		RecipientUserID: req.RecipientUserID,
 		ReferenceID:     req.ReferenceID,
-	})
-	if err != nil {
+	}); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(toNotificationResponse(result.Notification, result.Sender))
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "success"})
 }
 
 func (c *NotificationController) GetMine(ctx *fiber.Ctx) error {
@@ -62,14 +61,14 @@ func (c *NotificationController) GetMine(ctx *fiber.Ctx) error {
 	}
 	recipientUserID := strconv.FormatUint(uint64(claims.UserID), 10)
 
-	notifications, err := c.notificationService.GetNotificationsByRecipientUserID(recipientUserID, limit, offset)
+	items, err := c.notificationService.GetNotificationsByRecipientUserID(recipientUserID, limit, offset)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	data := make([]dto.NotificationListResponse, len(notifications))
-	for i, notification := range notifications {
-		data[i] = toNotificationListResponse(&notification)
+	data := make([]dto.NotificationListResponse, len(items))
+	for i, item := range items {
+		data[i] = toNotificationListResponse(item)
 	}
 
 	return ctx.JSON(dto.PaginatedNotificationResponse{
@@ -100,32 +99,14 @@ func (c *NotificationController) Delete(ctx *fiber.Ctx) error {
 	return ctx.JSON(fiber.Map{"message": "notification deleted successfully"})
 }
 
-func toNotificationResponse(n *model.Notification, sender *model.NotificationSender) dto.NotificationResponse {
-	return dto.NotificationResponse{
-		ID:              n.ID,
-		Type:            n.Type,
-		Message:         n.Message,
-		SenderUserID:    n.SenderUserID,
-		ActorUserID:     n.ActorUserID,
-		RecipientUserID: n.RecipientUserID,
-		ReferenceID:     n.ReferenceID,
-		CreatedAt:       n.CreatedAt,
-		IsRead:          n.IsRead,
-		Sender:          toNotificationSenderResponse(sender),
-	}
-}
-
-func toNotificationListResponse(n *model.Notification) dto.NotificationListResponse {
+func toNotificationListResponse(item service.NotificationListItem) dto.NotificationListResponse {
+	n := item.Notification
 	return dto.NotificationListResponse{
-		ID:              n.ID,
-		Type:            n.Type,
-		Message:         n.Message,
-		SenderUserID:    n.SenderUserID,
-		ActorUserID:     n.ActorUserID,
-		RecipientUserID: n.RecipientUserID,
-		ReferenceID:     n.ReferenceID,
-		CreatedAt:       n.CreatedAt,
-		IsRead:          n.IsRead,
+		ID:        n.ID,
+		Type:      n.Type,
+		Message:   n.Message,
+		CreatedAt: n.CreatedAt,
+		Actor:     toNotificationSenderResponse(item.Actor),
 	}
 }
 
