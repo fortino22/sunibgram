@@ -11,6 +11,7 @@ type ThreadService struct {
 	memberRepo    repository.ICommunityMemberRepository
 	settingsRepo  repository.IUserSettingsRepository
 	followRepo    repository.IFollowRepository
+	notification  service.INotificationService
 }
 
 func NewThreadService(
@@ -19,6 +20,7 @@ func NewThreadService(
 	memberRepo repository.ICommunityMemberRepository,
 	settingsRepo repository.IUserSettingsRepository,
 	followRepo repository.IFollowRepository,
+	notification service.INotificationService,
 ) service.IThreadService {
 	return &ThreadService{
 		threadRepo:    threadRepo,
@@ -26,5 +28,6 @@ func NewThreadService(
 		memberRepo:    memberRepo,
 		settingsRepo:  settingsRepo,
 		followRepo:    followRepo,
+		notification:  notification,
 	}
 }

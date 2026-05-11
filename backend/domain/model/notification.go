@@ -7,10 +7,8 @@ type Notification struct {
 	Type            string    `gorm:"type:varchar(50);not null"`
 	Message         string    `gorm:"type:text;not null"`
 	SenderUserID    uint      `gorm:"not null;index"`
-	ActorUserID     uint      `gorm:"not null;index"`
 	RecipientUserID uint      `gorm:"not null;index"`
 	ReferenceID     *uint     `gorm:"index"`
-	IsRead          bool      `gorm:"not null;default:false"`
 	CreatedAt       time.Time `gorm:"index"`
 }
 

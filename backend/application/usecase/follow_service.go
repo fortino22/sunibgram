@@ -3,25 +3,35 @@ package usecase
 import (
 	"errors"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
 
 type FollowService struct {
-	followRepo repository.IFollowRepository
-	userRepo   repository.IUserRepository
+	followRepo   repository.IFollowRepository
+	userRepo     repository.IUserRepository
+	notification service.INotificationService
 }
 
-func NewFollowService(followRepo repository.IFollowRepository, userRepo repository.IUserRepository) service.IFollowService {
-	return &FollowService{followRepo: followRepo, userRepo: userRepo}
+func NewFollowService(
+	followRepo repository.IFollowRepository,
+	userRepo repository.IUserRepository,
+	notification service.INotificationService,
+) service.IFollowService {
+	return &FollowService{followRepo: followRepo, userRepo: userRepo, notification: notification}
 }
 
 func (s *FollowService) Follow(followerID, followingID uint) error {
 	if _, err := s.userRepo.FindByID(followingID); err != nil {
 		return errors.New("user not found")
 	}
-	return s.followRepo.Follow(followerID, followingID)
+	if err := s.followRepo.Follow(followerID, followingID); err != nil {
+		return err
+	}
+	helper.SendInteractionNotification(s.notification, "follow", "started following you", followerID, followingID, followingID)
+	return nil
 }
 
 func (s *FollowService) Unfollow(followerID, followingID uint) error {

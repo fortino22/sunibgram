@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 )
 
@@ -15,14 +16,16 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 
 	threadType := model.ThreadTypePost
 	var rootID *uint
+	var parent *model.Thread
 
 	var communityID *uint
 
 	if parentID != nil {
-		parent, err := s.threadRepo.FindByID(*parentID)
+		foundParent, err := s.threadRepo.FindByID(*parentID)
 		if err != nil {
 			return nil, errors.New("parent thread not found")
 		}
+		parent = foundParent
 		if parent.UserID != userID {
 			isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, parent.UserID)
 			if err != nil {
@@ -62,6 +65,9 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	}
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err
+	}
+	if parent != nil {
+		helper.SendCommentNotification(s.notification, userID, parent.UserID, thread.ThreadID)
 	}
 	return thread, nil
 }
@@ -127,7 +133,11 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 		Content:          "",
 		OriginalThreadID: &original.ThreadID,
 	}
-	return s.threadRepo.Save(repost)
+	if err := s.threadRepo.Save(repost); err != nil {
+		return err
+	}
+	helper.SendInteractionNotification(s.notification, "repost", "reposted your thread", userID, original.UserID, threadID)
+	return nil
 }
 
 func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) error {

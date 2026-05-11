@@ -58,10 +58,8 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 		Type:            input.Type,
 		Message:         input.Message,
 		SenderUserID:    input.SenderUserID,
-		ActorUserID:     input.SenderUserID,
 		RecipientUserID: input.RecipientUserID,
 		ReferenceID:     input.ReferenceID,
-		IsRead:          false,
 	}
 	return s.notificationRepo.Save(notification)
 }

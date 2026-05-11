@@ -1,6 +1,8 @@
 package dto
 
-import "time"
+import (
+	dtoutils "github.com/sunibgram/dto/utils"
+)
 
 type CreateNotificationRequest struct {
 	Type            string `json:"type"`
@@ -29,7 +31,7 @@ type NotificationListResponse struct {
 	ID        uint                       `json:"id"`
 	Type      string                     `json:"type"`
 	Message   string                     `json:"message"`
-	CreatedAt time.Time                  `json:"created_at"`
+	CreatedAt dtoutils.FormattedTime     `json:"created_at"`
 	Actor     NotificationSenderResponse `json:"actor"`
 }
 

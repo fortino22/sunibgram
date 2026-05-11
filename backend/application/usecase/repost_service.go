@@ -4,22 +4,29 @@ import (
 	"errors"
 	"time"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
 
 type RepostService struct {
-	repostRepo repository.IRepostRepository
-	threadRepo repository.IThreadRepository
+	repostRepo   repository.IRepostRepository
+	threadRepo   repository.IThreadRepository
+	notification service.INotificationService
 }
 
-func NewRepostService(repostRepo repository.IRepostRepository, threadRepo repository.IThreadRepository) service.IRepostService {
-	return &RepostService{repostRepo: repostRepo, threadRepo: threadRepo}
+func NewRepostService(
+	repostRepo repository.IRepostRepository,
+	threadRepo repository.IThreadRepository,
+	notification service.INotificationService,
+) service.IRepostService {
+	return &RepostService{repostRepo: repostRepo, threadRepo: threadRepo, notification: notification}
 }
 
 func (s *RepostService) Repost(userID, threadID uint) error {
-	if _, err := s.threadRepo.FindByID(threadID); err != nil {
+	thread, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
 		return errors.New("thread not found")
 	}
 	exists, err := s.repostRepo.Exists(userID, threadID)
@@ -33,6 +40,7 @@ func (s *RepostService) Repost(userID, threadID uint) error {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
+	helper.SendInteractionNotification(s.notification, "repost", "reposted your thread", userID, thread.UserID, threadID)
 	return nil
 }
 

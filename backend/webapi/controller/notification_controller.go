@@ -7,6 +7,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	dtoutils "github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -105,7 +106,7 @@ func toNotificationListResponse(item service.NotificationListItem) dto.Notificat
 		ID:        n.ID,
 		Type:      n.Type,
 		Message:   n.Message,
-		CreatedAt: n.CreatedAt,
+		CreatedAt: dtoutils.Wrap(n.CreatedAt),
 		Actor:     toNotificationSenderResponse(item.Actor),
 	}
 }

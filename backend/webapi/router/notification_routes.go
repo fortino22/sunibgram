@@ -9,6 +9,6 @@ func registerNotificationRoutes(api fiber.Router, notificationCtrl *controller.N
 	notifications := api.Group("/notifications")
 	notifications.Use(auth)
 	notifications.Get("", notificationCtrl.GetMine)
-	notifications.Post("", notificationCtrl.Send)
+	// notifications.Post("", notificationCtrl.Send)
 	notifications.Delete("/:id", notificationCtrl.Delete)
 }

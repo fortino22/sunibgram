@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -16,6 +17,7 @@ type BookmarkService struct {
 	memberRepo   repository.ICommunityMemberRepository
 	settingsRepo repository.IUserSettingsRepository
 	followRepo   repository.IFollowRepository
+	notification service.INotificationService
 }
 
 func NewBookmarkService(
@@ -24,6 +26,7 @@ func NewBookmarkService(
 	memberRepo repository.ICommunityMemberRepository,
 	settingsRepo repository.IUserSettingsRepository,
 	followRepo repository.IFollowRepository,
+	notification service.INotificationService,
 ) service.IBookmarkService {
 	return &BookmarkService{
 		bookmarkRepo: bookmarkRepo,
@@ -31,6 +34,7 @@ func NewBookmarkService(
 		memberRepo:   memberRepo,
 		settingsRepo: settingsRepo,
 		followRepo:   followRepo,
+		notification: notification,
 	}
 }
 
@@ -58,6 +62,7 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
+	helper.SendInteractionNotification(s.notification, "bookmark", "bookmarked your thread", userID, thread.UserID, threadID)
 	return nil
 }
 

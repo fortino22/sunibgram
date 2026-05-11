@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -16,6 +17,7 @@ type LikeService struct {
 	memberRepo   repository.ICommunityMemberRepository
 	settingsRepo repository.IUserSettingsRepository
 	followRepo   repository.IFollowRepository
+	notification service.INotificationService
 }
 
 func NewLikeService(
@@ -24,6 +26,7 @@ func NewLikeService(
 	memberRepo repository.ICommunityMemberRepository,
 	settingsRepo repository.IUserSettingsRepository,
 	followRepo repository.IFollowRepository,
+	notification service.INotificationService,
 ) service.ILikeService {
 	return &LikeService{
 		likeRepo:     likeRepo,
@@ -31,6 +34,7 @@ func NewLikeService(
 		memberRepo:   memberRepo,
 		settingsRepo: settingsRepo,
 		followRepo:   followRepo,
+		notification: notification,
 	}
 }
 
@@ -58,6 +62,7 @@ func (s *LikeService) Like(userID, threadID uint) error {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
+	helper.SendInteractionNotification(s.notification, "like", "liked your thread", userID, thread.UserID, threadID)
 	return nil
 }
 
