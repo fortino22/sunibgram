@@ -125,6 +125,11 @@ export interface ThreadMutationParams {
   clearMedia?: boolean;
 }
 
+export const DEFAULT_THREAD_CHAIN_PARAMS: Required<PaginationParams> = {
+  page: 1,
+  limit: 10,
+};
+
 function query(params?: PaginationParams): string {
   const search = new URLSearchParams();
   if (params?.page !== undefined) {
@@ -185,7 +190,7 @@ export function getFollowingThreads(token: string): Promise<ThreadListResponse> 
 }
 
 export function getMyThreads(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {
-  return api.get<ThreadListResponse>(`/api/threads/${userId}${query(params)}`, token);
+  return api.get<ThreadListResponse>(`/api/threads/${userId}/posts${query(params)}`, token);
 }
 
 export function getMyReplies(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {
@@ -198,7 +203,7 @@ export function getThread(id: number | string, token: string): Promise<ThreadRes
 
 export function getThreadChain(
   id: number | string,
-  params: PaginationParams = {},
+  params: PaginationParams = DEFAULT_THREAD_CHAIN_PARAMS,
   token: string
 ): Promise<ThreadListResponse> {
   return api.get<ThreadListResponse>(`/api/threads/${id}/chain${query(params)}`, token);
