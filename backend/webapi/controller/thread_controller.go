@@ -303,133 +303,26 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
 	}
 	targetUserID := uint(id)
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
-
-func (c *ThreadController) fb(viewerID *uint) webapiutils.FeedBuilder {
-	return webapiutils.FeedBuilder{
-		Media:      c.mediaService,
-		ProfileSvc: c.profileService,
-		ViewerID:   viewerID,
-	}
-}
-
-func (c *ThreadController) fbWithPin(viewerID *uint) webapiutils.FeedBuilder {
-	return webapiutils.FeedBuilder{
-		Media:       c.mediaService,
-		LikeSvc:     c.likeService,
-		BookmarkSvc: c.bookmarkService,
-		ThreadSvc:   c.threadService,
-		PinSvc:      c.threadPinService,
-		ProfileSvc:  c.profileService,
-		ViewerID:    viewerID,
-	}
-}
-
-func (c *ThreadController) fbNoPin(viewerID *uint) webapiutils.FeedBuilder {
-	return webapiutils.FeedBuilder{
-		Media:       c.mediaService,
-		LikeSvc:     c.likeService,
-		BookmarkSvc: c.bookmarkService,
-		ThreadSvc:   c.threadService,
-		ProfileSvc:  c.profileService,
-		ViewerID:    viewerID,
-	}
-}
-
-func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
-	mediaByThread := c.loadMediaByThread(threads)
-	data := make([]dto.FeedItemResponse, len(threads))
-	fb := c.fb(viewerID)
-	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
-	for i, t := range threads {
-		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-	}
-	return data
-}
-
-func (c *ThreadController) buildFeedItemsNoPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
-	mediaByThread := c.loadMediaByThread(threads)
-	data := make([]dto.FeedItemResponse, len(threads))
-	fb := c.fbNoPin(viewerID)
-	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
-	for i, t := range threads {
-		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-	}
-	return data
-}
-
-func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
-	mediaByThread := c.loadMediaByThread(threads)
-	data := make([]dto.FeedItemResponse, len(threads))
-	fb := c.fbWithPin(viewerID)
-	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
-	for i, t := range threads {
-		data[i] = fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-	}
-	return data
-}
-
-func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
-	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fb(viewerID))
-}
-
-func (c *ThreadController) buildUserFeedItemsNoPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
-	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbNoPin(viewerID))
-}
-
-func (c *ThreadController) buildUserFeedItemsWithPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
-	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbWithPin(viewerID))
-}
-
-func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread, parents []*model.Thread, fb webapiutils.FeedBuilder) []dto.FeedItemResponse {
-	allIDs := make([]uint, 0, len(threads)*2)
-	for _, t := range threads {
-		allIDs = append(allIDs, t.ThreadID)
-	}
-	for _, p := range parents {
-		if p != nil {
-			allIDs = append(allIDs, p.ThreadID)
+	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
-	// Collect all author user IDs (threads + parents) for batch avatar loading.
-	authorIDs := threadUserIDs(threads)
-	for _, p := range parents {
-		if p != nil {
-			authorIDs = append(authorIDs, p.User.UserID)
-		}
+	threads, parents, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	fb.LoadAvatarsForUserIDs(authorIDs)
 
-	data := make([]dto.FeedItemResponse, len(threads))
-	for i, t := range threads {
-		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
-		if parents[i] != nil {
-			p := parents[i]
-			item.ParentContext = &dto.FeedParentContext{
-				ID:        p.ThreadID,
-				ParentID:  p.ParentID,
-				RootID:    p.RootID,
-				Community: webapiutils.CommunityField(p),
-				Author:    fb.AuthorField(p.User),
-				Content:   p.Content,
-				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),
-				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
-				CreatedAt: dtoutils.Wrap(p.CreatedAt),
-				UpdatedAt: dtoutils.Wrap(p.UpdatedAt),
-			}
-		}
-		data[i] = item
-	}
-	sort.SliceStable(data, func(i, j int) bool {
-		return boolValue(data[i].IsPinned) && !boolValue(data[j].IsPinned)
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+		Data: c.buildUserFeedItemsWithPin(threads, parents, &claims.UserID),
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
-// threadUserIDs returns the author user IDs from a slice of threads.
-// For reposts, uses the original thread's author ID.
 func threadUserIDs(threads []model.Thread) []uint {
 	ids := make([]uint, 0, len(threads))
 	for _, t := range threads {
