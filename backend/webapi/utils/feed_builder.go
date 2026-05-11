@@ -13,7 +13,9 @@ type FeedBuilder struct {
 	BookmarkSvc service.IBookmarkService
 	ThreadSvc   service.IThreadService
 	PinSvc      service.IThreadPinService
+	ProfileSvc  service.IUserProfileService
 	ViewerID    *uint
+	avatarCache map[uint]string
 }
 
 func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []dto.ThreadMediaResponse {
@@ -31,8 +33,51 @@ func CommunityField(t *model.Thread) *dto.FeedCommunity {
 	return nil
 }
 
-func AuthorField(u model.User) dto.FeedAuthor {
-	a := dto.FeedAuthor{ID: u.UserID, Username: u.UserName, IsPremium: u.IsPremium}
+// LoadAvatarsForUserIDs batch-fetches and caches avatar URLs for the given user IDs.
+func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
+	if fb.ProfileSvc == nil || len(userIDs) == 0 {
+		return
+	}
+	if fb.avatarCache == nil {
+		fb.avatarCache = make(map[uint]string)
+	}
+	seen := make(map[uint]struct{}, len(userIDs))
+	needed := make([]uint, 0, len(userIDs))
+	for _, id := range userIDs {
+		if _, cached := fb.avatarCache[id]; cached {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		needed = append(needed, id)
+	}
+	if len(needed) == 0 {
+		return
+	}
+	profiles, err := fb.ProfileSvc.GetProfiles(needed)
+	if err != nil {
+		return
+	}
+	for _, p := range profiles {
+		if p.AvatarBucket != "" && p.AvatarObjectName != "" {
+			fb.avatarCache[p.UserID] = fb.ProfileSvc.GetURL(p.AvatarBucket, p.AvatarObjectName)
+		} else {
+			fb.avatarCache[p.UserID] = ""
+		}
+	}
+}
+
+// AuthorField builds a FeedAuthor from a User, resolving the avatar from the cache.
+// Reading from a nil map in Go returns the zero value, so it is safe when avatarCache is nil.
+func (fb FeedBuilder) AuthorField(u model.User) dto.FeedAuthor {
+	a := dto.FeedAuthor{
+		ID:        u.UserID,
+		Username:  u.UserName,
+		IsPremium: u.IsPremium,
+		AvatarURL: fb.avatarCache[u.UserID],
+	}
 	if u.UserFaculty != nil {
 		a.Faculty = &dto.FeedAuthorFaculty{
 			FacultyID:   u.UserFaculty.FacultyID,
@@ -82,7 +127,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 			UpdatedAt:    dtoutils.Wrap(orig.UpdatedAt),
 			TimeAgo:      TimeAgo(orig.CreatedAt),
 			RepostedAt:   &repostedAt,
-			Author:       AuthorField(orig.User),
+			Author:       fb.AuthorField(orig.User),
 			Stats:        dto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount, Comments: orig.CommentCount},
 			Media:        fb.ToMediaResponses(media),
 			IsLiked:      isLiked,
@@ -102,7 +147,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		CreatedAt:    dtoutils.Wrap(t.CreatedAt),
 		UpdatedAt:    dtoutils.Wrap(t.UpdatedAt),
 		TimeAgo:      TimeAgo(t.CreatedAt),
-		Author:       AuthorField(t.User),
+		Author:       fb.AuthorField(t.User),
 		Stats:        dto.FeedStats{Likes: t.LikeCount, Reposts: t.RepostCount, Bookmarks: t.BookmarkCount, Comments: t.CommentCount},
 		Media:        fb.ToMediaResponses(media),
 		IsLiked:      isLiked,

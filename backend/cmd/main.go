@@ -92,7 +92,7 @@ func main() {
 	emailCtrl := controller.NewEmailController(emailService)
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
-	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService)
+	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService)
 	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
 	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)

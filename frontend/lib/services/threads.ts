@@ -53,6 +53,7 @@ export interface FeedAuthor {
   id: number;
   username: string;
   is_premium: boolean;
+  avatar_url?: string | null;
   faculty?: FeedAuthorFaculty;
 }
 
