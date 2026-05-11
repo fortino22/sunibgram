@@ -5,8 +5,10 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
+	"github.com/sunibgram/pkg/util"
 )
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint) (*model.Thread, error) {
@@ -66,6 +68,9 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err
 	}
+	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
+		return nil, err
+	}
 	if parent != nil {
 		helper.SendCommentNotification(s.notification, userID, parent.UserID, thread.ThreadID)
 	}
@@ -88,6 +93,9 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	}
 	thread.Content = content
 	if err := s.threadRepo.Update(thread); err != nil {
+		return nil, err
+	}
+	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, true); err != nil {
 		return nil, err
 	}
 	return thread, nil
@@ -175,5 +183,37 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err
 	}
+	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
+		return nil, err
+	}
 	return thread, nil
+}
+
+func (s *ThreadService) persistThreadHashtags(ctx context.Context, threadID uint, content string, replace bool) error {
+	if s.hashtagRepo == nil {
+		return nil
+	}
+
+	names := util.ExtractHashtags(content)
+	if len(names) == 0 {
+		if replace {
+			return s.hashtagRepo.ReplaceHashtagsForThread(ctx, threadID, nil)
+		}
+		return nil
+	}
+
+	idsByName, err := s.hashtagRepo.UpsertHashtags(ctx, names)
+	if err != nil {
+		return err
+	}
+	hashtagIDs := make([]uuid.UUID, 0, len(names))
+	for _, name := range names {
+		if id, ok := idsByName[name]; ok {
+			hashtagIDs = append(hashtagIDs, id)
+		}
+	}
+	if replace {
+		return s.hashtagRepo.ReplaceHashtagsForThread(ctx, threadID, hashtagIDs)
+	}
+	return s.hashtagRepo.LinkHashtagsToThread(ctx, threadID, hashtagIDs)
 }

@@ -39,6 +39,7 @@ func main() {
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
+	hashtagRepo := infrarepo.NewHashtagRepository(writeDB, readDB)
 	exploreRepo := infrarepo.NewExploreRepository(readDB, redisCache)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
@@ -71,7 +72,8 @@ func main() {
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
 	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
-	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
@@ -97,6 +99,7 @@ func main() {
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
 	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService)
+	hashtagCtrl := controller.NewHashtagController(hashtagService, threadMediaService, likeService, bookmarkService, threadService)
 	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService)
 	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
 	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
@@ -132,6 +135,7 @@ func main() {
 		userSettingsCtrl,
 		profileCtrl,
 		exploreCtrl,
+		hashtagCtrl,
 		threadCtrl,
 		likeCtrl,
 		bookmarkCtrl,

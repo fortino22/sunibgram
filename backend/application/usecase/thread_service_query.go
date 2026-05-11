@@ -30,16 +30,13 @@ func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, l
 	return filtered, int64(len(filtered)), nil
 }
 
-func (s *ThreadService) GetChain(ctx context.Context, rootID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
-	root, err := s.threadRepo.FindByID(rootID)
+func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
+	anchor, err := s.threadRepo.FindByID(anchorID)
 	if err != nil {
 		return nil, 0, errors.New("thread not found")
 	}
-	if err := canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, root.UserID); err != nil {
+	if err := canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, anchor.UserID); err != nil {
 		return nil, 0, err
-	}
-	if root.ParentID != nil {
-		return nil, 0, errors.New("thread is not a root post")
 	}
 	if page < 1 {
 		page = 1
@@ -47,15 +44,47 @@ func (s *ThreadService) GetChain(ctx context.Context, rootID, requesterID uint, 
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
-	threads, _, err := s.threadRepo.FindByRootID(rootID, page, limit)
+
+	// Determine the true root to fetch all threads in the conversation
+	trueRootID := anchorID
+	if anchor.RootID != nil {
+		trueRootID = *anchor.RootID
+	}
+
+	// Fetch all threads in the conversation
+	all, _, err := s.threadRepo.FindByRootID(trueRootID, 1, 10000)
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := s.filterViewableThreads(ctx, &requesterID, threads)
+
+	// Collect anchor + only its direct children (parent_id = anchorID)
+	var chain []model.Thread
+	for _, t := range all {
+		if t.ThreadID == anchorID {
+			chain = append([]model.Thread{t}, chain...)
+			continue
+		}
+		if t.ParentID != nil && *t.ParentID == anchorID {
+			chain = append(chain, t)
+		}
+	}
+
+	filtered, err := s.filterViewableThreads(ctx, &requesterID, chain)
 	if err != nil {
 		return nil, 0, err
 	}
-	return filtered, int64(len(filtered)), nil
+
+	// Manual pagination over filtered results
+	total := int64(len(filtered))
+	offset := (page - 1) * limit
+	if offset >= len(filtered) {
+		return nil, total, nil
+	}
+	end := offset + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], total, nil
 }
 
 func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error {
