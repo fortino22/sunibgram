@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
@@ -24,6 +25,10 @@ func NewUserProfileRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cac
 	return &UserProfileRepository{writeDB: writeDB, readDB: readDB, cache: redisCache}
 }
 
+func userProfileKey(userID uint) string {
+	return fmt.Sprintf("profile:user:%d", userID)
+}
+
 func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 	if profile.ProfileID != 0 {
 		if err := r.writeDB.Model(profile).Updates(map[string]any{
@@ -36,6 +41,7 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 			return err
 		}
 		r.invalidateUser(profile.UserID)
+		invalidateExploreCache(context.Background(), r.cache)
 		return nil
 	}
 	if err := r.writeDB.Clauses(clause.OnConflict{
@@ -45,13 +51,26 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 		return err
 	}
 	r.invalidateUser(profile.UserID)
+	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 
 func (r *UserProfileRepository) FindByUserID(userID uint) (*model.UserProfile, error) {
+	ctx := context.Background()
+	key := userProfileKey(userID)
 	var profile model.UserProfile
-	err := r.readDB.Where("user_id = ?", userID).First(&profile).Error
-	return &profile, err
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &profile); err == nil {
+			return &profile, nil
+		}
+	}
+	if err := r.readDB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		r.cache.Set(ctx, key, profile, cache.DefaultTTL)
+	}
+	return &profile, nil
 }
 
 func (r *UserProfileRepository) FindByUserIDs(ids []uint) ([]model.UserProfile, error) {
@@ -73,5 +92,5 @@ func (r *UserProfileRepository) invalidateUser(userID uint) {
 	if r.cache == nil {
 		return
 	}
-	r.cache.Delete(context.Background(), userKey(userID))
+	r.cache.Delete(context.Background(), userProfileKey(userID))
 }

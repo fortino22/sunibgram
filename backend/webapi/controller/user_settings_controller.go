@@ -48,6 +48,9 @@ func (c *UserSettingsController) UpdateUserSetting(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.settingsService.UpdateUserSetting(ctx.Context(), claims.UserID, req.IsPrivate); err != nil {
+		if err.Error() == "only the owner can update this setting" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 

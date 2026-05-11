@@ -23,7 +23,7 @@ type User struct {
 	RoleID      uint         `gorm:"not null;default:1"`
 	IsPremium   bool         `gorm:"not null;default:false"`
 	Role        Role         `gorm:"foreignKey:RoleID;references:RoleID"`
-	UserFaculty *UserFaculty `gorm:"-"`
+	UserFaculty *UserFaculty `gorm:"foreignKey:UserID;references:UserID;<-:false"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

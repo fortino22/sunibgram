@@ -5,8 +5,9 @@ import (
 	"github.com/sunibgram/webapi/controller"
 )
 
-func registerUserRoutes(api fiber.Router, followCtrl *controller.FollowController, auth fiber.Handler) {
+func registerUserRoutes(api fiber.Router, followCtrl *controller.FollowController, exploreCtrl *controller.ExploreController, auth fiber.Handler) {
 	users := api.Group("/users")
+	users.Get("/suggested", auth, exploreCtrl.GetSuggestedPeople)
 	users.Post("/:id/follow", auth, followCtrl.Follow)
 	users.Delete("/:id/unfollow", auth, followCtrl.Unfollow)
 

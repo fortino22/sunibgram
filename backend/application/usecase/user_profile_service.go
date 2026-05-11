@@ -171,7 +171,7 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 	return nil
 }
 
-func (s *UserProfileService) GetProfile(userID uint) (*service.FullProfile, error) {
+func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, err
@@ -185,7 +185,20 @@ func (s *UserProfileService) GetProfile(userID uint) (*service.FullProfile, erro
 		profile = &model.UserProfile{UserID: userID}
 	}
 	userFaculty, _ := s.userFacultyRepo.FindByUserID(userID)
-	return &service.FullProfile{User: user, Stat: stat, Profile: profile, UserFaculty: userFaculty}, nil
+	isFollowing := false
+	if viewerID != nil && *viewerID != 0 && *viewerID != userID {
+		isFollowing, err = s.followRepo.Exists(*viewerID, userID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &service.FullProfile{
+		User:        user,
+		Stat:        stat,
+		Profile:     profile,
+		UserFaculty: userFaculty,
+		IsFollowing: isFollowing,
+	}, nil
 }
 
 func (s *UserProfileService) GetProfiles(userIDs []uint) ([]model.UserProfile, error) {

@@ -14,6 +14,7 @@ func Register(
 	cacheCtrl *controller.CacheController,
 	userSettingsCtrl *controller.UserSettingsController,
 	profileCtrl *controller.UserProfileController,
+	exploreCtrl *controller.ExploreController,
 	threadCtrl *controller.ThreadController,
 	likeCtrl *controller.LikeController,
 	bookmarkCtrl *controller.BookmarkController,
@@ -33,15 +34,15 @@ func Register(
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
-	optionalAuth := middleware.OptionalAuth()
 
 	registerAuthRoutes(api, authCtrl, verificationCtrl, auth)
 	registerVerificationRoutes(api, verificationCtrl)
 	registerUserSettingsRoutes(api, userSettingsCtrl, auth)
 	registerProfileRoutes(api, profileCtrl, auth)
-	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, auth, optionalAuth)
+	registerExploreRoutes(api, exploreCtrl, auth)
+	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, auth)
 	registerEmailRoutes(api, emailCtrl, auth)
-	registerUserRoutes(api, followCtrl, auth)
+	registerUserRoutes(api, followCtrl, exploreCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
 	registerCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, auth)
 	registerFacultyRoutes(api, facultyCtrl, auth)

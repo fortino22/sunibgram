@@ -1,0 +1,36 @@
+package dto
+
+type ExploreResponse struct {
+	Threads []ExploreThreadResponse `json:"threads"`
+	Users   []ExploreUserResponse   `json:"users"`
+}
+
+type ExploreUserResponse struct {
+	UserID      uint   `json:"userId"`
+	Profile     string `json:"profile"`
+	Username    string `json:"username"`
+	Name        string `json:"name"`
+	IsPremium   bool   `json:"is_premium"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+type ExplorePeopleResponse struct {
+	UserID         uint   `json:"userId"`
+	UserProfilePic string `json:"user_profile_pic"`
+	Username       string `json:"username"`
+	Name           string `json:"name"`
+	IsPremium      bool   `json:"is_premium"`
+	IsFollowing    bool   `json:"is_following"`
+}
+
+type ExploreThreadResponse struct {
+	Content string `json:"content"`
+}
+
+type ExploreCommunityResponse struct {
+	CommunityID      uint   `json:"community_id"`
+	CommunityProfile string `json:"community_profile"`
+	CommunityName    string `json:"community_name"`
+	MemberCount      int    `json:"member_count"`
+	IsJoin           bool   `json:"is_join"`
+}

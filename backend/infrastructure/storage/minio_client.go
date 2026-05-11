@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -30,9 +32,14 @@ func NewMinioClient() domainservice.IStorageService {
 		publicEndpoint = endpoint
 	}
 
+	transport := &http.Transport{
+		Proxy: func(*http.Request) (*url.URL, error) { return nil, nil },
+	}
+
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
+		Creds:     credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure:    useSSL,
+		Transport: transport,
 	})
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to MinIO: %v", err))

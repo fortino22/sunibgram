@@ -39,15 +39,16 @@ func main() {
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
-	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB)
+	exploreRepo := infrarepo.NewExploreRepository(readDB, redisCache)
+	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
 	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
-	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB)
-	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB)
+	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB, redisCache)
+	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
 	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB, redisCache)
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
@@ -68,6 +69,7 @@ func main() {
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	followService := usecase.NewFollowService(followRepo, userRepo)
 	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo)
+	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo)
 	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo)
@@ -93,6 +95,7 @@ func main() {
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
 	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService)
+	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService)
 	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
 	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
@@ -124,6 +127,7 @@ func main() {
 		cacheCtrl,
 		userSettingsCtrl,
 		profileCtrl,
+		exploreCtrl,
 		threadCtrl,
 		likeCtrl,
 		bookmarkCtrl,

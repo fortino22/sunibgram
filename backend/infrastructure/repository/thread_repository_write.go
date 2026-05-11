@@ -1,0 +1,128 @@
+package repository
+
+import (
+	"context"
+
+	"github.com/sunibgram/domain/model"
+	"gorm.io/gorm"
+)
+
+func (r *threadCached) Save(thread *model.Thread) error {
+	if err := r.db.writeDB.Create(thread).Error; err != nil {
+		return err
+	}
+	ctx := context.Background()
+	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
+		r.db.writeDB.Model(&model.Thread{}).
+			Where("thread_id = ?", *thread.OriginalThreadID).
+			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
+		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
+		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
+		var orig model.Thread
+		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
+			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
+		}
+	}
+	if thread.ParentID != nil {
+		r.db.writeDB.Model(&model.Thread{}).
+			Where("thread_id = ?", *thread.ParentID).
+			UpdateColumn("comment_count", gorm.Expr("comment_count + 1"))
+		r.patchCachedCount(*thread.ParentID, "comment_count", 1)
+	}
+	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.invalidateUserFeedCache(ctx, thread.UserID)
+	r.invalidateUserMediaCache(ctx, thread.UserID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	invalidateExploreCache(ctx, r.cache)
+	return nil
+}
+
+func (r *threadCached) InvalidateThread(threadID uint) {
+	ctx := context.Background()
+	thread, err := r.FindByID(threadID)
+	if err != nil {
+		r.cache.Delete(ctx, threadKey(threadID))
+		return
+	}
+	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	r.invalidateInteractions(ctx, threadID)
+	invalidateExploreCache(ctx, r.cache)
+}
+
+func (r *threadCached) Update(thread *model.Thread) error {
+	if err := r.db.writeDB.Model(thread).
+		UpdateColumns(map[string]any{
+			"content":    thread.Content,
+			"updated_at": gorm.Expr("NOW()"),
+		}).Error; err != nil {
+		return err
+	}
+	ctx := context.Background()
+	r.cache.Delete(ctx, threadKey(thread.ThreadID))
+	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.invalidateInteractions(ctx, thread.ThreadID)
+	r.invalidateUserFeedCache(ctx, thread.UserID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	invalidateExploreCache(ctx, r.cache)
+	return nil
+}
+
+func (r *threadCached) patchCachedCount(threadID uint, column string, delta int) {
+	ctx := context.Background()
+	key := threadKey(threadID)
+	var thread model.Thread
+	if err := r.cache.Get(ctx, key, &thread); err != nil {
+		if err := r.db.readDB.Preload("User", preloadThreadUser).First(&thread, threadID).Error; err != nil {
+			return
+		}
+	}
+	switch column {
+	case "like_count":
+		thread.LikeCount = max(thread.LikeCount+delta, 0)
+	case "repost_count":
+		thread.RepostCount = max(thread.RepostCount+delta, 0)
+	case "bookmark_count":
+		thread.BookmarkCount = max(thread.BookmarkCount+delta, 0)
+	case "comment_count":
+		thread.CommentCount = max(thread.CommentCount+delta, 0)
+	}
+	r.cache.Set(ctx, key, thread, r.ttl)
+	r.invalidateFeedCachesByThreadID(ctx, threadID)
+}
+
+func (r *threadCached) Delete(id uint) error {
+	var thread model.Thread
+	r.db.readDB.Select("thread_id, user_id, parent_id, root_id, type, original_thread_id, community_id").First(&thread, id)
+
+	ctx := context.Background()
+	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
+		r.db.writeDB.Model(&model.Thread{}).
+			Where("thread_id = ?", *thread.OriginalThreadID).
+			UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
+		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", -1)
+		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
+	}
+	if thread.ParentID != nil {
+		r.db.writeDB.Model(&model.Thread{}).
+			Where("thread_id = ?", *thread.ParentID).
+			UpdateColumn("comment_count", gorm.Expr("GREATEST(comment_count - 1, 0)"))
+		r.patchCachedCount(*thread.ParentID, "comment_count", -1)
+	}
+
+	r.invalidate(ctx, id, thread.RootID, thread.CommunityID)
+	r.invalidateInteractions(ctx, id)
+	r.invalidateUserFeedCache(ctx, thread.UserID)
+	r.invalidateUserMediaCache(ctx, thread.UserID)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+
+	r.likes.deleteByThreadID(id)
+	r.bookmarks.deleteByThreadID(id)
+	r.reposts.deleteByThreadID(id)
+
+	if err := r.db.writeDB.Delete(&model.Thread{}, id).Error; err != nil {
+		return err
+	}
+	invalidateExploreCache(ctx, r.cache)
+	return nil
+}

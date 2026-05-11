@@ -2,16 +2,13 @@ package controller
 
 import (
 	"mime/multipart"
-	"sort"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	dtoutils "github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
-	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type ThreadController struct {
@@ -104,10 +101,16 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
 	}
 
-	if thread.CommunityID != nil {
+	if thread.CommunityID != nil && thread.Community != nil && thread.Community.Visibility == model.CommunityVisibilityPrivate {
 		if !c.memberService.IsMember(*thread.CommunityID, claims.UserID) {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
+	}
+	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, thread.UserID); err != nil {
+		if err.Error() == "this account is private" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	media, _ := c.mediaService.GetByThreadID(uint(id))
@@ -132,7 +135,7 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
 	}
 
-	if root.CommunityID != nil {
+	if root.CommunityID != nil && root.Community != nil && root.Community.Visibility == model.CommunityVisibilityPrivate {
 		if !c.memberService.IsMember(*root.CommunityID, claims.UserID) {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
@@ -290,18 +293,18 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *ThreadController) loadMediaByThread(threads []model.Thread) map[uint][]model.ThreadMedia {
-	ids := make([]uint, len(threads))
-	for i, t := range threads {
-		ids[i] = t.ThreadID
+func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-	allMedia, _ := c.mediaService.GetByThreadIDs(ids)
-	m := make(map[uint][]model.ThreadMedia, len(ids))
-	for _, media := range allMedia {
-		m[media.ThreadID] = append(m[media.ThreadID], media)
+	id, err := strconv.ParseUint(ctx.Params("userId"), 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
 	}
-	return m
-}
+	targetUserID := uint(id)
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
 
 func (c *ThreadController) fb(viewerID *uint) webapiutils.FeedBuilder {
 	return webapiutils.FeedBuilder{
@@ -388,11 +391,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 		if p != nil {
 			allIDs = append(allIDs, p.ThreadID)
 		}
-	}
-	allMedia, _ := c.mediaService.GetByThreadIDs(allIDs)
-	mediaByThread := make(map[uint][]model.ThreadMedia, len(allIDs))
-	for _, m := range allMedia {
-		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	// Collect all author user IDs (threads + parents) for batch avatar loading.
@@ -427,11 +426,6 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 	sort.SliceStable(data, func(i, j int) bool {
 		return boolValue(data[i].IsPinned) && !boolValue(data[j].IsPinned)
 	})
-	return data
-}
-
-func boolValue(v *bool) bool {
-	return v != nil && *v
 }
 
 // threadUserIDs returns the author user IDs from a slice of threads.
@@ -454,19 +448,4 @@ func threadMediaFiles(ctx *fiber.Ctx) []*multipart.FileHeader {
 		return nil
 	}
 	return form.File["files"]
-}
-
-func (c *ThreadController) ensureFalseViewerFlags(data []dto.FeedItemResponse) {
-	falseVal := false
-	for i := range data {
-		if data[i].IsLiked == nil {
-			data[i].IsLiked = &falseVal
-		}
-		if data[i].IsBookmarked == nil {
-			data[i].IsBookmarked = &falseVal
-		}
-		if data[i].IsReposted == nil {
-			data[i].IsReposted = &falseVal
-		}
-	}
 }

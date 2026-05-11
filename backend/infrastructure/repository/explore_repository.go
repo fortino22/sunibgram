@@ -1,0 +1,412 @@
+package repository
+
+import (
+	"context"
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/sunibgram/domain/model"
+	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
+	"gorm.io/gorm"
+)
+
+const exploreTTL = 60 * time.Second
+
+type exploreRepository struct {
+	readDB *gorm.DB
+	cache  *cache.Cache
+	ttl    time.Duration
+}
+
+type exploreUserRow struct {
+	UserID           uint
+	Name             string
+	Username         string
+	IsPremium        bool
+	AvatarObjectName string
+	AvatarBucket     string
+	IsFollowing      bool
+}
+
+type exploreThreadRow struct {
+	UserID  uint
+	Content string
+}
+
+type cachedExploreThreads struct {
+	Threads []model.Thread
+	Total   int64
+}
+
+type cachedExploreCommunities struct {
+	Communities []model.ExploreCommunityResult
+	Total       int64
+}
+
+func NewExploreRepository(readDB *gorm.DB, c *cache.Cache) domainrepo.IExploreRepository {
+	return &exploreRepository{readDB: readDB, cache: c, ttl: exploreTTL}
+}
+
+func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, requesterID *uint, limit int) (*model.ExploreResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreKey(query, requesterID, limit)
+	var result model.ExploreResult
+	cacheable := requesterID == nil && r.cache != nil
+	if cacheable {
+		if err := r.cache.Get(ctx, key, &result); err == nil {
+			return &result, nil
+		}
+	}
+
+	users, err := r.exploreUsers(ctx, query, requesterID, limit)
+	if err != nil {
+		return nil, err
+	}
+	threads, err := r.exploreThreads(ctx, query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	result = model.ExploreResult{Users: users, Threads: threads}
+	if cacheable {
+		r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return &result, nil
+}
+
+func (r *exploreRepository) FindTopPosts(ctx context.Context, query string, limit int) ([]model.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "top", query, []string{string(model.ThreadTypePost)}, limit, false, "(threads.like_count + threads.comment_count + threads.repost_count) DESC, threads.created_at DESC")
+}
+
+func (r *exploreRepository) FindLatestPosts(ctx context.Context, query string, limit int) ([]model.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "latest", query, []string{string(model.ThreadTypePost)}, limit, false, "threads.created_at DESC")
+}
+
+func (r *exploreRepository) FindPeople(ctx context.Context, query string, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreSectionKey("people", query, fmt.Sprintf("%d", requesterID), limit)
+	var users []model.ExploreUserResult
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &users); err == nil {
+			return users, nil
+		}
+	}
+
+	users, err := r.exploreUsers(ctx, query, &requesterID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, users, r.ttl)
+	}
+	return users, nil
+}
+
+func (r *exploreRepository) FindMediaPosts(ctx context.Context, query string, limit int) ([]model.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "media", query, []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}, limit, true, "MAX(threads.created_at) DESC")
+}
+
+func (r *exploreRepository) FindCommunities(ctx context.Context, query string, requesterID uint, limit int) ([]model.ExploreCommunityResult, int64, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreSectionKey("communities", query, fmt.Sprintf("%d", requesterID), limit)
+	var result cachedExploreCommunities
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &result); err == nil {
+			return result.Communities, result.Total, nil
+		}
+	}
+
+	pattern := likePattern(query)
+	base := r.readDB.WithContext(ctx).
+		Model(&model.Community{}).
+		Where("communities.name ILIKE ? ESCAPE '\\' OR communities.description ILIKE ? ESCAPE '\\' OR communities.category ILIKE ? ESCAPE '\\'", pattern, pattern, pattern)
+
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var communities []model.ExploreCommunityResult
+	if err := base.
+		Select(`
+			communities.community_id,
+			communities.name,
+			COALESCE(communities.avatar_object_name, '') AS avatar_object_name,
+			COALESCE(communities.avatar_bucket, '') AS avatar_bucket,
+			communities.member_count,
+			(community_members.user_id IS NOT NULL) AS is_join
+		`).
+		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id AND community_members.user_id = ?", requesterID).
+		Order("communities.member_count DESC, communities.created_at DESC").
+		Limit(limit).
+		Scan(&communities).Error; err != nil {
+		return nil, 0, err
+	}
+
+	result = cachedExploreCommunities{Communities: communities, Total: total}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return communities, total, nil
+}
+
+func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreSectionKey("suggested_people", "", fmt.Sprintf("%d", requesterID), limit)
+	var users []model.ExploreUserResult
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &users); err == nil {
+			return users, nil
+		}
+	}
+
+	var rows []exploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("user_relationships AS followed").
+		Select(`
+			users.user_id,
+			users.name,
+			users.user_name AS username,
+			users.is_premium,
+			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
+			FALSE AS is_following
+		`).
+		Joins("JOIN user_relationships AS suggested ON suggested.follower_id = followed.following_id").
+		Joins("JOIN users ON users.user_id = suggested.following_id").
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Joins("LEFT JOIN user_relationships AS existing ON existing.follower_id = ? AND existing.following_id = suggested.following_id", requesterID).
+		Where("followed.follower_id = ?", requesterID).
+		Where("suggested.following_id <> ?", requesterID).
+		Where("existing.following_id IS NULL").
+		Where("roles.name <> ?", "admin").
+		Group("users.user_id, users.name, users.user_name, users.is_premium, users.created_at, user_profiles.avatar_object_name, user_profiles.avatar_bucket").
+		Order("COUNT(DISTINCT followed.following_id) DESC, users.is_premium DESC, users.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	users = make([]model.ExploreUserResult, len(rows))
+	for i, row := range rows {
+		users[i] = model.ExploreUserResult{
+			UserID:           row.UserID,
+			Name:             row.Name,
+			Username:         row.Username,
+			IsPremium:        row.IsPremium,
+			AvatarObjectName: row.AvatarObjectName,
+			AvatarBucket:     row.AvatarBucket,
+			IsFollowing:      row.IsFollowing,
+		}
+	}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, users, r.ttl)
+	}
+	return users, nil
+}
+
+func (r *exploreRepository) findExploreThreads(ctx context.Context, section, query string, types []string, limit int, mediaOnly bool, order string) ([]model.Thread, int64, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	key := exploreSectionKey(section, query, "all", limit)
+	var result cachedExploreThreads
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &result); err == nil {
+			return result.Threads, result.Total, nil
+		}
+	}
+
+	base := r.exploreThreadBase(ctx, query, types)
+	if mediaOnly {
+		base = base.Joins("JOIN thread_media ON thread_media.thread_id = threads.thread_id")
+	}
+
+	var total int64
+	countQuery := base
+	if mediaOnly {
+		countQuery = countQuery.Distinct("threads.thread_id")
+	}
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var ids []uint
+	idQuery := base.Select("threads.thread_id")
+	if mediaOnly {
+		idQuery = idQuery.Group("threads.thread_id")
+	}
+	if err := idQuery.Order(order).Limit(limit).Pluck("threads.thread_id", &ids).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(ids) == 0 {
+		result = cachedExploreThreads{Threads: []model.Thread{}, Total: total}
+		if r.cache != nil {
+			_ = r.cache.Set(ctx, key, result, r.ttl)
+		}
+		return result.Threads, result.Total, nil
+	}
+
+	threads, err := r.loadThreadsByIDs(ctx, ids)
+	if err != nil {
+		return nil, 0, err
+	}
+	result = cachedExploreThreads{Threads: threads, Total: total}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return result.Threads, result.Total, nil
+}
+
+func (r *exploreRepository) exploreThreadBase(ctx context.Context, query string, types []string) *gorm.DB {
+	pattern := likePattern(query)
+	return r.readDB.WithContext(ctx).
+		Model(&model.Thread{}).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.type IN ?", types).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("threads.content ILIKE ? ESCAPE '\\'", pattern)
+}
+
+func (r *exploreRepository) loadThreadsByIDs(ctx context.Context, ids []uint) ([]model.Thread, error) {
+	var rows []model.Thread
+	if err := r.readDB.WithContext(ctx).
+		Preload("User", preloadThreadUser).
+		Preload("OriginalThread.User", preloadThreadUser).
+		Preload("Community").
+		Preload("OriginalThread.Community").
+		Preload("User.UserFaculty.Faculty").
+		Preload("OriginalThread.User.UserFaculty.Faculty").
+		Where("threads.thread_id IN ?", ids).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	byID := make(map[uint]model.Thread, len(rows))
+	for _, row := range rows {
+		byID[row.ThreadID] = row
+	}
+
+	threads := make([]model.Thread, 0, len(ids))
+	for _, id := range ids {
+		if thread, ok := byID[id]; ok {
+			threads = append(threads, thread)
+		}
+	}
+	return threads, nil
+}
+
+const defaultRepositoryExploreLimit = 20
+
+func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requesterID *uint, limit int) ([]model.ExploreUserResult, error) {
+	pattern := likePattern(query)
+	viewerID := uint(0)
+	if requesterID != nil {
+		viewerID = *requesterID
+	}
+
+	var rows []exploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("users").
+		Select(`
+			users.user_id,
+			users.name,
+			users.user_name AS username,
+			users.is_premium,
+			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
+			(user_relationships.following_id IS NOT NULL) AS is_following
+		`).
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Joins("LEFT JOIN user_relationships ON user_relationships.following_id = users.user_id AND user_relationships.follower_id = ?", viewerID).
+		Where("roles.name <> ?", "admin").
+		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\' OR user_profiles.bio ILIKE ? ESCAPE '\\'", pattern, pattern, pattern).
+		Order("users.is_premium DESC, users.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	users := make([]model.ExploreUserResult, len(rows))
+	for i, row := range rows {
+		users[i] = model.ExploreUserResult{
+			UserID:           row.UserID,
+			Name:             row.Name,
+			Username:         row.Username,
+			IsPremium:        row.IsPremium,
+			AvatarObjectName: row.AvatarObjectName,
+			AvatarBucket:     row.AvatarBucket,
+			IsFollowing:      row.IsFollowing,
+		}
+	}
+	return users, nil
+}
+
+func (r *exploreRepository) exploreThreads(ctx context.Context, query string, limit int) ([]model.ExploreThreadResult, error) {
+	pattern := likePattern(query)
+	var rows []exploreThreadRow
+	if err := r.readDB.WithContext(ctx).
+		Table("threads").
+		Select("DISTINCT ON (threads.content) threads.user_id, threads.content").
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("threads.content ILIKE ? ESCAPE '\\'", pattern).
+		Order("threads.content, threads.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	threads := make([]model.ExploreThreadResult, len(rows))
+	for i, row := range rows {
+		threads[i] = model.ExploreThreadResult{
+			UserID:  row.UserID,
+			Content: row.Content,
+		}
+	}
+	return threads, nil
+}
+
+func exploreKey(query string, requesterID *uint, limit int) string {
+	viewer := "guest"
+	if requesterID != nil {
+		viewer = fmt.Sprintf("%d", *requesterID)
+	}
+	return exploreSectionKey("", query, viewer, limit)
+}
+
+func exploreSectionKey(section, query, viewer string, limit int) string {
+	sum := sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))
+	if section == "" {
+		return fmt.Sprintf("explore:%s:viewer:%s:limit:%d", hex.EncodeToString(sum[:]), viewer, limit)
+	}
+	return fmt.Sprintf("explore:%s:%s:viewer:%s:limit:%d", section, hex.EncodeToString(sum[:]), viewer, limit)
+}
+
+func likePattern(query string) string {
+	query = strings.TrimSpace(query)
+	query = strings.ReplaceAll(query, `\`, `\\`)
+	query = strings.ReplaceAll(query, `%`, `\%`)
+	query = strings.ReplaceAll(query, `_`, `\_`)
+	return "%" + query + "%"
+}

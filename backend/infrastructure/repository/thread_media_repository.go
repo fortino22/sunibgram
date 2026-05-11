@@ -1,22 +1,34 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 )
 
 type ThreadMediaRepository struct {
 	writeDB *gorm.DB
 	readDB  *gorm.DB
+	cache   *cache.Cache
 }
 
-func NewThreadMediaRepository(writeDB, readDB *gorm.DB) domainrepo.IThreadMediaRepository {
-	return &ThreadMediaRepository{writeDB: writeDB, readDB: readDB}
+func NewThreadMediaRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IThreadMediaRepository {
+	var redisCache *cache.Cache
+	if len(c) > 0 {
+		redisCache = c[0]
+	}
+	return &ThreadMediaRepository{writeDB: writeDB, readDB: readDB, cache: redisCache}
 }
 
 func (r *ThreadMediaRepository) SaveAll(media []model.ThreadMedia) error {
-	return r.writeDB.Create(&media).Error
+	if err := r.writeDB.Create(&media).Error; err != nil {
+		return err
+	}
+	invalidateExploreCache(context.Background(), r.cache)
+	return nil
 }
 
 func (r *ThreadMediaRepository) FindByThreadID(threadID uint) ([]model.ThreadMedia, error) {
@@ -35,7 +47,11 @@ func (r *ThreadMediaRepository) FindByThreadIDs(threadIDs []uint) ([]model.Threa
 }
 
 func (r *ThreadMediaRepository) DeleteByThreadID(threadID uint) error {
-	return r.writeDB.Where("thread_id = ?", threadID).Delete(&model.ThreadMedia{}).Error
+	if err := r.writeDB.Where("thread_id = ?", threadID).Delete(&model.ThreadMedia{}).Error; err != nil {
+		return err
+	}
+	invalidateExploreCache(context.Background(), r.cache)
+	return nil
 }
 
 func (r *ThreadMediaRepository) DeleteByIDs(ids []uint) ([]model.ThreadMedia, error) {
@@ -46,5 +62,6 @@ func (r *ThreadMediaRepository) DeleteByIDs(ids []uint) ([]model.ThreadMedia, er
 	if err := r.writeDB.Where("media_id IN ?", ids).Delete(&model.ThreadMedia{}).Error; err != nil {
 		return nil, err
 	}
+	invalidateExploreCache(context.Background(), r.cache)
 	return media, nil
 }
