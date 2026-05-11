@@ -24,21 +24,20 @@ function resolveSize(size: AvatarProps['size']): number {
 
 export function Avatar({ username, avatarUrl, size = 'md', className, style }: AvatarProps) {
   const resolvedSize = resolveSize(size);
+  const resolvedAvatarSrc = avatarUrl?.trim() ? avatarUrl : DEFAULT_AVATAR_SRC;
 
   return (
     <AvatarRoot
       className={cn('shrink-0', className)}
       style={{ width: resolvedSize, height: resolvedSize, ...style }}
     >
-      <AvatarImage src={avatarUrl ?? DEFAULT_AVATAR_SRC} alt={`${username} profile image`} />
-      <AvatarFallback
-        className="text-xs font-semibold"
-        style={{
-          background: 'var(--bg-subtle)',
-          color: 'var(--text-secondary)',
-        }}
-      >
-        {username.charAt(0).toUpperCase()}
+      <AvatarImage src={resolvedAvatarSrc} alt={`${username} profile image`} />
+      <AvatarFallback>
+        <img
+          src={DEFAULT_AVATAR_SRC}
+          alt={`${username} profile image`}
+          className="h-full w-full object-cover"
+        />
       </AvatarFallback>
     </AvatarRoot>
   );
