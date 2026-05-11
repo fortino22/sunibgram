@@ -39,6 +39,7 @@ func main() {
 	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
+	eventRepo := infrarepo.NewEventRepository(writeDB, readDB, redisCache)
 	hashtagRepo := infrarepo.NewHashtagRepository(writeDB, readDB)
 	exploreRepo := infrarepo.NewExploreRepository(readDB, redisCache)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
@@ -74,6 +75,7 @@ func main() {
 	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
 	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	eventService := usecase.NewEventService(eventRepo)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
@@ -99,6 +101,7 @@ func main() {
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
 	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService)
+	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService)
 	hashtagCtrl := controller.NewHashtagController(hashtagService)
 	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService)
 	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
@@ -137,6 +140,7 @@ func main() {
 		exploreCtrl,
 		hashtagCtrl,
 		threadCtrl,
+		eventCtrl,
 		likeCtrl,
 		bookmarkCtrl,
 		threadPinCtrl,

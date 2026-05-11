@@ -18,6 +18,8 @@ func AutoMigrate(db *gorm.DB) {
 		&model.UserProfile{},
 		&model.Community{},
 		&model.Thread{},
+		&model.Event{},
+		&model.ThreadEvent{},
 		&model.ThreadMedia{},
 		&model.Like{},
 		&model.Bookmark{},
@@ -72,6 +74,26 @@ func AutoMigrate(db *gorm.DB) {
 				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_hashtags_hashtag'
 			) THEN
 				ALTER TABLE thread_hashtags ADD CONSTRAINT fk_thread_hashtags_hashtag FOREIGN KEY (hashtag_id) REFERENCES hashtags(id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_events_thread'
+			) THEN
+				ALTER TABLE thread_events ADD CONSTRAINT fk_thread_events_thread FOREIGN KEY (thread_id) REFERENCES threads(thread_id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_events_event'
+			) THEN
+				ALTER TABLE thread_events ADD CONSTRAINT fk_thread_events_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE;
 			END IF;
 		END $$;
 	`)

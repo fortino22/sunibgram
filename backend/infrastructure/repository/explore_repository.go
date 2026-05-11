@@ -241,20 +241,24 @@ func (r *exploreRepository) findExploreThreads(ctx context.Context, section, que
 	}
 
 	var total int64
-	countQuery := base
+	var countQuery *gorm.DB
 	if mediaOnly {
-		countQuery = countQuery.Distinct("threads.thread_id")
+		countQuery = base.Select("COUNT(DISTINCT threads.thread_id)")
+	} else {
+		countQuery = base
 	}
 	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	var ids []uint
-	idQuery := base.Select("threads.thread_id")
+	var idQuery *gorm.DB
 	if mediaOnly {
-		idQuery = idQuery.Group("threads.thread_id")
+		idQuery = base.Select("threads.thread_id").Group("threads.thread_id").Order("MAX(threads.created_at) DESC")
+	} else {
+		idQuery = base.Select("threads.thread_id").Order(order)
 	}
-	if err := idQuery.Order(order).Limit(limit).Pluck("threads.thread_id", &ids).Error; err != nil {
+	if err := idQuery.Limit(limit).Pluck("thread_id", &ids).Error; err != nil {
 		return nil, 0, err
 	}
 	if len(ids) == 0 {
