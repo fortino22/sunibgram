@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/sunibgram/dto/utils"
 )
 
 type EventTime struct {
@@ -58,14 +60,14 @@ type UpdateEventRequest struct {
 }
 
 type EventResponse struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Location    string    `json:"location"`
-	StartTime   EventTime `json:"start_time"`
-	EndTime     EventTime `json:"end_time"`
-	CreatedAt   EventTime `json:"created_at"`
-	UpdatedAt   EventTime `json:"updated_at"`
+	ID          string              `json:"id"`
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	Location    string              `json:"location"`
+	StartTime   EventTime           `json:"start_time"`
+	EndTime     EventTime           `json:"end_time"`
+	CreatedAt   utils.FormattedTime `json:"created_at"`
+	UpdatedAt   utils.FormattedTime `json:"updated_at"`
 }
 
 type PaginatedEventResponse struct {

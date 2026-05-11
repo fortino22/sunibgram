@@ -27,6 +27,16 @@ type ExploreThreadResponse struct {
 	Content string `json:"content"`
 }
 
+type ExploreMediaResponse struct {
+	ThreadID uint                  `json:"thread_id"`
+	Media    []ThreadMediaResponse `json:"media"`
+}
+
+type PaginatedExploreMediaResponse struct {
+	Data []ExploreMediaResponse `json:"data"`
+	Meta FeedMeta               `json:"meta"`
+}
+
 type ExploreCommunityResponse struct {
 	CommunityID      uint   `json:"community_id"`
 	CommunityProfile string `json:"community_profile"`

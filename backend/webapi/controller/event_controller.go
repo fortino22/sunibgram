@@ -7,6 +7,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/dto/utils"
 	"github.com/sunibgram/webapi/ctxutil"
 )
 
@@ -125,8 +126,8 @@ func (c *EventController) toResponse(event *model.Event) dto.EventResponse {
 		Location:    event.Location,
 		StartTime:   dto.EventTime{Time: event.StartTime},
 		EndTime:     dto.EventTime{Time: event.EndTime},
-		CreatedAt:   dto.EventTime{Time: event.CreatedAt},
-		UpdatedAt:   dto.EventTime{Time: event.UpdatedAt},
+		CreatedAt:   utils.Wrap(event.CreatedAt),
+		UpdatedAt:   utils.Wrap(event.UpdatedAt),
 	}
 }
 

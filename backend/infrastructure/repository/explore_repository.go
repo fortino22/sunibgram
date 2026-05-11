@@ -269,7 +269,13 @@ func (r *exploreRepository) findExploreThreads(ctx context.Context, section, que
 		return result.Threads, result.Total, nil
 	}
 
-	threads, err := r.loadThreadsByIDs(ctx, ids)
+	var threads []model.Thread
+	var err error
+	if mediaOnly {
+		threads, err = r.loadThreadSummariesByIDs(ctx, ids)
+	} else {
+		threads, err = r.loadThreadsByIDs(ctx, ids)
+	}
 	if err != nil {
 		return nil, 0, err
 	}
@@ -299,6 +305,29 @@ func (r *exploreRepository) loadThreadsByIDs(ctx context.Context, ids []uint) ([
 		Preload("OriginalThread.Community").
 		Preload("User.UserFaculty.Faculty").
 		Preload("OriginalThread.User.UserFaculty.Faculty").
+		Where("threads.thread_id IN ?", ids).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	byID := make(map[uint]model.Thread, len(rows))
+	for _, row := range rows {
+		byID[row.ThreadID] = row
+	}
+
+	threads := make([]model.Thread, 0, len(ids))
+	for _, id := range ids {
+		if thread, ok := byID[id]; ok {
+			threads = append(threads, thread)
+		}
+	}
+	return threads, nil
+}
+
+func (r *exploreRepository) loadThreadSummariesByIDs(ctx context.Context, ids []uint) ([]model.Thread, error) {
+	var rows []model.Thread
+	if err := r.readDB.WithContext(ctx).
+		Select("thread_id", "user_id").
 		Where("threads.thread_id IN ?", ids).
 		Find(&rows).Error; err != nil {
 		return nil, err

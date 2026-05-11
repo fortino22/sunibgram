@@ -105,7 +105,7 @@ func (c *ExploreController) GetMedia(ctx *fiber.Ctx) error {
 	if err != nil {
 		return exploreError(ctx, err)
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, total, &claims.UserID))
+	return ctx.Status(fiber.StatusOK).JSON(c.toMediaResponse(threads, total))
 }
 
 func (c *ExploreController) GetCommunities(ctx *fiber.Ctx) error {

@@ -83,6 +83,29 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, total int64, 
 	}
 }
 
+func (c *ExploreController) toMediaResponse(threads []model.Thread, total int64) dto.PaginatedExploreMediaResponse {
+	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
+	data := make([]dto.ExploreMediaResponse, len(threads))
+	for i, thread := range threads {
+		media := mediaByThread[thread.ThreadID]
+		mediaResponses := make([]dto.ThreadMediaResponse, len(media))
+		for j, item := range media {
+			mediaResponses[j] = dto.ThreadMediaResponse{
+				MediaID: item.MediaID,
+				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
+			}
+		}
+		data[i] = dto.ExploreMediaResponse{
+			ThreadID: thread.ThreadID,
+			Media:    mediaResponses,
+		}
+	}
+	return dto.PaginatedExploreMediaResponse{
+		Data: data,
+		Meta: dto.FeedMeta{Total: total, Page: 1, Limit: defaultExploreResponseLimit},
+	}
+}
+
 func (c *ExploreController) toCommunityResponses(communities []model.Community) []dto.CommunityResponse {
 	responses := make([]dto.CommunityResponse, len(communities))
 	for i := range communities {
