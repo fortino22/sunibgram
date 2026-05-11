@@ -1,9 +1,15 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
-import { MoreHorizontal } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
-import type { ThreadItem } from '@/lib/services/threads';
-import { getAuthorAvatarUrl, getThreadAuthor } from '@/components/thread/threadUtils';
+import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
+import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
+import { useThreadManagement } from '@/hooks/useThreadManagement';
+import type { ThreadItem, ThreadMutationParams } from '@/lib/services/threads';
+import { useAuthStore } from '@/stores/authStore';
+import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from '@/components/thread/threadUtils';
 
 interface ProfileThreadCardProps {
   thread: ThreadItem;
@@ -15,7 +21,28 @@ interface ProfileThreadCardProps {
 }
 
 export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, onRepost, onBookmark }: ProfileThreadCardProps) {
+  const currentUserId = useAuthStore((state) => state.user?.id);
+  const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
+  const [isEditing, setIsEditing] = useState(false);
   const author = getThreadAuthor(thread);
+  const canManage = isOwnThread(thread, currentUserId);
+
+  async function handleSave(params: ThreadMutationParams) {
+    await updateMutation.mutateAsync(params);
+    setIsEditing(false);
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Delete this post?')) {
+      return;
+    }
+
+    try {
+      await deleteMutation.mutateAsync();
+    } catch {
+      // Mutation state already exposes the error.
+    }
+  }
 
   return (
     <article
@@ -49,7 +76,6 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
         <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Author row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
             <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em' }}>
               {thread.author.username}
@@ -75,39 +101,59 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
                 Pinned
               </span>
             )}
-            <button
-              type="button"
-              aria-label="More options"
+            {canManage && (
+              <div style={{ marginLeft: thread.is_pin ? 8 : 'auto' }}>
+                <ThreadOptionsMenu
+                  onEdit={() => setIsEditing(true)}
+                  onDelete={() => void handleDelete()}
+                  deleting={deleteMutation.isPending}
+                  disabled={updateMutation.isPending}
+                  compact
+                />
+              </div>
+            )}
+          </div>
+
+          {isEditing ? (
+            <ThreadInlineEditor
+              initialContent={thread.content}
+              initialMedia={thread.media}
+              onCancel={() => setIsEditing(false)}
+              onSave={handleSave}
+              pending={updateMutation.isPending}
+              errorMessage={updateMutation.error?.message}
+              compact
+            />
+          ) : (
+            <div
               style={{
-                marginLeft: thread.is_pin ? 8 : 'auto',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-tertiary)',
-                padding: 2,
-                borderRadius: 4,
-                display: 'flex',
-                alignItems: 'center',
+                fontSize: 15,
+                color: 'var(--text)',
+                lineHeight: 1.6,
+                whiteSpace: 'pre-wrap',
+                overflowWrap: 'break-word',
               }}
             >
-              <MoreHorizontal size={15} strokeWidth={1.8} />
-            </button>
-          </div>
+              {thread.content}
+            </div>
+          )}
 
-          {/* Content */}
-          <div
-            style={{
-              fontSize: 15,
-              color: 'var(--text)',
-              lineHeight: 1.6,
-              whiteSpace: 'pre-wrap',
-              overflowWrap: 'break-word',
-            }}
-          >
-            {thread.content}
-          </div>
+          {deleteMutation.isError && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'var(--coral-soft)',
+                color: 'var(--coral)',
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}
+            >
+              {deleteMutation.error.message}
+            </div>
+          )}
 
-          {/* Media */}
           {thread.media.length > 0 && (
             <div
               style={{

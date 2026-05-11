@@ -14,6 +14,10 @@ export function isRepostThread(thread: ThreadItem): boolean {
   return thread.type.toUpperCase() === 'REPOST' || Boolean(thread.reposted_at);
 }
 
+export function isOwnThread(thread: ThreadItem, userId: number | null | undefined): boolean {
+  return userId !== null && userId !== undefined && thread.author.id === userId;
+}
+
 export function truncateContent(value: string, maxLength = 140): string {
   return value.length > maxLength ? `${value.slice(0, maxLength - 1)}...` : value;
 }

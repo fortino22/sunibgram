@@ -27,6 +27,7 @@ export interface ThreadResponse {
   like_count: number;
   repost_count: number;
   bookmark_count: number;
+  comment_count: number;
   reposted_at?: FormattedTime;
   created_at: FormattedTime;
   updated_at: FormattedTime;
@@ -61,6 +62,7 @@ export interface FeedStats {
   likes: number;
   reposts: number;
   bookmarks: number;
+  comments: number;
 }
 
 export interface FeedCommunity {
@@ -217,8 +219,8 @@ export function updateThread(
   id: number | string,
   params: ThreadMutationParams,
   token: string
-): Promise<ThreadResponse> {
-  return putFormData<ThreadResponse>(`/api/threads/${id}`, buildThreadFormData(params), token);
+): Promise<ThreadMessageResponse> {
+  return putFormData<ThreadMessageResponse>(`/api/threads/${id}`, buildThreadFormData(params), token);
 }
 
 export function deleteThread(id: number | string, token: string): Promise<ThreadMessageResponse> {

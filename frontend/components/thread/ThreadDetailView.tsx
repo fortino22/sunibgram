@@ -1,15 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
-import type { ThreadItem } from '@/lib/services/threads';
+import { useThreadActions } from '@/hooks/useThreadActions';
+import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
+import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
+import { useThreadManagement } from '@/hooks/useThreadManagement';
+import type { ThreadItem, ThreadMutationParams } from '@/lib/services/threads';
+import { useAuthStore } from '@/stores/authStore';
 import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ThreadHeader } from './ThreadHeader';
 import { ReplyTree } from './ReplyTree';
-import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
+import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from './threadUtils';
 
 interface ThreadDetailViewProps {
   root: ThreadItem;
@@ -19,7 +25,31 @@ interface ThreadDetailViewProps {
 
 export function ThreadDetailView({ root, replies, viewFullThreadId = null }: ThreadDetailViewProps) {
   const router = useRouter();
+  const currentUserId = useAuthStore((state) => state.user?.id);
+  const { updateMutation, deleteMutation } = useThreadManagement(root.id, {
+    onDeleteSuccess: () => router.replace('/'),
+  });
+  const { like, repost, bookmark } = useThreadActions(root);
+  const [isEditing, setIsEditing] = useState(false);
   const author = getThreadAuthor(root);
+  const canManage = isOwnThread(root, currentUserId);
+
+  async function handleSave(params: ThreadMutationParams) {
+    await updateMutation.mutateAsync(params);
+    setIsEditing(false);
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Delete this post?')) {
+      return;
+    }
+
+    try {
+      await deleteMutation.mutateAsync();
+    } catch {
+      // Mutation state already exposes the error.
+    }
+  }
 
   return (
     <main
@@ -60,8 +90,44 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
         <div className="flex gap-3">
           <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
           <div className="min-w-0 flex-1">
-            <ThreadHeader author={author} timeAgo={root.time_ago} parentContext={root.parent_context} />
-            <ThreadBody content={root.content} media={root.media} />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <ThreadHeader author={author} timeAgo={root.time_ago} parentContext={root.parent_context} />
+              </div>
+              {canManage && (
+                <ThreadOptionsMenu
+                  onEdit={() => setIsEditing(true)}
+                  onDelete={() => void handleDelete()}
+                  deleting={deleteMutation.isPending}
+                  disabled={updateMutation.isPending}
+                />
+              )}
+            </div>
+
+            {isEditing ? (
+              <ThreadInlineEditor
+                initialContent={root.content}
+                initialMedia={root.media}
+                onCancel={() => setIsEditing(false)}
+                onSave={handleSave}
+                pending={updateMutation.isPending}
+                errorMessage={updateMutation.error?.message}
+              />
+            ) : (
+              <ThreadBody content={root.content} media={root.media} />
+            )}
+
+            {deleteMutation.isError && (
+              <div
+                className="mt-3 rounded-xl px-3 py-2 text-[13px]"
+                style={{
+                  background: 'var(--coral-soft)',
+                  color: 'var(--coral)',
+                }}
+              >
+                {deleteMutation.error.message}
+              </div>
+            )}
 
             <div
               className="mt-3 border-t pt-3 text-sm"
@@ -81,12 +147,28 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
             </div>
 
             <ThreadActions
+              comments={root.stats.comments}
               likes={root.stats.likes}
               reposts={root.stats.reposts}
               bookmarks={root.stats.bookmarks}
               isLiked={root.is_liked === true}
               isReposted={root.is_reposted === true}
               isBookmarked={root.is_bookmarked === true}
+              onLike={() => {
+                if (!like.isPending) {
+                  like.mutate(root.is_liked === true);
+                }
+              }}
+              onRepost={() => {
+                if (!repost.isPending) {
+                  repost.mutate(root.is_reposted === true);
+                }
+              }}
+              onBookmark={() => {
+                if (!bookmark.isPending) {
+                  bookmark.mutate(root.is_bookmarked === true);
+                }
+              }}
             />
           </div>
         </div>

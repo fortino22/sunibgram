@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import type { QueryKey } from '@tanstack/react-query';
 import { ProfilePageHeader } from '@/components/profile/ProfilePageHeader';
 import { ProfileBanner } from '@/components/profile/ProfileBanner';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
@@ -23,21 +22,33 @@ import type { ThreadItem } from '@/lib/services/threads';
 
 interface ConnectedCardProps {
   thread: ThreadItem;
-  queryKey: QueryKey;
   replyingTo?: string;
   replyingToId?: number;
 }
 
-function ConnectedCard({ thread, queryKey, replyingTo, replyingToId }: ConnectedCardProps) {
-  const { like, repost, bookmark } = useThreadActions(thread.id, queryKey);
+function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps) {
+  const { like, repost, bookmark } = useThreadActions(thread);
+
   return (
     <ProfileThreadCard
       thread={thread}
       replyingTo={replyingTo}
       replyingToId={replyingToId}
-      onLike={() => like.mutate(!!thread.is_liked)}
-      onRepost={() => repost.mutate(!!thread.is_reposted)}
-      onBookmark={() => bookmark.mutate(!!thread.is_bookmarked)}
+      onLike={() => {
+        if (!like.isPending) {
+          like.mutate(thread.is_liked === true);
+        }
+      }}
+      onRepost={() => {
+        if (!repost.isPending) {
+          repost.mutate(thread.is_reposted === true);
+        }
+      }}
+      onBookmark={() => {
+        if (!bookmark.isPending) {
+          bookmark.mutate(thread.is_bookmarked === true);
+        }
+      }}
     />
   );
 }
@@ -62,9 +73,6 @@ export default function UserProfilePage() {
   const threads = threadsQuery.data?.data ?? [];
   const replies = repliesQuery.data?.data ?? [];
   const mediaThreads = threads.filter((t) => t.media.length > 0);
-
-  const threadsQueryKey: QueryKey = ['threads', userId];
-  const repliesQueryKey: QueryKey = ['threads', userId, 'replies'];
 
   const joinedMonth = profile.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
@@ -104,9 +112,7 @@ export default function UserProfilePage() {
       {activeTab === 'threads' && (
         threads.length === 0
           ? <EmptyState title="No threads yet" subtitle="Posts will appear here." />
-          : threads.map((t) => (
-            <ConnectedCard key={t.id} thread={t} queryKey={threadsQueryKey} />
-          ))
+          : threads.map((t) => <ConnectedCard key={t.id} thread={t} />)
       )}
 
       {activeTab === 'replies' && (
@@ -116,7 +122,6 @@ export default function UserProfilePage() {
             <ConnectedCard
               key={t.id}
               thread={t}
-              queryKey={repliesQueryKey}
               replyingTo={t.parent_context?.author.username}
               replyingToId={t.parent_context?.author.id}
             />
@@ -126,9 +131,7 @@ export default function UserProfilePage() {
       {activeTab === 'media' && (
         mediaThreads.length === 0
           ? <EmptyState title="No media yet" subtitle="Photos and videos will appear here." />
-          : mediaThreads.map((t) => (
-            <ConnectedCard key={t.id} thread={t} queryKey={threadsQueryKey} />
-          ))
+          : mediaThreads.map((t) => <ConnectedCard key={t.id} thread={t} />)
       )}
 
       {activeTab === 'likes' && (
