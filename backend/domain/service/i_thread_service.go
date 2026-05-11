@@ -20,6 +20,7 @@ type IThreadService interface {
 	GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMyMediaThread(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error)
 	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error)
 	GetCommunityThreads(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)

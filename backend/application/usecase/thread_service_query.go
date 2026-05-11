@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/sunibgram/domain/model"
 )
@@ -110,6 +111,18 @@ func (s *ThreadService) GetMyMediaThread(ctx context.Context, requesterID, userI
 		return nil, nil, 0, err
 	}
 	return s.filterCommunityMemberFeed(requesterID, threads, parents)
+}
+
+func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return s.followRepo.GetMentionFollowing(ctx, userID, limit)
+	}
+	return s.followRepo.SearchMentionUsers(ctx, userID, query, limit)
 }
 
 func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []model.Thread, parents []*model.Thread) ([]model.Thread, []*model.Thread, int64, error) {

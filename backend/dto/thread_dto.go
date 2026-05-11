@@ -2,6 +2,15 @@ package dto
 
 import "github.com/sunibgram/dto/utils"
 
+type MentionUserResponse struct {
+	UserID      string `json:"user_id"`
+	Username    string `json:"username"`
+	Name        string `json:"name"`
+	IsPremium   bool   `json:"is_premium"`
+	UserProfile string `json:"user_profile"`
+	IsFollowing bool   `json:"is_following"`
+}
+
 type CreateThreadRequest struct {
 	Content  string `json:"content"`
 	ParentID *uint  `json:"parent_id"`

@@ -127,6 +127,85 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 	return result, nil
 }
 
+func (r *followRepository) GetMentionFollowing(ctx context.Context, userID uint, limit int) ([]model.ExploreUserResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	var rows []exploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("user_relationships").
+		Select(`
+			users.user_id,
+			users.name,
+			users.user_name AS username,
+			users.is_premium,
+			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
+			TRUE AS is_following
+		`).
+		Joins("JOIN users ON users.user_id = user_relationships.following_id").
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Where("user_relationships.follower_id = ?", userID).
+		Where("roles.name <> ?", "admin").
+		Order("user_relationships.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	return mentionRowsToResults(rows), nil
+}
+
+func (r *followRepository) SearchMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultRepositoryExploreLimit
+	}
+
+	pattern := likePattern(query)
+	var rows []exploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("users").
+		Select(`
+			users.user_id,
+			users.name,
+			users.user_name AS username,
+			users.is_premium,
+			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
+			(user_relationships.following_id IS NOT NULL) AS is_following
+		`).
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Joins("LEFT JOIN user_relationships ON user_relationships.following_id = users.user_id AND user_relationships.follower_id = ?", userID).
+		Where("roles.name <> ?", "admin").
+		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\'", pattern, pattern).
+		Order("(user_relationships.following_id IS NOT NULL) DESC, users.is_premium DESC, users.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	return mentionRowsToResults(rows), nil
+}
+
+func mentionRowsToResults(rows []exploreUserRow) []model.ExploreUserResult {
+	users := make([]model.ExploreUserResult, len(rows))
+	for i, row := range rows {
+		users[i] = model.ExploreUserResult{
+			UserID:           row.UserID,
+			Name:             row.Name,
+			Username:         row.Username,
+			IsPremium:        row.IsPremium,
+			AvatarObjectName: row.AvatarObjectName,
+			AvatarBucket:     row.AvatarBucket,
+			IsFollowing:      row.IsFollowing,
+		}
+	}
+	return users
+}
+
 func (r *followRepository) GetStat(userID uint) (*model.UserStat, error) {
 	ctx := context.Background()
 	key := userStatKey(userID)
