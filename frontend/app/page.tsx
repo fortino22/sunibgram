@@ -40,7 +40,8 @@ function FeedTabButton({ tab, active, onClick }: FeedTabButtonProps) {
     <button
       onClick={onClick}
       style={{
-        padding: '12px 16px',
+        flex: 1,
+        padding: '12px 0',
         background: 'none',
         border: 'none',
         cursor: 'pointer',
@@ -140,7 +141,7 @@ export default function HomePage() {
           >
             Home
           </div>
-          <div style={{ display: 'flex', gap: 0 }}>
+          <div style={{ display: 'flex' }}>
             {TABS.map((t) => (
               <FeedTabButton
                 key={t.id}
