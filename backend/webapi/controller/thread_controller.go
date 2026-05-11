@@ -3,6 +3,7 @@ package controller
 import (
 	"mime/multipart"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
@@ -178,13 +179,17 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	if ctx.FormValue("clear_media") == "true" {
-		_ = c.mediaService.DeleteByThread(ctx.Context(), uint(id))
-	} else if form, err := ctx.MultipartForm(); err == nil {
-		if files := form.File["files"]; len(files) > 0 {
-			if err := c.mediaService.Update(ctx.Context(), uint(id), claims.UserID, files); err != nil {
-				return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-			}
+	keepIDs, keepSent, err := parseKeepMediaIDs(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	files := threadMediaFiles(ctx)
+	if err := model.ValidateThreadMediaCount(len(keepIDs) + len(files)); err != nil {
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	if keepSent || len(files) > 0 {
+		if err := c.mediaService.UpdateGranular(ctx.Context(), uint(id), claims.UserID, keepIDs, files); err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -341,4 +346,55 @@ func threadMediaFiles(ctx *fiber.Ctx) []*multipart.FileHeader {
 		return nil
 	}
 	return form.File["files"]
+}
+
+func parseKeepMediaIDs(ctx *fiber.Ctx) ([]uint, bool, error) {
+	var values []string
+	sent := false
+
+	form, err := ctx.MultipartForm()
+	if err == nil && form != nil {
+		if raw, ok := form.Value["keep_media_ids"]; ok {
+			values = append(values, raw...)
+			sent = true
+		}
+	}
+
+	if !sent {
+		if raw := ctx.FormValue("keep_media_ids"); raw != "" {
+			values = append(values, raw)
+			sent = true
+		}
+	}
+
+	if !sent {
+		return nil, false, nil
+	}
+
+	ids := make([]uint, 0, len(values))
+	seen := make(map[uint]struct{}, len(values))
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			id, err := strconv.ParseUint(part, 10, 64)
+			if err != nil || id == 0 {
+				return nil, true, errInvalidKeepMediaID()
+			}
+			mediaID := uint(id)
+			if _, ok := seen[mediaID]; ok {
+				continue
+			}
+			seen[mediaID] = struct{}{}
+			ids = append(ids, mediaID)
+		}
+	}
+
+	return ids, true, nil
+}
+
+func errInvalidKeepMediaID() error {
+	return fiber.NewError(fiber.StatusBadRequest, "invalid keep_media_ids")
 }
