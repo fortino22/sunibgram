@@ -41,6 +41,7 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 			return err
 		}
 		r.invalidateUser(profile.UserID)
+		invalidateNotificationSenderCache(context.Background(), r.cache, profile.UserID)
 		invalidateExploreCache(context.Background(), r.cache)
 		return nil
 	}
@@ -51,6 +52,7 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 		return err
 	}
 	r.invalidateUser(profile.UserID)
+	invalidateNotificationSenderCache(context.Background(), r.cache, profile.UserID)
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }

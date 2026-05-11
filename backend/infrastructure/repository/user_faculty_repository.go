@@ -30,6 +30,7 @@ func (r *userFacultyRepository) Save(uf *model.UserFaculty) error {
 		return err
 	}
 	r.invalidateUser(uf.UserID)
+	invalidateNotificationSenderCache(context.Background(), r.cache, uf.UserID)
 	return nil
 }
 
@@ -70,9 +71,13 @@ func (r *userFacultyRepository) Delete(userID, facultyID uint) error {
 		return result.Error
 	}
 	r.invalidateUser(userID)
+	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	return nil
 }
 
 func (r *userFacultyRepository) invalidateUser(userID uint) {
+	if r.cache == nil {
+		return
+	}
 	r.cache.Delete(context.Background(), userFacultyKey(userID))
 }

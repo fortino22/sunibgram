@@ -31,6 +31,7 @@ func Register(
 	orderCtrl *controller.OrderController,
 	chatRoomCtrl *controller.ChatRoomController,
 	chatCtrl *controller.ChatController,
+	notificationCtrl *controller.NotificationController,
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
@@ -48,4 +49,5 @@ func Register(
 	registerFacultyRoutes(api, facultyCtrl, auth)
 	registerOrderRoutes(api, orderCtrl, auth)
 	registerChatRoutes(api, chatRoomCtrl, chatCtrl, auth)
+	registerNotificationRoutes(api, notificationCtrl, auth)
 }
