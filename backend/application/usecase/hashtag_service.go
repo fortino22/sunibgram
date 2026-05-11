@@ -2,9 +2,7 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -51,13 +49,8 @@ func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]model.Tr
 	return hashtags, nil
 }
 
-func (s *HashtagService) GetThreadsByHashtag(ctx context.Context, name string, cursor *uint, userID uint, limit int) ([]model.Thread, *uint, error) {
-	name = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(name)), "#")
-	if name == "" {
-		return nil, nil, errors.New("hashtag is required")
+func (s *HashtagService) InvalidateTrendingCache(ctx context.Context) {
+	if s.cache != nil {
+		s.cache.DeleteByPattern(ctx, "trending_hashtags:*")
 	}
-	if limit < 1 || limit > 100 {
-		limit = defaultHashtagLimit
-	}
-	return s.hashtagRepo.GetThreadsByHashtag(ctx, name, cursor, userID, limit)
 }

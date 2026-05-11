@@ -80,3 +80,7 @@ func (r *threadCached) invalidateUserFeedCache(ctx context.Context, userID uint)
 func (r *threadCached) invalidateUserMediaCache(ctx context.Context, userID uint) {
 	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
 }
+
+func (r *threadCached) invalidateFollowingFeedCache(ctx context.Context) {
+	r.cache.DeleteByPattern(ctx, "thread:following:*")
+}

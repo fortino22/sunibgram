@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/pkg/util"
 )
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint) (*model.Thread, error) {
@@ -71,6 +70,9 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
 		return nil, err
 	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
 	if parent != nil {
 		helper.SendCommentNotification(s.notification, userID, parent.UserID, thread.ThreadID)
 	}
@@ -98,6 +100,9 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, true); err != nil {
 		return nil, err
 	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
 	return thread, nil
 }
 
@@ -109,7 +114,18 @@ func (s *ThreadService) Delete(ctx context.Context, id, userID uint) error {
 	if thread.UserID != userID {
 		return errors.New("forbidden")
 	}
-	return s.threadRepo.Delete(id)
+	if s.hashtagRepo != nil {
+		if err := s.hashtagRepo.UnlinkHashtagsFromThread(ctx, id); err != nil {
+			return err
+		}
+	}
+	if err := s.threadRepo.Delete(id); err != nil {
+		return err
+	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
+	return nil
 }
 
 func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error {
@@ -156,7 +172,10 @@ func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) err
 	if !exists {
 		return errors.New("not reposted")
 	}
-	return s.threadRepo.DeleteRepost(userID, threadID)
+	if err := s.threadRepo.DeleteRepost(userID, threadID); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *ThreadService) IsReposted(userID, threadID uint) bool {
@@ -186,6 +205,9 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
 		return nil, err
 	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
 	return thread, nil
 }
 
@@ -194,7 +216,7 @@ func (s *ThreadService) persistThreadHashtags(ctx context.Context, threadID uint
 		return nil
 	}
 
-	names := util.ExtractHashtags(content)
+	names := helper.ExtractHashtags(content)
 	if len(names) == 0 {
 		if replace {
 			return s.hashtagRepo.ReplaceHashtagsForThread(ctx, threadID, nil)
