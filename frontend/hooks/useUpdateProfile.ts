@@ -12,6 +12,8 @@ export function useUpdateProfile() {
     mutationFn: (params: UpdateProfileParams) => updateMyProfile(params, token!),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      // Refetch all thread feeds so embedded author avatars update immediately.
+      void queryClient.invalidateQueries({ queryKey: ['threads'] });
     },
   });
 }

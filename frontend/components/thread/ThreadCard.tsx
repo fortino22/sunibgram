@@ -18,11 +18,12 @@ export function ThreadCard({ thread }: ThreadCardProps) {
 
   return (
     <article
-      className="cursor-pointer border-b p-4"
+      className="cursor-pointer border-b"
       onClick={() => router.push(`/thread/${thread.id}`)}
       style={{
         borderColor: 'var(--border)',
         background: 'var(--bg-card)',
+        padding: '14px 20px',
       }}
     >
       <div className="flex gap-3">

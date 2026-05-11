@@ -22,14 +22,8 @@ interface FilePreview {
 }
 
 function getPreviewKind(file: File): PreviewKind {
-  if (file.type.startsWith('image/')) {
-    return 'image';
-  }
-
-  if (file.type.startsWith('video/')) {
-    return 'video';
-  }
-
+  if (file.type.startsWith('image/')) return 'image';
+  if (file.type.startsWith('video/')) return 'video';
   return 'file';
 }
 
@@ -57,14 +51,12 @@ export function CreatePostBox() {
 
   useEffect(() => {
     return () => {
-      previewsRef.current.forEach((preview) => {
-        URL.revokeObjectURL(preview.url);
-      });
+      previewsRef.current.forEach((p) => URL.revokeObjectURL(p.url));
     };
   }, []);
 
   const avatarSrc = profile?.avatar ?? null;
-  const selectedFiles = previews.map((preview) => preview.file);
+  const selectedFiles = previews.map((p) => p.file);
   const isPending = createThreadMutation.isPending;
   const normalizedContent = content.trim();
   const canSubmit =
@@ -73,15 +65,11 @@ export function CreatePostBox() {
     (normalizedContent.length > 0 || selectedFiles.length > 0);
 
   function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
-    const incomingFiles = Array.from(event.target.files ?? []);
-
-    if (incomingFiles.length === 0) {
-      return;
-    }
-
-    setPreviews((currentPreviews) => [
-      ...currentPreviews,
-      ...incomingFiles.map((file) => ({
+    const incoming = Array.from(event.target.files ?? []);
+    if (incoming.length === 0) return;
+    setPreviews((cur) => [
+      ...cur,
+      ...incoming.map((file) => ({
         file,
         kind: getPreviewKind(file),
         url: URL.createObjectURL(file),
@@ -90,59 +78,43 @@ export function CreatePostBox() {
     event.target.value = '';
   }
 
-  function removeSelectedFile(targetFile: File) {
-    setPreviews((currentPreviews) => {
-      const previewToRemove = currentPreviews.find((preview) => isSameFile(preview.file, targetFile));
-      if (previewToRemove) {
-        URL.revokeObjectURL(previewToRemove.url);
-      }
-
-      return currentPreviews.filter((preview) => !isSameFile(preview.file, targetFile));
+  function removeSelectedFile(target: File) {
+    setPreviews((cur) => {
+      const toRemove = cur.find((p) => isSameFile(p.file, target));
+      if (toRemove) URL.revokeObjectURL(toRemove.url);
+      return cur.filter((p) => !isSameFile(p.file, target));
     });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!canSubmit) {
-      return;
-    }
-
+    if (!canSubmit) return;
     try {
       await createThreadMutation.mutateAsync({
         content: normalizedContent,
         files: selectedFiles,
       });
-
       setContent('');
-      previews.forEach((preview) => {
-        URL.revokeObjectURL(preview.url);
-      });
+      previews.forEach((p) => URL.revokeObjectURL(p.url));
       setPreviews([]);
-
-      if (inputRef.current !== null) {
-        inputRef.current.value = '';
-      }
+      if (inputRef.current) inputRef.current.value = '';
     } catch {
-      // Mutation state already exposes the error to the UI.
+      // Mutation state already exposes the error.
     }
   }
 
   return (
     <form
       id="create-post-box"
-      onSubmit={(event) => {
-        void handleSubmit(event);
-      }}
+      onSubmit={(e) => void handleSubmit(e)}
       style={{
         padding: '16px 20px',
-        background: 'var(--bg-card)',
         borderBottom: '1px solid var(--border)',
       }}
     >
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <Avatar
-          username={user?.username ?? 'Current user'}
+          username={user?.username ?? ''}
           avatarUrl={avatarSrc}
           size={40}
         />
@@ -150,7 +122,7 @@ export function CreatePostBox() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <textarea
             value={content}
-            onChange={(event) => setContent(event.target.value)}
+            onChange={(e) => setContent(e.target.value)}
             placeholder="What is happening?!"
             rows={4}
             style={{
@@ -307,7 +279,7 @@ export function CreatePostBox() {
                   padding: '8px 12px',
                   borderRadius: 10,
                   border: '1px solid var(--border)',
-                  color: 'var(--text)',
+                  color: 'var(--text-secondary)',
                   fontSize: 13,
                   fontWeight: 500,
                   cursor: isPending ? 'not-allowed' : 'pointer',
@@ -335,7 +307,7 @@ export function CreatePostBox() {
                 color: '#fff',
                 fontWeight: 600,
                 fontSize: 14,
-                padding: '9px 16px',
+                padding: '9px 20px',
                 cursor: canSubmit ? 'pointer' : 'not-allowed',
                 opacity: canSubmit ? 1 : 0.5,
                 fontFamily: 'inherit',

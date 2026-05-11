@@ -1,18 +1,13 @@
 import type { FeedAuthor, ThreadItem } from '@/lib/services/threads';
 
-export interface ThreadAuthorWithAvatar extends FeedAuthor {
-  avatar_url?: string | null;
-  image_url?: string | null;
-  profile_image_url?: string | null;
-  profileImageUrl?: string | null;
-}
+export type ThreadAuthorWithAvatar = FeedAuthor;
 
 export function getThreadAuthor(thread: ThreadItem): ThreadAuthorWithAvatar {
-  return thread.author as ThreadAuthorWithAvatar;
+  return thread.author;
 }
 
 export function getAuthorAvatarUrl(author: ThreadAuthorWithAvatar): string | null {
-  return author.profile_image_url ?? author.profileImageUrl ?? author.avatar_url ?? author.image_url ?? null;
+  return author.avatar_url ?? null;
 }
 
 export function isRepostThread(thread: ThreadItem): boolean {

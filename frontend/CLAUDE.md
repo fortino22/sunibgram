@@ -1,12 +1,6 @@
-# CLAUDE.md — Sunibgram
+# CLAUDE.md — Sunibgram Frontend
 
 Read fully before writing any code or making any architectural decision.
-
----
-
-## Project Summary
-
-University-exclusive social media platform (X/Threads clone). Students post threads with text/media, comment, reply, repost, like, bookmark, pin. Supports communities, follows, premium orders, OTP-based auth.
 
 ---
 
@@ -16,203 +10,166 @@ University-exclusive social media platform (X/Threads clone). Students post thre
 |---|---|
 | Framework | Next.js 15 (App Router) |
 | Language | TypeScript strict |
-| Styling | Tailwind CSS **v4** + CSS custom properties (`var(--*)`) for colors |
-| UI Primitives | shadcn/ui pattern — Radix primitives in `components/ui/`, `cn()` from `lib/utils.ts` |
+| Styling | Tailwind CSS v4 + CSS custom properties (`var(--*)`) for colors |
 | Server State | TanStack Query v5 |
 | Client State | Zustand v4 |
 | Forms | React Hook Form + Zod |
-| Auth | Custom JWT — **NOT NextAuth** |
+| Auth | Custom JWT via httpOnly `sid` cookie — **NOT NextAuth** |
 | Real-time | Socket.io client |
 
 Never use: Redux, SWR, Axios, Context API for global state, NextAuth.
 
-### Styling Rules
-- **Layout/spacing/sizing** → Tailwind classes (`flex`, `gap-3`, `p-4`, `rounded-full`, etc.)
-- **Colors** → CSS custom properties via inline `style` (`color: 'var(--text)'`, `background: 'var(--bg-card)'`)
-- **Never** hardcode color values directly — always reference a CSS variable
-- `cn()` from `lib/utils.ts` for merging Tailwind classes conditionally
+**Styling rules:** Layout/spacing → Tailwind. Colors → CSS vars inline style. Never hardcode colors.
 
 ---
 
 ## Architecture Rules
 
 ### Two-Layer Component Model
+1. **Page** (`app/**/page.tsx`) — Owns one route. Calls hooks, handles loading/error/skeleton, composes atoms. Max ~200 lines.
+2. **Atom** (`components/[feature]/[Name].tsx`) — Pure presentational, props only. No fetching, no hooks.
 
-1. **Page** (`app/**/page.tsx`) — Max 150–200 lines. Owns one route's concern: calls hooks, handles loading/error/skeleton states, composes atoms. No raw `fetch()`.
-2. **Atom** (`components/[feature]/[Name].tsx`) — Pure presentational. Props only. No fetching, no hooks (except purely UI hooks like `useMediaQuery`).
+**Hard rules:** No `any`. No raw `fetch()` in components. No `useState` for server data. Named exports everywhere. Every data page needs a skeleton.
 
-**Rule:** If a page grows past 200 lines, extract atoms — not sections. Extract into `components/[feature]/[Name].tsx` only when it's reused elsewhere OR genuinely too complex to inline.
-
-### Hard Rules
-
-- Component files: max ~100–150 lines. Exceed it → split.
-- Hook files: max ~80 lines.
-- No `any`. No raw `fetch()` in components. No `useState` for server data.
-- Named exports for components. Default export only in `app/` pages.
-- Every data-fetching page needs a skeleton. Never show blank screen.
-- Optimistic updates (`onMutate`/`onError`) on: like, bookmark, repost, follow.
-- Check `components/shared/` before creating any new component.
-
-### Shared Components (never inline these)
-
-| Component | Location | Purpose |
-|---|---|---|
-| `<Avatar />` | `components/shared/Avatar.tsx` | User avatar with image/initial fallback — uses Radix Avatar |
-| `<ActionBar />` | `components/shared/ActionBar.tsx` | Reply/repost/like/bookmark row — uses `<ActionButton />` |
-| `<EmptyState />` | `components/shared/EmptyState.tsx` | Centered empty message + subtitle |
-| `<ActionButton />` | `components/thread/ActionButton.tsx` | Single icon button with hover state |
-| `<UserHandle />` | `components/shared/` | @username link (create when needed) |
-| `<MediaGrid />` | `components/shared/` | Image/video grid (create when needed) |
-| `<RelativeTime />` | `components/shared/` | time_ago display (create when needed) |
-| `<FacultyBadge />` | `components/shared/` | Faculty pill badge (create when needed) |
-| `<InfiniteList />` | `components/shared/` | Infinite scroll wrapper (create when needed) |
-
-### UI Primitives (`components/ui/`)
-
-Radix-based, styled to our design system. Currently available:
-- `avatar.tsx` — `AvatarRoot`, `AvatarImage`, `AvatarFallback` (Radix `@radix-ui/react-avatar`)
-- `Icon.tsx` — Lucide icon wrapper
-
-### API & State
-
-- `lib/api.ts` — base fetch wrapper only (Bearer attach, token refresh)
-- `lib/api/[feature].ts` — typed endpoint functions per feature
-- Hooks import from `lib/api/[feature].ts`, never from `lib/api.ts` directly
-- Server data → TanStack Query. Auth state → `authStore`. UI state → `uiStore`. Forms → RHF local.
+### Optimistic Updates (Required)
+Apply `onMutate`/`onError` pattern on: like, bookmark, repost, follow/unfollow.
 
 ---
 
-## Project Structure
-src/
-├── app/
-│   ├── (auth)/login/   signup/
-│   ├── feed/
-│   ├── threads/[id]/
-│   ├── profile/[userId]/
-│   ├── communities/    [id]/
-│   ├── bookmarks/      notifications/
-│   ├── admin/          users/  faculties/
-│   └── @modal/compose/ reply/[id]/
-│
-├── components/
-│   ├── auth/
-│   │   ├── AuthGuard.tsx          ← redirect-if-unauthenticated wrapper
-│   │   ├── schemas.ts             ← zod schemas for login, register, forgot-password
-│   │   ├── LoginForm.tsx
-│   │   ├── RegisterForm.tsx
-│   │   ├── OtpInput.tsx
-│   │   └── ForgotPasswordForm.tsx
-│   ├── thread/
-│   │   ├── ThreadCard.tsx
-│   │   ├── ThreadHeader.tsx
-│   │   ├── ThreadBody.tsx
-│   │   ├── ThreadActions.tsx
-│   │   ├── ThreadComposer.tsx
-│   │   ├── ThreadReplyItem.tsx
-│   │   └── skeletons/             ← ThreadCardSkeleton, ThreadFeedSkeleton
-│   ├── profile/
-│   │   ├── ProfileAvatar.tsx
-│   │   ├── ProfileBanner.tsx
-│   │   ├── ProfileBio.tsx
-│   │   ├── ProfileStats.tsx
-│   │   ├── ProfileTabs.tsx
-│   │   ├── ProfileEditModal.tsx
-│   │   ├── schemas.ts             ← zod schema for profile edit
-│   │   └── skeletons/             ← ProfileHeaderSkeleton
-│   ├── community/
-│   │   ├── CommunityCard.tsx
-│   │   ├── CommunityHeader.tsx
-│   │   ├── CommunityMemberItem.tsx
-│   │   ├── CommunityRequestItem.tsx
-│   │   ├── CommunityComposer.tsx
-│   │   ├── schemas.ts             ← zod schema for create/edit community
-│   │   └── skeletons/             ← CommunityCardSkeleton
-│   ├── layout/
-│   │   ├── AppShell.tsx
-│   │   ├── Sidebar.tsx
-│   │   ├── BottomNav.tsx
-│   │   ├── TopBar.tsx
-│   │   └── RightPanel.tsx
-│   ├── user/
-│   │   ├── UserCard.tsx
-│   │   ├── UserHandle.tsx
-│   │   └── FollowButton.tsx
-│   ├── shared/
-│   │   ├── Avatar.tsx
-│   │   ├── MediaGrid.tsx
-│   │   ├── ActionBar.tsx
-│   │   ├── InfiniteList.tsx
-│   │   ├── EmptyState.tsx
-│   │   ├── RelativeTime.tsx
-│   │   ├── FacultyBadge.tsx
-│   │   └── OptimisticToggle.tsx
-│   └── ui/                        ← shadcn/ui + custom primitives
-│
-├── hooks/
-│   ├── thread/    ← useThreadFeed, useThread, useCreateThread, useThreadLike, useThreadBookmark, useThreadRepost
-│   ├── profile/   ← useProfile, useMyProfile, useUpdateProfile
-│   ├── community/ ← useCommunities, useCommunity, useCommunityThreads, useJoinCommunity
-│   ├── auth/      ← useLogin, useRegister, useLogout, useRefreshToken
-│   └── notifications/ ← useNotifications, useSocket
-│
-├── stores/
-│   ├── authStore.ts    ← BEARER_TOKEN, SID, user
-│   └── uiStore.ts      ← sidebar, modal, composer draft
-│
-├── lib/
-│   ├── api.ts          ← base fetch wrapper
-│   ├── api/            ← threads, auth, profile, communities, orders, admin, faculties
-│   ├── queryClient.ts
-│   └── socket.ts
-│
-└── types/              ← thread, user, community, notification, order
+## Auth & Token Pattern
 
-**Component folder rules:**
-- `schemas.ts` lives inside the feature folder that owns the form, not in `lib/`
-- Guards and route-protection wrappers live in `components/auth/`
-- Skeletons always in `[feature]/skeletons/`, never mixed with atom files
+- `authStore` holds decoded JWT payload: `user_id`, `username`, `email`, `role_id`, `role_name` — **no avatar_url**
+- Token lives in memory only; refreshed via httpOnly `sid` cookie through `/api/auth/refresh`
+- **Never read avatar from authStore** — always use `useMyProfile()` instead
+
+```ts
+// CORRECT — avatar from profile cache, updates when profile is edited
+const { data: profile } = useMyProfile();
+const avatarSrc = profile?.avatar ?? null;
+
+// WRONG — authStore.user has no avatar field
+const user = useAuthStore(s => s.user);
+const avatarSrc = user?.avatar_url; // always undefined
+```
+
+---
+
+## Services & Data Fetching
+
+Services live in `lib/services/[feature].ts`. Hooks import from services, never call `fetch()` directly.
+
+### Backend Response Mapping
+Backend field names differ from frontend model — always map at the service layer:
+
+```ts
+// Backend returns: user_id, avatar_url, banner_url, follower_count, is_following
+// Frontend UserProfile uses: id, avatar, banner, followers_count, is_following
+function mapProfile(raw: BackendProfileResponse): UserProfile { ... }
+```
+
+### Key Backend Gotchas
+- **No `/api/threads/me`** — use `GET /api/threads/:userId` with the user's numeric ID
+- **No `/api/profile/me` wrapping** — backend returns flat object, no `{ data: ... }` wrapper
+- **Thread user endpoint:** `GET /api/threads/:userId` and `GET /api/threads/:userId/replies`
+
+### Query Key Conventions
+```ts
+['profile', 'me']          // own profile (useMyProfile)
+['profile', userId]        // other user's profile
+['threads', userId]        // user's threads
+['threads', userId, 'replies'] // user's replies
+['followers', userId]
+['following', userId]
+```
+
+---
+
+## Shared Components (Never Inline)
+
+| Component | Location |
+|---|---|
+| `<Avatar />` | `components/shared/Avatar.tsx` |
+| `<ActionBar />` | `components/shared/ActionBar.tsx` |
+| `<EmptyState />` | `components/shared/EmptyState.tsx` |
+| `<ImageCropModal />` | `components/profile/ImageCropModal.tsx` |
+| `<FollowListModal />` | `components/profile/FollowListModal.tsx` |
+
+---
+
+## Actual File Structure
+
+```
+app/
+  page.tsx                    ← home feed
+  profile/
+    page.tsx                  ← own profile (useMyProfile, useMyThreads)
+    [userId]/page.tsx         ← other user profile (useProfile, useUserThreads)
+  threads/[id]/page.tsx
+  communities/  bookmarks/  notifications/  explore/
+
+components/
+  layout/   Sidebar.tsx  (uses useMyProfile for avatar)
+  profile/  ProfileInfo.tsx  ProfileThreadCard.tsx  ProfileEditModal.tsx
+            ImageCropModal.tsx  FollowListModal.tsx
+  shared/   Avatar.tsx  ActionBar.tsx  EmptyState.tsx  CreatePostBox.tsx
+  thread/   ThreadCard.tsx  ThreadComposer.tsx
+  ui/       Icon.tsx  avatar.tsx
+
+hooks/
+  useMyProfile.ts       useProfile.ts        useUpdateProfile.ts
+  useMyThreads.ts       useUserThreads.ts    useMyReplies.ts  useUserReplies.ts
+  useFollowUser.ts      useFollowers.ts      useFollowing.ts
+  thread/  useCreateThread.ts  useThreadFeed.ts  useThreadActions.ts
+
+lib/
+  services/  profile.ts  threads.ts  follows.ts  auth.ts
+  cropImage.ts           ← canvas-based crop utility for react-easy-crop
+  api.ts                 ← base fetch wrapper (Bearer attach, token refresh)
+  queryClient.ts
+
+stores/  authStore.ts  uiStore.ts
+```
 
 ---
 
 ## API Reference
 
-**Base URL:** `NEXT_PUBLIC_API_URL` · **Auth:** `Authorization: Bearer <token>`
+**Base URL:** `NEXT_PUBLIC_API_URL` (must be set at build time for browser)  
+**Auth:** `Authorization: Bearer <token>`  
+All routes prefixed with `/api/`.
 
 | Group | Key Endpoints |
 |---|---|
-| Auth | POST /auth/login · /auth/login/otp/send · /auth/register · /auth/refresh · /auth/logout · /auth/forgot-password |
-| Verification | POST /verification/send · /verification/verify |
-| Profile | GET/PUT /profile/me · GET /profile/:userId |
-| Users | POST/DELETE /users/:userId/follow\|unfollow |
-| Threads | GET /threads · /threads/following · /threads/me · /threads/:id · /threads/:id/chain |
-| Thread Actions | POST/DELETE /threads/:id/like\|bookmark\|repost · POST /threads/:id/pin |
-| Thread CRUD | POST /threads · PUT /threads/:id · DELETE /threads/:id |
-| Feeds | GET /pins · /likes · /bookmarks |
-| Communities | CRUD /communities · /communities/:id/join\|leave\|members\|requests\|threads |
-| Orders | POST /orders/premium · GET /orders/me · PATCH /orders/:id/cancel |
-| Admin | GET/POST/PUT/DELETE /admin/users · /admin/roles |
-| Faculties | GET/POST/PUT/DELETE /faculties |
-
-Thread & community POST/PUT use `multipart/form-data`. All others JSON. Bearer required on all except login/register/forgot-password.
+| Auth | POST /auth/login · /auth/register · /auth/refresh · /auth/logout |
+| Profile | GET /profile/me · GET /profile/:userId · PUT /profile/me (multipart) |
+| Users | POST /users/:userId/follow · DELETE /users/:userId/unfollow |
+| Followers | GET /users/:userId/followers · GET /users/:userId/following |
+| Threads | GET /threads · /threads/:userId · /threads/:userId/replies · /threads/:id |
+| Thread Actions | POST/DELETE /threads/:id/like · /threads/:id/bookmark · /threads/:id/repost |
+| Thread CRUD | POST /threads (multipart) · PUT /threads/:id · DELETE /threads/:id |
+| Communities | CRUD /communities · /communities/:id/join\|leave\|members\|threads |
 
 ---
 
 ## Environment Variables
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000/
-NEXT_PUBLIC_SOCKET_URL=http://localhost:3000
+NEXT_PUBLIC_API_URL=http://localhost:8080
+NEXT_PUBLIC_SOCKET_URL=http://localhost:8080
 ```
+
+Must be provided as build-time ARGs in Docker — browser-side env vars are baked at build, not runtime.
 
 ---
 
-## Feature Phases
+## Feature Status
 
-| Phase | Scope |
-|---|---|
-| 1 | Setup, JWT auth (OTP login, register, refresh), authStore, api wrapper |
-| 2 | Thread feed (infinite scroll), create/comment/reply, like/bookmark/repost |
-| 3 | Profile, follow/unfollow, pins, my posts/replies tabs |
-| 4 | Communities (CRUD, join/leave, requests, members, community threads) |
-| 5 | Notifications, Socket.io real-time, premium/orders |
-| 6 | Admin panel, faculties, dark mode, mobile responsive |
+| Phase | Scope | Status |
+|---|---|---|
+| 1 | JWT auth (login, register, refresh, OTP) | Done |
+| 2 | Thread feed, create/reply, like/bookmark/repost | Done |
+| 3 | Profile (own + other users), follow/unfollow, followers/following modal, image crop | Done |
+| 4 | Thread context menu (pin, delete, edit) | Pending |
+| 5 | Communities (CRUD, join/leave, members) | Done |
+| 6 | Notifications, Socket.io real-time | Pending |
+| 7 | Search (backend has no search endpoints yet) | Pending |

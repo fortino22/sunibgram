@@ -23,10 +23,10 @@ const TABS: Tab[] = [
 ];
 
 const EMPTY_MESSAGES: Record<FeedTabId, { title: string; subtitle: string }> = {
-  'for-you':   { title: 'Nothing here yet',                   subtitle: 'Posts from campus will appear here.' },
-  'following': { title: 'No posts from people you follow',    subtitle: 'Follow more people to see their posts here.' },
-  'cs':        { title: 'No Comp Sci posts yet',              subtitle: 'Posts from Computer Science students will appear here.' },
-  'events':    { title: 'No events or announcements yet',     subtitle: 'Campus events and announcements will appear here.' },
+  'for-you':   { title: 'Nothing here yet',                subtitle: 'Posts from campus will appear here.' },
+  'following': { title: 'No posts from people you follow', subtitle: 'Follow more people to see their posts here.' },
+  'cs':        { title: 'No Comp Sci posts yet',           subtitle: 'Posts from Computer Science students will appear here.' },
+  'events':    { title: 'No events or announcements yet',  subtitle: 'Campus events and announcements will appear here.' },
 };
 
 interface FeedTabButtonProps {
@@ -40,11 +40,11 @@ function FeedTabButton({ tab, active, onClick }: FeedTabButtonProps) {
     <button
       onClick={onClick}
       style={{
-        padding: '8px 16px',
+        padding: '12px 16px',
         background: 'none',
         border: 'none',
         cursor: 'pointer',
-        fontWeight: active ? 700 : 400,
+        fontWeight: active ? 600 : 400,
         fontSize: 14,
         color: active ? 'var(--text)' : 'var(--text-tertiary)',
         borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
@@ -89,7 +89,7 @@ function EmptyFeed({ tab }: { tab: FeedTabId }) {
       </div>
       <div
         style={{
-          fontWeight: 500,
+          fontWeight: 600,
           fontSize: 18,
           color: 'var(--text)',
           letterSpacing: '-0.02em',
@@ -128,18 +128,17 @@ export default function HomePage() {
           borderBottom: '1px solid var(--border)',
         }}
       >
-        <div style={{ padding: '14px 20px 0' }}>
-          <div style={{ marginBottom: 12 }}>
-            <div
-              style={{
-                fontWeight: 500,
-                fontSize: 20,
-                color: 'var(--text)',
-                letterSpacing: '-0.02em',
-              }}
-            >
-              Home
-            </div>
+        <div style={{ padding: '16px 20px 0' }}>
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: 20,
+              color: 'var(--text)',
+              letterSpacing: '-0.02em',
+              marginBottom: 10,
+            }}
+          >
+            Home
           </div>
           <div style={{ display: 'flex', gap: 0 }}>
             {TABS.map((t) => (
@@ -159,9 +158,7 @@ export default function HomePage() {
       {activeTab === 'for-you' ? (
         <div>
           {threadsQuery.isLoading
-            ? Array.from({ length: 3 }, (_, index) => (
-                <ThreadCardSkeleton key={index} />
-              ))
+            ? Array.from({ length: 3 }, (_, i) => <ThreadCardSkeleton key={i} />)
             : threadsQuery.data?.data.map((thread: ThreadItem) => (
                 <ThreadCard key={thread.id} thread={thread} />
               ))}
