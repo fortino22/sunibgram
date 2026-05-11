@@ -81,6 +81,7 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
             </div>
 
             <ThreadActions
+              comments={root.stats.comments}
               likes={root.stats.likes}
               reposts={root.stats.reposts}
               bookmarks={root.stats.bookmarks}

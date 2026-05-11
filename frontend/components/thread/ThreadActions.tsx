@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { ActionButton } from './ActionButton';
 
 interface ThreadActionsProps {
+  comments: number;
   likes: number;
   reposts: number;
   bookmarks: number;
@@ -16,6 +17,7 @@ interface ThreadActionsProps {
 }
 
 export function ThreadActions({
+  comments,
   likes,
   reposts,
   bookmarks,
@@ -36,6 +38,7 @@ export function ThreadActions({
     >
       <ActionButton aria-label="Comment" onClick={onActionClick} size={size}>
         <MessageCircle size={iconSize} strokeWidth={2} />
+        <span>{comments}</span>
       </ActionButton>
       <ActionButton aria-label="Like" onClick={onActionClick} color={isLiked ? 'var(--coral)' : undefined} size={size}>
         <Heart size={iconSize} strokeWidth={2} fill={isLiked ? 'var(--coral)' : 'none'} />

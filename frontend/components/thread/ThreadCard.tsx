@@ -37,6 +37,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
           />
           <ThreadBody content={thread.content} media={thread.media} />
           <ThreadActions
+            comments={thread.stats.comments}
             likes={thread.stats.likes}
             reposts={thread.stats.reposts}
             bookmarks={thread.stats.bookmarks}

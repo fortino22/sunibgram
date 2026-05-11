@@ -36,6 +36,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
         <ThreadBody content={thread.content} media={thread.media} compact={compact} />
         <div className="mt-3 flex items-center justify-between gap-3">
           <ThreadActions
+            comments={thread.stats.comments}
             likes={thread.stats.likes}
             reposts={thread.stats.reposts}
             bookmarks={thread.stats.bookmarks}
