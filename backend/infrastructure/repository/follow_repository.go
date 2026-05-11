@@ -36,6 +36,10 @@ func followListKey(userID uint, listType string, page, limit int) string {
 	return fmt.Sprintf("follows:user:%d:%s:page:%d:limit:%d", userID, listType, page, limit)
 }
 
+func followExistsKey(followerID, followingID uint) string {
+	return fmt.Sprintf("follow:exists:%d:%d", followerID, followingID)
+}
+
 func (r *followRepository) Follow(followerID, followingID uint) error {
 	if followerID == followingID {
 		return errors.New("cannot follow yourself")
@@ -62,6 +66,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	r.patchStatCache(followerID, 0, 1)
 	r.patchStatCache(followingID, 1, 0)
 	r.invalidateFollowLists(followerID, followingID)
+	r.cache.Delete(context.Background(), followExistsKey(followerID, followingID))
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
@@ -82,16 +87,25 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 	r.patchStatCache(followerID, 0, -1)
 	r.patchStatCache(followingID, -1, 0)
 	r.invalidateFollowLists(followerID, followingID)
+	r.cache.Delete(context.Background(), followExistsKey(followerID, followingID))
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 
 func (r *followRepository) Exists(followerID, followingID uint) (bool, error) {
+	ctx := context.Background()
+	key := followExistsKey(followerID, followingID)
+	var exists bool
+	if err := r.cache.Get(ctx, key, &exists); err == nil {
+		return exists, nil
+	}
 	var count int64
 	r.readDB.Model(&model.UserRelationship{}).
 		Where("follower_id = ? AND following_id = ?", followerID, followingID).
 		Count(&count)
-	return count > 0, nil
+	exists = count > 0
+	r.cache.Set(ctx, key, exists, r.ttl)
+	return exists, nil
 }
 
 func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint, targetIDs []uint) (map[uint]bool, error) {

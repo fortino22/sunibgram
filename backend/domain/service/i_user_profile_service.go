@@ -12,6 +12,7 @@ type FullProfile struct {
 	Stat        *model.UserStat
 	Profile     *model.UserProfile
 	UserFaculty *model.UserFaculty
+	IsFollowing bool
 }
 
 type UpsertProfileInput struct {
@@ -33,7 +34,7 @@ type UpdateProfileInput struct {
 type IUserProfileService interface {
 	UpsertProfile(ctx context.Context, userID uint, input UpsertProfileInput) error
 	UpdateProfile(ctx context.Context, userID uint, input UpdateProfileInput) error
-	GetProfile(userID uint) (*FullProfile, error)
+	GetProfile(userID uint, viewerID *uint) (*FullProfile, error)
 	GetProfiles(userIDs []uint) ([]model.UserProfile, error)
 	GetURL(bucket, objectName string) string
 }

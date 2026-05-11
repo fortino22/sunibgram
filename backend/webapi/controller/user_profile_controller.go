@@ -24,7 +24,7 @@ func (c *UserProfileController) GetMyProfile(ctx *fiber.Ctx) error {
 	if !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-	return c.fetchAndRespond(ctx, claims.UserID)
+	return c.fetchAndRespond(ctx, claims.UserID, nil)
 }
 
 func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
@@ -32,7 +32,11 @@ func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
 	}
-	return c.fetchAndRespond(ctx, uint(id))
+	var viewerID *uint
+	if claims, ok := ctxutil.Get(ctx); ok {
+		viewerID = &claims.UserID
+	}
+	return c.fetchAndRespond(ctx, uint(id), viewerID)
 }
 
 func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
@@ -89,8 +93,8 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "profile updated successfully"})
 }
 
-func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint) error {
-	fp, err := c.profileService.GetProfile(userID)
+func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint, viewerID *uint) error {
+	fp, err := c.profileService.GetProfile(userID, viewerID)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "user not found"})
 	}
@@ -134,6 +138,7 @@ func (c *UserProfileController) toResponse(fp *service.FullProfile) dto.UserProf
 		BannerURL:      bannerURL,
 		FollowerCount:  followerCount,
 		FollowingCount: followingCount,
+		IsFollowing:    fp.IsFollowing,
 		Faculty:        faculty,
 		CreatedAt:      utils.Wrap(fp.User.CreatedAt),
 	}

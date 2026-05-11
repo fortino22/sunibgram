@@ -118,6 +118,13 @@ func (s *ExploreService) GetCommunities(ctx context.Context, query string, reque
 	return s.exploreRepo.FindCommunities(ctx, query, requesterID, defaultExploreLimit)
 }
 
+func (s *ExploreService) GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
+	if limit < 1 || limit > 100 {
+		limit = defaultExploreLimit
+	}
+	return s.exploreRepo.FindSuggestedPeople(ctx, requesterID, limit)
+}
+
 func normalizeExploreQuery(query string) (string, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {

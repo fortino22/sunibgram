@@ -13,4 +13,5 @@ type IExploreService interface {
 	GetPeople(ctx context.Context, query string, requesterID uint) ([]model.ExploreUserResult, error)
 	GetMediaPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, int64, error)
 	GetCommunities(ctx context.Context, query string, requesterID uint) ([]model.ExploreCommunityResult, int64, error)
+	GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]model.ExploreUserResult, error)
 }

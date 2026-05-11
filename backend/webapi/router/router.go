@@ -42,7 +42,7 @@ func Register(
 	registerExploreRoutes(api, exploreCtrl, auth)
 	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, auth)
 	registerEmailRoutes(api, emailCtrl, auth)
-	registerUserRoutes(api, followCtrl, auth)
+	registerUserRoutes(api, followCtrl, exploreCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
 	registerCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, auth)
 	registerFacultyRoutes(api, facultyCtrl, auth)

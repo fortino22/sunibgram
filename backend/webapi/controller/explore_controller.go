@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"strconv"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
@@ -117,4 +119,25 @@ func (c *ExploreController) GetCommunities(ctx *fiber.Ctx) error {
 		return exploreError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toExploreCommunityResponses(communities)})
+}
+
+func (c *ExploreController) GetSuggestedPeople(ctx *fiber.Ctx) error {
+	claims, ok := ctxutil.Get(ctx)
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	}
+
+	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	users, err := c.exploreService.GetSuggestedPeople(ctx.Context(), claims.UserID, limit)
+	if err != nil {
+		return exploreError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toPeopleResponses(users)})
 }
