@@ -16,6 +16,7 @@ type NotificationService struct {
 	profileRepo      repository.IUserProfileRepository
 	userFacultyRepo  repository.IUserFacultyRepository
 	storageUsecase   *StorageUsecase
+	hub              service.IHub
 }
 
 func NewNotificationService(
@@ -24,6 +25,7 @@ func NewNotificationService(
 	profileRepo repository.IUserProfileRepository,
 	userFacultyRepo repository.IUserFacultyRepository,
 	storageUsecase *StorageUsecase,
+	hub service.IHub,
 ) service.INotificationService {
 	return &NotificationService{
 		notificationRepo: notificationRepo,
@@ -31,6 +33,7 @@ func NewNotificationService(
 		profileRepo:      profileRepo,
 		userFacultyRepo:  userFacultyRepo,
 		storageUsecase:   storageUsecase,
+		hub:              hub,
 	}
 }
 
@@ -50,7 +53,8 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 		return errors.New("recipient user not found")
 	}
 
-	if _, err := s.senderProfile(input.SenderUserID); err != nil {
+	actor, err := s.senderProfile(input.SenderUserID)
+	if err != nil {
 		return err
 	}
 
@@ -61,7 +65,17 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 		RecipientUserID: input.RecipientUserID,
 		ReferenceID:     input.ReferenceID,
 	}
-	return s.notificationRepo.Save(notification)
+	if err := s.notificationRepo.Save(notification); err != nil {
+		return err
+	}
+
+	if s.hub != nil {
+		s.hub.EmitToUser(input.RecipientUserID, "notification:new", service.NotificationListItem{
+			Notification: notification,
+			Actor:        actor,
+		})
+	}
+	return nil
 }
 
 func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID string, limit, offset int) ([]service.NotificationListItem, error) {

@@ -20,10 +20,27 @@ const (
 	localSocketUser = "socket_user_id"
 )
 
-func Mount(app *fiber.App, hub service.IHub, roomService service.IChatRoomService, sessionCache *cache.Cache) {
+func Mount(app *fiber.App, hub service.IHub, roomService service.IChatRoomService, notificationHandler *NotificationHandler, sessionCache *cache.Cache) {
 	handler := NewChatHandler(hub, roomService)
 
-	fibersocketio.On(fibersocketio.EventMessage, handler.HandleMessage)
+	fibersocketio.On(fibersocketio.EventMessage, func(ep *fibersocketio.EventPayload) {
+		event, _, err := parseClientEvent(ep.Data)
+		if err != nil {
+			emitSocketError(ep.Kws, err.Error())
+			return
+		}
+
+		switch event {
+		case "notification:get", "notification:delete":
+			if notificationHandler == nil {
+				emitSocketError(ep.Kws, "unsupported event")
+				return
+			}
+			notificationHandler.HandleMessage(ep)
+		default:
+			handler.HandleMessage(ep)
+		}
+	})
 	fibersocketio.On(fibersocketio.EventDisconnect, handler.HandleDisconnect)
 	fibersocketio.On(fibersocketio.EventClose, handler.HandleDisconnect)
 

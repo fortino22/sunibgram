@@ -59,6 +59,7 @@ func main() {
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
 	emailService := usecase.NewEmailService(infraemail.NewSMTPClient())
+	socketHub := infrasocket.NewHub()
 
 	// --- Usecases ---
 	cacheService := usecase.NewCacheService(cacheRepo)
@@ -68,7 +69,7 @@ func main() {
 	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo)
 	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
-	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase)
+	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
 	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
 	threadService := usecase.NewThreadService(threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
@@ -84,7 +85,6 @@ func main() {
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
-	socketHub := infrasocket.NewHub()
 
 	// --- Controllers ---
 	cacheCtrl := controller.NewCacheController(cacheService)
@@ -111,6 +111,7 @@ func main() {
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
 	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
 	notificationCtrl := controller.NewNotificationController(notificationService)
+	notificationHandler := webapisocket.NewNotificationHandler(socketHub, notificationService)
 
 	// --- Server ---
 	app := fiber.New()
@@ -120,7 +121,7 @@ func main() {
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
 	}))
-	webapisocket.Mount(app, socketHub, chatRoomService, redisCache)
+	webapisocket.Mount(app, socketHub, chatRoomService, notificationHandler, redisCache)
 
 	router.Register(
 		app,
