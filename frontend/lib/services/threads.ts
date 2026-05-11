@@ -219,8 +219,8 @@ export function updateThread(
   id: number | string,
   params: ThreadMutationParams,
   token: string
-): Promise<ThreadResponse> {
-  return putFormData<ThreadResponse>(`/api/threads/${id}`, buildThreadFormData(params), token);
+): Promise<ThreadMessageResponse> {
+  return putFormData<ThreadMessageResponse>(`/api/threads/${id}`, buildThreadFormData(params), token);
 }
 
 export function deleteThread(id: number | string, token: string): Promise<ThreadMessageResponse> {

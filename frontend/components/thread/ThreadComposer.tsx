@@ -77,7 +77,7 @@ export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
             onChange={(event) => setContent(event.target.value)}
             placeholder={placeholder}
             rows={3}
-            className="min-h-[76px] w-full resize-none bg-transparent text-[15px] outline-none"
+            className="min-h-[76px] w-full resize-none bg-transparent px-3 pt-3 pb-2 text-[15px] outline-none"
             style={{
               color: 'var(--text)',
               lineHeight: 1.6,
