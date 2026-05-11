@@ -1,31 +1,49 @@
 package repository
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 )
 
 type userFacultyRepository struct {
 	writeDB *gorm.DB
 	readDB  *gorm.DB
+	cache   *cache.Cache
 }
 
-func NewUserFacultyRepository(writeDB, readDB *gorm.DB) domainrepo.IUserFacultyRepository {
-	return &userFacultyRepository{writeDB: writeDB, readDB: readDB}
+func NewUserFacultyRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IUserFacultyRepository {
+	return &userFacultyRepository{writeDB: writeDB, readDB: readDB, cache: c}
+}
+
+func userFacultyKey(userID uint) string {
+	return fmt.Sprintf("userfaculty:user:%d", userID)
 }
 
 func (r *userFacultyRepository) Save(uf *model.UserFaculty) error {
-	return r.writeDB.Create(uf).Error
+	if err := r.writeDB.Create(uf).Error; err != nil {
+		return err
+	}
+	r.invalidateUser(uf.UserID)
+	return nil
 }
 
 func (r *userFacultyRepository) FindByUserID(userID uint) (*model.UserFaculty, error) {
+	ctx := context.Background()
+	key := userFacultyKey(userID)
 	var uf model.UserFaculty
+	if err := r.cache.Get(ctx, key, &uf); err == nil {
+		return &uf, nil
+	}
 	if err := r.readDB.Preload("Faculty").Where("user_id = ?", userID).First(&uf).Error; err != nil {
 		return nil, err
 	}
+	r.cache.Set(ctx, key, uf, cache.DefaultTTL)
 	return &uf, nil
 }
 
@@ -48,5 +66,13 @@ func (r *userFacultyRepository) Delete(userID, facultyID uint) error {
 	if result.RowsAffected == 0 {
 		return errors.New("assignment not found")
 	}
-	return result.Error
+	if result.Error != nil {
+		return result.Error
+	}
+	r.invalidateUser(userID)
+	return nil
+}
+
+func (r *userFacultyRepository) invalidateUser(userID uint) {
+	r.cache.Delete(context.Background(), userFacultyKey(userID))
 }

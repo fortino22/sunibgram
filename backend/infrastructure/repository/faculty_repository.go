@@ -144,5 +144,7 @@ func (r *facultyRepository) invalidateFacultyUpdate(id uint) {
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, facultyIDKey(id))
 	_ = r.cache.DeleteByPattern(ctx, "faculty:list:*")
+	_ = r.cache.DeleteByPattern(ctx, "profile:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "userfaculty:user:*")
 	invalidateExploreCache(ctx, r.cache)
 }

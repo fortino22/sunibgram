@@ -48,7 +48,7 @@ func main() {
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB, redisCache)
-	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB)
+	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
 	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB, redisCache)
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
