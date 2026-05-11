@@ -17,7 +17,9 @@
       "Bash(Measure-Object -Line)",
       "Bash(Select-Object -ExpandProperty Lines)",
       "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\" -Recurse -Directory)",
-      "Bash(Select-Object -First 20 FullName)"
+      "Bash(Select-Object -First 20 FullName)",
+      "Bash(npx tsc *)",
+      "Bash(node -e \"const col = require\\('./sunibgram.postman_collection.json'\\); const items = col.item.flatMap\\(i => i.item ?? [i]\\); const ex = items.filter\\(i => i.name && i.name.toLowerCase\\(\\).includes\\('explore'\\)\\); ex.forEach\\(i => console.log\\(i.name, i.request?.url?.raw ?? ''\\)\\)\")"
     ]
   }
 }
