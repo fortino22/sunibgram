@@ -42,7 +42,7 @@ export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditCl
       />
 
       {/* Action buttons row */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 10 }}>
         {isOwn ? (
           <button
             type="button"
@@ -106,7 +106,7 @@ export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditCl
       </div>
 
       {/* User info */}
-      <div style={{ marginTop: 46, paddingBottom: 16 }}>
+      <div style={{ marginTop: 10, paddingBottom: 16 }}>
         <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1.2 }}>
           {user.name}
         </div>

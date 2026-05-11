@@ -6,7 +6,7 @@ export function ProfileBanner({ bannerUrl }: ProfileBannerProps) {
   return (
     <div
       style={{
-        height: 200,
+        height: 160,
         background: bannerUrl
           ? undefined
           : 'linear-gradient(135deg, oklch(28% 0.09 260), oklch(18% 0.05 290), oklch(22% 0.07 270))',

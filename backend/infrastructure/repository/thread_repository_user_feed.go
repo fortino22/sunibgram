@@ -90,9 +90,7 @@ func (r *threadCached) FindPostsByUserID(requesterID, userID uint, page, limit i
 
 func (r *threadCached) FindReplyTabByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	return r.findUserFeed(requesterID, userID, []string{
-		string(model.ThreadTypePost),
 		string(model.ThreadTypeReply),
-		string(model.ThreadTypeRepost),
 	}, page, limit)
 }
 

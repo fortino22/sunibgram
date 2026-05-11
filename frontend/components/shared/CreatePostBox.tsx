@@ -136,7 +136,7 @@ export function CreatePostBox() {
               fontSize: 15,
               lineHeight: 1.6,
               fontFamily: 'inherit',
-              padding: '2px 0 10px',
+              padding: '12px 14px 10px',
             }}
           />
 

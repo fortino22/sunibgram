@@ -14,30 +14,36 @@ func (c *ThreadController) loadMediaByThread(threads []model.Thread) map[uint][]
 }
 
 func (c *ThreadController) fb(viewerID *uint) webapiutils.FeedBuilder {
-	return newFeedBuilder(c.mediaService, nil, nil, nil, nil, viewerID)
+	return newFeedBuilder(c.mediaService, nil, nil, nil, nil, c.profileService, viewerID)
 }
 
 func (c *ThreadController) fbWithPin(viewerID *uint) webapiutils.FeedBuilder {
-	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, c.threadPinService, viewerID)
+	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, c.threadPinService, c.profileService, viewerID)
 }
 
 func (c *ThreadController) fbNoPin(viewerID *uint) webapiutils.FeedBuilder {
-	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, viewerID)
+	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, viewerID)
 }
 
 func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
-	return buildFeedItemsFromThreads(threads, mediaByThread, c.fb(viewerID))
+	fb := c.fb(viewerID)
+	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
+	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
 func (c *ThreadController) buildFeedItemsNoPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
-	return buildFeedItemsFromThreads(threads, mediaByThread, c.fbNoPin(viewerID))
+	fb := c.fbNoPin(viewerID)
+	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
+	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
 func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
-	return buildFeedItemsFromThreads(threads, mediaByThread, c.fbWithPin(viewerID))
+	fb := c.fbWithPin(viewerID)
+	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
+	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
 func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
@@ -63,6 +69,15 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 		}
 	}
 	mediaByThread := loadThreadMediaByID(c.mediaService, allIDs)
+
+	// Collect all author IDs including parents so avatars load in one batch
+	authorIDs := threadUserIDs(threads)
+	for _, p := range parents {
+		if p != nil {
+			authorIDs = append(authorIDs, p.User.UserID)
+		}
+	}
+	fb.LoadAvatarsForUserIDs(authorIDs)
 
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {

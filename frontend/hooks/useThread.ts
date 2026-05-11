@@ -81,6 +81,7 @@ function mapThreadResponseToThreadItem(thread: ThreadResponse): ThreadItem {
       likes: thread.like_count,
       reposts: thread.repost_count,
       bookmarks: thread.bookmark_count,
+      comments: thread.comment_count,
     },
     media: thread.media,
     is_liked: false,
