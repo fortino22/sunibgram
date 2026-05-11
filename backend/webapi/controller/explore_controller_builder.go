@@ -73,7 +73,8 @@ func (c *ExploreController) toThreadResponses(threads []model.ExploreThreadResul
 
 func (c *ExploreController) toFeedResponse(threads []model.Thread, total int64, viewerID *uint) dto.PaginatedFeedResponse {
 	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
-	fb := newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, viewerID)
+	fb := newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, viewerID)
+	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	data := buildFeedItemsFromThreads(threads, mediaByThread, fb)
 	ensureFalseFeedViewerFlags(data)
 	return dto.PaginatedFeedResponse{

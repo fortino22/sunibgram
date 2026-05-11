@@ -9,11 +9,10 @@ import { TrendingSection } from '@/components/explore/TrendingSection';
 import { SuggestedPeopleSection } from '@/components/explore/SuggestedPeopleSection';
 import { PersonCard } from '@/components/explore/PersonCard';
 import { CommunityCard } from '@/components/explore/CommunityCard';
-import { ThreadSnippet } from '@/components/explore/ThreadSnippet';
 import {
   useTrendingHashtags,
   useSuggestedPeople,
-  useExploreSearch,
+  useExploreTop,
   useExploreLatest,
   useExplorePeople,
   useExploreMedia,
@@ -72,16 +71,16 @@ function TabBar({
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+
+function SectionLabel({ title }: { title: string }) {
   return (
     <div
       style={{
-        padding: '12px 20px 4px',
-        fontSize: 13,
-        fontWeight: 600,
-        color: 'var(--text-tertiary)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
+        padding: '14px 20px 6px',
+        fontSize: 19,
+        fontWeight: 700,
+        color: 'var(--text)',
+        letterSpacing: '-0.02em',
       }}
     >
       {title}
@@ -89,43 +88,88 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-function TabContent({ tab, query }: { tab: ExploreTab; query: string }) {
-  // Top tab uses ExploreSearch — shows mixed users + thread snippets
-  const searchQuery = useExploreSearch(tab === 'top' ? query : '');
+function SectionDivider() {
+  return (
+    <div
+      style={{
+        height: 8,
+        background: 'var(--bg-subtle)',
+        borderTop: '1px solid var(--border)',
+        borderBottom: '1px solid var(--border)',
+      }}
+    />
+  );
+}
+
+function ShowMoreButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: '14px 20px',
+        background: 'none',
+        border: 'none',
+        borderTop: '1px solid var(--border)',
+        cursor: 'pointer',
+        textAlign: 'left',
+        fontSize: 15,
+        color: 'var(--accent)',
+        fontFamily: 'inherit',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function TabContent({
+  tab,
+  query,
+  onTabChange,
+}: {
+  tab: ExploreTab;
+  query: string;
+  onTabChange: (tab: ExploreTab) => void;
+}) {
+  const topQuery = useExploreTop(tab === 'top' ? query : '');
+  const topPeopleQuery = useExplorePeople(tab === 'top' ? query : '');
   const latestQuery = useExploreLatest(tab === 'latest' ? query : '');
   const peopleQuery = useExplorePeople(tab === 'people' ? query : '');
   const mediaQuery = useExploreMedia(tab === 'media' ? query : '');
   const communitiesQuery = useExploreCommunities(tab === 'communities' ? query : '');
 
   if (tab === 'top') {
-    if (searchQuery.isLoading) {
-      return <>{Array.from({ length: 4 }, (_, i) => <ThreadCardSkeleton key={i} />)}</>;
-    }
-    const users = searchQuery.data?.users ?? [];
-    const threads = searchQuery.data?.threads ?? [];
-    if (users.length === 0 && threads.length === 0) {
+    const isLoading = topQuery.isLoading || topPeopleQuery.isLoading;
+    if (isLoading) return <>{Array.from({ length: 4 }, (_, i) => <ThreadCardSkeleton key={i} />)}</>;
+
+    const people = topPeopleQuery.data ?? [];
+    const threads = topQuery.data?.data ?? [];
+
+    if (people.length === 0 && threads.length === 0) {
       return <EmptyState title="No results" subtitle={`Nothing found for "${query}"`} />;
     }
+
     return (
       <>
-        {users.length > 0 && (
-          <>
-            <SectionHeader title="People" />
-            {users.map((u) => (
-              <PersonCard
-                key={u.userId}
-                person={{ userId: u.userId, userProfilePic: u.profile, username: u.username, name: u.name, isPremium: u.isPremium, isFollowing: u.isFollowing }}
-              />
-            ))}
-          </>
+        {people.length > 0 && (
+          <div>
+            <SectionLabel title="People" />
+            {people.slice(0, 3).map((p) => <PersonCard key={p.userId} person={p} />)}
+            {people.length > 3 && (
+              <ShowMoreButton label="Show more people" onClick={() => onTabChange('people')} />
+            )}
+          </div>
         )}
+        {people.length > 0 && threads.length > 0 && <SectionDivider />}
         {threads.length > 0 && (
-          <>
-            <SectionHeader title="Posts" />
-            {threads.map((t, idx) => (
-              <ThreadSnippet key={idx} content={t.content} />
-            ))}
-          </>
+          <div>
+            <SectionLabel title="Posts" />
+            {threads.map((t: ThreadItem) => <ThreadCard key={t.id} thread={t} />)}
+          </div>
         )}
       </>
     );
@@ -200,7 +244,7 @@ export default function ExplorePage() {
 
       {/* Content */}
       {hasQuery ? (
-        <TabContent tab={activeTab} query={query} />
+        <TabContent tab={activeTab} query={query} onTabChange={setActiveTab} />
       ) : (
         <>
           {trendingQuery.isLoading ? (

@@ -1,3 +1,5 @@
+'use client';
+
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
 import type { ExplorePerson } from '@/lib/services/explore';

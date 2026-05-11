@@ -13,6 +13,7 @@ func newFeedBuilder(
 	bookmark service.IBookmarkService,
 	thread service.IThreadService,
 	pin service.IThreadPinService,
+	profile service.IUserProfileService,
 	viewerID *uint,
 ) webapiutils.FeedBuilder {
 	return webapiutils.FeedBuilder{
@@ -21,6 +22,7 @@ func newFeedBuilder(
 		BookmarkSvc: bookmark,
 		ThreadSvc:   thread,
 		PinSvc:      pin,
+		ProfileSvc:  profile,
 		ViewerID:    viewerID,
 	}
 }
