@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
+import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
@@ -21,6 +22,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
+  const { like, repost, bookmark } = useThreadActions(thread);
   const [isEditing, setIsEditing] = useState(false);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
@@ -107,6 +109,21 @@ export function ThreadCard({ thread }: ThreadCardProps) {
             isLiked={thread.is_liked === true}
             isReposted={thread.is_reposted === true}
             isBookmarked={thread.is_bookmarked === true}
+            onLike={() => {
+              if (!like.isPending) {
+                like.mutate(thread.is_liked === true);
+              }
+            }}
+            onRepost={() => {
+              if (!repost.isPending) {
+                repost.mutate(thread.is_reposted === true);
+              }
+            }}
+            onBookmark={() => {
+              if (!bookmark.isPending) {
+                bookmark.mutate(thread.is_bookmarked === true);
+              }
+            }}
             onActionClick={(event) => event.stopPropagation()}
           />
         </div>

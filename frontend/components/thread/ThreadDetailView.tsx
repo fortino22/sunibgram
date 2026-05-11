@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
+import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
@@ -28,6 +29,7 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
   const { updateMutation, deleteMutation } = useThreadManagement(root.id, {
     onDeleteSuccess: () => router.replace('/'),
   });
+  const { like, repost, bookmark } = useThreadActions(root);
   const [isEditing, setIsEditing] = useState(false);
   const author = getThreadAuthor(root);
   const canManage = isOwnThread(root, currentUserId);
@@ -152,6 +154,21 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
               isLiked={root.is_liked === true}
               isReposted={root.is_reposted === true}
               isBookmarked={root.is_bookmarked === true}
+              onLike={() => {
+                if (!like.isPending) {
+                  like.mutate(root.is_liked === true);
+                }
+              }}
+              onRepost={() => {
+                if (!repost.isPending) {
+                  repost.mutate(root.is_reposted === true);
+                }
+              }}
+              onBookmark={() => {
+                if (!bookmark.isPending) {
+                  bookmark.mutate(root.is_bookmarked === true);
+                }
+              }}
             />
           </div>
         </div>
