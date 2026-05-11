@@ -1,16 +1,12 @@
 'use client';
 
-import React from 'react';
+import { useParams } from 'next/navigation';
 import { ThreadDetailView } from '@/components/thread/ThreadDetailView';
 import { ThreadDetailSkeleton } from '@/components/thread/skeletons/ThreadDetailSkeleton';
 import { useThreadChain } from '@/hooks/useThread';
 
-interface ThreadPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function ThreadPage({ params }: ThreadPageProps) {
-  const { id } = React.use(params);
+export default function ThreadPage() {
+  const { id } = useParams<{ id: string }>();
   const chainQuery = useThreadChain(id);
 
   if (chainQuery.isLoading) {
@@ -36,36 +32,11 @@ export default function ThreadPage({ params }: ThreadPageProps) {
     );
   }
 
-  const allItems = chainQuery.data.data;
-  const numericId = Number(id);
-  const root = allItems.find((item) => item.id === numericId);
-  const replies = allItems.filter((item) => item.id !== numericId);
-  const totalReplies = chainQuery.data.meta.total - 1;
-
-  if (root === undefined) {
-    return (
-      <main
-        style={{
-          maxWidth: 600,
-          margin: '0 auto',
-          minHeight: '100vh',
-          background: 'var(--bg-card)',
-          borderLeft: '1px solid var(--border)',
-          borderRight: '1px solid var(--border)',
-          color: 'var(--text)',
-          padding: 24,
-        }}
-      >
-        Thread not found.
-      </main>
-    );
-  }
-
   return (
     <ThreadDetailView
-      root={root}
-      replies={replies}
-      totalReplies={Math.max(0, totalReplies)}
+      root={chainQuery.data.root}
+      replies={chainQuery.data.replies}
+      viewFullThreadId={chainQuery.data.rootThreadId}
     />
   );
 }

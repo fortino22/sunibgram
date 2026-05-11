@@ -287,7 +287,6 @@ export function CreatePostBox() {
                 }}
               >
                 <ImagePlus size={16} />
-                <span>Add media</span>
               </label>
 
               {selectedFiles.length > 0 && (

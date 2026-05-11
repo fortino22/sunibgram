@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
@@ -15,35 +14,12 @@ import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
 interface ThreadDetailViewProps {
   root: ThreadItem;
   replies: ThreadItem[];
-  totalReplies: number;
+  viewFullThreadId?: number | null;
 }
 
-type ReplyTab = 'top' | 'latest';
-
-function tabStyle(active: boolean): React.CSSProperties {
-  return {
-    flex: 1,
-    border: 0,
-    borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
-    background: 'transparent',
-    color: active ? 'var(--text)' : 'var(--text-tertiary)',
-    cursor: 'pointer',
-    font: 'inherit',
-    fontSize: 14,
-    fontWeight: active ? 700 : 500,
-    padding: '14px 12px 12px',
-  };
-}
-
-export function ThreadDetailView({ root, replies, totalReplies }: ThreadDetailViewProps) {
+export function ThreadDetailView({ root, replies, viewFullThreadId = null }: ThreadDetailViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<ReplyTab>('top');
   const author = getThreadAuthor(root);
-
-  const sortedReplies =
-    activeTab === 'latest'
-      ? [...replies].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
-      : replies;
 
   return (
     <main
@@ -70,69 +46,82 @@ export function ThreadDetailView({ root, replies, totalReplies }: ThreadDetailVi
         >
           <ArrowLeft size={20} strokeWidth={2.2} />
         </button>
-        <div className="text-xl font-bold" style={{ color: 'var(--text)' }}>Thread</div>
+        <div className="text-xl font-bold" style={{ color: 'var(--text)' }}>Post</div>
       </header>
 
-      <section className="border-b p-4" style={{ borderColor: 'var(--border)' }}>
-        <div className="mb-3.5 flex gap-3">
-          <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size={48} />
+      <article
+        className="border-b"
+        style={{
+          borderColor: 'var(--border)',
+          background: 'var(--bg-card)',
+          padding: '14px 20px',
+        }}
+      >
+        <div className="flex gap-3">
+          <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
           <div className="min-w-0 flex-1">
-            <ThreadHeader author={author} showFaculty />
+            <ThreadHeader author={author} timeAgo={root.time_ago} parentContext={root.parent_context} />
+            <ThreadBody content={root.content} media={root.media} />
+
+            <div
+              className="mt-3 border-t pt-3 text-sm"
+              style={{ color: 'var(--text-tertiary)', borderColor: 'var(--border)' }}
+            >
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                <span>
+                  <strong style={{ color: 'var(--text)' }}>{root.stats.likes}</strong> Likes
+                </span>
+                <span>
+                  <strong style={{ color: 'var(--text)' }}>{root.stats.reposts}</strong> Reposts
+                </span>
+                <span>
+                  <strong style={{ color: 'var(--text)' }}>{root.stats.bookmarks}</strong> Bookmarks
+                </span>
+              </div>
+            </div>
+
+            <ThreadActions
+              likes={root.stats.likes}
+              reposts={root.stats.reposts}
+              bookmarks={root.stats.bookmarks}
+              isLiked={root.is_liked === true}
+              isReposted={root.is_reposted === true}
+              isBookmarked={root.is_bookmarked === true}
+            />
           </div>
         </div>
+      </article>
 
-        <ThreadBody content={root.content} media={root.media} />
+      <ThreadComposer
+        placeholder={`Post your reply to @${root.author.username}`}
+        parentId={root.id}
+      />
 
-        <div
-          className="mt-3.5 border-b pb-3.5 text-[13px]"
-          style={{ color: 'var(--text-tertiary)', borderColor: 'var(--border)' }}
+      {viewFullThreadId !== null && (
+        <section
+          className="border-b"
+          style={{
+            borderColor: 'var(--border)',
+            background: 'var(--bg-card)',
+            padding: '14px 20px',
+          }}
         >
-          {root.time_ago}
-        </div>
-
-        <div
-          className="flex gap-5 pt-2.5 text-sm"
-          style={{ color: 'var(--text-tertiary)' }}
-        >
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{root.stats.likes}</strong> Likes
-          </span>
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{root.stats.reposts}</strong> Reposts
-          </span>
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{root.stats.bookmarks}</strong> Bookmarks
-          </span>
-        </div>
-
-        <ThreadActions
-          likes={root.stats.likes}
-          reposts={root.stats.reposts}
-          bookmarks={root.stats.bookmarks}
-          isLiked={root.is_liked === true}
-          isReposted={root.is_reposted === true}
-          isBookmarked={root.is_bookmarked === true}
-          className="justify-start gap-1"
-        />
-      </section>
-
-      <ThreadComposer placeholder={`Reply to @${root.author.username}...`} />
-
-      <section className="border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="px-4 pt-3.5 text-base font-bold" style={{ color: 'var(--text)' }}>
-          {totalReplies} {totalReplies === 1 ? 'Reply' : 'Replies'}
-        </div>
-        <div className="mt-0.5 flex">
-          <button type="button" onClick={() => setActiveTab('top')} style={tabStyle(activeTab === 'top')}>
-            Top
+          <button
+            type="button"
+            onClick={() => router.push(`/thread/${viewFullThreadId}`)}
+            className="rounded-full px-4 py-2 text-sm font-semibold"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'var(--text)',
+            }}
+          >
+            View full thread
           </button>
-          <button type="button" onClick={() => setActiveTab('latest')} style={tabStyle(activeTab === 'latest')}>
-            Latest
-          </button>
-        </div>
-      </section>
+        </section>
+      )}
 
-      <ReplyTree threads={sortedReplies} rootId={root.id} />
+      <ReplyTree threads={replies} />
     </main>
   );
 }
