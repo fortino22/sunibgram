@@ -17,10 +17,11 @@ type hashtagRepository struct {
 }
 
 type trendingHashtagRow struct {
-	Name     string
-	Count24h int64
-	Count7d  int64
-	Score    float64
+	Name        string
+	ThreadCount int64
+	Count24h    int64
+	Count7d     int64
+	Score       float64
 }
 
 func NewHashtagRepository(writeDB, readDB *gorm.DB) domainrepo.IHashtagRepository {
@@ -59,29 +60,70 @@ func (r *hashtagRepository) LinkHashtagsToThread(ctx context.Context, threadID u
 	if len(hashtagIDs) == 0 {
 		return nil
 	}
-
-	links := make([]model.ThreadHashtag, len(hashtagIDs))
-	for i, hashtagID := range hashtagIDs {
-		links[i] = model.ThreadHashtag{ThreadID: threadID, HashtagID: hashtagID}
-	}
-	return r.writeDB.WithContext(ctx).
-		Clauses(clause.OnConflict{DoNothing: true}).
-		Create(&links).Error
+	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		inserted, err := insertThreadHashtagLinks(tx, threadID, hashtagIDs)
+		if err != nil {
+			return err
+		}
+		return patchHashtagThreadCounts(tx, inserted, 1)
+	})
 }
 
 func (r *hashtagRepository) ReplaceHashtagsForThread(ctx context.Context, threadID uint, hashtagIDs []uuid.UUID) error {
 	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var existing []uuid.UUID
+		if err := tx.Model(&model.ThreadHashtag{}).
+			Where("thread_id = ?", threadID).
+			Pluck("hashtag_id", &existing).Error; err != nil {
+			return err
+		}
+
+		existingSet := uuidSet(existing)
+		nextSet := uuidSet(hashtagIDs)
+		toRemove := make([]uuid.UUID, 0)
+		for _, id := range existing {
+			if _, ok := nextSet[id]; !ok {
+				toRemove = append(toRemove, id)
+			}
+		}
+		toAdd := make([]uuid.UUID, 0)
+		for _, id := range hashtagIDs {
+			if _, ok := existingSet[id]; !ok {
+				toAdd = append(toAdd, id)
+			}
+		}
+
+		if len(toRemove) > 0 {
+			if err := tx.Where("thread_id = ? AND hashtag_id IN ?", threadID, toRemove).Delete(&model.ThreadHashtag{}).Error; err != nil {
+				return err
+			}
+			if err := patchHashtagThreadCounts(tx, toRemove, -1); err != nil {
+				return err
+			}
+		}
+		inserted, err := insertThreadHashtagLinks(tx, threadID, toAdd)
+		if err != nil {
+			return err
+		}
+		return patchHashtagThreadCounts(tx, inserted, 1)
+	})
+}
+
+func (r *hashtagRepository) UnlinkHashtagsFromThread(ctx context.Context, threadID uint) error {
+	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var existing []uuid.UUID
+		if err := tx.Model(&model.ThreadHashtag{}).
+			Where("thread_id = ?", threadID).
+			Pluck("hashtag_id", &existing).Error; err != nil {
+			return err
+		}
+		if len(existing) == 0 {
+			return nil
+		}
 		if err := tx.Where("thread_id = ?", threadID).Delete(&model.ThreadHashtag{}).Error; err != nil {
 			return err
 		}
-		if len(hashtagIDs) == 0 {
-			return nil
-		}
-		links := make([]model.ThreadHashtag, len(hashtagIDs))
-		for i, hashtagID := range hashtagIDs {
-			links[i] = model.ThreadHashtag{ThreadID: threadID, HashtagID: hashtagID}
-		}
-		return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&links).Error
+		return patchHashtagThreadCounts(tx, existing, -1)
 	})
 }
 
@@ -91,6 +133,7 @@ func (r *hashtagRepository) GetTrending(ctx context.Context, limit int, since24h
 		Table("hashtags").
 		Select(`
 			hashtags.name,
+			hashtags.thread_count,
 			COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END) AS count24h,
 			COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END) AS count7d,
 			(COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END)::float + 0.5 * COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END)::float) AS score
@@ -100,7 +143,7 @@ func (r *hashtagRepository) GetTrending(ctx context.Context, limit int, since24h
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Where("threads.created_at >= ?", since7d).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-		Group("hashtags.id, hashtags.name").
+		Group("hashtags.id, hashtags.name, hashtags.thread_count").
 		Order("score DESC, count24h DESC, hashtags.name ASC").
 		Limit(limit).
 		Scan(&rows).Error; err != nil {
@@ -109,44 +152,46 @@ func (r *hashtagRepository) GetTrending(ctx context.Context, limit int, since24h
 
 	result := make([]model.TrendingHashtag, len(rows))
 	for i, row := range rows {
-		result[i] = model.TrendingHashtag{Name: row.Name, ThreadCount: row.Count7d, Score: row.Score}
+		result[i] = model.TrendingHashtag{Name: row.Name, ThreadCount: row.ThreadCount, Score: row.Score}
 	}
 	return result, nil
 }
 
-func (r *hashtagRepository) GetThreadsByHashtag(ctx context.Context, name string, cursor *uint, userID uint, limit int) ([]model.Thread, *uint, error) {
-	query := r.readDB.WithContext(ctx).
-		Model(&model.Thread{}).
-		Select("threads.*").
-		Joins("JOIN thread_hashtags ON thread_hashtags.thread_id = threads.thread_id").
-		Joins("JOIN hashtags ON hashtags.id = thread_hashtags.hashtag_id").
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
-		Joins("LEFT JOIN user_relationships ON user_relationships.follower_id = ? AND user_relationships.following_id = threads.user_id", userID).
-		Where("hashtags.name = ?", name).
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-		Where("threads.user_id = ? OR COALESCE(user_settings.is_private, false) = false OR user_relationships.following_id IS NOT NULL", userID)
-	if cursor != nil {
-		query = query.Where("threads.thread_id < ?", *cursor)
+func insertThreadHashtagLinks(tx *gorm.DB, threadID uint, hashtagIDs []uuid.UUID) ([]uuid.UUID, error) {
+	if len(hashtagIDs) == 0 {
+		return nil, nil
 	}
 
-	var rows []model.Thread
-	if err := query.
-		Preload("User", preloadThreadUser).
-		Preload("Community").
-		Preload("User.UserFaculty.Faculty").
-		Order("threads.thread_id DESC").
-		Limit(limit + 1).
-		Find(&rows).Error; err != nil {
-		return nil, nil, err
+	inserted := make([]uuid.UUID, 0, len(hashtagIDs))
+	for _, hashtagID := range hashtagIDs {
+		result := tx.Exec(`
+			INSERT INTO thread_hashtags (thread_id, hashtag_id, created_at)
+			VALUES (?, ?, NOW())
+			ON CONFLICT DO NOTHING
+		`, threadID, hashtagID)
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		if result.RowsAffected > 0 {
+			inserted = append(inserted, hashtagID)
+		}
 	}
+	return inserted, nil
+}
 
-	var nextCursor *uint
-	if len(rows) > limit {
-		next := rows[limit-1].ThreadID
-		nextCursor = &next
-		rows = rows[:limit]
+func patchHashtagThreadCounts(tx *gorm.DB, hashtagIDs []uuid.UUID, delta int) error {
+	if len(hashtagIDs) == 0 {
+		return nil
 	}
-	return rows, nextCursor, nil
+	return tx.Model(&model.Hashtag{}).
+		Where("id IN ?", hashtagIDs).
+		UpdateColumn("thread_count", gorm.Expr("GREATEST(thread_count + ?, 0)", delta)).Error
+}
+
+func uuidSet(ids []uuid.UUID) map[uuid.UUID]struct{} {
+	set := make(map[uuid.UUID]struct{}, len(ids))
+	for _, id := range ids {
+		set[id] = struct{}{}
+	}
+	return set
 }

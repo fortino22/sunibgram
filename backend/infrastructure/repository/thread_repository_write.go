@@ -32,6 +32,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.invalidateUserFeedCache(ctx, thread.UserID)
 	r.invalidateUserMediaCache(ctx, thread.UserID)
+	r.invalidateFollowingFeedCache(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreCache(ctx, r.cache)
 	return nil
@@ -45,8 +46,10 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 		return
 	}
 	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
+	r.invalidateFeedCachesByThreadID(ctx, threadID)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	r.invalidateInteractions(ctx, threadID)
+	r.invalidateFollowingFeedCache(ctx)
 	invalidateExploreCache(ctx, r.cache)
 }
 
@@ -61,8 +64,11 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	ctx := context.Background()
 	r.cache.Delete(ctx, threadKey(thread.ThreadID))
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.invalidateFeedCachesByThreadID(ctx, thread.ThreadID)
 	r.invalidateInteractions(ctx, thread.ThreadID)
 	r.invalidateUserFeedCache(ctx, thread.UserID)
+	r.invalidateUserMediaCache(ctx, thread.UserID)
+	r.invalidateFollowingFeedCache(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreCache(ctx, r.cache)
 	return nil
@@ -114,6 +120,8 @@ func (r *threadCached) Delete(id uint) error {
 	r.invalidateInteractions(ctx, id)
 	r.invalidateUserFeedCache(ctx, thread.UserID)
 	r.invalidateUserMediaCache(ctx, thread.UserID)
+	r.invalidateFeedCachesByThreadID(ctx, id)
+	r.invalidateFollowingFeedCache(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 
 	r.likes.deleteByThreadID(id)

@@ -8,9 +8,10 @@ import (
 )
 
 type Hashtag struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey"`
-	Name      string    `gorm:"type:varchar(255);uniqueIndex;not null"`
-	CreatedAt time.Time `gorm:"type:timestamptz"`
+	ID          uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Name        string    `gorm:"type:varchar(255);uniqueIndex;not null"`
+	ThreadCount int64     `gorm:"not null;default:0"`
+	CreatedAt   time.Time `gorm:"type:timestamptz"`
 }
 
 func (h *Hashtag) BeforeCreate(tx *gorm.DB) error {

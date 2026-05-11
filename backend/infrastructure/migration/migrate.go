@@ -52,6 +52,9 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_thread_media_thread_id ON thread_media(thread_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_hashtags_name ON hashtags(name)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_thread_hashtags_hashtag_id ON thread_hashtags(hashtag_id)")
+	db.Exec("ALTER TABLE user_stats DROP COLUMN IF EXISTS thread_count")
+	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS thread_count")
+	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS thread_count INTEGER NOT NULL DEFAULT 0")
 	db.Exec(`
 		DO $$
 		BEGIN
@@ -74,6 +77,16 @@ func AutoMigrate(db *gorm.DB) {
 	`)
 
 	db.Exec("UPDATE chat_rooms SET member_count = (SELECT COUNT(*) FROM chat_room_members WHERE chat_room_members.room_id = chat_rooms.room_id)")
+	db.Exec(`
+		UPDATE hashtags
+		SET thread_count = counts.thread_count
+		FROM (
+			SELECT hashtag_id, COUNT(*)::integer AS thread_count
+			FROM thread_hashtags
+			GROUP BY hashtag_id
+		) AS counts
+		WHERE hashtags.id = counts.hashtag_id
+	`)
 
 	seedRoles(db)
 	seeder.SeedFaculty(db)

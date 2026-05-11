@@ -34,7 +34,10 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 
 	ctx := context.Background()
 	r.invalidate(ctx, repost.ThreadID, nil, nil)
+	r.invalidateFeedCachesByThreadID(ctx, repost.ThreadID)
 	r.invalidateInteractions(ctx, originalThreadID)
+	r.invalidateUserFeedCache(ctx, repost.UserID)
+	r.invalidateFollowingFeedCache(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	var orig model.Thread
 	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {
