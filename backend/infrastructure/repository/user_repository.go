@@ -53,6 +53,7 @@ func (r *UserRepository) Save(user *model.User) error {
 	if err := r.writeDB.Create(user).Error; err != nil {
 		return err
 	}
+	invalidateNotificationSenderCache(context.Background(), r.cache, user.UserID)
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
@@ -67,6 +68,7 @@ func (r *UserRepository) SaveWithProfile(user *model.User, profile *model.UserPr
 	}); err != nil {
 		return err
 	}
+	invalidateNotificationSenderCache(context.Background(), r.cache, user.UserID)
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
@@ -100,6 +102,7 @@ func (r *UserRepository) UpdatePassword(userID uint, hashedPassword string) erro
 		return err
 	}
 	r.invalidateUser(userID)
+	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	return nil
 }
 
@@ -109,6 +112,7 @@ func (r *UserRepository) UpdateInfo(userID uint, name, username string) error {
 		return err
 	}
 	r.invalidateUser(userID)
+	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
@@ -118,6 +122,7 @@ func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
 		return err
 	}
 	r.invalidateUser(userID)
+	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }

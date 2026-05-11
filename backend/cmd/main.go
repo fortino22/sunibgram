@@ -54,6 +54,7 @@ func main() {
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
 	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
 	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)
+	notificationRepo := infrarepo.NewNotificationRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -82,6 +83,7 @@ func main() {
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
+	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase)
 	socketHub := infrasocket.NewHub()
 
 	// --- Controllers ---
@@ -108,6 +110,7 @@ func main() {
 	orderCtrl := controller.NewOrderController(orderService)
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
 	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
+	notificationCtrl := controller.NewNotificationController(notificationService)
 
 	// --- Server ---
 	app := fiber.New()
@@ -144,6 +147,7 @@ func main() {
 		orderCtrl,
 		chatRoomCtrl,
 		chatCtrl,
+		notificationCtrl,
 	)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
