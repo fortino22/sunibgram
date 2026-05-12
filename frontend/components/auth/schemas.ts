@@ -28,7 +28,34 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
+export const verificationCodeSchema = z.object({
+  code: z
+    .string()
+    .regex(/^\d{6}$/, 'Enter the 6-digit code'),
+});
+
+export const forgotPasswordEmailSchema = z.object({
+  email: z
+    .string()
+    .email('Invalid email address')
+    .endsWith('@binus.ac.id', 'Must use your @binus.ac.id email'),
+});
+
+export const forgotPasswordResetSchema = z
+  .object({
+    newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type VerificationCodeInput = z.infer<typeof verificationCodeSchema>;
+export type ForgotPasswordEmailInput = z.infer<typeof forgotPasswordEmailSchema>;
+export type ForgotPasswordResetInput = z.infer<typeof forgotPasswordResetSchema>;
 export type SignupStep = 1 | 2 | 3;
 export type LoginStep = 'credentials' | 'otp';
+export type ForgotPasswordStep = 'email' | 'otp' | 'reset' | 'done';

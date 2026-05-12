@@ -5,12 +5,17 @@ import { useRef, type ClipboardEvent, type KeyboardEvent } from 'react';
 interface OtpInputProps {
   value: string[];
   onChange: (value: string[]) => void;
+  disabled?: boolean;
 }
 
-export function OtpInput({ value, onChange }: OtpInputProps) {
+export function OtpInput({ value, onChange, disabled = false }: OtpInputProps) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (index: number, char: string) => {
+    if (disabled) {
+      return;
+    }
+
     const digit = char.replace(/\D/g, '').slice(-1);
     const next = [...value];
     next[index] = digit;
@@ -19,12 +24,20 @@ export function OtpInput({ value, onChange }: OtpInputProps) {
   };
 
   const handleKeyDown = (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+    if (disabled) {
+      return;
+    }
+
     if (event.key === 'Backspace' && !value[index] && index > 0) {
       refs.current[index - 1]?.focus();
     }
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    if (disabled) {
+      return;
+    }
+
     event.preventDefault();
     const digits = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     const next = [...value];
@@ -46,6 +59,7 @@ export function OtpInput({ value, onChange }: OtpInputProps) {
           type="text"
           inputMode="numeric"
           maxLength={1}
+          disabled={disabled}
           value={digit}
           onChange={(event) => handleChange(index, event.target.value)}
           onKeyDown={(event) => handleKeyDown(index, event)}
@@ -63,6 +77,8 @@ export function OtpInput({ value, onChange }: OtpInputProps) {
             outline: 'none',
             fontFamily: 'inherit',
             caretColor: 'var(--accent)',
+            opacity: disabled ? 0.7 : 1,
+            cursor: disabled ? 'not-allowed' : 'text',
           }}
         />
       ))}

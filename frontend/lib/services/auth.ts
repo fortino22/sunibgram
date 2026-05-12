@@ -31,6 +31,11 @@ export interface LoginParams {
   otp: string;
 }
 
+export interface SendLoginOtpParams {
+  email: string;
+  password: string;
+}
+
 export interface ChangePasswordParams {
   oldPassword: string;
   newPassword: string;
@@ -69,8 +74,11 @@ export function register(params: RegisterParams): Promise<MessageResponse> {
   return api.post<MessageResponse>('/api/auth/register', formData);
 }
 
-export function sendLoginOtp(email: string): Promise<MessageResponse> {
-  return api.post<MessageResponse>('/api/auth/login/otp/send', { email });
+export function sendLoginOtp(params: SendLoginOtpParams): Promise<MessageResponse> {
+  return api.post<MessageResponse>('/api/auth/login/otp/send', {
+    email: params.email,
+    password: params.password,
+  });
 }
 
 export function login(params: LoginParams): Promise<AuthSessionResponse> {
