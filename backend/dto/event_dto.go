@@ -71,6 +71,9 @@ type EventResponse struct {
 	ThreadCount      int                 `json:"thread_count"`
 	LikeCount        int                 `json:"like_count"`
 	RepostCount      int                 `json:"repost_count"`
+	WeekThreadCount  int                 `json:"week_thread_count"`
+	WeekLikeCount    int                 `json:"week_like_count"`
+	WeekRepostCount  int                 `json:"week_repost_count"`
 	CreatedAt        utils.FormattedTime `json:"created_at"`
 	UpdatedAt        utils.FormattedTime `json:"updated_at"`
 }

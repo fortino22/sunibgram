@@ -83,7 +83,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 
 	var trending []model.Event
 	if err := r.readDB.
-		Order("(thread_count * 3 + like_count + repost_count * 2) DESC, start_time ASC").
+		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
 		Limit(limit).
 		Find(&trending).Error; err != nil {
 		return nil, nil, nil, err

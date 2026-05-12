@@ -137,6 +137,9 @@ func (c *EventController) toResponse(event *model.Event) dto.EventResponse {
 		ThreadCount:      event.ThreadCount,
 		LikeCount:        event.LikeCount,
 		RepostCount:      event.RepostCount,
+		WeekThreadCount:  event.WeekThreadCount,
+		WeekLikeCount:    event.WeekLikeCount,
+		WeekRepostCount:  event.WeekRepostCount,
 		CreatedAt:        utils.Wrap(event.CreatedAt),
 		UpdatedAt:        utils.Wrap(event.UpdatedAt),
 	}

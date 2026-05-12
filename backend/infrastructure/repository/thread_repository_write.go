@@ -15,11 +15,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	if err := r.db.writeDB.Create(thread).Error; err != nil {
 		return err
 	}
-	participantDelta := 0
-	if thread.Type != model.ThreadTypeRepost && thread.EventID != nil {
-		participantDelta = 1
-	}
-	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventID != nil, participantDelta); err != nil {
+	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventID != nil); err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -78,11 +74,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 		}).Error; err != nil {
 		return err
 	}
-	participantDelta := 0
-	if thread.Type != model.ThreadTypeRepost && thread.EventIDUpdated {
-		participantDelta = 1
-	}
-	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventIDUpdated, participantDelta); err != nil {
+	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventIDUpdated); err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -112,7 +104,7 @@ func (r *threadCached) validateThreadEventExists(eventID *string) error {
 	return nil
 }
 
-func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace bool, participantDelta int) error {
+func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace bool) error {
 	if !replace {
 		return nil
 	}
@@ -126,9 +118,9 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 	if eventID == nil || *eventID == "" {
 		if hadOldEvent {
 			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "thread_count", -1)
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "participant_count", -participantDelta)
 			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "like_count", -stats.LikeCount)
 			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "repost_count", -stats.RepostCount)
+			refreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
 		}
 		r.cache.DeleteByPattern(ctx, "event:threads:*")
 		return nil
@@ -139,14 +131,14 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 	if !hadOldEvent || oldEventID != *eventID {
 		if hadOldEvent {
 			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "thread_count", -1)
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "participant_count", -participantDelta)
 			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "like_count", -stats.LikeCount)
 			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "repost_count", -stats.RepostCount)
+			refreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
 		}
 		patchEventCounter(r.db.writeDB, r.cache, *eventID, "thread_count", 1)
-		patchEventCounter(r.db.writeDB, r.cache, *eventID, "participant_count", participantDelta)
 		patchEventCounter(r.db.writeDB, r.cache, *eventID, "like_count", stats.LikeCount)
 		patchEventCounter(r.db.writeDB, r.cache, *eventID, "repost_count", stats.RepostCount)
+		refreshEventParticipantCount(r.db.writeDB, r.cache, *eventID)
 	}
 	r.cache.DeleteByPattern(ctx, "event:threads:*")
 	return nil
@@ -206,15 +198,18 @@ func (r *threadCached) Delete(id uint) error {
 	r.likes.deleteByThreadID(id)
 	r.bookmarks.deleteByThreadID(id)
 	r.reposts.deleteByThreadID(id)
-	if eventID, ok := eventIDForThread(r.db.readDB, id); ok {
+	eventID, hasEvent := eventIDForThread(r.db.readDB, id)
+	if hasEvent {
 		patchEventCounter(r.db.writeDB, r.cache, eventID, "thread_count", -1)
-		patchEventCounter(r.db.writeDB, r.cache, eventID, "participant_count", -1)
 		patchEventCounter(r.db.writeDB, r.cache, eventID, "like_count", -thread.LikeCount)
 		patchEventCounter(r.db.writeDB, r.cache, eventID, "repost_count", -thread.RepostCount)
 	}
 
 	if err := r.db.writeDB.Delete(&model.Thread{}, id).Error; err != nil {
 		return err
+	}
+	if hasEvent {
+		refreshEventParticipantCount(r.db.writeDB, r.cache, eventID)
 	}
 	invalidateExploreCache(ctx, r.cache)
 	return nil

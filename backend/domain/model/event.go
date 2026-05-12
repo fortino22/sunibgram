@@ -20,6 +20,9 @@ type Event struct {
 	ThreadCount      int       `gorm:"not null;default:0"`
 	LikeCount        int       `gorm:"not null;default:0"`
 	RepostCount      int       `gorm:"not null;default:0"`
+	WeekThreadCount  int       `gorm:"default:0"`
+	WeekLikeCount    int       `gorm:"default:0"`
+	WeekRepostCount  int       `gorm:"default:0"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

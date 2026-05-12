@@ -12,6 +12,7 @@ import (
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
+	"github.com/sunibgram/infrastructure/scheduler"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
 	"github.com/sunibgram/infrastructure/storage"
 	"github.com/sunibgram/webapi/controller"
@@ -25,6 +26,7 @@ func main() {
 	writeDB := config.NewPostgresWrite()
 	readDB := config.NewPostgresRead()
 	migration.AutoMigrate(writeDB)
+	go scheduler.ResetWeeklyEventCounters(writeDB)
 
 	// --- Cache ---
 	redisCache := cache.New()
