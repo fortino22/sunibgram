@@ -29,6 +29,7 @@ func (r *LikeRepository) Save(like *model.Like) error {
 	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", like.ThreadID).
 		UpdateColumn("like_count", gorm.Expr("like_count + 1"))
 	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, like.ThreadID, "like_count", 1)
+	patchHashtagCounterByThreadID(r.base.writeDB, r.base.cache, like.ThreadID, "like_count", 1)
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, like.UserID)
 	r.patchCount(like.ThreadID, "like_count", 1)
@@ -43,6 +44,7 @@ func (r *LikeRepository) Delete(userID, threadID uint) error {
 	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
 		UpdateColumn("like_count", gorm.Expr("GREATEST(like_count - 1, 0)"))
 	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, threadID, "like_count", -1)
+	patchHashtagCounterByThreadID(r.base.writeDB, r.base.cache, threadID, "like_count", -1)
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, userID)
 	r.patchCount(threadID, "like_count", -1)

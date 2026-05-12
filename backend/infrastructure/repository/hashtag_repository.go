@@ -2,11 +2,11 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -14,14 +14,6 @@ import (
 type hashtagRepository struct {
 	writeDB *gorm.DB
 	readDB  *gorm.DB
-}
-
-type trendingHashtagRow struct {
-	Name        string
-	ThreadCount int64
-	Count24h    int64
-	Count7d     int64
-	Score       float64
 }
 
 func NewHashtagRepository(writeDB, readDB *gorm.DB) domainrepo.IHashtagRepository {
@@ -127,32 +119,22 @@ func (r *hashtagRepository) UnlinkHashtagsFromThread(ctx context.Context, thread
 	})
 }
 
-func (r *hashtagRepository) GetTrending(ctx context.Context, limit int, since24h, since7d time.Time) ([]model.TrendingHashtag, error) {
-	var rows []trendingHashtagRow
+func (r *hashtagRepository) GetTrending(ctx context.Context, limit int) ([]model.TrendingHashtag, error) {
+	var rows []model.Hashtag
 	if err := r.readDB.WithContext(ctx).
-		Table("hashtags").
-		Select(`
-			hashtags.name,
-			hashtags.thread_count,
-			COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END) AS count24h,
-			COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END) AS count7d,
-			(COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END)::float + 0.5 * COUNT(DISTINCT CASE WHEN threads.created_at >= ? THEN threads.thread_id END)::float) AS score
-		`, since24h, since7d, since24h, since7d).
-		Joins("JOIN thread_hashtags ON thread_hashtags.hashtag_id = hashtags.id").
-		Joins("JOIN threads ON threads.thread_id = thread_hashtags.thread_id").
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-		Where("threads.created_at >= ?", since7d).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-		Group("hashtags.id, hashtags.name, hashtags.thread_count").
-		Order("score DESC, count24h DESC, hashtags.name ASC").
-		Limit(limit).
-		Scan(&rows).Error; err != nil {
+		Where("week_thread_count > 0 OR week_like_count > 0 OR week_repost_count > 0").
+		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, thread_count DESC, name ASC").
+		Limit(limit).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
 	result := make([]model.TrendingHashtag, len(rows))
 	for i, row := range rows {
-		result[i] = model.TrendingHashtag{Name: row.Name, ThreadCount: row.ThreadCount, Score: row.Score}
+		result[i] = model.TrendingHashtag{
+			Name:        row.Name,
+			ThreadCount: row.ThreadCount,
+			Score:       float64(row.WeekThreadCount*3 + row.WeekLikeCount + row.WeekRepostCount*2),
+		}
 	}
 	return result, nil
 }
@@ -185,7 +167,48 @@ func patchHashtagThreadCounts(tx *gorm.DB, hashtagIDs []uuid.UUID, delta int) er
 	}
 	return tx.Model(&model.Hashtag{}).
 		Where("id IN ?", hashtagIDs).
-		UpdateColumn("thread_count", gorm.Expr("GREATEST(thread_count + ?, 0)", delta)).Error
+		UpdateColumns(map[string]any{
+			"thread_count":      gorm.Expr("GREATEST(thread_count + ?, 0)", delta),
+			"week_thread_count": gorm.Expr("GREATEST(week_thread_count + ?, 0)", delta),
+		}).Error
+}
+
+func patchHashtagCounters(db *gorm.DB, c *cache.Cache, hashtagIDs []uuid.UUID, column string, delta int) {
+	if len(hashtagIDs) == 0 || delta == 0 {
+		return
+	}
+	updates := map[string]any{
+		column: gorm.Expr("GREATEST("+column+" + ?, 0)", delta),
+	}
+	switch column {
+	case "thread_count":
+		updates["week_thread_count"] = gorm.Expr("GREATEST(week_thread_count + ?, 0)", delta)
+	case "like_count":
+		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", delta)
+	case "repost_count":
+		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
+	default:
+		return
+	}
+	db.Model(&model.Hashtag{}).
+		Where("id IN ?", hashtagIDs).
+		UpdateColumns(updates)
+	if c != nil {
+		c.DeleteByPattern(context.Background(), "trending_hashtags:*")
+	}
+}
+
+func patchHashtagCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, column string, delta int) {
+	var hashtagIDs []uuid.UUID
+	if err := db.Model(&model.ThreadHashtag{}).
+		Where("thread_id = ?", threadID).
+		Pluck("hashtag_id", &hashtagIDs).Error; err != nil {
+		return
+	}
+	if len(hashtagIDs) == 0 {
+		return
+	}
+	patchHashtagCounters(db, c, hashtagIDs, column, delta)
 }
 
 func uuidSet(ids []uuid.UUID) map[uuid.UUID]struct{} {

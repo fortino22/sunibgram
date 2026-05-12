@@ -27,6 +27,7 @@ func main() {
 	readDB := config.NewPostgresRead()
 	migration.AutoMigrate(writeDB)
 	go scheduler.ResetWeeklyEventCounters(writeDB)
+	go scheduler.ResetWeeklyHashtagCounters(writeDB)
 
 	// --- Cache ---
 	redisCache := cache.New()

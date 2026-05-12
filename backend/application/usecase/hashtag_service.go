@@ -37,8 +37,7 @@ func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]model.Tr
 		}
 	}
 
-	now := time.Now()
-	hashtags, err := s.hashtagRepo.GetTrending(ctx, limit, now.Add(-24*time.Hour), now.Add(-7*24*time.Hour))
+	hashtags, err := s.hashtagRepo.GetTrending(ctx, limit)
 	if err != nil {
 		return nil, err
 	}
