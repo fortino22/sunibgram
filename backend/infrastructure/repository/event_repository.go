@@ -83,7 +83,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 
 	var trending []model.Event
 	if err := r.readDB.
-		Order("(participant_count * 3 + view_count) DESC, start_time ASC").
+		Order("(thread_count * 3 + like_count + repost_count * 2) DESC, start_time ASC").
 		Limit(limit).
 		Find(&trending).Error; err != nil {
 		return nil, nil, nil, err
@@ -124,24 +124,12 @@ func (r *eventRepository) Update(event *model.Event) error {
 		"end_time":           event.EndTime,
 		"banner_object_name": event.BannerObjectName,
 		"banner_bucket":      event.BannerBucket,
-		"view_count":         event.ViewCount,
-		"participant_count":  event.ParticipantCount,
 		"updated_at":         gorm.Expr("NOW()"),
 	}).Error; err != nil {
 		return err
 	}
 	r.invalidateEvent(event.ID)
 	r.invalidateEventThreadCaches(event.ID)
-	return nil
-}
-
-func (r *eventRepository) IncrementViewCount(id string) error {
-	if err := r.writeDB.Model(&model.Event{}).
-		Where("id = ?", id).
-		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
-		return err
-	}
-	r.invalidateEvent(id)
 	return nil
 }
 

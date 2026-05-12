@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
@@ -21,6 +22,7 @@ interface ProfileThreadCardProps {
 }
 
 export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, onRepost, onBookmark }: ProfileThreadCardProps) {
+  const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const [isEditing, setIsEditing] = useState(false);
@@ -33,10 +35,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
   }
 
   async function handleDelete() {
-    if (!window.confirm('Delete this post?')) {
-      return;
-    }
-
+    if (!window.confirm('Delete this post?')) return;
     try {
       await deleteMutation.mutateAsync();
     } catch {
@@ -46,6 +45,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
 
   return (
     <article
+      onClick={() => router.push(`/thread/${thread.id}`)}
       style={{
         borderBottom: '1px solid var(--border)',
         background: 'var(--bg-card)',
@@ -63,7 +63,11 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
         >
           Replying to{' '}
           {replyingToId ? (
-            <Link href={`/profile/${replyingToId}`} style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+            <Link
+              href={`/profile/${replyingToId}`}
+              onClick={(e) => e.stopPropagation()}
+              style={{ color: 'var(--accent)', textDecoration: 'none' }}
+            >
               @{replyingTo}
             </Link>
           ) : (
@@ -102,7 +106,10 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
               </span>
             )}
             {canManage && (
-              <div style={{ marginLeft: thread.is_pin ? 8 : 'auto' }}>
+              <div
+                style={{ marginLeft: thread.is_pin ? 8 : 'auto' }}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <ThreadOptionsMenu
                   onEdit={() => setIsEditing(true)}
                   onDelete={() => void handleDelete()}
@@ -115,15 +122,17 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
           </div>
 
           {isEditing ? (
-            <ThreadInlineEditor
-              initialContent={thread.content}
-              initialMedia={thread.media}
-              onCancel={() => setIsEditing(false)}
-              onSave={handleSave}
-              pending={updateMutation.isPending}
-              errorMessage={updateMutation.error?.message}
-              compact
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <ThreadInlineEditor
+                initialContent={thread.content}
+                initialMedia={thread.media}
+                onCancel={() => setIsEditing(false)}
+                onSave={handleSave}
+                pending={updateMutation.isPending}
+                errorMessage={updateMutation.error?.message}
+                compact
+              />
+            </div>
           ) : (
             <div
               style={{
@@ -174,16 +183,18 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
             </div>
           )}
 
-          <ActionBar
-            stats={thread.stats}
-            isLiked={!!thread.is_liked}
-            isReposted={!!thread.is_reposted}
-            isBookmarked={!!thread.is_bookmarked}
-            onLike={onLike}
-            onRepost={onRepost}
-            onBookmark={onBookmark}
-            size="sm"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <ActionBar
+              stats={thread.stats}
+              isLiked={!!thread.is_liked}
+              isReposted={!!thread.is_reposted}
+              isBookmarked={!!thread.is_bookmarked}
+              onLike={onLike}
+              onRepost={onRepost}
+              onBookmark={onBookmark}
+              size="sm"
+            />
+          </div>
         </div>
       </div>
     </article>

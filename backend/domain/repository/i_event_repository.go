@@ -9,5 +9,4 @@ type IEventRepository interface {
 	Update(event *model.Event) error
 	Delete(id string) error
 	FindThreads(eventID string, page, limit int) ([]model.Thread, int64, error)
-	IncrementViewCount(id string) error
 }

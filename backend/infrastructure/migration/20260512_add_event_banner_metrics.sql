@@ -1,7 +1,0 @@
-ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_object_name VARCHAR(500);
-ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_bucket VARCHAR(100);
-ALTER TABLE events ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE events ADD COLUMN IF NOT EXISTS participant_count INTEGER NOT NULL DEFAULT 0;
-
-CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time);
-CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time);
