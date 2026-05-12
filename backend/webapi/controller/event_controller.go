@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"mime/multipart"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
@@ -28,11 +30,11 @@ func (c *EventController) Create(ctx *fiber.Ctx) error {
 	if _, ok := ctxutil.Get(ctx); !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-	var req dto.CreateEventRequest
-	if err := ctx.BodyParser(&req); err != nil {
+	req, banner, err := parseCreateEventRequest(ctx)
+	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
-	_, err := c.eventService.Create(ctx.Context(), req.Title, req.Description, req.Location, req.StartTime.Time, req.EndTime.Time)
+	_, err = c.eventService.Create(ctx.Context(), req.Title, req.Description, req.Location, req.StartTime.Time, req.EndTime.Time, banner)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -43,15 +45,15 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 	if _, ok := ctxutil.Get(ctx); !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
-	events, total, err := c.eventService.GetAll(page, limit)
+	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	trending, running, future, err := c.eventService.GetAll(limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedEventResponse{
-		Data: c.toResponses(events),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	return ctx.Status(fiber.StatusOK).JSON(dto.EventGroupsResponse{
+		Trending: c.toResponses(trending),
+		Running:  c.toResponses(running),
+		Future:   c.toResponses(future),
 	})
 }
 
@@ -70,11 +72,11 @@ func (c *EventController) Update(ctx *fiber.Ctx) error {
 	if _, ok := ctxutil.Get(ctx); !ok {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
 	}
-	var req dto.UpdateEventRequest
-	if err := ctx.BodyParser(&req); err != nil {
+	req, banner, clearBanner, err := parseUpdateEventRequest(ctx)
+	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
-	_, err := c.eventService.Update(ctx.Context(), ctx.Params("id"), req.Title, req.Description, req.Location, req.StartTime.Time, req.EndTime.Time)
+	_, err = c.eventService.Update(ctx.Context(), ctx.Params("id"), req.Title, req.Description, req.Location, req.StartTime.Time, req.EndTime.Time, banner, clearBanner)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -119,15 +121,22 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) toResponse(event *model.Event) dto.EventResponse {
+	bannerURL := ""
+	if event.BannerObjectName != "" {
+		bannerURL = c.eventService.GetURL(event.BannerBucket, event.BannerObjectName)
+	}
 	return dto.EventResponse{
-		ID:          event.ID,
-		Title:       event.Title,
-		Description: event.Description,
-		Location:    event.Location,
-		StartTime:   dto.EventTime{Time: event.StartTime},
-		EndTime:     dto.EventTime{Time: event.EndTime},
-		CreatedAt:   utils.Wrap(event.CreatedAt),
-		UpdatedAt:   utils.Wrap(event.UpdatedAt),
+		ID:               event.ID,
+		Title:            event.Title,
+		Description:      event.Description,
+		Location:         event.Location,
+		StartTime:        dto.EventTime{Time: event.StartTime},
+		EndTime:          dto.EventTime{Time: event.EndTime},
+		BannerURL:        bannerURL,
+		ViewCount:        event.ViewCount,
+		ParticipantCount: event.ParticipantCount,
+		CreatedAt:        utils.Wrap(event.CreatedAt),
+		UpdatedAt:        utils.Wrap(event.UpdatedAt),
 	}
 }
 
@@ -137,4 +146,60 @@ func (c *EventController) toResponses(events []model.Event) []dto.EventResponse 
 		out[i] = c.toResponse(&events[i])
 	}
 	return out
+}
+
+func parseCreateEventRequest(ctx *fiber.Ctx) (dto.CreateEventRequest, *multipart.FileHeader, error) {
+	var req dto.CreateEventRequest
+	if isMultipart(ctx) {
+		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.StartTime, &req.EndTime); err != nil {
+			return req, nil, err
+		}
+		banner, _ := ctx.FormFile("banner")
+		return req, banner, nil
+	}
+	if err := ctx.BodyParser(&req); err != nil {
+		return req, nil, err
+	}
+	return req, nil, nil
+}
+
+func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart.FileHeader, bool, error) {
+	var req dto.UpdateEventRequest
+	if isMultipart(ctx) {
+		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.StartTime, &req.EndTime); err != nil {
+			return req, nil, false, err
+		}
+		banner, _ := ctx.FormFile("banner")
+		return req, banner, ctx.FormValue("clear_banner") == "true", nil
+	}
+	if err := ctx.BodyParser(&req); err != nil {
+		return req, nil, false, err
+	}
+	return req, nil, false, nil
+}
+
+func fillEventRequestFromForm(ctx *fiber.Ctx, title, description, location *string, startTime, endTime *dto.EventTime) error {
+	*title = ctx.FormValue("title")
+	*description = ctx.FormValue("description")
+	*location = ctx.FormValue("location")
+	if err := parseEventFormTime(ctx.FormValue("start_time"), startTime); err != nil {
+		return err
+	}
+	if err := parseEventFormTime(ctx.FormValue("end_time"), endTime); err != nil {
+		return err
+	}
+	return nil
+}
+
+func parseEventFormTime(value string, target *dto.EventTime) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		target.Time = target.Time.UTC()
+		return nil
+	}
+	return target.UnmarshalJSON([]byte(strconv.Quote(value)))
+}
+
+func isMultipart(ctx *fiber.Ctx) bool {
+	return strings.Contains(strings.ToLower(ctx.Get("Content-Type")), "multipart/form-data")
 }

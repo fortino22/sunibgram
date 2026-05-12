@@ -298,13 +298,7 @@ func (r *exploreRepository) exploreThreadBase(ctx context.Context, query string,
 
 func (r *exploreRepository) loadThreadsByIDs(ctx context.Context, ids []uint) ([]model.Thread, error) {
 	var rows []model.Thread
-	if err := r.readDB.WithContext(ctx).
-		Preload("User", preloadThreadUser).
-		Preload("OriginalThread.User", preloadThreadUser).
-		Preload("Community").
-		Preload("OriginalThread.Community").
-		Preload("User.UserFaculty.Faculty").
-		Preload("OriginalThread.User.UserFaculty.Faculty").
+	if err := preloadThreadDetails(r.readDB.WithContext(ctx)).
 		Where("threads.thread_id IN ?", ids).
 		Find(&rows).Error; err != nil {
 		return nil, err

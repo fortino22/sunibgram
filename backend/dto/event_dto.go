@@ -60,17 +60,21 @@ type UpdateEventRequest struct {
 }
 
 type EventResponse struct {
-	ID          string              `json:"id"`
-	Title       string              `json:"title"`
-	Description string              `json:"description"`
-	Location    string              `json:"location"`
-	StartTime   EventTime           `json:"start_time"`
-	EndTime     EventTime           `json:"end_time"`
-	CreatedAt   utils.FormattedTime `json:"created_at"`
-	UpdatedAt   utils.FormattedTime `json:"updated_at"`
+	ID               string              `json:"id"`
+	Title            string              `json:"title"`
+	Description      string              `json:"description"`
+	Location         string              `json:"location"`
+	StartTime        EventTime           `json:"start_time"`
+	EndTime          EventTime           `json:"end_time"`
+	BannerURL        string              `json:"banner_url,omitempty"`
+	ViewCount        int                 `json:"view_count"`
+	ParticipantCount int                 `json:"participant_count"`
+	CreatedAt        utils.FormattedTime `json:"created_at"`
+	UpdatedAt        utils.FormattedTime `json:"updated_at"`
 }
 
-type PaginatedEventResponse struct {
-	Data []EventResponse `json:"data"`
-	Meta FeedMeta        `json:"meta"`
+type EventGroupsResponse struct {
+	Trending []EventResponse `json:"trending"`
+	Running  []EventResponse `json:"running"`
+	Future   []EventResponse `json:"future"`
 }

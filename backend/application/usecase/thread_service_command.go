@@ -10,9 +10,12 @@ import (
 	"github.com/sunibgram/domain/model"
 )
 
-func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint) (*model.Thread, error) {
+func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error) {
 	if strings.TrimSpace(content) == "" {
 		return nil, errors.New("content is required")
+	}
+	if err := validateThreadEventID(eventID); err != nil {
+		return nil, err
 	}
 
 	threadType := model.ThreadTypePost
@@ -63,6 +66,7 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		ParentID:    parentID,
 		RootID:      rootID,
 		CommunityID: communityID,
+		EventID:     eventID,
 	}
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err
@@ -79,7 +83,7 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	return thread, nil
 }
 
-func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error) {
+func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string, eventID *string, eventIDUpdated bool) (*model.Thread, error) {
 	thread, err := s.threadRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("thread not found")
@@ -93,7 +97,12 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	if strings.TrimSpace(content) == "" {
 		return nil, errors.New("content is required")
 	}
+	if err := validateThreadEventID(eventID); err != nil {
+		return nil, err
+	}
 	thread.Content = content
+	thread.EventID = eventID
+	thread.EventIDUpdated = eventIDUpdated
 	if err := s.threadRepo.Update(thread); err != nil {
 		return nil, err
 	}
@@ -183,9 +192,12 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 	return ok
 }
 
-func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error) {
+func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error) {
 	if strings.TrimSpace(content) == "" {
 		return nil, errors.New("content is required")
+	}
+	if err := validateThreadEventID(eventID); err != nil {
+		return nil, err
 	}
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, errors.New("community not found")
@@ -198,6 +210,7 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 		CommunityID: &communityID,
 		Type:        model.ThreadTypePost,
 		Content:     content,
+		EventID:     eventID,
 	}
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err
@@ -209,6 +222,16 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 		s.hashtagService.InvalidateTrendingCache(ctx)
 	}
 	return thread, nil
+}
+
+func validateThreadEventID(eventID *string) error {
+	if eventID == nil {
+		return nil
+	}
+	if _, err := uuid.Parse(*eventID); err != nil {
+		return errors.New("invalid event id")
+	}
+	return nil
 }
 
 func (s *ThreadService) persistThreadHashtags(ctx context.Context, threadID uint, content string, replace bool) error {

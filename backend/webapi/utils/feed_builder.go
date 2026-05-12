@@ -33,6 +33,17 @@ func CommunityField(t *model.Thread) *dto.FeedCommunity {
 	return nil
 }
 
+func EventFields(t *model.Thread) (*string, *string) {
+	if len(t.ThreadEvents) == 0 {
+		return nil, nil
+	}
+	event := t.ThreadEvents[0].Event
+	if event.ID == "" {
+		return nil, nil
+	}
+	return &event.ID, &event.Title
+}
+
 // LoadAvatarsForUserIDs batch-fetches and caches avatar URLs for the given user IDs.
 func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	if fb.ProfileSvc == nil || len(userIDs) == 0 {
@@ -116,11 +127,14 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		orig := t.OriginalThread
 		repostedAt := dtoutils.Wrap(t.CreatedAt)
 		isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(orig.ThreadID)
+		eventID, eventName := EventFields(orig)
 		return dto.FeedItemResponse{
 			Type:         string(model.ThreadTypeRepost),
 			ID:           orig.ThreadID,
 			ParentID:     orig.ParentID,
 			RootID:       orig.RootID,
+			EventID:      eventID,
+			EventName:    eventName,
 			Community:    CommunityField(orig),
 			Content:      orig.Content,
 			CreatedAt:    dtoutils.Wrap(orig.CreatedAt),
@@ -137,11 +151,14 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		}
 	}
 	isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(t.ThreadID)
+	eventID, eventName := EventFields(t)
 	return dto.FeedItemResponse{
 		Type:         string(t.Type),
 		ID:           t.ThreadID,
 		ParentID:     t.ParentID,
 		RootID:       t.RootID,
+		EventID:      eventID,
+		EventName:    eventName,
 		Community:    CommunityField(t),
 		Content:      t.Content,
 		CreatedAt:    dtoutils.Wrap(t.CreatedAt),

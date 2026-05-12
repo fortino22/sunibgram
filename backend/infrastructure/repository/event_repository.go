@@ -19,8 +19,9 @@ type eventRepository struct {
 }
 
 type cachedEvents struct {
-	Events []model.Event
-	Total  int64
+	Trending []model.Event
+	Running  []model.Event
+	Future   []model.Event
 }
 
 type cachedEventThreads struct {
@@ -36,8 +37,8 @@ func eventIDKey(id string) string {
 	return fmt.Sprintf("event:id:%s", id)
 }
 
-func eventListKey(page, limit int) string {
-	return fmt.Sprintf("event:list:page:%d:limit:%d", page, limit)
+func eventListKey(limit int) string {
+	return fmt.Sprintf("event:list:limit:%d", limit)
 }
 
 func eventThreadsKey(id string, page, limit int) string {
@@ -70,46 +71,82 @@ func (r *eventRepository) FindByID(id string) (*model.Event, error) {
 	return &event, nil
 }
 
-func (r *eventRepository) FindAll(page, limit int) ([]model.Event, int64, error) {
+func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, []model.Event, error) {
 	ctx := context.Background()
-	key := eventListKey(page, limit)
+	key := eventListKey(limit)
 	var result cachedEvents
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
-			return result.Events, result.Total, nil
+			return result.Trending, result.Running, result.Future, nil
 		}
 	}
 
-	var events []model.Event
-	var total int64
-	r.readDB.Model(&model.Event{}).Count(&total)
-	offset := (page - 1) * limit
-	if err := r.readDB.Order("start_time ASC").Offset(offset).Limit(limit).Find(&events).Error; err != nil {
-		return nil, 0, err
+	var trending []model.Event
+	if err := r.readDB.
+		Order("(participant_count * 3 + view_count) DESC, start_time ASC").
+		Limit(limit).
+		Find(&trending).Error; err != nil {
+		return nil, nil, nil, err
 	}
-	result = cachedEvents{Events: events, Total: total}
+
+	now := time.Now().UTC()
+	var running []model.Event
+	if err := r.readDB.
+		Where("start_time <= ? AND end_time >= ?", now, now).
+		Order("start_time ASC").
+		Limit(limit).
+		Find(&running).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	var future []model.Event
+	if err := r.readDB.
+		Where("start_time > ?", now).
+		Order("start_time ASC").
+		Limit(limit).
+		Find(&future).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	result = cachedEvents{Trending: trending, Running: running, Future: future}
 	if r.cache != nil {
 		_ = r.cache.Set(ctx, key, result, r.ttl)
 	}
-	return result.Events, result.Total, nil
+	return result.Trending, result.Running, result.Future, nil
 }
 
 func (r *eventRepository) Update(event *model.Event) error {
 	if err := r.writeDB.Model(event).UpdateColumns(map[string]any{
-		"title":       event.Title,
-		"description": event.Description,
-		"location":    event.Location,
-		"start_time":  event.StartTime,
-		"end_time":    event.EndTime,
-		"updated_at":  gorm.Expr("NOW()"),
+		"title":              event.Title,
+		"description":        event.Description,
+		"location":           event.Location,
+		"start_time":         event.StartTime,
+		"end_time":           event.EndTime,
+		"banner_object_name": event.BannerObjectName,
+		"banner_bucket":      event.BannerBucket,
+		"view_count":         event.ViewCount,
+		"participant_count":  event.ParticipantCount,
+		"updated_at":         gorm.Expr("NOW()"),
 	}).Error; err != nil {
 		return err
 	}
 	r.invalidateEvent(event.ID)
+	r.invalidateEventThreadCaches(event.ID)
+	return nil
+}
+
+func (r *eventRepository) IncrementViewCount(id string) error {
+	if err := r.writeDB.Model(&model.Event{}).
+		Where("id = ?", id).
+		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+		return err
+	}
+	r.invalidateEvent(id)
 	return nil
 }
 
 func (r *eventRepository) Delete(id string) error {
+	r.invalidateEventThreadCaches(id)
 	if err := r.writeDB.Delete(&model.Event{}, "id = ?", id).Error; err != nil {
 		return err
 	}
@@ -134,12 +171,7 @@ func (r *eventRepository) FindThreads(eventID string, page, limit int) ([]model.
 		Where("thread_events.event_id = ?", eventID)
 	q.Count(&total)
 	offset := (page - 1) * limit
-	if err := q.Preload("User", preloadThreadUser).
-		Preload("OriginalThread.User", preloadThreadUser).
-		Preload("Community").
-		Preload("OriginalThread.Community").
-		Preload("User.UserFaculty.Faculty").
-		Preload("OriginalThread.User.UserFaculty.Faculty").
+	if err := preloadThreadDetails(q).
 		Order("thread_events.created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&threads).Error; err != nil {
@@ -167,4 +199,39 @@ func (r *eventRepository) invalidateEvent(id string) {
 	_ = r.cache.Delete(ctx, eventIDKey(id))
 	_ = r.cache.DeleteByPattern(ctx, "event:list:*")
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:%s:*", id))
+}
+
+func (r *eventRepository) invalidateEventThreadCaches(id string) {
+	if r.cache == nil {
+		return
+	}
+
+	var threadIDs []uint
+	if err := r.readDB.
+		Table("threads").
+		Select("threads.thread_id").
+		Joins("LEFT JOIN thread_events ON thread_events.thread_id = threads.thread_id").
+		Where("thread_events.event_id = ? OR threads.original_thread_id IN (?)",
+			id,
+			r.readDB.Table("thread_events").Select("thread_id").Where("event_id = ?", id),
+		).
+		Pluck("threads.thread_id", &threadIDs).Error; err != nil {
+		return
+	}
+
+	ctx := context.Background()
+	for _, threadID := range threadIDs {
+		_ = r.cache.Delete(ctx, threadKey(threadID))
+		_ = r.cache.Delete(ctx, threadFeedKeysKey(threadID))
+	}
+	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:chain:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
+	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "reposts:user:*")
+	invalidateExploreCache(ctx, r.cache)
 }

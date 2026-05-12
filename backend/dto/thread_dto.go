@@ -12,12 +12,14 @@ type MentionUserResponse struct {
 }
 
 type CreateThreadRequest struct {
-	Content  string `json:"content"`
-	ParentID *uint  `json:"parent_id"`
+	Content  string  `json:"content"`
+	ParentID *uint   `json:"parent_id"`
+	EventID  *string `json:"event_id"`
 }
 
 type UpdateThreadRequest struct {
-	Content string `json:"content"`
+	Content string  `json:"content"`
+	EventID *string `json:"event_id"`
 }
 
 type ThreadResponse struct {
@@ -25,8 +27,10 @@ type ThreadResponse struct {
 	UserID        uint                  `json:"user_id"`
 	Username      string                `json:"username"`
 	Content       string                `json:"content"`
-	ParentID      *uint                 `json:"parent_id"`
-	RootID        *uint                 `json:"root_id"`
+	ParentID      *uint                 `json:"parent_id,omitempty"`
+	RootID        *uint                 `json:"root_id,omitempty"`
+	EventID       *string               `json:"event_id,omitempty"`
+	EventName     *string               `json:"event_name,omitempty"`
 	Media         []ThreadMediaResponse `json:"media"`
 	LikeCount     int                   `json:"like_count"`
 	RepostCount   int                   `json:"repost_count"`
@@ -45,7 +49,7 @@ type PaginatedThreadsResponse struct {
 }
 
 type ReplyResponse struct {
-	Parent *ThreadResponse `json:"parent"`
+	Parent *ThreadResponse `json:"parent,omitempty"`
 	Reply  ThreadResponse  `json:"reply"`
 }
 
@@ -71,8 +75,10 @@ type FeedStats struct {
 
 type FeedParentContext struct {
 	ID        uint                  `json:"id"`
-	ParentID  *uint                 `json:"parent_id"`
-	RootID    *uint                 `json:"root_id"`
+	ParentID  *uint                 `json:"parent_id,omitempty"`
+	RootID    *uint                 `json:"root_id,omitempty"`
+	EventID   *string               `json:"event_id,omitempty"`
+	EventName *string               `json:"event_name,omitempty"`
 	Community *FeedCommunity        `json:"community,omitempty"`
 	Author    FeedAuthor            `json:"author"`
 	Content   string                `json:"content"`
@@ -91,8 +97,10 @@ type FeedItemResponse struct {
 	Type          string                `json:"type"`
 	ParentContext *FeedParentContext    `json:"parent_context,omitempty"`
 	ID            uint                  `json:"id"`
-	ParentID      *uint                 `json:"parent_id"`
-	RootID        *uint                 `json:"root_id"`
+	ParentID      *uint                 `json:"parent_id,omitempty"`
+	RootID        *uint                 `json:"root_id,omitempty"`
+	EventID       *string               `json:"event_id,omitempty"`
+	EventName     *string               `json:"event_name,omitempty"`
 	Community     *FeedCommunity        `json:"community,omitempty"`
 	Content       string                `json:"content"`
 	CreatedAt     utils.FormattedTime   `json:"created_at"`

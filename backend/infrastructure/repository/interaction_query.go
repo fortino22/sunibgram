@@ -109,7 +109,7 @@ func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Th
 	}
 
 	var threads []model.Thread
-	if err := r.readDB.Preload("User").Preload("User.UserFaculty.Faculty").Where("thread_id IN ?", ids).Find(&threads).Error; err != nil {
+	if err := preloadThreadDetails(r.readDB).Where("thread_id IN ?", ids).Find(&threads).Error; err != nil {
 		return nil, nil, total, err
 	}
 

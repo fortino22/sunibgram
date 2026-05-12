@@ -12,6 +12,7 @@ type IThreadMediaService interface {
 	GetByThreadID(threadID uint) ([]model.ThreadMedia, error)
 	GetByThreadIDs(threadIDs []uint) ([]model.ThreadMedia, error)
 	Update(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) error
+	UpdateGranular(ctx context.Context, threadID, userID uint, keepIDs []uint, files []*multipart.FileHeader) error
 	Delete(ctx context.Context, threadID, userID uint, mediaIDs []uint) error
 	DeleteByThread(ctx context.Context, threadID uint) error
 	GetURL(bucket, objectName string) string
