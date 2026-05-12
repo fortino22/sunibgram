@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -73,6 +74,18 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	}
 	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
 		return nil, err
+	}
+	if parentID != nil {
+		if s.hashtagRepo != nil {
+			if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, *parentID, "week_thread_count", 1); err != nil {
+				log.Printf("reply hashtag trending boost failed: %v", err)
+			}
+		}
+		if s.eventRepo != nil {
+			if err := s.eventRepo.PatchEventCounterByThreadID(ctx, *parentID, "week_thread_count", 1); err != nil {
+				log.Printf("reply event trending boost failed: %v", err)
+			}
+		}
 	}
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)

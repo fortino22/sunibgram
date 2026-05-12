@@ -77,7 +77,7 @@ func main() {
 	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
 	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
-	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	eventService := usecase.NewEventService(eventRepo, storageUsecase)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
