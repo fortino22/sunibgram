@@ -70,6 +70,9 @@ function mapThreadResponseToThreadItem(thread: ThreadResponse): ThreadItem {
     time_ago: formatTimeAgo(thread.created_at),
     action_at: undefined,
     reposted_at: thread.reposted_at,
+    reposted_by_id: thread.reposted_by_id,
+    reposted_by_username: thread.reposted_by_username,
+    reposted_by_name: thread.reposted_by_name,
     author: {
       id: thread.user_id,
       username: thread.username,
