@@ -3,6 +3,8 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
+	"mime/multipart"
 	"strings"
 	"time"
 
@@ -13,14 +15,15 @@ import (
 )
 
 type EventService struct {
-	eventRepo repository.IEventRepository
+	eventRepo      repository.IEventRepository
+	storageUsecase *StorageUsecase
 }
 
-func NewEventService(eventRepo repository.IEventRepository) service.IEventService {
-	return &EventService{eventRepo: eventRepo}
+func NewEventService(eventRepo repository.IEventRepository, storageUsecase *StorageUsecase) service.IEventService {
+	return &EventService{eventRepo: eventRepo, storageUsecase: storageUsecase}
 }
 
-func (s *EventService) Create(ctx context.Context, title, description, location string, startTime, endTime time.Time) (*model.Event, error) {
+func (s *EventService) Create(ctx context.Context, title, description, location string, startTime, endTime time.Time, banner *multipart.FileHeader) (*model.Event, error) {
 	if err := validateEventInput(title, startTime, endTime); err != nil {
 		return nil, err
 	}
@@ -30,6 +33,14 @@ func (s *EventService) Create(ctx context.Context, title, description, location 
 		Location:    location,
 		StartTime:   startTime.UTC(),
 		EndTime:     endTime.UTC(),
+	}
+	if banner != nil {
+		objName, bucket, err := s.uploadImage(ctx, banner, "event_banner")
+		if err != nil {
+			return nil, fmt.Errorf("banner upload failed: %w", err)
+		}
+		event.BannerObjectName = objName
+		event.BannerBucket = bucket
 	}
 	if err := s.eventRepo.Save(event); err != nil {
 		return nil, err
@@ -41,15 +52,24 @@ func (s *EventService) GetByID(id string) (*model.Event, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, err
 	}
-	return s.eventRepo.FindByID(id)
+	event, err := s.eventRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.eventRepo.IncrementViewCount(id); err == nil {
+		event.ViewCount++
+	}
+	return event, nil
 }
 
-func (s *EventService) GetAll(page, limit int) ([]model.Event, int64, error) {
-	page, limit = normalizePageLimit(page, limit)
-	return s.eventRepo.FindAll(page, limit)
+func (s *EventService) GetAll(limit int) ([]model.Event, []model.Event, []model.Event, error) {
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	return s.eventRepo.FindGrouped(limit)
 }
 
-func (s *EventService) Update(ctx context.Context, id, title, description, location string, startTime, endTime time.Time) (*model.Event, error) {
+func (s *EventService) Update(ctx context.Context, id, title, description, location string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool) (*model.Event, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, err
 	}
@@ -65,6 +85,21 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 	event.Location = location
 	event.StartTime = startTime.UTC()
 	event.EndTime = endTime.UTC()
+	if clearBanner && event.BannerObjectName != "" {
+		_ = s.storageUsecase.Delete(ctx, event.BannerBucket, event.BannerObjectName)
+		event.BannerObjectName = ""
+		event.BannerBucket = ""
+	} else if banner != nil {
+		if event.BannerObjectName != "" {
+			_ = s.storageUsecase.Delete(ctx, event.BannerBucket, event.BannerObjectName)
+		}
+		objName, bucket, err := s.uploadImage(ctx, banner, "event_banner")
+		if err != nil {
+			return nil, fmt.Errorf("banner upload failed: %w", err)
+		}
+		event.BannerObjectName = objName
+		event.BannerBucket = bucket
+	}
 	if err := s.eventRepo.Update(event); err != nil {
 		return nil, err
 	}
@@ -75,8 +110,12 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 	if err := validateEventID(id); err != nil {
 		return err
 	}
-	if _, err := s.eventRepo.FindByID(id); err != nil {
+	event, err := s.eventRepo.FindByID(id)
+	if err != nil {
 		return errors.New("event not found")
+	}
+	if event.BannerObjectName != "" {
+		_ = s.storageUsecase.Delete(ctx, event.BannerBucket, event.BannerObjectName)
 	}
 	return s.eventRepo.Delete(id)
 }
@@ -97,6 +136,30 @@ func validateEventID(id string) error {
 		return errors.New("invalid event id")
 	}
 	return nil
+}
+
+func (s *EventService) GetURL(bucket, objectName string) string {
+	return s.storageUsecase.GetURL(bucket, objectName)
+}
+
+func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
+	if err := model.ValidateImageExt(header.Filename); err != nil {
+		return "", "", err
+	}
+	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
+	if err != nil {
+		return "", "", err
+	}
+	f, err := header.Open()
+	if err != nil {
+		return "", "", err
+	}
+	defer f.Close()
+	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
+	if err != nil {
+		return "", "", err
+	}
+	return objName, bucket, nil
 }
 
 func validateEventInput(title string, startTime, endTime time.Time) error {

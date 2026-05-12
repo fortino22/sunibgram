@@ -20,6 +20,7 @@ var bucketWhitelist = map[string]string{
 	"chat":             "MINIO_BUCKET_CHAT",
 	"community_avatar": "MINIO_BUCKET_COMMUNITY_AVATAR",
 	"community_banner": "MINIO_BUCKET_COMMUNITY_BANNER",
+	"event_banner":     "MINIO_BUCKET_EVENT_BANNER",
 }
 
 type StorageUsecase struct {

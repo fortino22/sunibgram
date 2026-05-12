@@ -57,6 +57,12 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE user_stats DROP COLUMN IF EXISTS thread_count")
 	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS thread_count")
 	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS thread_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_object_name VARCHAR(500)")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_bucket VARCHAR(100)")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS participant_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time)")
 	db.Exec(`
 		DO $$
 		BEGIN

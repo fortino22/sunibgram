@@ -75,7 +75,7 @@ func main() {
 	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
 	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
-	eventService := usecase.NewEventService(eventRepo)
+	eventService := usecase.NewEventService(eventRepo, storageUsecase)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)

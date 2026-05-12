@@ -19,8 +19,9 @@ type eventRepository struct {
 }
 
 type cachedEvents struct {
-	Events []model.Event
-	Total  int64
+	Trending []model.Event
+	Running  []model.Event
+	Future   []model.Event
 }
 
 type cachedEventThreads struct {
@@ -36,8 +37,8 @@ func eventIDKey(id string) string {
 	return fmt.Sprintf("event:id:%s", id)
 }
 
-func eventListKey(page, limit int) string {
-	return fmt.Sprintf("event:list:page:%d:limit:%d", page, limit)
+func eventListKey(limit int) string {
+	return fmt.Sprintf("event:list:limit:%d", limit)
 }
 
 func eventThreadsKey(id string, page, limit int) string {
@@ -70,43 +71,77 @@ func (r *eventRepository) FindByID(id string) (*model.Event, error) {
 	return &event, nil
 }
 
-func (r *eventRepository) FindAll(page, limit int) ([]model.Event, int64, error) {
+func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, []model.Event, error) {
 	ctx := context.Background()
-	key := eventListKey(page, limit)
+	key := eventListKey(limit)
 	var result cachedEvents
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
-			return result.Events, result.Total, nil
+			return result.Trending, result.Running, result.Future, nil
 		}
 	}
 
-	var events []model.Event
-	var total int64
-	r.readDB.Model(&model.Event{}).Count(&total)
-	offset := (page - 1) * limit
-	if err := r.readDB.Order("start_time ASC").Offset(offset).Limit(limit).Find(&events).Error; err != nil {
-		return nil, 0, err
+	var trending []model.Event
+	if err := r.readDB.
+		Order("(participant_count * 3 + view_count) DESC, start_time ASC").
+		Limit(limit).
+		Find(&trending).Error; err != nil {
+		return nil, nil, nil, err
 	}
-	result = cachedEvents{Events: events, Total: total}
+
+	now := time.Now().UTC()
+	var running []model.Event
+	if err := r.readDB.
+		Where("start_time <= ? AND end_time >= ?", now, now).
+		Order("start_time ASC").
+		Limit(limit).
+		Find(&running).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	var future []model.Event
+	if err := r.readDB.
+		Where("start_time > ?", now).
+		Order("start_time ASC").
+		Limit(limit).
+		Find(&future).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	result = cachedEvents{Trending: trending, Running: running, Future: future}
 	if r.cache != nil {
 		_ = r.cache.Set(ctx, key, result, r.ttl)
 	}
-	return result.Events, result.Total, nil
+	return result.Trending, result.Running, result.Future, nil
 }
 
 func (r *eventRepository) Update(event *model.Event) error {
 	if err := r.writeDB.Model(event).UpdateColumns(map[string]any{
-		"title":       event.Title,
-		"description": event.Description,
-		"location":    event.Location,
-		"start_time":  event.StartTime,
-		"end_time":    event.EndTime,
-		"updated_at":  gorm.Expr("NOW()"),
+		"title":              event.Title,
+		"description":        event.Description,
+		"location":           event.Location,
+		"start_time":         event.StartTime,
+		"end_time":           event.EndTime,
+		"banner_object_name": event.BannerObjectName,
+		"banner_bucket":      event.BannerBucket,
+		"view_count":         event.ViewCount,
+		"participant_count":  event.ParticipantCount,
+		"updated_at":         gorm.Expr("NOW()"),
 	}).Error; err != nil {
 		return err
 	}
 	r.invalidateEvent(event.ID)
 	r.invalidateEventThreadCaches(event.ID)
+	return nil
+}
+
+func (r *eventRepository) IncrementViewCount(id string) error {
+	if err := r.writeDB.Model(&model.Event{}).
+		Where("id = ?", id).
+		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
+		return err
+	}
+	r.invalidateEvent(id)
 	return nil
 }
 
