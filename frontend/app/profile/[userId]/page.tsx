@@ -10,6 +10,7 @@ import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileSkeleton } from '@/components/profile/skeletons/ProfileSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { MediaGrid } from '@/components/shared/MediaGrid';
 import { useProfile } from '@/hooks/useProfile';
 import { useUserThreads } from '@/hooks/useUserThreads';
 import { useUserReplies } from '@/hooks/useUserReplies';
@@ -131,7 +132,7 @@ export default function UserProfilePage() {
       {activeTab === 'media' && (
         mediaThreads.length === 0
           ? <EmptyState title="No media yet" subtitle="Photos and videos will appear here." />
-          : mediaThreads.map((t) => <ConnectedCard key={t.id} thread={t} />)
+          : <MediaGrid threads={mediaThreads} />
       )}
 
       {activeTab === 'likes' && (
