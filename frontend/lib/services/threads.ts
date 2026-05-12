@@ -29,6 +29,9 @@ export interface ThreadResponse {
   bookmark_count: number;
   comment_count: number;
   reposted_at?: FormattedTime;
+  reposted_by_id?: number;
+  reposted_by_username?: string;
+  reposted_by_name?: string;
   created_at: FormattedTime;
   updated_at: FormattedTime;
 }
@@ -96,6 +99,9 @@ export interface FeedItemResponse {
   time_ago: string;
   action_at?: FormattedTime;
   reposted_at?: FormattedTime;
+  reposted_by_id?: number;
+  reposted_by_username?: string;
+  reposted_by_name?: string;
   author: FeedAuthor;
   stats: FeedStats;
   media: ThreadMediaResponse[];
@@ -187,8 +193,11 @@ export function getThreads(params: PaginationParams = {}, token: string): Promis
   return api.get<ThreadListResponse>(`/api/threads${query(params)}`, token);
 }
 
-export function getFollowingThreads(token: string): Promise<ThreadListResponse> {
-  return api.get<ThreadListResponse>('/api/threads/following', token);
+export function getFollowingThreads(
+  params: PaginationParams = {},
+  token: string
+): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(`/api/threads/following${query(params)}`, token);
 }
 
 export function getMyThreads(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {

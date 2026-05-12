@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
-	"strings"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
@@ -11,9 +11,6 @@ import (
 )
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error) {
-	if strings.TrimSpace(content) == "" {
-		return nil, errors.New("content is required")
-	}
 	if err := validateThreadEventID(eventID); err != nil {
 		return nil, err
 	}
@@ -74,6 +71,22 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
 		return nil, err
 	}
+	if parentID != nil {
+		counterThreadID := *parentID
+		if rootID != nil {
+			counterThreadID = *rootID
+		}
+		if s.hashtagRepo != nil {
+			if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, counterThreadID, "thread_count", 1); err != nil {
+				log.Printf("reply hashtag trending boost failed: %v", err)
+			}
+		}
+		if s.eventRepo != nil {
+			if err := s.eventRepo.PatchEventCounterByThreadID(ctx, counterThreadID, "thread_count", 1); err != nil {
+				log.Printf("reply event trending boost failed: %v", err)
+			}
+		}
+	}
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)
 	}
@@ -93,9 +106,6 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	}
 	if thread.Type == model.ThreadTypeRepost {
 		return nil, errors.New("cannot edit a repost")
-	}
-	if strings.TrimSpace(content) == "" {
-		return nil, errors.New("content is required")
 	}
 	if err := validateThreadEventID(eventID); err != nil {
 		return nil, err
@@ -130,6 +140,24 @@ func (s *ThreadService) Delete(ctx context.Context, id, userID uint) error {
 	}
 	if err := s.threadRepo.Delete(id); err != nil {
 		return err
+	}
+	if thread.ParentID != nil || thread.RootID != nil {
+		counterThreadID := id
+		if thread.RootID != nil {
+			counterThreadID = *thread.RootID
+		} else if thread.ParentID != nil {
+			counterThreadID = *thread.ParentID
+		}
+		if s.hashtagRepo != nil {
+			if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, counterThreadID, "thread_count", -1); err != nil {
+				log.Printf("reply hashtag trending decrement failed: %v", err)
+			}
+		}
+		if s.eventRepo != nil {
+			if err := s.eventRepo.PatchEventCounterByThreadID(ctx, counterThreadID, "thread_count", -1); err != nil {
+				log.Printf("reply event trending decrement failed: %v", err)
+			}
+		}
 	}
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)
@@ -169,6 +197,14 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 	if err := s.threadRepo.Save(repost); err != nil {
 		return err
 	}
+	if s.hashtagRepo != nil {
+		if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, threadID, "repost_count", 1); err != nil {
+			log.Printf("repost hashtag trending boost failed: %v", err)
+		}
+	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
 	helper.SendInteractionNotification(s.notification, "repost", "reposted your thread", userID, original.UserID, threadID)
 	return nil
 }
@@ -184,6 +220,14 @@ func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) err
 	if err := s.threadRepo.DeleteRepost(userID, threadID); err != nil {
 		return err
 	}
+	if s.hashtagRepo != nil {
+		if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, threadID, "repost_count", -1); err != nil {
+			log.Printf("repost hashtag trending decrement failed: %v", err)
+		}
+	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
 	return nil
 }
 
@@ -193,9 +237,6 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 }
 
 func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error) {
-	if strings.TrimSpace(content) == "" {
-		return nil, errors.New("content is required")
-	}
 	if err := validateThreadEventID(eventID); err != nil {
 		return nil, err
 	}

@@ -12,6 +12,7 @@ import (
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
+	"github.com/sunibgram/infrastructure/scheduler"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
 	"github.com/sunibgram/infrastructure/storage"
 	"github.com/sunibgram/webapi/controller"
@@ -25,6 +26,8 @@ func main() {
 	writeDB := config.NewPostgresWrite()
 	readDB := config.NewPostgresRead()
 	migration.AutoMigrate(writeDB)
+	go scheduler.ResetWeeklyEventCounters(writeDB)
+	go scheduler.ResetWeeklyHashtagCounters(writeDB)
 
 	// --- Cache ---
 	redisCache := cache.New()
@@ -74,7 +77,7 @@ func main() {
 	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
 	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
-	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	eventService := usecase.NewEventService(eventRepo, storageUsecase)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)

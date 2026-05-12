@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -56,16 +57,11 @@ func (s *EventService) GetByID(id string) (*model.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.eventRepo.IncrementViewCount(id); err == nil {
-		event.ViewCount++
-	}
 	return event, nil
 }
 
 func (s *EventService) GetAll(limit int) ([]model.Event, []model.Event, []model.Event, error) {
-	if limit < 1 || limit > 100 {
-		limit = 10
-	}
+	_, limit = helper.NormalizePageLimit(1, limit, 10)
 	return s.eventRepo.FindGrouped(limit)
 }
 
@@ -127,7 +123,7 @@ func (s *EventService) GetThreads(ctx context.Context, id string, page, limit in
 	if _, err := s.eventRepo.FindByID(id); err != nil {
 		return nil, 0, errors.New("event not found")
 	}
-	page, limit = normalizePageLimit(page, limit)
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.eventRepo.FindThreads(id, page, limit)
 }
 
@@ -143,23 +139,7 @@ func (s *EventService) GetURL(bucket, objectName string) string {
 }
 
 func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
-	if err := model.ValidateImageExt(header.Filename); err != nil {
-		return "", "", err
-	}
-	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
-	if err != nil {
-		return "", "", err
-	}
-	f, err := header.Open()
-	if err != nil {
-		return "", "", err
-	}
-	defer f.Close()
-	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
-	if err != nil {
-		return "", "", err
-	}
-	return objName, bucket, nil
+	return helper.UploadImage(ctx, s.storageUsecase, header, uploadType)
 }
 
 func validateEventInput(title string, startTime, endTime time.Time) error {
@@ -176,14 +156,4 @@ func validateEventInput(title string, startTime, endTime time.Time) error {
 		return errors.New("end_time must be after start_time")
 	}
 	return nil
-}
-
-func normalizePageLimit(page, limit int) (int, int) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
-	return page, limit
 }

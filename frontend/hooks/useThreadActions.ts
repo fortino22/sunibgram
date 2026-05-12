@@ -139,6 +139,28 @@ function revertBookmarksState(thread: ThreadItem, isBookmarked: boolean): Thread
   };
 }
 
+function updateRepostsState(thread: ThreadItem, isReposted: boolean): ThreadItem {
+  return {
+    ...thread,
+    is_reposted: !isReposted,
+    stats: {
+      ...thread.stats,
+      reposts: Math.max(0, thread.stats.reposts + (isReposted ? -1 : 1)),
+    },
+  };
+}
+
+function revertRepostsState(thread: ThreadItem, isReposted: boolean): ThreadItem {
+  return {
+    ...thread,
+    is_reposted: isReposted,
+    stats: {
+      ...thread.stats,
+      reposts: Math.max(0, thread.stats.reposts + (isReposted ? 1 : -1)),
+    },
+  };
+}
+
 function patchThreadCaches(
   queryClient: QueryClient,
   threadId: number,
@@ -279,29 +301,33 @@ export function useThreadActions(thread: ThreadItem) {
   });
 
   const repost = useMutation({
-    mutationFn: (isReposted: boolean) =>
-      isReposted
-        ? unrepostThread(thread.id, token!)
-        : repostThread(thread.id, token!),
-    onMutate: (isReposted) => {
-      patchThreadCaches(queryClient, thread.id, (current) => ({
-        ...current,
-        is_reposted: !isReposted,
-        stats: {
-          ...current.stats,
-          reposts: Math.max(0, current.stats.reposts + (isReposted ? -1 : 1)),
-        },
-      }));
+    mutationFn: (isReposted: boolean) => {
+      if (!token) {
+        throw new Error('Authentication token is required to repost this thread.');
+      }
+
+      return isReposted ? unrepostThread(thread.id, token) : repostThread(thread.id, token);
+    },
+    onMutate: async (isReposted) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['threads'] }),
+        queryClient.cancelQueries({ queryKey: ['thread'] }),
+        queryClient.cancelQueries({ queryKey: ['thread-chain'] }),
+        queryClient.cancelQueries({ queryKey: ['explore'] }),
+      ]);
+
+      patchThreadCaches(queryClient, thread.id, (current) => updateRepostsState(current, isReposted));
     },
     onError: (_, isReposted) => {
-      patchThreadCaches(queryClient, thread.id, (current) => ({
-        ...current,
-        is_reposted: isReposted,
-        stats: {
-          ...current.stats,
-          reposts: Math.max(0, current.stats.reposts + (isReposted ? 1 : -1)),
-        },
-      }));
+      patchThreadCaches(queryClient, thread.id, (current) => revertRepostsState(current, isReposted));
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['threads'] }),
+        queryClient.invalidateQueries({ queryKey: ['thread'] }),
+        queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
+        queryClient.invalidateQueries({ queryKey: ['explore'] }),
+      ]);
     },
   });
 

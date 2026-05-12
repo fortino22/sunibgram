@@ -24,6 +24,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
+		patchEventCounterByThreadID(r.db.writeDB, r.cache, *thread.OriginalThreadID, "repost_count", 1)
 		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
 		var orig model.Thread
 		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
@@ -108,15 +109,30 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 		return nil
 	}
 	ctx := context.Background()
+	oldEventID, hadOldEvent := eventIDForThread(r.db.readDB, threadID)
+	var stats model.Thread
+	_ = r.db.readDB.Select("like_count", "repost_count").First(&stats, threadID).Error
 	if err := r.db.writeDB.Where("thread_id = ?", threadID).Delete(&model.ThreadEvent{}).Error; err != nil {
 		return err
 	}
 	if eventID == nil || *eventID == "" {
+		if hadOldEvent {
+			patchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount)
+			refreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
+		}
 		r.cache.DeleteByPattern(ctx, "event:threads:*")
 		return nil
 	}
 	if err := r.db.writeDB.Create(&model.ThreadEvent{ThreadID: threadID, EventID: *eventID}).Error; err != nil {
 		return err
+	}
+	if !hadOldEvent || oldEventID != *eventID {
+		if hadOldEvent {
+			patchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount)
+			refreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
+		}
+		patchEventCounters(r.db.writeDB, r.cache, *eventID, 1, stats.LikeCount, stats.RepostCount)
+		refreshEventParticipantCount(r.db.writeDB, r.cache, *eventID)
 	}
 	r.cache.DeleteByPattern(ctx, "event:threads:*")
 	return nil
@@ -147,7 +163,7 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 
 func (r *threadCached) Delete(id uint) error {
 	var thread model.Thread
-	r.db.readDB.Select("thread_id, user_id, parent_id, root_id, type, original_thread_id, community_id").First(&thread, id)
+	r.db.readDB.Select("thread_id, user_id, parent_id, root_id, type, original_thread_id, community_id, like_count, repost_count").First(&thread, id)
 
 	ctx := context.Background()
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
@@ -155,6 +171,7 @@ func (r *threadCached) Delete(id uint) error {
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", -1)
+		patchEventCounterByThreadID(r.db.writeDB, r.cache, *thread.OriginalThreadID, "repost_count", -1)
 		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
 	}
 	if thread.ParentID != nil {
@@ -175,9 +192,18 @@ func (r *threadCached) Delete(id uint) error {
 	r.likes.deleteByThreadID(id)
 	r.bookmarks.deleteByThreadID(id)
 	r.reposts.deleteByThreadID(id)
+	eventID, hasEvent := eventIDForThread(r.db.readDB, id)
+	if hasEvent {
+		patchEventCounter(r.db.writeDB, r.cache, eventID, "thread_count", -1)
+		patchEventCounter(r.db.writeDB, r.cache, eventID, "like_count", -thread.LikeCount)
+		patchEventCounter(r.db.writeDB, r.cache, eventID, "repost_count", -thread.RepostCount)
+	}
 
 	if err := r.db.writeDB.Delete(&model.Thread{}, id).Error; err != nil {
 		return err
+	}
+	if hasEvent {
+		refreshEventParticipantCount(r.db.writeDB, r.cache, eventID)
 	}
 	invalidateExploreCache(ctx, r.cache)
 	return nil

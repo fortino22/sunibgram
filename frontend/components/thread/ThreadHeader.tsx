@@ -7,7 +7,7 @@ interface ThreadHeaderProps {
   author: ThreadAuthorWithAvatar;
   timeAgo?: string;
   parentContext?: FeedParentContext;
-  repostedBy?: string | null;
+  repostLabel?: string | null;
   compact?: boolean;
   showFaculty?: boolean;
   isPinned?: boolean;
@@ -17,16 +17,16 @@ export function ThreadHeader({
   author,
   timeAgo,
   parentContext,
-  repostedBy,
+  repostLabel,
   compact = false,
   showFaculty = false,
   isPinned = false,
 }: ThreadHeaderProps) {
   return (
     <div className="min-w-0">
-      {repostedBy && (
+      {repostLabel && (
         <div className="mb-2 text-[13px] font-medium" style={{ color: 'var(--text-tertiary)' }}>
-          ↺ @{repostedBy} reposted
+          ↺ {repostLabel}
         </div>
       )}
 

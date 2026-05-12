@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -17,12 +18,7 @@ func NewUserService(userRepo repository.IUserRepository, followRepo repository.I
 }
 
 func (s *UserService) GetAllPaginated(page, limit int) ([]model.User, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 10
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 10)
 	return s.userRepo.FindAllPaginated(page, limit)
 }
 

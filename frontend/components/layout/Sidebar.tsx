@@ -295,10 +295,10 @@ export function Sidebar() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {user?.username ?? '—'}
+              {profile?.name ?? user?.username ?? '—'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-on-dark-muted)' }}>
-              {user?.email ?? ''}
+              {profile?.username ?? user?.username ?? ''}
             </div>
           </div>
           <div className="sidebar-label">

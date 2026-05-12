@@ -67,8 +67,13 @@ type EventResponse struct {
 	StartTime        EventTime           `json:"start_time"`
 	EndTime          EventTime           `json:"end_time"`
 	BannerURL        string              `json:"banner_url,omitempty"`
-	ViewCount        int                 `json:"view_count"`
 	ParticipantCount int                 `json:"participant_count"`
+	ThreadCount      int                 `json:"thread_count"`
+	LikeCount        int                 `json:"like_count"`
+	RepostCount      int                 `json:"repost_count"`
+	WeekThreadCount  int                 `json:"week_thread_count"`
+	WeekLikeCount    int                 `json:"week_like_count"`
+	WeekRepostCount  int                 `json:"week_repost_count"`
 	CreatedAt        utils.FormattedTime `json:"created_at"`
 	UpdatedAt        utils.FormattedTime `json:"updated_at"`
 }

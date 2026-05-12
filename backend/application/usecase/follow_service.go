@@ -46,15 +46,7 @@ func (s *FollowService) GetFollowing(userID uint, page, limit int) ([]model.User
 	if _, err := s.userRepo.FindByID(userID); err != nil {
 		return nil, 0, errors.New("user not found")
 	}
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.followRepo.GetFollowing(userID, page, limit)
 }
 
@@ -62,14 +54,6 @@ func (s *FollowService) GetFollowers(userID uint, page, limit int) ([]model.User
 	if _, err := s.userRepo.FindByID(userID); err != nil {
 		return nil, 0, errors.New("user not found")
 	}
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.followRepo.GetFollowers(userID, page, limit)
 }

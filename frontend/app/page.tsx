@@ -5,6 +5,7 @@ import { CreatePostBox } from '@/components/shared/CreatePostBox';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
 import { Icon } from '@/components/ui/Icon';
+import { useFollowingThreads } from '@/hooks/useFollowingThreads';
 import { useThreads } from '@/hooks/useThreads';
 import type { ThreadItem } from '@/lib/services/threads';
 
@@ -115,6 +116,11 @@ function EmptyFeed({ tab }: { tab: FeedTabId }) {
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<FeedTabId>('for-you');
   const threadsQuery = useThreads();
+  const followingThreadsQuery = useFollowingThreads(1, 10, activeTab === 'following');
+  const isForYouTab = activeTab === 'for-you';
+  const isFollowingTab = activeTab === 'following';
+  const activeQuery = isFollowingTab ? followingThreadsQuery : threadsQuery;
+  const activeThreads = activeQuery.data?.data ?? [];
 
   return (
     <div>
@@ -156,13 +162,15 @@ export default function HomePage() {
 
       <CreatePostBox />
 
-      {activeTab === 'for-you' ? (
+      {(isForYouTab || isFollowingTab) && activeQuery.isLoading ? (
         <div>
-          {threadsQuery.isLoading
-            ? Array.from({ length: 3 }, (_, i) => <ThreadCardSkeleton key={i} />)
-            : threadsQuery.data?.data.map((thread: ThreadItem) => (
-                <ThreadCard key={thread.id} thread={thread} />
-              ))}
+          {Array.from({ length: 3 }, (_, i) => <ThreadCardSkeleton key={i} />)}
+        </div>
+      ) : (isForYouTab || isFollowingTab) && activeThreads.length > 0 ? (
+        <div>
+          {activeThreads.map((thread: ThreadItem) => (
+            <ThreadCard key={thread.id} thread={thread} />
+          ))}
         </div>
       ) : (
         <EmptyFeed tab={activeTab} />

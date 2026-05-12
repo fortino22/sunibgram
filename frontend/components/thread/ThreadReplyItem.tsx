@@ -12,8 +12,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadHeader } from './ThreadHeader';
+import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
 import { ImageDetailModal } from './ImageDetailModal';
-import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread, isRepostThread } from './threadUtils';
 
 interface ThreadReplyItemProps {
   thread: ThreadItem;
@@ -29,6 +29,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
+  const repostLabel = getRepostLabel(thread, currentUserId);
 
   async function handleSave(params: ThreadMutationParams) {
     await updateMutation.mutateAsync(params);
@@ -65,7 +66,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
               timeAgo={thread.time_ago}
               compact={compact}
               parentContext={thread.parent_context}
-              repostedBy={isRepostThread(thread) ? thread.author.username : null}
+              repostLabel={repostLabel}
             />
           </div>
           {canManage && (

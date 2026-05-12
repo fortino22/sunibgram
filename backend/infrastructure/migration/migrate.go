@@ -57,10 +57,22 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE user_stats DROP COLUMN IF EXISTS thread_count")
 	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS thread_count")
 	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS thread_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS like_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS repost_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS week_thread_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS week_like_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS week_repost_count INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_object_name VARCHAR(500)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_bucket VARCHAR(100)")
-	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS participant_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS thread_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS like_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS repost_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS week_thread_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS week_like_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS week_repost_count INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS view_count")
+	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS trending_score")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time)")
 	db.Exec(`
@@ -114,6 +126,15 @@ func AutoMigrate(db *gorm.DB) {
 			GROUP BY hashtag_id
 		) AS counts
 		WHERE hashtags.id = counts.hashtag_id
+	`)
+	db.Exec(`
+		UPDATE events
+		SET participant_count = (
+			SELECT COUNT(DISTINCT threads.user_id)::integer
+			FROM thread_events
+			JOIN threads ON threads.thread_id = thread_events.thread_id
+			WHERE thread_events.event_id = events.id AND threads.type <> 'REPOST'
+		)
 	`)
 
 	seedRoles(db)

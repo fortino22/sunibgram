@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -83,7 +84,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 
 	var trending []model.Event
 	if err := r.readDB.
-		Order("(participant_count * 3 + view_count) DESC, start_time ASC").
+		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
 		Limit(limit).
 		Find(&trending).Error; err != nil {
 		return nil, nil, nil, err
@@ -124,24 +125,12 @@ func (r *eventRepository) Update(event *model.Event) error {
 		"end_time":           event.EndTime,
 		"banner_object_name": event.BannerObjectName,
 		"banner_bucket":      event.BannerBucket,
-		"view_count":         event.ViewCount,
-		"participant_count":  event.ParticipantCount,
 		"updated_at":         gorm.Expr("NOW()"),
 	}).Error; err != nil {
 		return err
 	}
 	r.invalidateEvent(event.ID)
 	r.invalidateEventThreadCaches(event.ID)
-	return nil
-}
-
-func (r *eventRepository) IncrementViewCount(id string) error {
-	if err := r.writeDB.Model(&model.Event{}).
-		Where("id = ?", id).
-		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error; err != nil {
-		return err
-	}
-	r.invalidateEvent(id)
 	return nil
 }
 
@@ -184,6 +173,64 @@ func (r *eventRepository) FindThreads(eventID string, page, limit int) ([]model.
 	return result.Threads, result.Total, nil
 }
 
+func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threadID uint, column string, delta int) error {
+	if delta == 0 {
+		return nil
+	}
+
+	var event model.ThreadEvent
+	if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		var thread model.Thread
+		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
+			return err
+		}
+		if thread.RootID != nil {
+			threadID = *thread.RootID
+		} else if thread.ParentID != nil {
+			threadID = *thread.ParentID
+		} else if thread.OriginalThreadID != nil {
+			threadID = *thread.OriginalThreadID
+		} else {
+			return nil
+		}
+		if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+	}
+	if event.EventID == "" {
+		return nil
+	}
+
+	updates := map[string]any{
+		column: gorm.Expr("GREATEST("+column+" + ?, 0)", delta),
+	}
+	switch column {
+	case "thread_count":
+		updates["week_thread_count"] = gorm.Expr("GREATEST(week_thread_count + ?, 0)", delta)
+	case "like_count":
+		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", delta)
+	case "repost_count":
+		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
+	case "week_thread_count", "week_like_count", "week_repost_count":
+	default:
+		return nil
+	}
+
+	if err := r.writeDB.WithContext(ctx).Model(&model.Event{}).
+		Where("id = ?", event.EventID).
+		UpdateColumns(updates).Error; err != nil {
+		return err
+	}
+	invalidateEventCounterCaches(r.cache, event.EventID)
+	return nil
+}
+
 func (r *eventRepository) invalidateLists() {
 	if r.cache == nil {
 		return
@@ -206,32 +253,98 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 		return
 	}
 
-	var threadIDs []uint
+	var threads []model.Thread
 	if err := r.readDB.
 		Table("threads").
-		Select("threads.thread_id").
+		Select("DISTINCT threads.thread_id, threads.user_id, threads.root_id, threads.community_id").
 		Joins("LEFT JOIN thread_events ON thread_events.thread_id = threads.thread_id").
 		Where("thread_events.event_id = ? OR threads.original_thread_id IN (?)",
 			id,
 			r.readDB.Table("thread_events").Select("thread_id").Where("event_id = ?", id),
 		).
-		Pluck("threads.thread_id", &threadIDs).Error; err != nil {
+		Scan(&threads).Error; err != nil {
 		return
 	}
 
 	ctx := context.Background()
-	for _, threadID := range threadIDs {
-		_ = r.cache.Delete(ctx, threadKey(threadID))
-		_ = r.cache.Delete(ctx, threadFeedKeysKey(threadID))
+	userIDSet := make(map[uint]struct{}, len(threads))
+	treeIDSet := make(map[uint]struct{}, len(threads))
+	communityIDSet := make(map[uint]struct{})
+	threadIDs := make([]uint, 0, len(threads))
+	for _, thread := range threads {
+		threadIDs = append(threadIDs, thread.ThreadID)
+		_ = r.cache.Delete(ctx, threadKey(thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, threadFeedKeysKey(thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("likes", thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("bookmarks", thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("reposts", thread.ThreadID))
+
+		if thread.UserID != 0 {
+			userIDSet[thread.UserID] = struct{}{}
+		}
+		treeID := thread.ThreadID
+		if thread.RootID != nil && *thread.RootID != 0 {
+			treeID = *thread.RootID
+		}
+		if treeID != 0 {
+			treeIDSet[treeID] = struct{}{}
+		}
+		if thread.CommunityID != nil && *thread.CommunityID != 0 {
+			communityIDSet[*thread.CommunityID] = struct{}{}
+		}
 	}
-	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:chain:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
-	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "reposts:user:*")
+	for treeID := range treeIDSet {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", treeID))
+	}
+	for communityID := range communityIDSet {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:community:%d:*", communityID))
+	}
+	userIDs := make([]uint, 0, len(userIDSet))
+	for userID := range userIDSet {
+		userIDs = append(userIDs, userID)
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+	}
+	if len(userIDs) > 0 {
+		var followerIDs []uint
+		if err := r.readDB.Table("user_relationships").
+			Distinct("follower_id").
+			Where("following_id IN ?", userIDs).
+			Pluck("follower_id", &followerIDs).Error; err == nil {
+			for _, followerID := range followerIDs {
+				_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
+			}
+		}
+	}
+	r.invalidateInteractionUserCaches(ctx, "likes", threadIDs)
+	r.invalidateInteractionUserCaches(ctx, "bookmarks", threadIDs)
+	r.invalidateInteractionUserCaches(ctx, "reposts", threadIDs)
 	invalidateExploreCache(ctx, r.cache)
+}
+
+func (r *eventRepository) invalidateInteractionUserCaches(ctx context.Context, table string, threadIDs []uint) {
+	if len(threadIDs) == 0 {
+		return
+	}
+	var userIDs []uint
+	if err := r.readDB.Table(table).
+		Distinct("user_id").
+		Where("thread_id IN ?", threadIDs).
+		Pluck("user_id", &userIDs).Error; err != nil {
+		return
+	}
+	for _, userID := range userIDs {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", table, userID))
+	}
+}
+
+func deleteTrackedCacheKeys(ctx context.Context, c *cache.Cache, setKey string) {
+	if cacheKeys, err := c.SMembers(ctx, setKey); err == nil && len(cacheKeys) > 0 {
+		_ = c.Delete(ctx, cacheKeys...)
+	}
+	_ = c.Delete(ctx, setKey)
+}
+
+func interactionThreadCacheKeysKey(table string, threadID uint) string {
+	return fmt.Sprintf("%s:thread:%d:cache_keys", table, threadID)
 }

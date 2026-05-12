@@ -16,8 +16,13 @@ type Event struct {
 	EndTime          time.Time `gorm:"not null;index"`
 	BannerObjectName string    `gorm:"type:varchar(500)"`
 	BannerBucket     string    `gorm:"type:varchar(100)"`
-	ViewCount        int       `gorm:"not null;default:0"`
 	ParticipantCount int       `gorm:"not null;default:0"`
+	ThreadCount      int       `gorm:"not null;default:0"`
+	LikeCount        int       `gorm:"not null;default:0"`
+	RepostCount      int       `gorm:"not null;default:0"`
+	WeekThreadCount  int       `gorm:"default:0"`
+	WeekLikeCount    int       `gorm:"default:0"`
+	WeekRepostCount  int       `gorm:"default:0"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -74,12 +75,7 @@ func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) (
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
 	}
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.memberRepo.FindByCommunityID(communityID, page, limit)
 }
 

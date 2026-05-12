@@ -13,6 +13,7 @@ interface LoginFormProps {
   showPassword: boolean;
   onSubmit: FormEventHandler<HTMLFormElement>;
   onTogglePassword: () => void;
+  onForgotPassword: () => void;
 }
 
 function FormField({
@@ -43,6 +44,7 @@ export function LoginForm({
   showPassword,
   onSubmit,
   onTogglePassword,
+  onForgotPassword,
 }: LoginFormProps) {
   return (
     <>
@@ -85,14 +87,33 @@ export function LoginForm({
           </div>
         </FormField>
 
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -6 }}>
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--accent)',
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: 'inherit',
+              padding: 0,
+            }}
+          >
+            Forgot password?
+          </button>
+        </div>
+
         <button type="submit" disabled={isSubmitting} style={{ width: '100%', padding: '11px 0', background: isSubmitting ? 'var(--accent-soft)' : 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, fontSize: 15, cursor: isSubmitting ? 'not-allowed' : 'pointer', letterSpacing: '-0.01em', fontFamily: 'inherit', transition: 'background 0.15s ease', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
           {isSubmitting ? (
             <>
               <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
-              Signing in…
+              Verifying…
             </>
           ) : (
-            'Sign In'
+            'Verify & Send Code'
           )}
         </button>
       </form>

@@ -21,10 +21,10 @@ func registerThreadRoutes(
 	threads.Get("/mention", auth, threadCtrl.Mention)
 	threads.Get("/", auth, threadCtrl.GetRoots)
 
-
 	threadsAuth := api.Group("/threads", auth)
 	threadsAuth.Post("/", threadCtrl.Create)
 	threadsAuth.Get("/following", threadCtrl.GetFollowingFeed)
+	threadsAuth.Get("/faculty", threadCtrl.GetFacultyThreads)
 	threadsAuth.Get("/:userId/media", threadCtrl.GetMyMediaThread)
 	threadsAuth.Get("/:userID", threadCtrl.GetMyPosts)
 	threadsAuth.Get("/:userID/replies", threadCtrl.GetMyReplies)

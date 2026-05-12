@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -146,12 +147,7 @@ func (s *ChatRoomService) DeleteGroup(ctx context.Context, roomID, requesterID u
 }
 
 func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]model.ChatRoom, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.roomRepo.FindByUserID(userID, page, limit)
 }
 

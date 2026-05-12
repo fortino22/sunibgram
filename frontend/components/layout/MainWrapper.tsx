@@ -6,7 +6,7 @@ import { Sidebar } from './Sidebar';
 import { RightPanel } from './RightPanel';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 
-const AUTH_PATHS = ['/login', '/signup'];
+const AUTH_PATHS = ['/login', '/signup', '/forgot-password'];
 
 interface MainWrapperProps {
   children: ReactNode;

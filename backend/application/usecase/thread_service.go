@@ -8,6 +8,7 @@ import (
 type ThreadService struct {
 	threadRepo     repository.IThreadRepository
 	hashtagRepo    repository.IHashtagRepository
+	eventRepo      repository.IEventRepository
 	hashtagService service.IHashtagService
 	communityRepo  repository.ICommunityRepository
 	memberRepo     repository.ICommunityMemberRepository
@@ -19,6 +20,7 @@ type ThreadService struct {
 func NewThreadService(
 	threadRepo repository.IThreadRepository,
 	hashtagRepo repository.IHashtagRepository,
+	eventRepo repository.IEventRepository,
 	hashtagService service.IHashtagService,
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
@@ -29,6 +31,7 @@ func NewThreadService(
 	return &ThreadService{
 		threadRepo:     threadRepo,
 		hashtagRepo:    hashtagRepo,
+		eventRepo:      eventRepo,
 		hashtagService: hashtagService,
 		communityRepo:  communityRepo,
 		memberRepo:     memberRepo,
