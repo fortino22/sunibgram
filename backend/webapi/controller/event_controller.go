@@ -133,8 +133,10 @@ func (c *EventController) toResponse(event *model.Event) dto.EventResponse {
 		StartTime:        dto.EventTime{Time: event.StartTime},
 		EndTime:          dto.EventTime{Time: event.EndTime},
 		BannerURL:        bannerURL,
-		ViewCount:        event.ViewCount,
 		ParticipantCount: event.ParticipantCount,
+		ThreadCount:      event.ThreadCount,
+		LikeCount:        event.LikeCount,
+		RepostCount:      event.RepostCount,
 		CreatedAt:        utils.Wrap(event.CreatedAt),
 		UpdatedAt:        utils.Wrap(event.UpdatedAt),
 	}

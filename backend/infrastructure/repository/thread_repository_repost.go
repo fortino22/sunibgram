@@ -31,6 +31,7 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 		Where("thread_id = ?", originalThreadID).
 		UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 	r.patchCachedCount(originalThreadID, "repost_count", -1)
+	patchEventCounterByThreadID(r.db.writeDB, r.cache, originalThreadID, "repost_count", -1)
 
 	ctx := context.Background()
 	r.invalidate(ctx, repost.ThreadID, nil, nil)

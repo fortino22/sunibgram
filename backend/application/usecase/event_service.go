@@ -56,9 +56,6 @@ func (s *EventService) GetByID(id string) (*model.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.eventRepo.IncrementViewCount(id); err == nil {
-		event.ViewCount++
-	}
 	return event, nil
 }
 

@@ -28,6 +28,7 @@ func (r *RepostRepository) Save(repost *model.Repost) error {
 	}
 	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", repost.ThreadID).
 		UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
+	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, repost.ThreadID, "repost_count", 1)
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, repost.UserID)
 	r.patchCount(repost.ThreadID, "repost_count", 1)
@@ -40,6 +41,7 @@ func (r *RepostRepository) Delete(userID, threadID uint) error {
 	}
 	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
 		UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
+	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, threadID, "repost_count", -1)
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, userID)
 	r.patchCount(threadID, "repost_count", -1)
