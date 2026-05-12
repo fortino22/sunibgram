@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
@@ -12,9 +11,6 @@ import (
 )
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error) {
-	if strings.TrimSpace(content) == "" {
-		return nil, errors.New("content is required")
-	}
 	if err := validateThreadEventID(eventID); err != nil {
 		return nil, err
 	}
@@ -110,9 +106,6 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	}
 	if thread.Type == model.ThreadTypeRepost {
 		return nil, errors.New("cannot edit a repost")
-	}
-	if strings.TrimSpace(content) == "" {
-		return nil, errors.New("content is required")
 	}
 	if err := validateThreadEventID(eventID); err != nil {
 		return nil, err
@@ -244,9 +237,6 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 }
 
 func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error) {
-	if strings.TrimSpace(content) == "" {
-		return nil, errors.New("content is required")
-	}
 	if err := validateThreadEventID(eventID); err != nil {
 		return nil, err
 	}

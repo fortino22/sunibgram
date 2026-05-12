@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
@@ -199,19 +200,21 @@ func insertThreadHashtagLinks(tx *gorm.DB, threadID uint, hashtagIDs []uuid.UUID
 		return nil, nil
 	}
 
+	var query strings.Builder
+	query.WriteString("INSERT INTO thread_hashtags (thread_id, hashtag_id, created_at) VALUES ")
+	args := make([]any, 0, len(hashtagIDs)*2)
+	for i, hashtagID := range hashtagIDs {
+		if i > 0 {
+			query.WriteString(",")
+		}
+		query.WriteString("(?, ?, NOW())")
+		args = append(args, threadID, hashtagID)
+	}
+	query.WriteString(" ON CONFLICT DO NOTHING RETURNING hashtag_id")
+
 	inserted := make([]uuid.UUID, 0, len(hashtagIDs))
-	for _, hashtagID := range hashtagIDs {
-		result := tx.Exec(`
-			INSERT INTO thread_hashtags (thread_id, hashtag_id, created_at)
-			VALUES (?, ?, NOW())
-			ON CONFLICT DO NOTHING
-		`, threadID, hashtagID)
-		if result.Error != nil {
-			return nil, result.Error
-		}
-		if result.RowsAffected > 0 {
-			inserted = append(inserted, hashtagID)
-		}
+	if err := tx.Raw(query.String(), args...).Scan(&inserted).Error; err != nil {
+		return nil, err
 	}
 	return inserted, nil
 }

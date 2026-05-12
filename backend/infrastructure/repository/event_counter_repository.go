@@ -37,6 +37,29 @@ func patchEventCounter(db *gorm.DB, c *cache.Cache, eventID, column string, delt
 	invalidateEventCounterCaches(c, eventID)
 }
 
+func patchEventCounters(db *gorm.DB, c *cache.Cache, eventID string, threadDelta, likeDelta, repostDelta int) {
+	if eventID == "" || (threadDelta == 0 && likeDelta == 0 && repostDelta == 0) {
+		return
+	}
+	updates := make(map[string]any, 6)
+	if threadDelta != 0 {
+		updates["thread_count"] = gorm.Expr("GREATEST(thread_count + ?, 0)", threadDelta)
+		updates["week_thread_count"] = gorm.Expr("GREATEST(week_thread_count + ?, 0)", threadDelta)
+	}
+	if likeDelta != 0 {
+		updates["like_count"] = gorm.Expr("GREATEST(like_count + ?, 0)", likeDelta)
+		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", likeDelta)
+	}
+	if repostDelta != 0 {
+		updates["repost_count"] = gorm.Expr("GREATEST(repost_count + ?, 0)", repostDelta)
+		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", repostDelta)
+	}
+	db.Model(&model.Event{}).
+		Where("id = ?", eventID).
+		UpdateColumns(updates)
+	invalidateEventCounterCaches(c, eventID)
+}
+
 func patchEventCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, column string, delta int) {
 	if eventID, ok := eventIDForThread(db, threadID); ok {
 		patchEventCounter(db, c, eventID, column, delta)

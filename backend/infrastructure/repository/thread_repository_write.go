@@ -117,9 +117,7 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 	}
 	if eventID == nil || *eventID == "" {
 		if hadOldEvent {
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "thread_count", -1)
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "like_count", -stats.LikeCount)
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "repost_count", -stats.RepostCount)
+			patchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount)
 			refreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
 		}
 		r.cache.DeleteByPattern(ctx, "event:threads:*")
@@ -130,14 +128,10 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 	}
 	if !hadOldEvent || oldEventID != *eventID {
 		if hadOldEvent {
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "thread_count", -1)
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "like_count", -stats.LikeCount)
-			patchEventCounter(r.db.writeDB, r.cache, oldEventID, "repost_count", -stats.RepostCount)
+			patchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount)
 			refreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
 		}
-		patchEventCounter(r.db.writeDB, r.cache, *eventID, "thread_count", 1)
-		patchEventCounter(r.db.writeDB, r.cache, *eventID, "like_count", stats.LikeCount)
-		patchEventCounter(r.db.writeDB, r.cache, *eventID, "repost_count", stats.RepostCount)
+		patchEventCounters(r.db.writeDB, r.cache, *eventID, 1, stats.LikeCount, stats.RepostCount)
 		refreshEventParticipantCount(r.db.writeDB, r.cache, *eventID)
 	}
 	r.cache.DeleteByPattern(ctx, "event:threads:*")

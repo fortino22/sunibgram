@@ -253,32 +253,98 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 		return
 	}
 
-	var threadIDs []uint
+	var threads []model.Thread
 	if err := r.readDB.
 		Table("threads").
-		Select("threads.thread_id").
+		Select("DISTINCT threads.thread_id, threads.user_id, threads.root_id, threads.community_id").
 		Joins("LEFT JOIN thread_events ON thread_events.thread_id = threads.thread_id").
 		Where("thread_events.event_id = ? OR threads.original_thread_id IN (?)",
 			id,
 			r.readDB.Table("thread_events").Select("thread_id").Where("event_id = ?", id),
 		).
-		Pluck("threads.thread_id", &threadIDs).Error; err != nil {
+		Scan(&threads).Error; err != nil {
 		return
 	}
 
 	ctx := context.Background()
-	for _, threadID := range threadIDs {
-		_ = r.cache.Delete(ctx, threadKey(threadID))
-		_ = r.cache.Delete(ctx, threadFeedKeysKey(threadID))
+	userIDSet := make(map[uint]struct{}, len(threads))
+	treeIDSet := make(map[uint]struct{}, len(threads))
+	communityIDSet := make(map[uint]struct{})
+	threadIDs := make([]uint, 0, len(threads))
+	for _, thread := range threads {
+		threadIDs = append(threadIDs, thread.ThreadID)
+		_ = r.cache.Delete(ctx, threadKey(thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, threadFeedKeysKey(thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("likes", thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("bookmarks", thread.ThreadID))
+		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("reposts", thread.ThreadID))
+
+		if thread.UserID != 0 {
+			userIDSet[thread.UserID] = struct{}{}
+		}
+		treeID := thread.ThreadID
+		if thread.RootID != nil && *thread.RootID != 0 {
+			treeID = *thread.RootID
+		}
+		if treeID != 0 {
+			treeIDSet[treeID] = struct{}{}
+		}
+		if thread.CommunityID != nil && *thread.CommunityID != 0 {
+			communityIDSet[*thread.CommunityID] = struct{}{}
+		}
 	}
-	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:chain:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
-	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "reposts:user:*")
+	for treeID := range treeIDSet {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", treeID))
+	}
+	for communityID := range communityIDSet {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:community:%d:*", communityID))
+	}
+	userIDs := make([]uint, 0, len(userIDSet))
+	for userID := range userIDSet {
+		userIDs = append(userIDs, userID)
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+	}
+	if len(userIDs) > 0 {
+		var followerIDs []uint
+		if err := r.readDB.Table("user_relationships").
+			Distinct("follower_id").
+			Where("following_id IN ?", userIDs).
+			Pluck("follower_id", &followerIDs).Error; err == nil {
+			for _, followerID := range followerIDs {
+				_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
+			}
+		}
+	}
+	r.invalidateInteractionUserCaches(ctx, "likes", threadIDs)
+	r.invalidateInteractionUserCaches(ctx, "bookmarks", threadIDs)
+	r.invalidateInteractionUserCaches(ctx, "reposts", threadIDs)
 	invalidateExploreCache(ctx, r.cache)
+}
+
+func (r *eventRepository) invalidateInteractionUserCaches(ctx context.Context, table string, threadIDs []uint) {
+	if len(threadIDs) == 0 {
+		return
+	}
+	var userIDs []uint
+	if err := r.readDB.Table(table).
+		Distinct("user_id").
+		Where("thread_id IN ?", threadIDs).
+		Pluck("user_id", &userIDs).Error; err != nil {
+		return
+	}
+	for _, userID := range userIDs {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", table, userID))
+	}
+}
+
+func deleteTrackedCacheKeys(ctx context.Context, c *cache.Cache, setKey string) {
+	if cacheKeys, err := c.SMembers(ctx, setKey); err == nil && len(cacheKeys) > 0 {
+		_ = c.Delete(ctx, cacheKeys...)
+	}
+	_ = c.Delete(ctx, setKey)
+}
+
+func interactionThreadCacheKeysKey(table string, threadID uint) string {
+	return fmt.Sprintf("%s:thread:%d:cache_keys", table, threadID)
 }
