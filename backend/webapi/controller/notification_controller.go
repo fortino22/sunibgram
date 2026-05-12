@@ -8,7 +8,6 @@ import (
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type NotificationController struct {
@@ -20,9 +19,9 @@ func NewNotificationController(notificationService service.INotificationService)
 }
 
 func (c *NotificationController) Send(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	var req dto.CreateNotificationRequest
@@ -47,9 +46,9 @@ func (c *NotificationController) Send(ctx *fiber.Ctx) error {
 }
 
 func (c *NotificationController) GetMine(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
@@ -79,17 +78,17 @@ func (c *NotificationController) GetMine(ctx *fiber.Ctx) error {
 }
 
 func (c *NotificationController) Delete(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid notification id"})
+	id, ok := ParseIDParam(ctx, "id", "notification")
+	if !ok {
+		return nil
 	}
 
-	err = c.notificationService.DeleteNotification(uint(id), claims.UserID, claims.RoleName == "admin")
+	err := c.notificationService.DeleteNotification(id, claims.UserID, claims.RoleName == "admin")
 	if err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})

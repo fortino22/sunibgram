@@ -1,14 +1,11 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
@@ -34,17 +31,17 @@ func NewBookmarkController(
 }
 
 func (c *BookmarkController) Bookmark(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	threadID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
+	threadID, ok := ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
 	}
 
-	if err := c.bookmarkService.Bookmark(claims.UserID, uint(threadID)); err != nil {
+	if err := c.bookmarkService.Bookmark(claims.UserID, threadID); err != nil {
 		if err.Error() == "thread not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
@@ -55,17 +52,17 @@ func (c *BookmarkController) Bookmark(ctx *fiber.Ctx) error {
 }
 
 func (c *BookmarkController) Unbookmark(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	threadID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
+	threadID, ok := ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
 	}
 
-	if err := c.bookmarkService.Unbookmark(claims.UserID, uint(threadID)); err != nil {
+	if err := c.bookmarkService.Unbookmark(claims.UserID, threadID); err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -73,13 +70,12 @@ func (c *BookmarkController) Unbookmark(ctx *fiber.Ctx) error {
 }
 
 func (c *BookmarkController) GetMyBookmarks(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	threads, timestamps, total, err := c.bookmarkService.GetMyBookmarks(claims.UserID, page, limit)
 	if err != nil {

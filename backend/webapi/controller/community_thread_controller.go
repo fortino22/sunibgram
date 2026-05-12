@@ -1,13 +1,10 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type CommunityThreadController struct {
@@ -23,14 +20,14 @@ func NewCommunityThreadController(threadService service.IThreadService, mediaSer
 }
 
 func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	communityID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	communityID, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
 	content := ctx.FormValue("content")
@@ -43,7 +40,7 @@ func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	thread, err := c.threadService.CreateCommunityThread(ctx.Context(), uint(communityID), claims.UserID, content, eventID)
+	thread, err := c.threadService.CreateCommunityThread(ctx.Context(), communityID, claims.UserID, content, eventID)
 	if err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
@@ -61,20 +58,23 @@ func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityThreadController) GetAll(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	communityID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	communityID, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
+	sort := ctx.Query("sort", "latest")
+	if sort != "latest" && sort != "top" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "sort must be 'latest' or 'top'"})
+	}
 
-	threads, total, err := c.threadService.GetCommunityThreads(uint(communityID), claims.UserID, page, limit)
+	threads, total, err := c.threadService.GetCommunityThreads(communityID, claims.UserID, page, limit, sort)
 	if err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})

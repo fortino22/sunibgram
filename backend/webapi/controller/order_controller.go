@@ -4,13 +4,11 @@ import (
 	"crypto/sha512"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type OrderController struct {
@@ -22,9 +20,9 @@ func NewOrderController(orderService service.IOrderService) *OrderController {
 }
 
 func (c *OrderController) BuyPremium(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	result, err := c.orderService.BuyPremium(claims.UserID)
@@ -40,13 +38,12 @@ func (c *OrderController) BuyPremium(ctx *fiber.Ctx) error {
 }
 
 func (c *OrderController) GetMyOrders(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	page, limit := ParsePagination(ctx)
 
 	orders, total, err := c.orderService.GetByUserID(claims.UserID, page, limit)
 	if err != nil {
@@ -65,8 +62,7 @@ func (c *OrderController) GetMyOrders(ctx *fiber.Ctx) error {
 }
 
 func (c *OrderController) GetAll(ctx *fiber.Ctx) error {
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	page, limit := ParsePagination(ctx)
 
 	orders, total, err := c.orderService.GetAll(page, limit)
 	if err != nil {
@@ -85,12 +81,12 @@ func (c *OrderController) GetAll(ctx *fiber.Ctx) error {
 }
 
 func (c *OrderController) GetByID(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid order id"})
+	id, ok := ParseIDParam(ctx, "id", "order")
+	if !ok {
+		return nil
 	}
 
-	order, err := c.orderService.GetByID(uint(id))
+	order, err := c.orderService.GetByID(id)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -99,17 +95,17 @@ func (c *OrderController) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (c *OrderController) Cancel(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid order id"})
+	id, ok := ParseIDParam(ctx, "id", "order")
+	if !ok {
+		return nil
 	}
 
-	order, err := c.orderService.GetByID(uint(id))
+	order, err := c.orderService.GetByID(id)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -117,7 +113,7 @@ func (c *OrderController) Cancel(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 	}
 
-	if err := c.orderService.CancelOrder(uint(id)); err != nil {
+	if err := c.orderService.CancelOrder(id); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 

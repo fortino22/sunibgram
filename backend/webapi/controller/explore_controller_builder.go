@@ -1,20 +1,12 @@
 package controller
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
 )
 
 const defaultExploreResponseLimit = 20
-
-func exploreError(ctx *fiber.Ctx, err error) error {
-	if err.Error() == "query is required" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
-	return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
-}
 
 func (c *ExploreController) toResponse(result *model.ExploreResult) dto.ExploreResponse {
 	return dto.ExploreResponse{
@@ -26,10 +18,7 @@ func (c *ExploreController) toResponse(result *model.ExploreResult) dto.ExploreR
 func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []dto.ExploreUserResponse {
 	responses := make([]dto.ExploreUserResponse, len(users))
 	for i, item := range users {
-		avatarURL := ""
-		if item.AvatarObjectName != "" {
-			avatarURL = c.profileService.GetURL(item.AvatarBucket, item.AvatarObjectName)
-		}
+		avatarURL := BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
 
 		responses[i] = dto.ExploreUserResponse{
 			UserID:      item.UserID,
@@ -46,10 +35,7 @@ func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []d
 func (c *ExploreController) toPeopleResponses(users []model.ExploreUserResult) []dto.ExplorePeopleResponse {
 	responses := make([]dto.ExplorePeopleResponse, len(users))
 	for i, item := range users {
-		avatarURL := ""
-		if item.AvatarObjectName != "" {
-			avatarURL = c.profileService.GetURL(item.AvatarBucket, item.AvatarObjectName)
-		}
+		avatarURL := BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
 
 		responses[i] = dto.ExplorePeopleResponse{
 			UserID:         item.UserID,
@@ -117,10 +103,7 @@ func (c *ExploreController) toCommunityResponses(communities []model.Community) 
 func (c *ExploreController) toExploreCommunityResponses(communities []model.ExploreCommunityResult) []dto.ExploreCommunityResponse {
 	responses := make([]dto.ExploreCommunityResponse, len(communities))
 	for i, comm := range communities {
-		avatarURL := ""
-		if comm.AvatarObjectName != "" {
-			avatarURL = c.communityService.GetURL(comm.AvatarBucket, comm.AvatarObjectName)
-		}
+		avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
 
 		responses[i] = dto.ExploreCommunityResponse{
 			CommunityID:      comm.CommunityID,
@@ -134,14 +117,8 @@ func (c *ExploreController) toExploreCommunityResponses(communities []model.Expl
 }
 
 func (c *ExploreController) toCommunityResponse(comm *model.Community) dto.CommunityResponse {
-	avatarURL := ""
-	if comm.AvatarObjectName != "" {
-		avatarURL = c.communityService.GetURL(comm.AvatarBucket, comm.AvatarObjectName)
-	}
-	bannerURL := ""
-	if comm.BannerObjectName != "" {
-		bannerURL = c.communityService.GetURL(comm.BannerBucket, comm.BannerObjectName)
-	}
+	avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
+	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 
 	return dto.CommunityResponse{
 		CommunityID: comm.CommunityID,

@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
@@ -28,8 +26,7 @@ func (c *FacultyController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *FacultyController) GetAll(ctx *fiber.Ctx) error {
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	page, limit := ParsePagination(ctx)
 	faculties, total, err := c.facultyService.GetAll(page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -49,11 +46,11 @@ func (c *FacultyController) GetAll(ctx *fiber.Ctx) error {
 }
 
 func (c *FacultyController) GetByID(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty id"})
+	id, ok := ParseIDParam(ctx, "id", "faculty")
+	if !ok {
+		return nil
 	}
-	faculty, err := c.facultyService.GetByID(uint(id))
+	faculty, err := c.facultyService.GetByID(id)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -65,15 +62,15 @@ func (c *FacultyController) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (c *FacultyController) Update(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty id"})
+	id, ok := ParseIDParam(ctx, "id", "faculty")
+	if !ok {
+		return nil
 	}
 	var req dto.UpdateFacultyRequest
 	if err := ctx.BodyParser(&req); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
-	if err := c.facultyService.Update(uint(id), req.FacultyName); err != nil {
+	if err := c.facultyService.Update(id, req.FacultyName); err != nil {
 		if err.Error() == "faculty not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
@@ -83,11 +80,11 @@ func (c *FacultyController) Update(ctx *fiber.Ctx) error {
 }
 
 func (c *FacultyController) Delete(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty id"})
+	id, ok := ParseIDParam(ctx, "id", "faculty")
+	if !ok {
+		return nil
 	}
-	if err := c.facultyService.Delete(uint(id)); err != nil {
+	if err := c.facultyService.Delete(id); err != nil {
 		if err.Error() == "faculty not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
@@ -95,4 +92,3 @@ func (c *FacultyController) Delete(ctx *fiber.Ctx) error {
 	}
 	return ctx.JSON(fiber.Map{"message": "faculty deleted successfully"})
 }
-

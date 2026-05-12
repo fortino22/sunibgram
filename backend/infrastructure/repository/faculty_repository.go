@@ -64,7 +64,7 @@ func (r *facultyRepository) FindAll(page, limit int) ([]model.Faculty, int64, er
 		return nil, 0, err
 	}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, cachedFaculties{Faculties: faculties, Total: total}, cache.DefaultTTL)
+		_ = r.cache.Set(ctx, key, cachedFaculties{Faculties: faculties, Total: total}, cache.FacultyTTL)
 	}
 	return faculties, total, nil
 }
@@ -82,7 +82,7 @@ func (r *facultyRepository) FindByID(id uint) (*model.Faculty, error) {
 		return nil, err
 	}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, faculty, cache.DefaultTTL)
+		_ = r.cache.Set(ctx, key, faculty, cache.FacultyTTL)
 	}
 	return &faculty, nil
 }

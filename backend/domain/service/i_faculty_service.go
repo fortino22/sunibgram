@@ -9,4 +9,5 @@ type IFacultyService interface {
 	Update(id uint, name string) error
 	Delete(id uint) error
 	SetUserFaculty(userID uint, facultyID *uint) error
+	GetUserFaculty(userID uint) (*model.UserFaculty, error)
 }

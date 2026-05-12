@@ -4,7 +4,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type UserSettingsController struct {
@@ -16,9 +15,9 @@ func NewUserSettingsController(settingsService service.IUserSettingsService) *Us
 }
 
 func (c *UserSettingsController) GetUserSettingByUserID(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	setting, err := c.settingsService.GetUserSettingByUserID(ctx.Context(), claims.UserID)
@@ -34,12 +33,10 @@ func (c *UserSettingsController) GetUserSettingByUserID(ctx *fiber.Ctx) error {
 		IsPrivate: setting.IsPrivate,
 	})
 }
-
-
 func (c *UserSettingsController) UpdateUserSetting(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	var req dto.UpdateUserSettingsRequest

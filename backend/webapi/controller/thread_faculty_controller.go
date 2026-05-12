@@ -6,14 +6,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/ctxutil"
 	"github.com/sunibgram/webapi/middleware"
 )
 
 func (c *ThreadController) GetFacultyThreads(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	requesterFacultyID, ok := c.authenticatedFacultyID(ctx, claims.UserID)
@@ -40,8 +39,7 @@ func (c *ThreadController) GetFacultyThreads(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	threads, total, err := c.threadService.GetFacultyThreads(facultyID, page, limit)
 	if err != nil {

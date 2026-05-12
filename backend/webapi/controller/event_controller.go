@@ -10,7 +10,6 @@ import (
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type EventController struct {
@@ -27,8 +26,8 @@ func NewEventController(eventService service.IEventService, threadService servic
 }
 
 func (c *EventController) Create(ctx *fiber.Ctx) error {
-	if _, ok := ctxutil.Get(ctx); !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
 	}
 	req, banner, err := parseCreateEventRequest(ctx)
 	if err != nil {
@@ -42,10 +41,10 @@ func (c *EventController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) GetAll(ctx *fiber.Ctx) error {
-	if _, ok := ctxutil.Get(ctx); !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
 	}
-	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	_, limit := ParsePagination(ctx)
 	trending, running, future, err := c.eventService.GetAll(limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -58,8 +57,8 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) GetByID(ctx *fiber.Ctx) error {
-	if _, ok := ctxutil.Get(ctx); !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
 	}
 	event, err := c.eventService.GetByID(ctx.Params("id"))
 	if err != nil {
@@ -69,8 +68,8 @@ func (c *EventController) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) Update(ctx *fiber.Ctx) error {
-	if _, ok := ctxutil.Get(ctx); !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
 	}
 	req, banner, clearBanner, err := parseUpdateEventRequest(ctx)
 	if err != nil {
@@ -87,8 +86,8 @@ func (c *EventController) Update(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) Delete(ctx *fiber.Ctx) error {
-	if _, ok := ctxutil.Get(ctx); !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
 	}
 	if err := c.eventService.Delete(ctx.Context(), ctx.Params("id")); err != nil {
 		if err.Error() == "event not found" {
@@ -100,12 +99,11 @@ func (c *EventController) Delete(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 	threads, total, err := c.eventService.GetThreads(ctx.Context(), ctx.Params("id"), page, limit)
 	if err != nil {
 		if err.Error() == "event not found" {
@@ -121,10 +119,7 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) toResponse(event *model.Event) dto.EventResponse {
-	bannerURL := ""
-	if event.BannerObjectName != "" {
-		bannerURL = c.eventService.GetURL(event.BannerBucket, event.BannerObjectName)
-	}
+	bannerURL := BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL)
 	return dto.EventResponse{
 		ID:               event.ID,
 		Title:            event.Title,

@@ -11,6 +11,7 @@ import (
 )
 
 const DefaultTTL = 5 * time.Minute
+const FacultyTTL = 24 * time.Hour
 
 type Cache struct {
 	client *redis.Client

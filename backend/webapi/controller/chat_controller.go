@@ -2,7 +2,6 @@ package controller
 
 import (
 	"mime/multipart"
-	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,7 +9,6 @@ import (
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type ChatController struct {
@@ -28,14 +26,14 @@ func NewChatController(chatService service.IChatService, chatMediaService servic
 }
 
 func (c *ChatController) Send(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	roomID, err := strconv.ParseUint(ctx.Params("room_id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat room id"})
+	roomID, ok := ParseIDParam(ctx, "room_id", "chat room")
+	if !ok {
+		return nil
 	}
 
 	var message *string
@@ -52,16 +50,16 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "message or media is required"})
 	}
 
-	chat, err := c.chatService.Send(ctx.Context(), uint(roomID), claims.UserID, message)
+	chat, err := c.chatService.Send(ctx.Context(), roomID, claims.UserID, message)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 
 	var media []model.ChatMedia
 	if len(files) > 0 {
 		media, err = c.chatMediaService.Upload(ctx.Context(), chat.ChatID, claims.UserID, files)
 		if err != nil {
-			return chatError(ctx, err)
+			return HandleServiceError(ctx, err)
 		}
 	}
 
@@ -71,24 +69,23 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 }
 
 func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	roomID, err := strconv.ParseUint(ctx.Params("room_id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat room id"})
+	roomID, ok := ParseIDParam(ctx, "room_id", "chat room")
+	if !ok {
+		return nil
 	}
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
-	if err := c.chatService.MarkRead(uint(roomID), claims.UserID); err != nil {
-		return chatError(ctx, err)
+	if err := c.chatService.MarkRead(roomID, claims.UserID); err != nil {
+		return HandleServiceError(ctx, err)
 	}
-	chats, total, err := c.chatService.GetMessages(uint(roomID), claims.UserID, page, limit)
+	chats, total, err := c.chatService.GetMessages(roomID, claims.UserID, page, limit)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 
 	mediaByChat := c.loadMediaByChat(chats)
@@ -104,23 +101,23 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 }
 
 func (c *ChatController) Unsend(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
+	id, ok := ParseIDParam(ctx, "id", "chat")
+	if !ok {
+		return nil
+	}
+
+	chat, err := c.chatService.GetByID(ctx.Context(), id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat id"})
+		return HandleServiceError(ctx, err)
 	}
 
-	chat, err := c.chatService.GetByID(ctx.Context(), uint(id))
-	if err != nil {
-		return chatError(ctx, err)
-	}
-
-	if err := c.chatService.Unsend(ctx.Context(), uint(id), claims.UserID); err != nil {
-		return chatError(ctx, err)
+	if err := c.chatService.Unsend(ctx.Context(), id, claims.UserID); err != nil {
+		return HandleServiceError(ctx, err)
 	}
 
 	c.broadcastRoom(chat.RoomID, "message:deleted", fiber.Map{
@@ -134,14 +131,14 @@ func (c *ChatController) Unsend(ctx *fiber.Ctx) error {
 }
 
 func (c *ChatController) EditMessage(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat id"})
+	id, ok := ParseIDParam(ctx, "id", "chat")
+	if !ok {
+		return nil
 	}
 
 	var req dto.EditMessageRequest
@@ -149,13 +146,13 @@ func (c *ChatController) EditMessage(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	chat, err := c.chatService.GetByID(ctx.Context(), uint(id))
+	chat, err := c.chatService.GetByID(ctx.Context(), id)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 
-	if err := c.chatService.UpdateMessage(ctx.Context(), uint(id), claims.UserID, req.Message); err != nil {
-		return chatError(ctx, err)
+	if err := c.chatService.UpdateMessage(ctx.Context(), id, claims.UserID, req.Message); err != nil {
+		return HandleServiceError(ctx, err)
 	}
 
 	c.broadcastRoom(chat.RoomID, "message:edited", fiber.Map{
@@ -169,9 +166,9 @@ func (c *ChatController) EditMessage(ctx *fiber.Ctx) error {
 }
 
 func (c *ChatController) MarkMessagesRead(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	var req dto.MarkMessagesReadRequest
@@ -184,7 +181,7 @@ func (c *ChatController) MarkMessagesRead(ctx *fiber.Ctx) error {
 
 	results, err := c.chatService.MarkMessagesRead(ctx.Context(), req.RoomID, req.ChatIDs, claims.UserID)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	data := make([]fiber.Map, len(results))
 	for i, r := range results {
@@ -270,15 +267,4 @@ func (c *ChatController) toChatMediaResponses(media []model.ChatMedia) []dto.Cha
 		}
 	}
 	return out
-}
-
-func chatError(ctx *fiber.Ctx, err error) error {
-	switch err.Error() {
-	case "forbidden":
-		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
-	case "chat room not found", "chat not found", "target user not found", "member user not found":
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
-	default:
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
 }

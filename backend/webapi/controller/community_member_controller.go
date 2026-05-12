@@ -1,14 +1,11 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type CommunityMemberController struct {
@@ -20,17 +17,17 @@ func NewCommunityMemberController(memberService service.ICommunityMemberService)
 }
 
 func (c *CommunityMemberController) Join(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	if err := c.memberService.Join(ctx.Context(), uint(id), claims.UserID); err != nil {
+	if err := c.memberService.Join(ctx.Context(), id, claims.UserID); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -38,17 +35,17 @@ func (c *CommunityMemberController) Join(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityMemberController) Leave(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	if err := c.memberService.Leave(ctx.Context(), uint(id), claims.UserID); err != nil {
+	if err := c.memberService.Leave(ctx.Context(), id, claims.UserID); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -56,15 +53,14 @@ func (c *CommunityMemberController) Leave(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityMemberController) GetMembers(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
-	members, total, err := c.memberService.GetMembers(uint(id), page, limit)
+	members, total, err := c.memberService.GetMembers(id, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -76,22 +72,22 @@ func (c *CommunityMemberController) GetMembers(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityMemberController) RemoveMember(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	targetID, err := strconv.ParseUint(ctx.Params("userId"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	targetID, ok := ParseIDParam(ctx, "userId", "user")
+	if !ok {
+		return nil
 	}
 
-	if err := c.memberService.RemoveMember(ctx.Context(), uint(id), claims.UserID, uint(targetID)); err != nil {
+	if err := c.memberService.RemoveMember(ctx.Context(), id, claims.UserID, targetID); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
@@ -102,19 +98,19 @@ func (c *CommunityMemberController) RemoveMember(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	targetID, err := strconv.ParseUint(ctx.Params("userId"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	targetID, ok := ParseIDParam(ctx, "userId", "user")
+	if !ok {
+		return nil
 	}
 
 	var body struct {
@@ -129,7 +125,7 @@ func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid role"})
 	}
 
-	if err := c.memberService.UpdateRole(ctx.Context(), uint(id), claims.UserID, uint(targetID), role); err != nil {
+	if err := c.memberService.UpdateRole(ctx.Context(), id, claims.UserID, targetID, role); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}

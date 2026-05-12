@@ -1,0 +1,64 @@
+package controller
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/sunibgram/dto"
+	webapiutils "github.com/sunibgram/webapi/utils"
+)
+
+func RequireAuth(ctx *fiber.Ctx) (*webapiutils.Claims, bool) {
+	claims, ok := webapiutils.Get(ctx)
+	if !ok {
+		_ = ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil, false
+	}
+	return &claims, true
+}
+
+func ParseIDParam(ctx *fiber.Ctx, paramName string, entityName string) (uint, bool) {
+	id, err := strconv.ParseUint(ctx.Params(paramName), 10, 64)
+	if err != nil {
+		_ = ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid " + entityName + " id"})
+		return 0, false
+	}
+	return uint(id), true
+}
+
+func ParsePagination(ctx *fiber.Ctx) (page int, limit int) {
+	page, _ = strconv.Atoi(ctx.Query("page", "1"))
+	limit, _ = strconv.Atoi(ctx.Query("limit", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	return page, limit
+}
+
+func HandleServiceError(ctx *fiber.Ctx, err error) error {
+	status := fiber.StatusBadRequest
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "forbidden"):
+		status = fiber.StatusForbidden
+	case strings.Contains(msg, "not found"):
+		status = fiber.StatusNotFound
+	}
+	return ctx.Status(status).JSON(dto.ErrorResponse{Message: msg})
+}
+
+func BuildMediaURL(objectName, bucket string, getURL func(string, string) string) string {
+	if objectName == "" {
+		return ""
+	}
+	return getURL(bucket, objectName)
+}

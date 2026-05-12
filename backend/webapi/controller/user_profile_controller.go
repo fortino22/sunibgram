@@ -1,13 +1,13 @@
 package controller
 
 import (
+	webapiutils "github.com/sunibgram/webapi/utils"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type UserProfileController struct {
@@ -19,30 +19,46 @@ func NewUserProfileController(profileService service.IUserProfileService, facult
 	return &UserProfileController{profileService: profileService, facultyService: facultyService}
 }
 
-func (c *UserProfileController) GetMyProfile(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+func (c *UserProfileController) GetMyFaculty(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
+	}
+	uf, err := c.facultyService.GetUserFaculty(claims.UserID)
+	if err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "faculty not found"})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(dto.MyFacultyResponse{
+		FacultyID:   uf.Faculty.FacultyID,
+		FacultyName: uf.Faculty.FacultyName,
+		TotalUsers:  uf.Faculty.TotalUsers,
+	})
+}
+
+func (c *UserProfileController) GetMyProfile(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
 	}
 	return c.fetchAndRespond(ctx, claims.UserID, nil)
 }
 
 func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	id, ok := ParseIDParam(ctx, "id", "user")
+	if !ok {
+		return nil
 	}
 	var viewerID *uint
-	if claims, ok := ctxutil.Get(ctx); ok {
+	if claims, ok := webapiutils.Get(ctx); ok {
 		viewerID = &claims.UserID
 	}
-	return c.fetchAndRespond(ctx, uint(id), viewerID)
+	return c.fetchAndRespond(ctx, id, viewerID)
 }
 
 func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	var facultyID *uint
@@ -102,13 +118,15 @@ func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint, vie
 }
 
 func (c *UserProfileController) toResponse(fp *service.FullProfile) dto.UserProfileResponse {
+	return toUserProfileResponse(fp, c.profileService.GetURL)
+}
+
+func toUserProfileResponse(fp *service.FullProfile, getURL func(string, string) string) dto.UserProfileResponse {
 	avatarURL := ""
-	if fp.Profile != nil && fp.Profile.AvatarObjectName != "" {
-		avatarURL = c.profileService.GetURL(fp.Profile.AvatarBucket, fp.Profile.AvatarObjectName)
-	}
 	bannerURL := ""
-	if fp.Profile != nil && fp.Profile.BannerObjectName != "" {
-		bannerURL = c.profileService.GetURL(fp.Profile.BannerBucket, fp.Profile.BannerObjectName)
+	if fp.Profile != nil {
+		avatarURL = BuildMediaURL(fp.Profile.AvatarObjectName, fp.Profile.AvatarBucket, getURL)
+		bannerURL = BuildMediaURL(fp.Profile.BannerObjectName, fp.Profile.BannerBucket, getURL)
 	}
 	bio := ""
 	if fp.Profile != nil {

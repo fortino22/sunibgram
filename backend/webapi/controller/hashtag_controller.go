@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
@@ -20,7 +18,7 @@ func NewHashtagController(hashtagService service.IHashtagService) *HashtagContro
 }
 
 func (c *HashtagController) GetTrending(ctx *fiber.Ctx) error {
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	_, limit := ParsePagination(ctx)
 	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
