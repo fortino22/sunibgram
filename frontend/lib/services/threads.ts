@@ -193,8 +193,11 @@ export function getThreads(params: PaginationParams = {}, token: string): Promis
   return api.get<ThreadListResponse>(`/api/threads${query(params)}`, token);
 }
 
-export function getFollowingThreads(token: string): Promise<ThreadListResponse> {
-  return api.get<ThreadListResponse>('/api/threads/following', token);
+export function getFollowingThreads(
+  params: PaginationParams = {},
+  token: string
+): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(`/api/threads/following${query(params)}`, token);
 }
 
 export function getMyThreads(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {
