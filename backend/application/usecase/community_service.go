@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"strings"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -185,32 +186,17 @@ func (s *CommunityService) GetByID(id uint) (*model.Community, error) {
 }
 
 func (s *CommunityService) GetAll(page, limit int, category string) ([]model.Community, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.communityRepo.FindAll(page, limit, category)
 }
 
 func (s *CommunityService) GetMyCreated(userID uint, page, limit int) ([]model.Community, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.communityRepo.FindByCreatorID(userID, page, limit)
 }
 
 func (s *CommunityService) GetMyJoined(userID uint, page, limit int) ([]model.Community, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.communityRepo.FindJoinedByUserID(userID, page, limit)
 }
 
@@ -219,21 +205,5 @@ func (s *CommunityService) GetURL(bucket, objectName string) string {
 }
 
 func (s *CommunityService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
-	if err := model.ValidateImageExt(header.Filename); err != nil {
-		return "", "", err
-	}
-	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
-	if err != nil {
-		return "", "", err
-	}
-	f, err := header.Open()
-	if err != nil {
-		return "", "", err
-	}
-	defer f.Close()
-	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
-	if err != nil {
-		return "", "", err
-	}
-	return objName, bucket, nil
+	return helper.UploadImage(ctx, s.storageUsecase, header, uploadType)
 }

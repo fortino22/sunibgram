@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/snap"
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -119,22 +120,12 @@ func (s *OrderService) GetByOrderID(orderID string) (*model.Order, error) {
 }
 
 func (s *OrderService) GetByUserID(userID uint, page, limit int) ([]model.Order, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 10
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 10)
 	return s.orderRepo.FindByUserID(userID, page, limit)
 }
 
 func (s *OrderService) GetAll(page, limit int) ([]model.Order, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 10
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 10)
 	return s.orderRepo.FindAll(page, limit)
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 )
 
@@ -13,12 +14,7 @@ func (s *ThreadService) GetByID(id uint) (*model.Thread, error) {
 }
 
 func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, _, err := s.threadRepo.FindRoots(page, limit)
 	if err != nil {
 		return nil, 0, err
@@ -38,12 +34,7 @@ func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint
 	if err := canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, anchor.UserID); err != nil {
 		return nil, 0, err
 	}
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 
 	// Determine the true root to fetch all threads in the conversation
 	trueRootID := anchorID
@@ -92,12 +83,7 @@ func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, tar
 }
 
 func (s *ThreadService) GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, _, err := s.threadRepo.FindPostsByUserID(requesterID, userID, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
@@ -106,12 +92,7 @@ func (s *ThreadService) GetMyPosts(ctx context.Context, requesterID, userID uint
 }
 
 func (s *ThreadService) GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, _, err := s.threadRepo.FindReplyTabByUserID(requesterID, userID, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
@@ -129,12 +110,7 @@ func (s *ThreadService) GetMyMediaThread(ctx context.Context, requesterID, userI
 			return nil, nil, 0, errors.New("this account is private")
 		}
 	}
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, _, err := s.threadRepo.FindMediaByUserID(requesterID, userID, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
@@ -143,9 +119,7 @@ func (s *ThreadService) GetMyMediaThread(ctx context.Context, requesterID, userI
 }
 
 func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error) {
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	_, limit = helper.NormalizePageLimit(1, limit, 20)
 
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -226,22 +200,12 @@ func (s *ThreadService) GetCommunityThreads(communityID, userID uint, page, limi
 	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
 		return nil, 0, errors.New("forbidden")
 	}
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.threadRepo.FindByCommunityID(communityID, page, limit)
 }
 
 func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, _, err := s.threadRepo.FindFollowingFeed(userID, page, limit)
 	if err != nil {
 		return nil, nil, 0, err

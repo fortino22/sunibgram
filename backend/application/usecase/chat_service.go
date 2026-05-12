@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -51,12 +52,7 @@ func (s *ChatService) GetMessages(roomID, userID uint, page, limit int) ([]model
 	if !s.roomRepo.IsMember(roomID, userID) {
 		return nil, 0, errors.New("forbidden")
 	}
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.chatRepo.FindByRoomID(roomID, page, limit)
 }
 

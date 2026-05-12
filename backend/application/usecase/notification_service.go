@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -82,9 +83,7 @@ func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID 
 	if recipientUserID == "" {
 		return nil, errors.New("recipient user id is required")
 	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
+	_, limit = helper.NormalizePageLimit(1, limit, 20)
 	if offset < 0 {
 		offset = 0
 	}
