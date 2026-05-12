@@ -184,7 +184,7 @@ func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threa
 			return err
 		}
 		var thread model.Thread
-		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id").First(&thread, threadID).Error; err != nil {
+		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return err
 		}
 		if thread.RootID != nil {

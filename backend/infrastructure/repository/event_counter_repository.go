@@ -43,7 +43,7 @@ func patchEventCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, col
 		return
 	}
 	var thread model.Thread
-	if err := db.Select("root_id", "parent_id").First(&thread, threadID).Error; err != nil {
+	if err := db.Select("root_id", "parent_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 		return
 	}
 	if thread.RootID != nil {
