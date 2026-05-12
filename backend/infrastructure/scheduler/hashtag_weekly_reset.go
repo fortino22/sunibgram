@@ -7,7 +7,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ResetWeeklyHashtagCounters resets week_* counter columns every Monday 00:00 WIB (UTC+7).
 func ResetWeeklyHashtagCounters(db *gorm.DB) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	for {
