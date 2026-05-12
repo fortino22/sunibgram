@@ -40,6 +40,21 @@ func patchEventCounter(db *gorm.DB, c *cache.Cache, eventID, column string, delt
 func patchEventCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, column string, delta int) {
 	if eventID, ok := eventIDForThread(db, threadID); ok {
 		patchEventCounter(db, c, eventID, column, delta)
+		return
+	}
+	var thread model.Thread
+	if err := db.Select("root_id", "parent_id").First(&thread, threadID).Error; err != nil {
+		return
+	}
+	if thread.RootID != nil {
+		threadID = *thread.RootID
+	} else if thread.ParentID != nil {
+		threadID = *thread.ParentID
+	} else {
+		return
+	}
+	if eventID, ok := eventIDForThread(db, threadID); ok {
+		patchEventCounter(db, c, eventID, column, delta)
 	}
 }
 

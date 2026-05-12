@@ -180,10 +180,26 @@ func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threa
 
 	var event model.ThreadEvent
 	if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		var thread model.Thread
+		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id").First(&thread, threadID).Error; err != nil {
+			return err
+		}
+		if thread.RootID != nil {
+			threadID = *thread.RootID
+		} else if thread.ParentID != nil {
+			threadID = *thread.ParentID
+		} else {
 			return nil
 		}
-		return err
+		if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
 	}
 	if event.EventID == "" {
 		return nil
