@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadHeader } from './ThreadHeader';
+import { ImageDetailModal } from './ImageDetailModal';
 import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread, isRepostThread } from './threadUtils';
 
 interface ThreadReplyItemProps {
@@ -25,6 +26,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const { like, repost, bookmark } = useThreadActions(thread);
   const [isEditing, setIsEditing] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
 
@@ -88,7 +90,12 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
             compact={compact}
           />
         ) : (
-          <ThreadBody content={thread.content} media={thread.media} compact={compact} />
+          <ThreadBody
+            content={thread.content}
+            media={thread.media}
+            compact={compact}
+            onImageClick={(i) => setLightboxIndex(i)}
+          />
         )}
 
         {deleteMutation.isError && (
@@ -103,7 +110,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between" style={{ marginTop: 12, gap: 12 }}>
           <ThreadActions
             comments={thread.stats.comments}
             likes={thread.stats.likes}
@@ -113,7 +120,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
             isReposted={thread.is_reposted === true}
             isBookmarked={thread.is_bookmarked === true}
             compact={compact}
-            className="mt-0 max-w-none flex-1 justify-start"
+            topMargin={0}
             onLike={() => {
               if (!like.isPending) {
                 like.mutate(thread.is_liked === true);
@@ -133,6 +140,16 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
           />
         </div>
       </div>
+
+      {lightboxIndex !== null && (
+        <ImageDetailModal
+          media={thread.media}
+          currentIndex={lightboxIndex}
+          thread={thread}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </div>
   );
 }

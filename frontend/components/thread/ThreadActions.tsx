@@ -1,6 +1,5 @@
 import type { MouseEvent } from 'react';
 import { Bookmark, Heart, MessageCircle, Repeat2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { ActionButton } from './ActionButton';
 
 interface ThreadActionsProps {
@@ -17,7 +16,8 @@ interface ThreadActionsProps {
   onRepost?: () => void;
   onBookmark?: () => void;
   onActionClick?: (event: MouseEvent<HTMLButtonElement>) => void;
-  className?: string;
+  /** Inline top margin override in px. Defaults to 12. */
+  topMargin?: number;
 }
 
 export function ThreadActions({
@@ -34,7 +34,7 @@ export function ThreadActions({
   onRepost,
   onBookmark,
   onActionClick,
-  className,
+  topMargin = 12,
 }: ThreadActionsProps) {
   const iconSize = compact ? 16 : 18;
   const size = compact ? 'sm' : 'md';
@@ -46,8 +46,8 @@ export function ThreadActions({
 
   return (
     <div
-      className={cn('mt-3 flex gap-3 text-[13px]', compact ? 'max-w-[320px]' : 'max-w-[360px] justify-between', className)}
-      style={{ color: 'var(--text-tertiary)' }}
+      className="flex w-full justify-between text-[13px]"
+      style={{ marginTop: topMargin, color: 'var(--text-tertiary)' }}
     >
       <ActionButton aria-label="Comment" onClick={(event) => handleClick(onComment, event)} size={size}>
         <MessageCircle size={iconSize} strokeWidth={2} />
