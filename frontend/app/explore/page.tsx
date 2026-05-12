@@ -1,6 +1,8 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -204,10 +206,14 @@ function TabContent({
   return null;
 }
 
-export default function ExplorePage() {
-  const [inputValue, setInputValue] = useState('');
-  const [query, setQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<ExploreTab>('top');
+function ExploreInner() {
+  const searchParams = useSearchParams();
+  const initialQ = searchParams.get('q') ?? '';
+  const initialTab = (searchParams.get('tab') as ExploreTab | null) ?? 'top';
+
+  const [inputValue, setInputValue] = useState(initialQ);
+  const [query, setQuery] = useState(initialQ);
+  const [activeTab, setActiveTab] = useState<ExploreTab>(initialQ ? initialTab : 'top');
 
   const trendingQuery = useTrendingHashtags(10);
   const suggestedQuery = useSuggestedPeople(8);
@@ -273,5 +279,13 @@ export default function ExplorePage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense>
+      <ExploreInner />
+    </Suspense>
   );
 }

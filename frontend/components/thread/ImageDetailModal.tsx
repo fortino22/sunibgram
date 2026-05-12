@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { ThreadItem, ThreadMediaResponse } from '@/lib/services/threads';
 import { Avatar } from '@/components/shared/Avatar';
@@ -14,11 +15,15 @@ import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
 /* Minimal reply card used only inside this modal (avoids circular dep) */
 /* ------------------------------------------------------------------ */
 function ModalReply({ thread }: { thread: ThreadItem }) {
+  const router = useRouter();
   const { like, repost, bookmark } = useThreadActions(thread);
   const author = getThreadAuthor(thread);
 
   return (
-    <div style={{ borderBottom: '1px solid var(--border)', padding: '14px 20px' }}>
+    <div
+      style={{ borderBottom: '1px solid var(--border)', padding: '14px 20px', cursor: 'pointer' }}
+      onClick={() => router.push(`/thread/${thread.id}`)}
+    >
       <div style={{ display: 'flex', gap: 10 }}>
         <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="sm" />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -64,16 +69,18 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
             </div>
           )}
 
-          <ActionBar
-            stats={thread.stats}
-            isLiked={!!thread.is_liked}
-            isReposted={!!thread.is_reposted}
-            isBookmarked={!!thread.is_bookmarked}
-            onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
-            onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
-            onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
-            size="sm"
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <ActionBar
+              stats={thread.stats}
+              isLiked={!!thread.is_liked}
+              isReposted={!!thread.is_reposted}
+              isBookmarked={!!thread.is_bookmarked}
+              onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
+              onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
+              onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
+              size="sm"
+            />
+          </div>
         </div>
       </div>
     </div>

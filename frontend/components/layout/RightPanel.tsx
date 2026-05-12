@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
+import { SearchDropdown } from './SearchDropdown';
 
 interface TrendItem {
   id: string;
@@ -67,45 +69,15 @@ function TrendCard({ trend, last }: { trend: TrendItem; last: boolean }) {
 }
 
 export function RightPanel() {
-  const [exploreQuery, setExploreQuery] = useState('');
-  const [exploreFocused, setExploreFocused] = useState(false);
+  const pathname = usePathname();
+  const isExplorePage = pathname === '/explore';
 
   return (
     <aside className="right-panel">
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Explore */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            background: exploreFocused ? 'var(--bg-card)' : 'var(--bg-subtle)',
-            border: `1.5px solid ${exploreFocused ? 'var(--accent)' : 'var(--border)'}`,
-            borderRadius: 9999,
-            padding: '8px 14px',
-            transition: 'all 0.15s ease',
-            boxShadow: exploreFocused ? '0 0 0 3px oklch(64% 0.22 270 / 0.15)' : 'none',
-          }}
-        >
-          <Icon name="explore" size={15} color="var(--text-tertiary)" />
-          <input
-            value={exploreQuery}
-            onChange={(e) => setExploreQuery(e.target.value)}
-            onFocus={() => setExploreFocused(true)}
-            onBlur={() => setExploreFocused(false)}
-            placeholder="Explore campus..."
-            style={{
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              fontSize: 14,
-              color: 'var(--text)',
-              width: '100%',
-              fontFamily: 'inherit',
-            }}
-          />
-        </div>
+        {/* Search dropdown — hidden on the explore page itself */}
+        {!isExplorePage && <SearchDropdown />}
 
         {/* Trending hashtags */}
         <div
