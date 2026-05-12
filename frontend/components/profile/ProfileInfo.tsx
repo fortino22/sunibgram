@@ -19,12 +19,22 @@ interface ProfileInfoProps {
   isOwn: boolean;
   isFollowing: boolean;
   onFollowToggle: () => void;
+  followPending?: boolean;
   onEditClick?: () => void;
   onFollowersClick?: () => void;
   onFollowingClick?: () => void;
 }
 
-export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditClick, onFollowersClick, onFollowingClick }: ProfileInfoProps) {
+export function ProfileInfo({
+  user,
+  isOwn,
+  isFollowing,
+  onFollowToggle,
+  followPending = false,
+  onEditClick,
+  onFollowersClick,
+  onFollowingClick,
+}: ProfileInfoProps) {
   return (
     <div style={{ position: 'relative', padding: '0 20px' }}>
       {/* Avatar overlaps banner */}
@@ -85,6 +95,7 @@ export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditCl
             <button
               type="button"
               onClick={onFollowToggle}
+              disabled={followPending}
               style={{
                 background: isFollowing ? 'none' : 'var(--text)',
                 border: isFollowing ? '1px solid var(--border-strong)' : '1px solid transparent',
@@ -93,13 +104,14 @@ export function ProfileInfo({ user, isOwn, isFollowing, onFollowToggle, onEditCl
                 fontSize: 14,
                 fontWeight: 700,
                 color: isFollowing ? 'var(--text)' : 'var(--bg)',
-                cursor: 'pointer',
                 fontFamily: 'inherit',
                 letterSpacing: '-0.01em',
                 transition: 'all 0.15s ease',
+                opacity: followPending ? 0.7 : 1,
+                cursor: followPending ? 'not-allowed' : 'pointer',
               }}
             >
-              {isFollowing ? 'Following' : 'Follow'}
+              {isFollowing ? 'Unfollow' : 'Follow'}
             </button>
           </>
         )}

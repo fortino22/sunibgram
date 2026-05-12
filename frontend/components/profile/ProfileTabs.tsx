@@ -1,12 +1,14 @@
 'use client';
 
-export type ProfileTab = 'threads' | 'replies' | 'media' | 'likes';
+export type ProfileTab = 'threads' | 'replies' | 'media' | 'likes' | 'followers' | 'following';
 
 const TABS: { id: ProfileTab; label: string }[] = [
   { id: 'threads', label: 'Threads' },
   { id: 'replies', label: 'Replies' },
   { id: 'media', label: 'Media' },
   { id: 'likes', label: 'Likes' },
+  { id: 'followers', label: 'Followers' },
+  { id: 'following', label: 'Following' },
 ];
 
 interface ProfileTabsProps {
@@ -20,12 +22,15 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
       role="tablist"
       style={{
         display: 'flex',
+        gap: 4,
+        overflowX: 'auto',
         borderBottom: '1px solid var(--border)',
         position: 'sticky',
         top: 57,
         zIndex: 10,
         background: 'oklch(10.5% 0.005 260 / 0.92)',
         backdropFilter: 'blur(12px)',
+        padding: '0 12px',
       }}
     >
       {TABS.map((tab) => (
@@ -36,8 +41,8 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
           aria-selected={activeTab === tab.id}
           onClick={() => onTabChange(tab.id)}
           style={{
-            flex: 1,
-            padding: '14px 0',
+            flexShrink: 0,
+            padding: '14px 12px',
             background: 'none',
             border: 'none',
             cursor: 'pointer',
@@ -47,6 +52,7 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
             borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
             fontFamily: 'inherit',
             letterSpacing: '-0.01em',
+            whiteSpace: 'nowrap',
             transition: 'all 0.15s ease',
             marginBottom: -1,
           }}

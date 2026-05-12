@@ -55,8 +55,19 @@ export function ThreadCard({ thread }: ThreadCardProps) {
         padding: '14px 20px',
       }}
     >
-      <div className="flex gap-3">
-        <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          aria-label={`View @${author.username}'s profile`}
+          onClick={(event) => {
+            event.stopPropagation();
+            router.push(`/profile/${author.id}`);
+          }}
+          className="shrink-0 self-start"
+          style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
+        >
+          <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
+        </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">

@@ -13,7 +13,7 @@ interface FollowListModalProps {
   onClose: () => void;
 }
 
-function UserRow({ user, onNavigate }: { user: FollowUser; onNavigate: (id: number) => void }) {
+function UserRow({ user, onNavigate }: { user: FollowUser; onNavigate: (userId: number) => void }) {
   return (
     <button
       type="button"
@@ -45,8 +45,8 @@ export function FollowListModal({ userId, type, onClose }: FollowListModalProps)
   const users = query.data?.data ?? [];
   const title = type === 'followers' ? 'Followers' : 'Following';
 
-  function navigate(id: number) {
-    router.push(`/profile/${id}`);
+  function navigate(userId: number) {
+    router.push(`/profile/${userId}`);
     onClose();
   }
 
