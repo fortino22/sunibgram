@@ -50,7 +50,7 @@ func Register(
 	registerUserRoutes(api, followCtrl, exploreCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
 	registerCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, auth)
-	registerFacultyRoutes(api, facultyCtrl, auth)
+	registerFacultyRoutes(api, facultyCtrl, profileCtrl, auth)
 	registerOrderRoutes(api, orderCtrl, auth)
 	registerChatRoutes(api, chatRoomCtrl, chatCtrl, auth)
 	registerNotificationRoutes(api, notificationCtrl, auth)

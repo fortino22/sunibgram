@@ -26,7 +26,7 @@ func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
 	req.Email = strings.TrimSpace(req.Email)
 
 	if err := c.verificationService.SendCode(req.Email, model.VerificationTypeLogin); err != nil {
-		return ctx.Status(verificationErrorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
+		return HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "login otp sent"})
@@ -42,7 +42,7 @@ func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
 	req.Type = strings.TrimSpace(strings.ToUpper(req.Type))
 
 	if err := c.verificationService.SendCode(req.Email, model.VerificationType(req.Type)); err != nil {
-		return ctx.Status(verificationErrorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
+		return HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "verification code sent"})
@@ -59,27 +59,8 @@ func (c *VerificationController) VerifyCode(ctx *fiber.Ctx) error {
 	req.Type = strings.TrimSpace(strings.ToUpper(req.Type))
 
 	if err := c.verificationService.VerifyCode(req.Email, req.Code, model.VerificationType(req.Type)); err != nil {
-		return ctx.Status(verificationErrorStatus(err)).JSON(dto.ErrorResponse{Message: err.Error()})
+		return HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "email verified successfully"})
-}
-
-func verificationErrorStatus(err error) int {
-	msg := err.Error()
-	switch {
-	case strings.HasPrefix(msg, "try again in"):
-		return fiber.StatusTooManyRequests
-	case msg == "email must use @binus.ac.id domain" ||
-		msg == "email is required" ||
-		msg == "email already registered" ||
-		msg == "email not found" ||
-		msg == "type must be REGISTER, FORGOT_PASSWORD, or LOGIN" ||
-		msg == "invalid code" ||
-		msg == "code has expired" ||
-		msg == "invalid or expired code":
-		return fiber.StatusBadRequest
-	default:
-		return fiber.StatusInternalServerError
-	}
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type AuthController struct {
@@ -73,9 +72,9 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) ChangePassword(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	var req dto.ChangePasswordRequest
@@ -184,9 +183,9 @@ func (c *AuthController) Refresh(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Logout(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	if err := c.authService.Logout(ctx.Context(), claims.SID); err != nil {

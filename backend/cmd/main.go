@@ -97,7 +97,7 @@ func main() {
 	cacheCtrl := controller.NewCacheController(cacheService)
 	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
 	roleCtrl := controller.NewRoleController(roleService)
-	userCtrl := controller.NewUserController(userService)
+	userCtrl := controller.NewUserController(userService, profileService)
 	userSettingsCtrl := controller.NewUserSettingsController(userSettingsService)
 	profileCtrl := controller.NewUserProfileController(profileService, facultyService)
 	emailCtrl := controller.NewEmailController(emailService)

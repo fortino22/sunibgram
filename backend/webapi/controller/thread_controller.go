@@ -1,6 +1,7 @@
 package controller
 
 import (
+	webapiutils "github.com/sunibgram/webapi/utils"
 	"mime/multipart"
 	"strconv"
 	"strings"
@@ -9,7 +10,6 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type ThreadController struct {
@@ -27,9 +27,9 @@ func NewThreadController(threadService service.IThreadService, mediaService serv
 }
 
 func (c *ThreadController) Create(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	content := ctx.FormValue("content")
@@ -66,14 +66,13 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := webapiutils.Get(ctx)
 	var viewerID *uint
 	if ok {
 		viewerID = &claims.UserID
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	threads, total, err := c.threadService.GetRoots(ctx.Context(), viewerID, page, limit)
 	if err != nil {
@@ -92,17 +91,17 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
+	id, ok := ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
 	}
 
-	thread, err := c.threadService.GetByID(uint(id))
+	thread, err := c.threadService.GetByID(id)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
 	}
@@ -119,24 +118,24 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	media, _ := c.mediaService.GetByThreadID(uint(id))
+	media, _ := c.mediaService.GetByThreadID(id)
 	fb := c.fbNoPin(&claims.UserID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs([]model.Thread{*thread}))
 	return ctx.Status(fiber.StatusOK).JSON(fb.ToFeedItem(thread, media))
 }
 
 func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
+	id, ok := ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
 	}
 
-	root, err := c.threadService.GetByID(uint(id))
+	root, err := c.threadService.GetByID(id)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
 	}
@@ -147,10 +146,9 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		}
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
-	threads, total, err := c.threadService.GetChain(ctx.Context(), uint(id), claims.UserID, page, limit)
+	threads, total, err := c.threadService.GetChain(ctx.Context(), id, claims.UserID, page, limit)
 	if err != nil {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -165,14 +163,14 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) Update(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
+	id, ok := ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
 	}
 
 	content := ctx.FormValue("content")
@@ -181,7 +179,7 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	if _, err := c.threadService.Update(ctx.Context(), uint(id), claims.UserID, content, eventID, eventIDSent); err != nil {
+	if _, err := c.threadService.Update(ctx.Context(), id, claims.UserID, content, eventID, eventIDSent); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
@@ -197,7 +195,7 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 	if keepSent || len(files) > 0 {
-		if err := c.mediaService.UpdateGranular(ctx.Context(), uint(id), claims.UserID, keepIDs, files); err != nil {
+		if err := c.mediaService.UpdateGranular(ctx.Context(), id, claims.UserID, keepIDs, files); err != nil {
 			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 	}
@@ -206,35 +204,34 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) Delete(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid thread id"})
+	id, ok := ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
 	}
 
-	if err := c.threadService.Delete(ctx.Context(), uint(id), claims.UserID); err != nil {
+	if err := c.threadService.Delete(ctx.Context(), id, claims.UserID); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	_ = c.mediaService.DeleteByThread(ctx.Context(), uint(id))
+	_ = c.mediaService.DeleteByThread(ctx.Context(), id)
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread deleted successfully"})
 }
 
 func (c *ThreadController) GetFollowingFeed(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetFollowingFeed(claims.UserID, page, limit)
 	if err != nil {
@@ -248,23 +245,22 @@ func (c *ThreadController) GetFollowingFeed(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
-	id, err := strconv.ParseUint(ctx.Params("userID"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	id, ok := ParseIDParam(ctx, "userID", "user")
+	if !ok {
+		return nil
 	}
-	targetUserID := uint(id)
+	targetUserID := id
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetMyPosts(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
@@ -278,23 +274,22 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
-	id, err := strconv.ParseUint(ctx.Params("userID"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	id, ok := ParseIDParam(ctx, "userID", "user")
+	if !ok {
+		return nil
 	}
-	targetUserID := uint(id)
+	targetUserID := id
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetMyReplies(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
@@ -308,23 +303,22 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
-	id, err := strconv.ParseUint(ctx.Params("userId"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	id, ok := ParseIDParam(ctx, "userId", "user")
+	if !ok {
+		return nil
 	}
-	targetUserID := uint(id)
+	targetUserID := id
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {

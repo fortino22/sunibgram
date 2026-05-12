@@ -1,14 +1,10 @@
 package controller
 
 import (
-	"strconv"
-	"strings"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type FollowController struct {
@@ -21,15 +17,15 @@ func NewFollowController(followService service.IFollowService, profileService se
 }
 
 func (c *FollowController) Follow(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
-	targetID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	targetID, ok := ParseIDParam(ctx, "id", "user")
+	if !ok {
+		return nil
 	}
-	if err := c.followService.Follow(claims.UserID, uint(targetID)); err != nil {
+	if err := c.followService.Follow(claims.UserID, targetID); err != nil {
 		if err.Error() == "user not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
@@ -39,45 +35,35 @@ func (c *FollowController) Follow(ctx *fiber.Ctx) error {
 }
 
 func (c *FollowController) Unfollow(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
-	targetID, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	targetID, ok := ParseIDParam(ctx, "id", "user")
+	if !ok {
+		return nil
 	}
-	if err := c.followService.Unfollow(claims.UserID, uint(targetID)); err != nil {
+	if err := c.followService.Unfollow(claims.UserID, targetID); err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "unfollowed successfully"})
 }
 
 func (c *FollowController) GetFollowing(ctx *fiber.Ctx) error {
-	if _, ok := ctxutil.Get(ctx); !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
 	}
 
-	userID, err := strconv.ParseUint(ctx.Params("user_id"), 10, 64)
+	userID, ok := ParseIDParam(ctx, "user_id", "user")
+	if !ok {
+		return nil
+	}
+
+	page, limit := ParsePagination(ctx)
+
+	users, total, err := c.followService.GetFollowing(userID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
-	}
-
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
-
-	users, total, err := c.followService.GetFollowing(uint(userID), page, limit)
-	if err != nil {
-		return followListError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	if len(users) == 0 {
 		return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFollowUsersResponse{
@@ -98,26 +84,16 @@ func (c *FollowController) GetFollowing(ctx *fiber.Ctx) error {
 }
 
 func (c *FollowController) GetFollowers(ctx *fiber.Ctx) error {
-	userID, err := strconv.ParseUint(ctx.Params("user_id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	userID, ok := ParseIDParam(ctx, "user_id", "user")
+	if !ok {
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	page, limit := ParsePagination(ctx)
 
-	users, total, err := c.followService.GetFollowers(uint(userID), page, limit)
+	users, total, err := c.followService.GetFollowers(userID, page, limit)
 	if err != nil {
-		return followListError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	if len(users) == 0 {
 		return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFollowUsersResponse{
@@ -138,26 +114,16 @@ func (c *FollowController) GetFollowers(ctx *fiber.Ctx) error {
 }
 
 func (c *FollowController) GetMyFollowing(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	page, limit := ParsePagination(ctx)
 
 	users, total, err := c.followService.GetFollowing(claims.UserID, page, limit)
 	if err != nil {
-		return followListError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	if len(users) == 0 {
 		return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFollowUsersResponse{
@@ -178,26 +144,16 @@ func (c *FollowController) GetMyFollowing(ctx *fiber.Ctx) error {
 }
 
 func (c *FollowController) GetMyFollowers(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
+	page, limit := ParsePagination(ctx)
 
 	users, total, err := c.followService.GetFollowers(claims.UserID, page, limit)
 	if err != nil {
-		return followListError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	if len(users) == 0 {
 		return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFollowUsersResponse{
@@ -222,8 +178,8 @@ func (c *FollowController) toFollowUserResponses(users []model.User, profileMap 
 	for i, user := range users {
 		avatarURL := ""
 		profile, ok := profileMap[user.UserID]
-		if ok && profile.AvatarBucket != "" && profile.AvatarObjectName != "" {
-			avatarURL = c.profileService.GetURL(profile.AvatarBucket, profile.AvatarObjectName)
+		if ok {
+			avatarURL = BuildMediaURL(profile.AvatarObjectName, profile.AvatarBucket, c.profileService.GetURL)
 		}
 		data[i] = dto.FollowUserResponse{
 			UserID:    user.UserID,
@@ -252,16 +208,4 @@ func (c *FollowController) followUserProfileMap(users []model.User) (map[uint]mo
 		profileMap[profile.UserID] = profile
 	}
 	return profileMap, nil
-}
-
-func followListError(ctx *fiber.Ctx, err error) error {
-	msg := err.Error()
-	switch {
-	case strings.Contains(msg, "forbidden"):
-		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: msg})
-	case strings.Contains(msg, "not found"):
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: msg})
-	default:
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: msg})
-	}
 }

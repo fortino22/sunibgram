@@ -2,14 +2,12 @@ package controller
 
 import (
 	"mime/multipart"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type CommunityController struct {
@@ -21,9 +19,9 @@ func NewCommunityController(communityService service.ICommunityService) *Communi
 }
 
 func (c *CommunityController) Create(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	name := ctx.FormValue("name")
@@ -53,14 +51,14 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) Update(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
 	name := ctx.FormValue("name")
@@ -80,7 +78,7 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 	}
 
 	if _, err := c.communityService.Update(
-		ctx.Context(), uint(id), claims.UserID,
+		ctx.Context(), id, claims.UserID,
 		name, description, rules, category, visibility,
 		avatar, banner, clearAvatar, clearBanner,
 	); err != nil {
@@ -94,17 +92,17 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) Delete(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	if err := c.communityService.Delete(ctx.Context(), uint(id), claims.UserID); err != nil {
+	if err := c.communityService.Delete(ctx.Context(), id, claims.UserID); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
@@ -115,12 +113,12 @@ func (c *CommunityController) Delete(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) GetByID(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid community id"})
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
 	}
 
-	community, err := c.communityService.GetByID(uint(id))
+	community, err := c.communityService.GetByID(id)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "community not found"})
 	}
@@ -129,8 +127,7 @@ func (c *CommunityController) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) GetAll(ctx *fiber.Ctx) error {
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 	category := ctx.Query("category", "")
 
 	communities, total, err := c.communityService.GetAll(page, limit, category)
@@ -145,13 +142,12 @@ func (c *CommunityController) GetAll(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	communities, total, err := c.communityService.GetMyCreated(claims.UserID, page, limit)
 	if err != nil {
@@ -165,13 +161,12 @@ func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	communities, total, err := c.communityService.GetMyJoined(claims.UserID, page, limit)
 	if err != nil {
@@ -185,14 +180,8 @@ func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityResponse {
-	avatarURL := ""
-	if comm.AvatarObjectName != "" {
-		avatarURL = c.communityService.GetURL(comm.AvatarBucket, comm.AvatarObjectName)
-	}
-	bannerURL := ""
-	if comm.BannerObjectName != "" {
-		bannerURL = c.communityService.GetURL(comm.BannerBucket, comm.BannerObjectName)
-	}
+	avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
+	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 	return dto.CommunityResponse{
 		CommunityID: comm.CommunityID,
 		UserID:      comm.UserID,

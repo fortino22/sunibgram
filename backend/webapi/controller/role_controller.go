@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
@@ -46,12 +44,12 @@ func (c *RoleController) GetAll(ctx *fiber.Ctx) error {
 }
 
 func (c *RoleController) GetByID(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid role id"})
+	id, ok := ParseIDParam(ctx, "id", "role")
+	if !ok {
+		return nil
 	}
 
-	role, err := c.roleService.GetByID(uint(id))
+	role, err := c.roleService.GetByID(id)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "role not found"})
 	}
@@ -60,9 +58,9 @@ func (c *RoleController) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (c *RoleController) Update(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid role id"})
+	id, ok := ParseIDParam(ctx, "id", "role")
+	if !ok {
+		return nil
 	}
 
 	var req dto.UpdateRoleRequest
@@ -70,7 +68,7 @@ func (c *RoleController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	role := &model.Role{RoleID: uint(id), Name: req.Name}
+	role := &model.Role{RoleID: id, Name: req.Name}
 	if err := c.roleService.Update(role); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -79,12 +77,12 @@ func (c *RoleController) Update(ctx *fiber.Ctx) error {
 }
 
 func (c *RoleController) Delete(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid role id"})
+	id, ok := ParseIDParam(ctx, "id", "role")
+	if !ok {
+		return nil
 	}
 
-	if err := c.roleService.Delete(uint(id)); err != nil {
+	if err := c.roleService.Delete(id); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 

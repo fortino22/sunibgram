@@ -44,7 +44,7 @@ func (r *userFacultyRepository) FindByUserID(userID uint) (*model.UserFaculty, e
 	if err := r.readDB.Preload("Faculty").Where("user_id = ?", userID).First(&uf).Error; err != nil {
 		return nil, err
 	}
-	r.cache.Set(ctx, key, uf, cache.DefaultTTL)
+	r.cache.Set(ctx, key, uf, cache.FacultyTTL)
 	return &uf, nil
 }
 

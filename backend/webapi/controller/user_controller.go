@@ -2,7 +2,6 @@ package controller
 
 import (
 	"math"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
@@ -11,16 +10,16 @@ import (
 )
 
 type UserController struct {
-	userService service.IUserService
+	userService    service.IUserService
+	profileService service.IUserProfileService
 }
 
-func NewUserController(userService service.IUserService) *UserController {
-	return &UserController{userService: userService}
+func NewUserController(userService service.IUserService, profileService service.IUserProfileService) *UserController {
+	return &UserController{userService: userService, profileService: profileService}
 }
 
 func (c *UserController) GetAll(ctx *fiber.Ctx) error {
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "10"))
+	page, limit := ParsePagination(ctx)
 
 	users, total, err := c.userService.GetAllPaginated(page, limit)
 	if err != nil {
@@ -52,23 +51,15 @@ func (c *UserController) GetAll(ctx *fiber.Ctx) error {
 }
 
 func (c *UserController) GetByID(ctx *fiber.Ctx) error {
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid user id"})
+	id, ok := ParseIDParam(ctx, "id", "user")
+	if !ok {
+		return nil
 	}
 
-	user, err := c.userService.GetByID(uint(id))
+	fp, err := c.profileService.GetProfile(id, nil)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "user not found"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.UserResponse{
-		UserID:    user.UserID,
-		Name:      user.Name,
-		UserName:  user.UserName,
-		Email:     user.Email,
-		RoleID:    user.RoleID,
-		RoleName:  user.Role.Name,
-		CreatedAt: utils.Wrap(user.CreatedAt),
-	})
+	return ctx.Status(fiber.StatusOK).JSON(toUserProfileResponse(fp, c.profileService.GetURL))
 }

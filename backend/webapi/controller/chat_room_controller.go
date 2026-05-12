@@ -1,14 +1,11 @@
 package controller
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
-	"github.com/sunibgram/webapi/ctxutil"
 )
 
 type ChatRoomController struct {
@@ -25,9 +22,9 @@ func NewChatRoomController(chatRoomService service.IChatRoomService, hubs ...ser
 }
 
 func (c *ChatRoomController) CreatePrivate(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	var req dto.CreatePrivateChatRoomRequest
@@ -37,15 +34,15 @@ func (c *ChatRoomController) CreatePrivate(ctx *fiber.Ctx) error {
 
 	room, err := c.chatRoomService.CreatePrivate(ctx.Context(), claims.UserID, req.TargetUserID)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"room_id": room.RoomID})
 }
 
 func (c *ChatRoomController) CreateGroup(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
 	var req dto.CreateGroupChatRoomRequest
@@ -55,20 +52,20 @@ func (c *ChatRoomController) CreateGroup(ctx *fiber.Ctx) error {
 
 	room, err := c.chatRoomService.CreateGroup(ctx.Context(), claims.UserID, req.Name, req.Description, req.MemberIDs)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"room_id": room.RoomID})
 }
 
 func (c *ChatRoomController) AddMember(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat room id"})
+	id, ok := ParseIDParam(ctx, "id", "chat room")
+	if !ok {
+		return nil
 	}
 
 	var req dto.AddGroupMemberRequest
@@ -76,9 +73,9 @@ func (c *ChatRoomController) AddMember(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
 	}
 
-	room, alreadyMembers, err := c.chatRoomService.AddMemberToGroup(ctx.Context(), uint(id), claims.UserID, req.UserIDs)
+	room, alreadyMembers, err := c.chatRoomService.AddMemberToGroup(ctx.Context(), id, claims.UserID, req.UserIDs)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	if alreadyMembers == nil {
 		alreadyMembers = []uint{}
@@ -86,7 +83,7 @@ func (c *ChatRoomController) AddMember(ctx *fiber.Ctx) error {
 
 	addedUserIDs := addedMembers(req.UserIDs, alreadyMembers)
 	if c.hub != nil && len(addedUserIDs) > 0 {
-		c.hub.Broadcast(uint(id), "room:member_added", fiber.Map{
+		c.hub.Broadcast(id, "room:member_added", fiber.Map{
 			"room_id":         room.RoomID,
 			"added_user_ids":  addedUserIDs,
 			"added_by":        claims.UserID,
@@ -102,14 +99,14 @@ func (c *ChatRoomController) AddMember(ctx *fiber.Ctx) error {
 }
 
 func (c *ChatRoomController) UpdateGroup(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat room id"})
+	id, ok := ParseIDParam(ctx, "id", "chat room")
+	if !ok {
+		return nil
 	}
 
 	var req dto.UpdateGroupChatRoomRequest
@@ -117,29 +114,29 @@ func (c *ChatRoomController) UpdateGroup(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
 	}
 
-	if err := c.chatRoomService.UpdateGroup(ctx.Context(), uint(id), claims.UserID, req.Name, req.Description); err != nil {
-		return chatError(ctx, err)
+	if err := c.chatRoomService.UpdateGroup(ctx.Context(), id, claims.UserID, req.Name, req.Description); err != nil {
+		return HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "group updated successfully"})
 }
 
 func (c *ChatRoomController) DeleteGroup(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat room id"})
+	id, ok := ParseIDParam(ctx, "id", "chat room")
+	if !ok {
+		return nil
 	}
 
-	if err := c.chatRoomService.DeleteGroup(ctx.Context(), uint(id), claims.UserID); err != nil {
-		return chatError(ctx, err)
+	if err := c.chatRoomService.DeleteGroup(ctx.Context(), id, claims.UserID); err != nil {
+		return HandleServiceError(ctx, err)
 	}
 	if c.hub != nil {
-		c.hub.Broadcast(uint(id), "group_chat_deleted", fiber.Map{
-			"room_id":    uint(id),
+		c.hub.Broadcast(id, "group_chat_deleted", fiber.Map{
+			"room_id":    id,
 			"deleted_by": claims.UserID,
 		})
 	}
@@ -148,17 +145,16 @@ func (c *ChatRoomController) DeleteGroup(ctx *fiber.Ctx) error {
 }
 
 func (c *ChatRoomController) GetMyRooms(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	page, _ := strconv.Atoi(ctx.Query("page", "1"))
-	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	page, limit := ParsePagination(ctx)
 
 	rooms, total, err := c.chatRoomService.GetUserRooms(claims.UserID, page, limit)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 
 	data := make([]dto.ChatRoomResponse, len(rooms))
@@ -172,19 +168,19 @@ func (c *ChatRoomController) GetMyRooms(ctx *fiber.Ctx) error {
 }
 
 func (c *ChatRoomController) GetByID(ctx *fiber.Ctx) error {
-	claims, ok := ctxutil.Get(ctx)
+	claims, ok := RequireAuth(ctx)
 	if !ok {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		return nil
 	}
 
-	id, err := strconv.ParseUint(ctx.Params("id"), 10, 64)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid chat room id"})
+	id, ok := ParseIDParam(ctx, "id", "chat room")
+	if !ok {
+		return nil
 	}
 
-	room, err := c.chatRoomService.GetByID(uint(id), claims.UserID)
+	room, err := c.chatRoomService.GetByID(id, claims.UserID)
 	if err != nil {
-		return chatError(ctx, err)
+		return HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(toChatRoomResponse(room))
 }

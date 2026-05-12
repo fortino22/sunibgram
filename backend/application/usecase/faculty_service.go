@@ -60,7 +60,14 @@ func (s *FacultyService) Delete(id uint) error {
 	return s.facultyRepo.Delete(id)
 }
 
-// SetUserFaculty assigns or changes a user's faculty. Pass nil facultyID to clear.
+func (s *FacultyService) GetUserFaculty(userID uint) (*model.UserFaculty, error) {
+	uf, err := s.userFacultyRepo.FindByUserID(userID)
+	if err != nil {
+		return nil, errors.New("faculty not found")
+	}
+	return uf, nil
+}
+
 func (s *FacultyService) SetUserFaculty(userID uint, facultyID *uint) error {
 	existing, _ := s.userFacultyRepo.FindByUserID(userID)
 

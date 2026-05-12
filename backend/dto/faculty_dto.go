@@ -23,3 +23,9 @@ type PaginatedFacultyResponse struct {
 	Data []FacultyResponse `json:"data"`
 	Meta FeedMeta          `json:"meta"`
 }
+
+type MyFacultyResponse struct {
+	FacultyID   uint   `json:"faculty_id"`
+	FacultyName string `json:"faculty_name"`
+	TotalUsers  int    `json:"total_users"`
+}
