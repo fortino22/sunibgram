@@ -209,11 +209,6 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 			log.Printf("repost hashtag trending boost failed: %v", err)
 		}
 	}
-	if s.eventRepo != nil {
-		if err := s.eventRepo.PatchEventCounterByThreadID(ctx, threadID, "repost_count", 1); err != nil {
-			log.Printf("repost event trending boost failed: %v", err)
-		}
-	}
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)
 	}
@@ -235,11 +230,6 @@ func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) err
 	if s.hashtagRepo != nil {
 		if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, threadID, "repost_count", -1); err != nil {
 			log.Printf("repost hashtag trending decrement failed: %v", err)
-		}
-	}
-	if s.eventRepo != nil {
-		if err := s.eventRepo.PatchEventCounterByThreadID(ctx, threadID, "repost_count", -1); err != nil {
-			log.Printf("repost event trending decrement failed: %v", err)
 		}
 	}
 	if s.hashtagService != nil {

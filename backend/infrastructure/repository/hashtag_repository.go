@@ -152,13 +152,15 @@ func (r *hashtagRepository) PatchHashtagCounterByThreadID(ctx context.Context, t
 	}
 	if len(hashtagIDs) == 0 {
 		var thread model.Thread
-		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
+		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return err
 		}
 		if thread.RootID != nil {
 			threadID = *thread.RootID
 		} else if thread.ParentID != nil {
 			threadID = *thread.ParentID
+		} else if thread.OriginalThreadID != nil {
+			threadID = *thread.OriginalThreadID
 		} else {
 			return nil
 		}
@@ -260,13 +262,15 @@ func patchHashtagCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, c
 	}
 	if len(hashtagIDs) == 0 {
 		var thread model.Thread
-		if err := db.Select("root_id", "parent_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
+		if err := db.Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return
 		}
 		if thread.RootID != nil {
 			threadID = *thread.RootID
 		} else if thread.ParentID != nil {
 			threadID = *thread.ParentID
+		} else if thread.OriginalThreadID != nil {
+			threadID = *thread.OriginalThreadID
 		} else {
 			return
 		}
