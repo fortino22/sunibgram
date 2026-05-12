@@ -11,7 +11,7 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 	var thread model.Thread
 	key := threadKey(id)
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").First(&thread, id).Error; err != nil {
+		if err := preloadThreadDetails(r.db.readDB).First(&thread, id).Error; err != nil {
 			return nil, err
 		}
 		r.cache.Set(ctx, key, thread, r.ttl)
@@ -36,7 +36,7 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").
+		if err := preloadThreadDetails(r.db.readDB).
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
@@ -72,7 +72,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").Preload("User.UserFaculty.Faculty").
+		if err := preloadThreadParentDetails(r.db.readDB).
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
@@ -106,7 +106,7 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]m
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Count(&total)
 		offset := (page - 1) * limit
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").
+		if err := preloadThreadDetails(r.db.readDB).
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Order("created_at DESC").
 			Offset(offset).Limit(limit).

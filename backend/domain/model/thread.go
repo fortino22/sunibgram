@@ -28,4 +28,7 @@ type Thread struct {
 	CommentCount     int        `gorm:"not null;default:0"`
 	CreatedAt        time.Time  `gorm:"index:idx_thread_user_type,priority:3,sort:desc;index:idx_thread_feed,priority:3,sort:desc"`
 	UpdatedAt        time.Time
+	ThreadEvents     []ThreadEvent `gorm:"foreignKey:ThreadID;references:ThreadID"`
+	EventID          *string       `gorm:"-"`
+	EventIDUpdated   bool          `gorm:"-"`
 }

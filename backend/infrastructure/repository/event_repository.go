@@ -106,10 +106,12 @@ func (r *eventRepository) Update(event *model.Event) error {
 		return err
 	}
 	r.invalidateEvent(event.ID)
+	r.invalidateEventThreadCaches(event.ID)
 	return nil
 }
 
 func (r *eventRepository) Delete(id string) error {
+	r.invalidateEventThreadCaches(id)
 	if err := r.writeDB.Delete(&model.Event{}, "id = ?", id).Error; err != nil {
 		return err
 	}
@@ -134,12 +136,7 @@ func (r *eventRepository) FindThreads(eventID string, page, limit int) ([]model.
 		Where("thread_events.event_id = ?", eventID)
 	q.Count(&total)
 	offset := (page - 1) * limit
-	if err := q.Preload("User", preloadThreadUser).
-		Preload("OriginalThread.User", preloadThreadUser).
-		Preload("Community").
-		Preload("OriginalThread.Community").
-		Preload("User.UserFaculty.Faculty").
-		Preload("OriginalThread.User.UserFaculty.Faculty").
+	if err := preloadThreadDetails(q).
 		Order("thread_events.created_at DESC").
 		Offset(offset).Limit(limit).
 		Find(&threads).Error; err != nil {
@@ -167,4 +164,39 @@ func (r *eventRepository) invalidateEvent(id string) {
 	_ = r.cache.Delete(ctx, eventIDKey(id))
 	_ = r.cache.DeleteByPattern(ctx, "event:list:*")
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:%s:*", id))
+}
+
+func (r *eventRepository) invalidateEventThreadCaches(id string) {
+	if r.cache == nil {
+		return
+	}
+
+	var threadIDs []uint
+	if err := r.readDB.
+		Table("threads").
+		Select("threads.thread_id").
+		Joins("LEFT JOIN thread_events ON thread_events.thread_id = threads.thread_id").
+		Where("thread_events.event_id = ? OR threads.original_thread_id IN (?)",
+			id,
+			r.readDB.Table("thread_events").Select("thread_id").Where("event_id = ?", id),
+		).
+		Pluck("threads.thread_id", &threadIDs).Error; err != nil {
+		return
+	}
+
+	ctx := context.Background()
+	for _, threadID := range threadIDs {
+		_ = r.cache.Delete(ctx, threadKey(threadID))
+		_ = r.cache.Delete(ctx, threadFeedKeysKey(threadID))
+	}
+	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:chain:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
+	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "reposts:user:*")
+	invalidateExploreCache(ctx, r.cache)
 }

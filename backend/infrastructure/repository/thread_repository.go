@@ -28,6 +28,25 @@ func preloadThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
+func preloadThreadDetails(db *gorm.DB) *gorm.DB {
+	return db.
+		Preload("User", preloadThreadUser).
+		Preload("OriginalThread.User", preloadThreadUser).
+		Preload("Community").
+		Preload("OriginalThread.Community").
+		Preload("User.UserFaculty.Faculty").
+		Preload("OriginalThread.User.UserFaculty.Faculty").
+		Preload("ThreadEvents.Event").
+		Preload("OriginalThread.ThreadEvents.Event")
+}
+
+func preloadThreadParentDetails(db *gorm.DB) *gorm.DB {
+	return db.
+		Preload("User", preloadThreadUser).
+		Preload("Community").
+		Preload("User.UserFaculty.Faculty").
+		Preload("ThreadEvents.Event")
+}
 
 func NewThreadRepository(writeDB, readDB *gorm.DB, c *cache.Cache) (domainrepo.IThreadRepository, func(uint, string, int)) {
 	tdb := &threadDB{writeDB: writeDB, readDB: readDB}

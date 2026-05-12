@@ -7,11 +7,11 @@ import (
 )
 
 type IThreadService interface {
-	Create(ctx context.Context, userID uint, content string, parentID *uint) (*model.Thread, error)
+	Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error)
 	GetByID(id uint) (*model.Thread, error)
 	GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error)
 	GetChain(ctx context.Context, rootID, requesterID uint, page, limit int) ([]model.Thread, int64, error)
-	Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error)
+	Update(ctx context.Context, id, userID uint, content string, eventID *string, eventIDUpdated bool) (*model.Thread, error)
 	Delete(ctx context.Context, id, userID uint) error
 	Repost(ctx context.Context, userID, threadID uint) error
 	Unrepost(ctx context.Context, userID, threadID uint) error
@@ -21,7 +21,7 @@ type IThreadService interface {
 	GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMyMediaThread(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error)
-	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string) (*model.Thread, error)
+	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error)
 	GetCommunityThreads(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 }

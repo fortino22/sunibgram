@@ -35,7 +35,7 @@ func (r *threadCached) findUserFeed(requesterID, userID uint, types []string, pa
 
 	offset := (page - 1) * limit
 	var threads []model.Thread
-	if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").
+	if err := preloadThreadDetails(r.db.readDB).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", requesterID).
 		Where("threads.user_id = ? AND threads.type IN ?", userID, types).
@@ -59,7 +59,7 @@ func (r *threadCached) findUserFeed(requesterID, userID uint, types []string, pa
 			pids = append(pids, id)
 		}
 		var parentThreads []model.Thread
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").Preload("User.UserFaculty.Faculty").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+		if err := preloadThreadParentDetails(r.db.readDB).Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
 			return nil, nil, 0, err
 		}
 		for i := range parentThreads {
@@ -140,7 +140,7 @@ func (r *threadCached) FindMediaByUserID(requesterID, userID uint, page, limit i
 	}
 
 	var threads []model.Thread
-	if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").
+	if err := preloadThreadDetails(r.db.readDB).
 		Where("thread_id IN ?", ids).
 		Order("created_at DESC").
 		Find(&threads).Error; err != nil {
@@ -160,7 +160,7 @@ func (r *threadCached) FindMediaByUserID(requesterID, userID uint, page, limit i
 			pids = append(pids, id)
 		}
 		var parentThreads []model.Thread
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").Preload("User.UserFaculty.Faculty").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+		if err := preloadThreadParentDetails(r.db.readDB).Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
 			return nil, nil, 0, err
 		}
 		for i := range parentThreads {
@@ -213,8 +213,7 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 
 	offset := (page - 1) * limit
 	var threads []model.Thread
-	if err := r.db.readDB.
-		Preload("User", preloadThreadUser).Preload("OriginalThread.User", preloadThreadUser).Preload("Community").Preload("OriginalThread.Community").Preload("User.UserFaculty.Faculty").Preload("OriginalThread.User.UserFaculty.Faculty").
+	if err := preloadThreadDetails(r.db.readDB).
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
@@ -240,7 +239,7 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 			pids = append(pids, id)
 		}
 		var parentThreads []model.Thread
-		if err := r.db.readDB.Preload("User", preloadThreadUser).Preload("Community").Preload("User.UserFaculty.Faculty").Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
+		if err := preloadThreadParentDetails(r.db.readDB).Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
 			return nil, nil, 0, err
 		}
 		for i := range parentThreads {

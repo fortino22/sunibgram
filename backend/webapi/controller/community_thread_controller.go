@@ -34,12 +34,16 @@ func (c *CommunityThreadController) Create(ctx *fiber.Ctx) error {
 	}
 
 	content := ctx.FormValue("content")
+	eventID, _, err := parseOptionalEventID(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
 	files := threadMediaFiles(ctx)
 	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
 		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	thread, err := c.threadService.CreateCommunityThread(ctx.Context(), uint(communityID), claims.UserID, content)
+	thread, err := c.threadService.CreateCommunityThread(ctx.Context(), uint(communityID), claims.UserID, content, eventID)
 	if err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})

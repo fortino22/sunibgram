@@ -84,10 +84,13 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 		if parents[i] != nil {
 			p := parents[i]
+			eventID, eventName := webapiutils.EventFields(p)
 			item.ParentContext = &dto.FeedParentContext{
 				ID:        p.ThreadID,
 				ParentID:  p.ParentID,
 				RootID:    p.RootID,
+				EventID:   eventID,
+				EventName: eventName,
 				Community: webapiutils.CommunityField(p),
 				Author:    fb.AuthorField(p.User),
 				Content:   p.Content,

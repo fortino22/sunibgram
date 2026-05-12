@@ -2,13 +2,20 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
 )
 
 func (r *threadCached) Save(thread *model.Thread) error {
+	if err := r.validateThreadEventExists(thread.EventID); err != nil {
+		return err
+	}
 	if err := r.db.writeDB.Create(thread).Error; err != nil {
+		return err
+	}
+	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventID != nil); err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -54,11 +61,19 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 }
 
 func (r *threadCached) Update(thread *model.Thread) error {
+	if thread.EventIDUpdated {
+		if err := r.validateThreadEventExists(thread.EventID); err != nil {
+			return err
+		}
+	}
 	if err := r.db.writeDB.Model(thread).
 		UpdateColumns(map[string]any{
 			"content":    thread.Content,
 			"updated_at": gorm.Expr("NOW()"),
 		}).Error; err != nil {
+		return err
+	}
+	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventIDUpdated); err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -74,12 +89,45 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	return nil
 }
 
+func (r *threadCached) validateThreadEventExists(eventID *string) error {
+	if eventID == nil || *eventID == "" {
+		return nil
+	}
+	var count int64
+	if err := r.db.readDB.Model(&model.Event{}).Where("id = ?", *eventID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("event not found")
+	}
+	return nil
+}
+
+func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace bool) error {
+	if !replace {
+		return nil
+	}
+	ctx := context.Background()
+	if err := r.db.writeDB.Where("thread_id = ?", threadID).Delete(&model.ThreadEvent{}).Error; err != nil {
+		return err
+	}
+	if eventID == nil || *eventID == "" {
+		r.cache.DeleteByPattern(ctx, "event:threads:*")
+		return nil
+	}
+	if err := r.db.writeDB.Create(&model.ThreadEvent{ThreadID: threadID, EventID: *eventID}).Error; err != nil {
+		return err
+	}
+	r.cache.DeleteByPattern(ctx, "event:threads:*")
+	return nil
+}
+
 func (r *threadCached) patchCachedCount(threadID uint, column string, delta int) {
 	ctx := context.Background()
 	key := threadKey(threadID)
 	var thread model.Thread
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := r.db.readDB.Preload("User", preloadThreadUser).First(&thread, threadID).Error; err != nil {
+		if err := preloadThreadDetails(r.db.readDB).First(&thread, threadID).Error; err != nil {
 			return
 		}
 	}

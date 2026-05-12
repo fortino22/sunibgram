@@ -46,7 +46,12 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		}
 	}
 
-	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID)
+	eventID, _, err := parseOptionalEventID(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -171,8 +176,12 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 	}
 
 	content := ctx.FormValue("content")
+	eventID, eventIDSent, err := parseOptionalEventID(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
 
-	if _, err := c.threadService.Update(ctx.Context(), uint(id), claims.UserID, content); err != nil {
+	if _, err := c.threadService.Update(ctx.Context(), uint(id), claims.UserID, content, eventID, eventIDSent); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
@@ -397,4 +406,36 @@ func parseKeepMediaIDs(ctx *fiber.Ctx) ([]uint, bool, error) {
 
 func errInvalidKeepMediaID() error {
 	return fiber.NewError(fiber.StatusBadRequest, "invalid keep_media_ids")
+}
+
+func parseOptionalEventID(ctx *fiber.Ctx) (*string, bool, error) {
+	raw, ok := formValueWithPresence(ctx, "event_id")
+	if !ok {
+		raw, ok = formValueWithPresence(ctx, "eventId")
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, true, nil
+	}
+	return &raw, true, nil
+}
+
+func formValueWithPresence(ctx *fiber.Ctx, key string) (string, bool) {
+	if form, err := ctx.MultipartForm(); err == nil && form != nil {
+		if raw, ok := form.Value[key]; ok {
+			if len(raw) == 0 {
+				return "", true
+			}
+			return raw[0], true
+		}
+	}
+
+	body := ctx.Request().PostArgs()
+	if body.Has(key) {
+		return string(body.Peek(key)), true
+	}
+	return "", false
 }
