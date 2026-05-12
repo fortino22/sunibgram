@@ -193,7 +193,7 @@ func (s *ThreadService) filterCommunityMemberFeed(requesterID uint, threads []mo
 	return outThreads, outParents, int64(len(outThreads)), nil
 }
 
-func (s *ThreadService) GetCommunityThreads(communityID, userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetCommunityThreads(communityID, userID uint, page, limit int, sort string) ([]model.Thread, int64, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
 	}
@@ -201,7 +201,7 @@ func (s *ThreadService) GetCommunityThreads(communityID, userID uint, page, limi
 		return nil, 0, errors.New("forbidden")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	return s.threadRepo.FindByCommunityID(communityID, page, limit)
+	return s.threadRepo.FindByCommunityID(communityID, page, limit, sort)
 }
 
 func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {

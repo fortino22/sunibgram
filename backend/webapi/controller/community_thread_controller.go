@@ -73,8 +73,12 @@ func (c *CommunityThreadController) GetAll(ctx *fiber.Ctx) error {
 
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	limit, _ := strconv.Atoi(ctx.Query("limit", "20"))
+	sort := ctx.Query("sort", "latest")
+	if sort != "latest" && sort != "top" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "sort must be 'latest' or 'top'"})
+	}
 
-	threads, total, err := c.threadService.GetCommunityThreads(uint(communityID), claims.UserID, page, limit)
+	threads, total, err := c.threadService.GetCommunityThreads(uint(communityID), claims.UserID, page, limit, sort)
 	if err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})

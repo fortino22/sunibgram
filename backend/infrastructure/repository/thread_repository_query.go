@@ -91,14 +91,14 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 	return result.Threads, result.Total, nil
 }
 
-func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindByCommunityID(communityID uint, page, limit int, sort string) ([]model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread
 		Total   int64
 	}
 	ctx := context.Background()
 	var result cached
-	key := threadCommunityKey(communityID, page, limit)
+	key := threadCommunityKey(communityID, page, limit, sort)
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var threads []model.Thread
 		var total int64
@@ -106,9 +106,13 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int) ([]m
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Count(&total)
 		offset := (page - 1) * limit
+		orderClause := "created_at DESC"
+		if sort == "top" {
+			orderClause = "like_count DESC, created_at DESC"
+		}
 		if err := preloadThreadDetails(r.db.readDB).
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Order("created_at DESC").
+			Order(orderClause).
 			Offset(offset).Limit(limit).
 			Find(&threads).Error; err != nil {
 			return nil, 0, err

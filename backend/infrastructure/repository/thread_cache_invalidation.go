@@ -18,8 +18,8 @@ func threadChainKey(rootID uint, page, limit int) string {
 	return fmt.Sprintf("thread:chain:%d:page:%d:limit:%d", rootID, page, limit)
 }
 
-func threadCommunityKey(communityID uint, page, limit int) string {
-	return fmt.Sprintf("thread:community:%d:page:%d:limit:%d", communityID, page, limit)
+func threadCommunityKey(communityID uint, page, limit int, sort string) string {
+	return fmt.Sprintf("thread:community:%d:sort:%s:page:%d:limit:%d", communityID, sort, page, limit)
 }
 
 func threadUserFeedKey(userID uint, tab string, requesterID uint, page, limit int) string {
