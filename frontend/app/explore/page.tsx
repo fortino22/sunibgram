@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { MediaGrid } from '@/components/shared/MediaGrid';
 import { SearchBar } from '@/components/explore/SearchBar';
 import { TrendingSection } from '@/components/explore/TrendingSection';
 import { SuggestedPeopleSection } from '@/components/explore/SuggestedPeopleSection';
@@ -189,8 +190,9 @@ function TabContent({
 
   if (tab === 'media') {
     if (mediaQuery.isLoading) return <>{Array.from({ length: 3 }, (_, i) => <ThreadCardSkeleton key={i} />)}</>;
-    if (!mediaQuery.data?.data.length) return <EmptyState title="No media" subtitle={`No media posts for "${query}"`} />;
-    return <>{mediaQuery.data.data.map((t: ThreadItem) => <ThreadCard key={t.id} thread={t} />)}</>;
+    const mediaThreads = (mediaQuery.data?.data ?? []).filter((t) => t.media.length > 0);
+    if (!mediaThreads.length) return <EmptyState title="No media" subtitle={`No media posts for "${query}"`} />;
+    return <MediaGrid threads={mediaThreads} />;
   }
 
   if (tab === 'communities') {

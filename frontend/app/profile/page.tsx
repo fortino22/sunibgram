@@ -10,10 +10,12 @@ import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
 import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileSkeleton } from '@/components/profile/skeletons/ProfileSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { MediaGrid } from '@/components/shared/MediaGrid';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useMyThreads } from '@/hooks/useMyThreads';
 import { useMyReplies } from '@/hooks/useMyReplies';
 import { useMyLikes } from '@/hooks/useMyLikes';
+import { useProfile } from '@/hooks/useProfile';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import type { ThreadItem } from '@/lib/services/threads';
 
@@ -48,6 +50,24 @@ function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps)
           bookmark.mutate(thread.is_bookmarked === true);
         }
       }}
+    />
+  );
+}
+
+// ─── Like card — resolves avatar via profile API since likes endpoint omits it ─
+
+function LikeCard({ thread }: { thread: ThreadItem }) {
+  const { data: authorProfile } = useProfile(thread.author.id);
+  const { like, repost, bookmark } = useThreadActions(thread);
+  const patchedThread: ThreadItem = authorProfile?.avatar
+    ? { ...thread, author: { ...thread.author, avatar_url: authorProfile.avatar } }
+    : thread;
+  return (
+    <ProfileThreadCard
+      thread={patchedThread}
+      onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
+      onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
+      onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
     />
   );
 }
@@ -121,13 +141,13 @@ export default function ProfilePage() {
       {activeTab === 'media' && (
         mediaThreads.length === 0
           ? <EmptyState title="No media yet" subtitle="Photos and videos from threads will appear here." />
-          : mediaThreads.map((t) => <ConnectedCard key={t.id} thread={t} />)
+          : <MediaGrid threads={mediaThreads} />
       )}
 
       {activeTab === 'likes' && (
         likes.length === 0
           ? <EmptyState title="No likes yet" subtitle="Posts you've liked will appear here." />
-          : likes.map((t) => <ConnectedCard key={t.id} thread={t} />)
+          : likes.map((t) => <LikeCard key={t.id} thread={t} />)
       )}
 
       {showEditModal && (

@@ -4,12 +4,18 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar } from '@/components/shared/Avatar';
 import { useMyProfile } from '@/hooks/useMyProfile';
-import { createThread, type ThreadMutationParams, type ThreadResponse } from '@/lib/services';
+import { createThread, type ThreadMutationParams, type ThreadResponse, type ThreadItem } from '@/lib/services';
 import { useAuthStore } from '@/stores/authStore';
+import type { ThreadDetailData } from '@/hooks/useThread';
 
 interface ThreadComposerProps {
   placeholder: string;
   parentId: number;
+}
+
+interface MutateContext {
+  previousChain: [readonly unknown[], ThreadDetailData | undefined][];
+  savedContent: string;
 }
 
 export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
@@ -20,7 +26,7 @@ export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
   const [content, setContent] = useState('');
   const normalizedContent = content.trim();
 
-  const replyMutation = useMutation<ThreadResponse, Error, ThreadMutationParams>({
+  const replyMutation = useMutation<ThreadResponse, Error, ThreadMutationParams, MutateContext>({
     mutationFn: async (params) => {
       if (token === null) {
         throw new Error('Authentication token is required to reply to this thread.');
@@ -28,10 +34,68 @@ export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
 
       return createThread(params, token);
     },
-    onSuccess: async () => {
+    onMutate: async (params) => {
+      await queryClient.cancelQueries({ queryKey: ['thread-chain'] });
+
+      const previousChain = queryClient.getQueriesData<ThreadDetailData>({ queryKey: ['thread-chain'] });
+
+      const now = new Date().toISOString();
+      const optimisticReply: ThreadItem = {
+        type: 'THREAD',
+        id: -Date.now(),
+        parent_id: parentId,
+        root_id: null,
+        community: undefined,
+        content: params.content,
+        created_at: now,
+        updated_at: now,
+        time_ago: 'now',
+        author: {
+          id: user?.id ?? 0,
+          username: user?.username ?? '',
+          is_premium: false,
+          avatar_url: profile?.avatar ?? null,
+          faculty: undefined,
+        },
+        stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
+        media: [],
+        is_liked: false,
+        is_bookmarked: false,
+        is_reposted: false,
+        is_pin: false,
+      };
+
+      queryClient.setQueriesData<ThreadDetailData>(
+        { queryKey: ['thread-chain'] },
+        (old) => {
+          if (!old || old.root.id !== parentId) return old;
+          return {
+            ...old,
+            root: {
+              ...old.root,
+              stats: { ...old.root.stats, comments: old.root.stats.comments + 1 },
+            },
+            replies: [...old.replies, optimisticReply],
+          };
+        }
+      );
+
+      const savedContent = content;
       setContent('');
+
+      return { previousChain, savedContent };
+    },
+    onError: (_err, _params, context) => {
+      if (context) {
+        for (const [key, data] of context.previousChain) {
+          queryClient.setQueryData(key, data);
+        }
+        setContent(context.savedContent);
+      }
+    },
+    onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['thread-chain', parentId] }),
+        queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
         queryClient.invalidateQueries({ queryKey: ['thread', parentId] }),
         queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] }),
         queryClient.invalidateQueries({ queryKey: ['threads'] }),

@@ -27,7 +27,13 @@
       "Bash(node -e \"const col = require\\('./sunibgram.postman_collection.json'\\); const items = col.item.flatMap\\(i => i.item ?? [i]\\); const t = items.find\\(i => i.name && i.name.toLowerCase\\(\\).includes\\('get thread'\\) && !i.name.toLowerCase\\(\\).includes\\('chain'\\)\\); console.log\\(t?.name\\); console.log\\(JSON.stringify\\(t?.response?.[0]?.body ?? t?.response, null, 2\\)\\)\")",
       "Bash(go build *)",
       "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\" -Recurse -Name)",
-      "Bash(Select-String -Pattern \"\\(explore|search\\)\")"
+      "Bash(Select-String -Pattern \"\\(explore|search\\)\")",
+      "Bash(git -C \"c:/Coding/sunibgram\" status --short)",
+      "Bash(git -C \"c:/Coding/sunibgram\" log --oneline -5)",
+      "Bash(git -C \"c:/Coding/sunibgram\" show 416205d --stat)",
+      "Bash(git -C \"c:/Coding/sunibgram\" show 416205d -- backend/infrastructure/repository/explore_repository.go)",
+      "Bash(git -C \"c:/Coding/sunibgram\" show HEAD:backend/infrastructure/repository/explore_repository.go)",
+      "Bash(git -C \"c:/Coding/sunibgram\" show 416205d --stat -- backend/dto/)"
     ]
   }
 }
