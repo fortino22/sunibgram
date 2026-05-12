@@ -204,6 +204,19 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 	if err := s.threadRepo.Save(repost); err != nil {
 		return err
 	}
+	if s.hashtagRepo != nil {
+		if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, threadID, "repost_count", 1); err != nil {
+			log.Printf("repost hashtag trending boost failed: %v", err)
+		}
+	}
+	if s.eventRepo != nil {
+		if err := s.eventRepo.PatchEventCounterByThreadID(ctx, threadID, "repost_count", 1); err != nil {
+			log.Printf("repost event trending boost failed: %v", err)
+		}
+	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
 	helper.SendInteractionNotification(s.notification, "repost", "reposted your thread", userID, original.UserID, threadID)
 	return nil
 }
@@ -218,6 +231,19 @@ func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) err
 	}
 	if err := s.threadRepo.DeleteRepost(userID, threadID); err != nil {
 		return err
+	}
+	if s.hashtagRepo != nil {
+		if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, threadID, "repost_count", -1); err != nil {
+			log.Printf("repost hashtag trending decrement failed: %v", err)
+		}
+	}
+	if s.eventRepo != nil {
+		if err := s.eventRepo.PatchEventCounterByThreadID(ctx, threadID, "repost_count", -1); err != nil {
+			log.Printf("repost event trending decrement failed: %v", err)
+		}
+	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
 	}
 	return nil
 }
