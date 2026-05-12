@@ -102,10 +102,12 @@ export async function getMyProfile(token: string): Promise<UserProfile> {
   return mapProfile(raw);
 }
 
-export async function getProfile(userId: number | string, token: string): Promise<UserProfile> {
+export async function getProfileByUserId(userId: number | string, token: string): Promise<UserProfile> {
   const raw = await api.get<BackendProfileResponse>(`/api/profile/${userId}`, token);
   return mapProfile(raw);
 }
+
+export const getProfile = getProfileByUserId;
 
 export async function updateMyProfile(
   params: UpdateProfileParams,
@@ -128,12 +130,4 @@ export async function updateMyProfile(
 
   const raw = await putFormData<BackendProfileResponse>('/api/profile/me', formData, token);
   return mapProfile(raw);
-}
-
-export function followUser(userId: number | string, token: string): Promise<ProfileMessageResponse> {
-  return api.post<ProfileMessageResponse>(`/api/users/${userId}/follow`, undefined, token);
-}
-
-export function unfollowUser(userId: number | string, token: string): Promise<ProfileMessageResponse> {
-  return api.delete<ProfileMessageResponse>(`/api/users/${userId}/unfollow`, token);
 }

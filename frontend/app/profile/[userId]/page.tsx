@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ProfilePageHeader } from '@/components/profile/ProfilePageHeader';
 import { ProfileBanner } from '@/components/profile/ProfileBanner';
+import { FollowListTab } from '@/components/profile/FollowListTab';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
 import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
-import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileSkeleton } from '@/components/profile/skeletons/ProfileSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MediaGrid } from '@/components/shared/MediaGrid';
@@ -18,8 +18,6 @@ import { useFollowUser } from '@/hooks/useFollowUser';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { useAuthStore } from '@/stores/authStore';
 import type { ThreadItem } from '@/lib/services/threads';
-
-// ─── Connected card ───────────────────────────────────────────────────────────
 
 interface ConnectedCardProps {
   thread: ThreadItem;
@@ -54,23 +52,52 @@ function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps)
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default function UserProfilePage() {
-  const { userId } = useParams<{ userId: string }>();
-  const currentUserId = useAuthStore((s) => s.user?.id);
-
+  const params = useParams<{ userId: string }>();
+  const routeUserId = Number(params.userId);
+  const hasValidUserId = Number.isInteger(routeUserId) && routeUserId > 0;
+  const profileUserId = hasValidUserId ? routeUserId : undefined;
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const [activeTab, setActiveTab] = useState<ProfileTab>('threads');
-  const [followModal, setFollowModal] = useState<'followers' | 'following' | null>(null);
 
-  const { data: profile, isLoading } = useProfile(userId);
-  const threadsQuery = useUserThreads(userId);
-  const repliesQuery = useUserReplies(userId);
-  const { follow, unfollow } = useFollowUser(userId);
+  const { data: profile, isLoading, isError, error } = useProfile(profileUserId);
+  const threadsQuery = useUserThreads(profileUserId);
+  const repliesQuery = useUserReplies(profileUserId);
+  const { follow, unfollow } = useFollowUser(profileUserId, [profileUserId]);
 
-  if (isLoading || !profile) return <ProfileSkeleton />;
+  if (!hasValidUserId) {
+    return (
+      <EmptyState
+        title="Profile unavailable"
+        subtitle="Invalid profile id."
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <ProfileSkeleton />;
+  }
+
+  if (isError) {
+    return (
+      <EmptyState
+        title="Profile unavailable"
+        subtitle={error.message}
+      />
+    );
+  }
+
+  if (!profile) {
+    return (
+      <EmptyState
+        title="Profile unavailable"
+        subtitle="This profile could not be loaded."
+      />
+    );
+  }
 
   const isOwn = currentUserId === profile.id;
+  const isFollowing = !!profile.is_following;
   const threads = threadsQuery.data?.data ?? [];
   const replies = repliesQuery.data?.data ?? [];
   const mediaThreads = threads.filter((t) => t.media.length > 0);
@@ -80,7 +107,7 @@ export default function UserProfilePage() {
     : undefined;
 
   function handleFollowToggle() {
-    if (profile?.is_following) {
+    if (isFollowing) {
       unfollow.mutate();
     } else {
       follow.mutate();
@@ -103,10 +130,11 @@ export default function UserProfilePage() {
           avatarUrl: profile.avatar ?? null,
         }}
         isOwn={isOwn}
-        isFollowing={!!profile.is_following}
+        isFollowing={isFollowing}
+        followPending={follow.isPending || unfollow.isPending}
         onFollowToggle={handleFollowToggle}
-        onFollowersClick={() => setFollowModal('followers')}
-        onFollowingClick={() => setFollowModal('following')}
+        onFollowersClick={() => setActiveTab('followers')}
+        onFollowingClick={() => setActiveTab('following')}
       />
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -139,9 +167,9 @@ export default function UserProfilePage() {
         <EmptyState title="Likes are private" subtitle="Only the account owner can see their likes." />
       )}
 
-      {followModal && (
-        <FollowListModal userId={profile.id} type={followModal} onClose={() => setFollowModal(null)} />
-      )}
+      {activeTab === 'followers' && <FollowListTab userId={profile.id} type="followers" />}
+
+      {activeTab === 'following' && <FollowListTab userId={profile.id} type="following" />}
     </div>
   );
 }

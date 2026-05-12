@@ -3,11 +3,11 @@
 import { useState } from 'react';
 import { ProfilePageHeader } from '@/components/profile/ProfilePageHeader';
 import { ProfileBanner } from '@/components/profile/ProfileBanner';
+import { FollowListTab } from '@/components/profile/FollowListTab';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
 import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
 import { ProfileEditModal } from '@/components/profile/ProfileEditModal';
-import { FollowListModal } from '@/components/profile/FollowListModal';
 import { ProfileSkeleton } from '@/components/profile/skeletons/ProfileSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MediaGrid } from '@/components/shared/MediaGrid';
@@ -77,7 +77,6 @@ function LikeCard({ thread }: { thread: ThreadItem }) {
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('threads');
   const [showEditModal, setShowEditModal] = useState(false);
-  const [followModal, setFollowModal] = useState<'followers' | 'following' | null>(null);
 
   const { data: profile, isLoading } = useMyProfile();
   const threadsQuery = useMyThreads();
@@ -113,9 +112,10 @@ export default function ProfilePage() {
         isOwn
         isFollowing={false}
         onFollowToggle={() => {}}
+        followPending={false}
         onEditClick={() => setShowEditModal(true)}
-        onFollowersClick={() => setFollowModal('followers')}
-        onFollowingClick={() => setFollowModal('following')}
+        onFollowersClick={() => setActiveTab('followers')}
+        onFollowingClick={() => setActiveTab('following')}
       />
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -150,11 +150,12 @@ export default function ProfilePage() {
           : likes.map((t) => <LikeCard key={t.id} thread={t} />)
       )}
 
+      {activeTab === 'followers' && <FollowListTab userId={profile.id} type="followers" />}
+
+      {activeTab === 'following' && <FollowListTab userId={profile.id} type="following" />}
+
       {showEditModal && (
         <ProfileEditModal profile={profile} onClose={() => setShowEditModal(false)} />
-      )}
-      {followModal && (
-        <FollowListModal userId={profile.id} type={followModal} onClose={() => setFollowModal(null)} />
       )}
     </div>
   );

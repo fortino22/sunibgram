@@ -8,7 +8,7 @@ export function useFollowers(userId: number | string) {
   const token = useAuthStore((s) => s.token);
   return useQuery<FollowListResponse>({
     queryKey: ['followers', userId],
-    queryFn: () => getFollowers(userId, token!),
+    queryFn: () => getFollowers(userId, token!, { limit: 100 }),
     enabled: !!token && !!userId,
   });
 }
