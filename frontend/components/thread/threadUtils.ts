@@ -11,7 +11,29 @@ export function getAuthorAvatarUrl(author: ThreadAuthorWithAvatar): string | nul
 }
 
 export function isRepostThread(thread: ThreadItem): boolean {
-  return thread.type.toUpperCase() === 'REPOST' || Boolean(thread.reposted_at);
+  return thread.type.toUpperCase() === 'REPOST' || thread.reposted_by_id !== undefined || Boolean(thread.reposted_at);
+}
+
+export function getRepostLabel(thread: ThreadItem, currentUserId: number | null | undefined): string | null {
+  if (!isRepostThread(thread)) {
+    return null;
+  }
+
+  if (currentUserId !== null && currentUserId !== undefined && thread.reposted_by_id === currentUserId) {
+    return 'You reposted';
+  }
+
+  const displayName = thread.reposted_by_name?.trim();
+  if (displayName) {
+    return `${displayName} reposted`;
+  }
+
+  const username = thread.reposted_by_username?.trim();
+  if (username) {
+    return `@${username} reposted`;
+  }
+
+  return null;
 }
 
 export function isOwnThread(thread: ThreadItem, userId: number | null | undefined): boolean {

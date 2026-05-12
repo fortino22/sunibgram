@@ -12,7 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadHeader } from './ThreadHeader';
-import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread, isRepostThread } from './threadUtils';
+import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
 
 interface ThreadCardProps {
   thread: ThreadItem;
@@ -26,6 +26,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
+  const repostLabel = getRepostLabel(thread, currentUserId);
 
   async function handleSave(params: ThreadMutationParams) {
     await updateMutation.mutateAsync(params);
@@ -63,7 +64,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                 author={author}
                 timeAgo={thread.time_ago}
                 parentContext={thread.parent_context}
-                repostedBy={isRepostThread(thread) ? thread.author.username : null}
+                repostLabel={repostLabel}
               />
             </div>
             {canManage && (
