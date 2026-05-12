@@ -37,7 +37,7 @@ export function ActionBar({
   const sw = size === 'sm' ? 1.8 : 2;
 
   return (
-    <div style={{ display: 'flex', gap: 4, marginTop: 12 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
       <ActionButton aria-label="Reply" onClick={onReply} size={size}>
         <MessageCircle size={iconSize} strokeWidth={sw} />
         <span style={{ fontSize: size === 'sm' ? 13 : 14 }}>{stats.comments}</span>

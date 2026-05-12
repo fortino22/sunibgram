@@ -33,7 +33,12 @@
       "Bash(git -C \"c:/Coding/sunibgram\" show 416205d --stat)",
       "Bash(git -C \"c:/Coding/sunibgram\" show 416205d -- backend/infrastructure/repository/explore_repository.go)",
       "Bash(git -C \"c:/Coding/sunibgram\" show HEAD:backend/infrastructure/repository/explore_repository.go)",
-      "Bash(git -C \"c:/Coding/sunibgram\" show 416205d --stat -- backend/dto/)"
+      "Bash(git -C \"c:/Coding/sunibgram\" show 416205d --stat -- backend/dto/)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\" -Recurse -Depth 3)",
+      "Bash(Select-Object -Property FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\" -Force)",
+      "Bash(Select-Object Name, Mode)"
     ]
   }
 }

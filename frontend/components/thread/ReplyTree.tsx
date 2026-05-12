@@ -1,5 +1,21 @@
+'use client';
+
 import type { ThreadItem } from '@/lib/services/threads';
-import { ThreadReplyItem } from './ThreadReplyItem';
+import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
+import { useThreadActions } from '@/hooks/useThreadActions';
+
+function ConnectedReply({ thread }: { thread: ThreadItem }) {
+  const { like, repost, bookmark } = useThreadActions(thread);
+
+  return (
+    <ProfileThreadCard
+      thread={thread}
+      onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
+      onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
+      onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
+    />
+  );
+}
 
 interface ReplyTreeProps {
   threads: ThreadItem[];
@@ -17,17 +33,7 @@ export function ReplyTree({ threads }: ReplyTreeProps) {
   return (
     <section>
       {threads.map((thread) => (
-        <article
-          key={thread.id}
-          className="border-b"
-          style={{
-            borderColor: 'var(--border)',
-            background: 'var(--bg-card)',
-            padding: '14px 20px',
-          }}
-        >
-          <ThreadReplyItem thread={thread} />
-        </article>
+        <ConnectedReply key={thread.id} thread={thread} />
       ))}
     </section>
   );

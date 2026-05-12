@@ -13,8 +13,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
-import { ThreadHeader } from './ThreadHeader';
 import { ReplyTree } from './ReplyTree';
+import { ImageDetailModal } from './ImageDetailModal';
 import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from './threadUtils';
 
 interface ThreadDetailViewProps {
@@ -31,6 +31,7 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
   });
   const { like, repost, bookmark } = useThreadActions(root);
   const [isEditing, setIsEditing] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const author = getThreadAuthor(root);
   const canManage = isOwnThread(root, currentUserId);
 
@@ -40,10 +41,7 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
   }
 
   async function handleDelete() {
-    if (!window.confirm('Delete this post?')) {
-      return;
-    }
-
+    if (!window.confirm('Delete this post?')) return;
     try {
       await deleteMutation.mutateAsync();
     } catch {
@@ -61,15 +59,22 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
       }}
     >
       <header
-        className="sticky top-0 z-20 flex items-center gap-[18px] border-b px-4 py-3"
-        style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}
+        className="sticky top-0 z-20 flex items-center border-b"
+        style={{
+          background: 'var(--bg-card)',
+          borderColor: 'var(--border)',
+          padding: '12px 16px',
+          gap: 18,
+        }}
       >
         <button
           type="button"
           aria-label="Back"
           onClick={() => router.back()}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full"
+          className="inline-flex items-center justify-center rounded-full"
           style={{
+            width: 36,
+            height: 36,
             background: 'transparent',
             color: 'var(--text)',
           }}
@@ -84,93 +89,113 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
         style={{
           borderColor: 'var(--border)',
           background: 'var(--bg-card)',
-          padding: '14px 20px',
+          padding: '16px 20px',
         }}
       >
-        <div className="flex gap-3">
+        {/* Author row */}
+        <div className="flex items-center" style={{ gap: 12 }}>
           <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <ThreadHeader author={author} timeAgo={root.time_ago} parentContext={root.parent_context} />
-              </div>
-              {canManage && (
-                <ThreadOptionsMenu
-                  onEdit={() => setIsEditing(true)}
-                  onDelete={() => void handleDelete()}
-                  deleting={deleteMutation.isPending}
-                  disabled={updateMutation.isPending}
-                />
-              )}
-            </div>
-
-            {isEditing ? (
-              <ThreadInlineEditor
-                initialContent={root.content}
-                initialMedia={root.media}
-                onCancel={() => setIsEditing(false)}
-                onSave={handleSave}
-                pending={updateMutation.isPending}
-                errorMessage={updateMutation.error?.message}
-              />
-            ) : (
-              <ThreadBody content={root.content} media={root.media} />
+          <div className="min-w-0 flex-1 flex items-center" style={{ gap: 8 }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              {author.username}
+            </span>
+            {author.is_premium && (
+              <span style={{ fontSize: 10, background: 'var(--accent-soft)', color: 'var(--accent)', padding: '1px 5px', borderRadius: 4, fontWeight: 600, letterSpacing: '0.02em' }}>
+                PRO
+              </span>
             )}
-
-            {deleteMutation.isError && (
-              <div
-                className="mt-3 rounded-xl px-3 py-2 text-[13px]"
-                style={{
-                  background: 'var(--coral-soft)',
-                  color: 'var(--coral)',
-                }}
-              >
-                {deleteMutation.error.message}
-              </div>
+            {root.is_pin && (
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>Pinned</span>
             )}
-
-            <div
-              className="mt-3 border-t pt-3 text-sm"
-              style={{ color: 'var(--text-tertiary)', borderColor: 'var(--border)' }}
-            >
-              <div className="flex flex-wrap gap-x-5 gap-y-2">
-                <span>
-                  <strong style={{ color: 'var(--text)' }}>{root.stats.likes}</strong> Likes
-                </span>
-                <span>
-                  <strong style={{ color: 'var(--text)' }}>{root.stats.reposts}</strong> Reposts
-                </span>
-                <span>
-                  <strong style={{ color: 'var(--text)' }}>{root.stats.bookmarks}</strong> Bookmarks
-                </span>
-              </div>
-            </div>
-
-            <ThreadActions
-              comments={root.stats.comments}
-              likes={root.stats.likes}
-              reposts={root.stats.reposts}
-              bookmarks={root.stats.bookmarks}
-              isLiked={root.is_liked === true}
-              isReposted={root.is_reposted === true}
-              isBookmarked={root.is_bookmarked === true}
-              onLike={() => {
-                if (!like.isPending) {
-                  like.mutate(root.is_liked === true);
-                }
-              }}
-              onRepost={() => {
-                if (!repost.isPending) {
-                  repost.mutate(root.is_reposted === true);
-                }
-              }}
-              onBookmark={() => {
-                if (!bookmark.isPending) {
-                  bookmark.mutate(root.is_bookmarked === true);
-                }
-              }}
-            />
           </div>
+          {canManage && (
+            <ThreadOptionsMenu
+              onEdit={() => setIsEditing(true)}
+              onDelete={() => void handleDelete()}
+              deleting={deleteMutation.isPending}
+              disabled={updateMutation.isPending}
+              compact
+            />
+          )}
+        </div>
+
+        {/* Content — full width, 12px below author row */}
+        <div style={{ marginTop: 12 }}>
+          {isEditing ? (
+            <ThreadInlineEditor
+              initialContent={root.content}
+              initialMedia={root.media}
+              onCancel={() => setIsEditing(false)}
+              onSave={handleSave}
+              pending={updateMutation.isPending}
+              errorMessage={updateMutation.error?.message}
+            />
+          ) : (
+            <ThreadBody
+              content={root.content}
+              media={root.media}
+              onImageClick={(i) => setLightboxIndex(i)}
+            />
+          )}
+        </div>
+
+        {root.time_ago && (
+          <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
+            {root.time_ago}
+          </div>
+        )}
+
+        {deleteMutation.isError && (
+          <div
+            className="rounded-xl text-[13px]"
+            style={{
+              marginTop: 12,
+              padding: '8px 12px',
+              background: 'var(--coral-soft)',
+              color: 'var(--coral)',
+            }}
+          >
+            {deleteMutation.error.message}
+          </div>
+        )}
+
+        {/* Stats row — border top and bottom */}
+        <div
+          className="border-t border-b flex flex-wrap text-sm"
+          style={{
+            marginTop: 12,
+            padding: '12px 0',
+            rowGap: 8,
+            columnGap: 20,
+            color: 'var(--text-tertiary)',
+            borderColor: 'var(--border)',
+          }}
+        >
+          <span>
+            <strong style={{ color: 'var(--text)' }}>{root.stats.likes}</strong> Likes
+          </span>
+          <span>
+            <strong style={{ color: 'var(--text)' }}>{root.stats.reposts}</strong> Reposts
+          </span>
+          <span>
+            <strong style={{ color: 'var(--text)' }}>{root.stats.bookmarks}</strong> Bookmarks
+          </span>
+        </div>
+
+        {/* Actions — 4px below stats border */}
+        <div style={{ marginTop: 4 }}>
+          <ThreadActions
+            comments={root.stats.comments}
+            likes={root.stats.likes}
+            reposts={root.stats.reposts}
+            bookmarks={root.stats.bookmarks}
+            isLiked={root.is_liked === true}
+            isReposted={root.is_reposted === true}
+            isBookmarked={root.is_bookmarked === true}
+            onLike={() => { if (!like.isPending) like.mutate(root.is_liked === true); }}
+            onRepost={() => { if (!repost.isPending) repost.mutate(root.is_reposted === true); }}
+            onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(root.is_bookmarked === true); }}
+          />
         </div>
       </article>
 
@@ -191,8 +216,9 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
           <button
             type="button"
             onClick={() => router.push(`/thread/${viewFullThreadId}`)}
-            className="rounded-full px-4 py-2 text-sm font-semibold"
+            className="rounded-full text-sm font-semibold"
             style={{
+              padding: '8px 16px',
               border: '1px solid var(--border)',
               background: 'transparent',
               color: 'var(--text)',
@@ -204,6 +230,16 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
       )}
 
       <ReplyTree threads={replies} />
+
+      {lightboxIndex !== null && (
+        <ImageDetailModal
+          media={root.media}
+          currentIndex={lightboxIndex}
+          thread={root}
+          onClose={() => setLightboxIndex(null)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
     </main>
   );
 }

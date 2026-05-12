@@ -11,6 +11,8 @@ import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from '@/components/thread/threadUtils';
+import { ThreadBody } from '@/components/thread/ThreadBody';
+import { ImageDetailModal } from '@/components/thread/ImageDetailModal';
 
 interface ProfileThreadCardProps {
   thread: ThreadItem;
@@ -26,6 +28,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const [isEditing, setIsEditing] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
 
@@ -134,16 +137,22 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
               />
             </div>
           ) : (
-            <div
-              style={{
-                fontSize: 15,
-                color: 'var(--text)',
-                lineHeight: 1.6,
-                whiteSpace: 'pre-wrap',
-                overflowWrap: 'break-word',
-              }}
-            >
-              {thread.content}
+            <ThreadBody
+              content={thread.content}
+              media={thread.media}
+              onImageClick={(i) => setLightboxIndex(i)}
+            />
+          )}
+
+          {lightboxIndex !== null && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <ImageDetailModal
+                media={thread.media}
+                currentIndex={lightboxIndex}
+                thread={thread}
+                onClose={() => setLightboxIndex(null)}
+                onNavigate={setLightboxIndex}
+              />
             </div>
           )}
 
@@ -160,26 +169,6 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
               }}
             >
               {deleteMutation.error.message}
-            </div>
-          )}
-
-          {thread.media.length > 0 && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: thread.media.length === 1 ? '1fr' : 'repeat(2, 1fr)',
-                gap: 8,
-                marginTop: 12,
-              }}
-            >
-              {thread.media.map((m) => (
-                <img
-                  key={m.media_id}
-                  src={m.url}
-                  alt=""
-                  style={{ width: '100%', borderRadius: 10, display: 'block', background: 'var(--bg-subtle)' }}
-                />
-              ))}
             </div>
           )}
 
