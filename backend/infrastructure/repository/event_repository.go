@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -170,6 +171,62 @@ func (r *eventRepository) FindThreads(eventID string, page, limit int) ([]model.
 		_ = r.cache.Set(ctx, key, result, r.ttl)
 	}
 	return result.Threads, result.Total, nil
+}
+
+func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threadID uint, column string, delta int) error {
+	if delta == 0 {
+		return nil
+	}
+
+	var event model.ThreadEvent
+	if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		var thread model.Thread
+		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id").First(&thread, threadID).Error; err != nil {
+			return err
+		}
+		if thread.RootID != nil {
+			threadID = *thread.RootID
+		} else if thread.ParentID != nil {
+			threadID = *thread.ParentID
+		} else {
+			return nil
+		}
+		if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+	}
+	if event.EventID == "" {
+		return nil
+	}
+
+	updates := map[string]any{
+		column: gorm.Expr("GREATEST("+column+" + ?, 0)", delta),
+	}
+	switch column {
+	case "thread_count":
+		updates["week_thread_count"] = gorm.Expr("GREATEST(week_thread_count + ?, 0)", delta)
+	case "like_count":
+		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", delta)
+	case "repost_count":
+		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
+	case "week_thread_count", "week_like_count", "week_repost_count":
+	default:
+		return nil
+	}
+
+	if err := r.writeDB.WithContext(ctx).Model(&model.Event{}).
+		Where("id = ?", event.EventID).
+		UpdateColumns(updates).Error; err != nil {
+		return err
+	}
+	invalidateEventCounterCaches(r.cache, event.EventID)
+	return nil
 }
 
 func (r *eventRepository) invalidateLists() {

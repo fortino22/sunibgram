@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -74,6 +75,22 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
 		return nil, err
 	}
+	if parentID != nil {
+		counterThreadID := *parentID
+		if rootID != nil {
+			counterThreadID = *rootID
+		}
+		if s.hashtagRepo != nil {
+			if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, counterThreadID, "thread_count", 1); err != nil {
+				log.Printf("reply hashtag trending boost failed: %v", err)
+			}
+		}
+		if s.eventRepo != nil {
+			if err := s.eventRepo.PatchEventCounterByThreadID(ctx, counterThreadID, "thread_count", 1); err != nil {
+				log.Printf("reply event trending boost failed: %v", err)
+			}
+		}
+	}
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)
 	}
@@ -130,6 +147,24 @@ func (s *ThreadService) Delete(ctx context.Context, id, userID uint) error {
 	}
 	if err := s.threadRepo.Delete(id); err != nil {
 		return err
+	}
+	if thread.ParentID != nil || thread.RootID != nil {
+		counterThreadID := id
+		if thread.RootID != nil {
+			counterThreadID = *thread.RootID
+		} else if thread.ParentID != nil {
+			counterThreadID = *thread.ParentID
+		}
+		if s.hashtagRepo != nil {
+			if err := s.hashtagRepo.PatchHashtagCounterByThreadID(ctx, counterThreadID, "thread_count", -1); err != nil {
+				log.Printf("reply hashtag trending decrement failed: %v", err)
+			}
+		}
+		if s.eventRepo != nil {
+			if err := s.eventRepo.PatchEventCounterByThreadID(ctx, counterThreadID, "thread_count", -1); err != nil {
+				log.Printf("reply event trending decrement failed: %v", err)
+			}
+		}
 	}
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)

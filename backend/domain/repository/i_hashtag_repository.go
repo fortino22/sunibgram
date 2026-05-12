@@ -13,4 +13,5 @@ type IHashtagRepository interface {
 	ReplaceHashtagsForThread(ctx context.Context, threadID uint, hashtagIDs []uuid.UUID) error
 	UnlinkHashtagsFromThread(ctx context.Context, threadID uint) error
 	GetTrending(ctx context.Context, limit int) ([]model.TrendingHashtag, error)
+	PatchHashtagCounterByThreadID(ctx context.Context, threadID uint, column string, delta int) error
 }

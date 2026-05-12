@@ -1,6 +1,10 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import (
+	"context"
+
+	"github.com/sunibgram/domain/model"
+)
 
 type IEventRepository interface {
 	Save(event *model.Event) error
@@ -9,4 +13,5 @@ type IEventRepository interface {
 	Update(event *model.Event) error
 	Delete(id string) error
 	FindThreads(eventID string, page, limit int) ([]model.Thread, int64, error)
+	PatchEventCounterByThreadID(ctx context.Context, threadID uint, column string, delta int) error
 }
