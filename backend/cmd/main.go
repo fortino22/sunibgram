@@ -55,6 +55,7 @@ func main() {
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB, redisCache)
 	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
+	premiumSubscriptionRepo := infrarepo.NewPremiumSubscriptionRepository(writeDB, readDB)
 	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB, redisCache)
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
 	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
@@ -89,6 +90,7 @@ func main() {
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo)
+	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo)
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
@@ -117,6 +119,7 @@ func main() {
 	communityThreadCtrl := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService, threadPinService)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
+	premiumSubscriptionCtrl := controller.NewPremiumSubscriptionController(premiumSubscriptionService)
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
 	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
 	notificationCtrl := controller.NewNotificationController(notificationService)
@@ -157,6 +160,7 @@ func main() {
 		communityThreadCtrl,
 		facultyCtrl,
 		orderCtrl,
+		premiumSubscriptionCtrl,
 		chatRoomCtrl,
 		chatCtrl,
 		notificationCtrl,
