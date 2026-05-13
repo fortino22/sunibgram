@@ -34,18 +34,23 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 		return nil, err
 	}
 
-	media := make([]model.ChatMedia, 0, len(files))
 	for _, header := range files {
 		if err := model.ValidateChatMediaExt(header.Filename); err != nil {
 			return nil, err
 		}
+	}
+
+	media := make([]model.ChatMedia, 0, len(files))
+	for _, header := range files {
 		file, err := header.Open()
 		if err != nil {
+			s.rollbackUploaded(ctx, chatID, media)
 			return nil, err
 		}
 		objectName, uploadErr := s.storage.Upload(ctx, bucket, file, header)
 		file.Close()
 		if uploadErr != nil {
+			s.rollbackUploaded(ctx, chatID, media)
 			return nil, uploadErr
 		}
 
@@ -60,11 +65,20 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 			item.MediaType = "application/octet-stream"
 		}
 		if err := s.mediaRepo.Save(&item); err != nil {
+			media = append(media, item)
+			s.rollbackUploaded(ctx, chatID, media)
 			return nil, err
 		}
 		media = append(media, item)
 	}
 	return media, nil
+}
+
+func (s *ChatMediaService) rollbackUploaded(ctx context.Context, chatID uint, media []model.ChatMedia) {
+	_ = s.mediaRepo.DeleteByChatID(chatID)
+	for _, item := range media {
+		_ = s.storage.Delete(ctx, item.Bucket, item.ObjectName)
+	}
 }
 
 func (s *ChatMediaService) GetByChatID(chatID uint) ([]model.ChatMedia, error) {

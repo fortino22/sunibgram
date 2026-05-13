@@ -59,6 +59,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 	if len(files) > 0 {
 		media, err = c.chatMediaService.Upload(ctx.Context(), chat.ChatID, claims.UserID, files)
 		if err != nil {
+			_ = c.chatService.Delete(ctx.Context(), chat.ChatID)
 			return HandleServiceError(ctx, err)
 		}
 	}

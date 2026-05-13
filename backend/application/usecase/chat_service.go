@@ -67,6 +67,10 @@ func (s *ChatService) Unsend(ctx context.Context, chatID, senderID uint) error {
 	return s.chatRepo.SoftDelete(chatID)
 }
 
+func (s *ChatService) Delete(ctx context.Context, chatID uint) error {
+	return s.chatRepo.Delete(chatID)
+}
+
 func (s *ChatService) UpdateMessage(ctx context.Context, chatID, senderID uint, message string) error {
 	trimmed := strings.TrimSpace(message)
 	if trimmed == "" {

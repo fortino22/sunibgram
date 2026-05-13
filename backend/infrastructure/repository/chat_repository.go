@@ -75,6 +75,18 @@ func (r *ChatRepository) SoftDelete(id uint) error {
 		Update("deleted_at", &now).Error
 }
 
+func (r *ChatRepository) Delete(id uint) error {
+	return r.writeDB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("chat_id = ?", id).Delete(&model.ChatMedia{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("chat_id = ?", id).Delete(&model.ChatRead{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.Chat{}, "chat_id = ?", id).Error
+	})
+}
+
 func (r *ChatRepository) MarkRoomRead(roomID, userID uint) ([]uint, error) {
 	var ids []uint
 	err := r.writeDB.Raw(

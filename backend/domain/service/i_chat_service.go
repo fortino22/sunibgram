@@ -17,6 +17,7 @@ type IChatService interface {
 	GetByID(ctx context.Context, chatID uint) (*model.Chat, error)
 	GetMessages(roomID, userID uint, page, limit int) ([]model.Chat, int64, error)
 	Unsend(ctx context.Context, chatID, senderID uint) error
+	Delete(ctx context.Context, chatID uint) error
 	UpdateMessage(ctx context.Context, chatID, senderID uint, message string) error
 	MarkRead(roomID, userID uint) ([]uint, error)
 	MarkMessagesRead(ctx context.Context, roomID uint, chatIDs []uint, userID uint) ([]ChatMarkResult, error)
