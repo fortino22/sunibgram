@@ -83,34 +83,34 @@ func (s *ChatService) UpdateMessage(ctx context.Context, chatID, senderID uint, 
 	return s.chatRepo.UpdateMessage(chatID, trimmed)
 }
 
-func (s *ChatService) MarkRead(roomID, userID uint) error {
+func (s *ChatService) MarkRead(roomID, userID uint) ([]uint, error) {
 	if !s.roomRepo.IsMember(roomID, userID) {
-		return errors.New("forbidden")
+		return nil, errors.New("forbidden")
 	}
 
 	room, err := s.roomRepo.FindByID(roomID)
 	if err != nil {
-		return errors.New("chat room not found")
+		return nil, errors.New("chat room not found")
 	}
 	if room.Type == model.ChatRoomTypePrivate {
-		return s.chatRepo.MarkRoomRead(roomID, userID)
+		return nil, s.chatRepo.MarkRoomRead(roomID, userID)
 	}
 
 	inserted, err := s.chatReadRepo.BatchMarkRead(roomID, userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	memberCount := int64(room.MemberCount)
 	readCounts, err := s.chatReadRepo.CountReadsBatch(context.Background(), inserted)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, chatID := range inserted {
 		if readCounts[chatID] >= memberCount-1 {
 			_ = s.chatRepo.UpdateIsRead(chatID)
 		}
 	}
-	return nil
+	return inserted, nil
 }
 
 func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs []uint, userID uint) ([]service.ChatMarkResult, error) {

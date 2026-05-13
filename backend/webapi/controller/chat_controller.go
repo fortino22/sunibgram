@@ -80,7 +80,8 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 	}
 	page, limit := ParsePagination(ctx)
 
-	if err := c.chatService.MarkRead(roomID, claims.UserID); err != nil {
+	markedIDs, err := c.chatService.MarkRead(roomID, claims.UserID)
+	if err != nil {
 		return HandleServiceError(ctx, err)
 	}
 	chats, total, err := c.chatService.GetMessages(roomID, claims.UserID, page, limit)
@@ -92,6 +93,24 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 	data := make([]dto.ChatResponse, len(chats))
 	for i := range chats {
 		data[i] = c.toChatResponse(&chats[i], mediaByChat[chats[i].ChatID])
+	}
+
+	if len(markedIDs) > 0 {
+		marked := make(map[uint]bool, len(markedIDs))
+		for _, id := range markedIDs {
+			marked[id] = true
+		}
+		var results []service.ChatMarkResult
+		for i := range chats {
+			if marked[chats[i].ChatID] {
+				results = append(results, service.ChatMarkResult{
+					ChatID:   chats[i].ChatID,
+					SenderID: chats[i].SenderID,
+					Status:   "marked",
+				})
+			}
+		}
+		c.broadcastReadReceipts(roomID, claims.UserID, results)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
