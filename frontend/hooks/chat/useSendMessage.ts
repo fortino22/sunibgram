@@ -42,10 +42,16 @@ export function useSendMessage() {
             data: [optimistic, ...old.data],
             meta: { ...old.meta, total: old.meta.total + 1 },
           };
-        }
+        },
       );
 
       return { optimistic };
+    },
+
+    onSuccess: (_data, { roomId }) => {
+      // Fallback: if the socket message:new event was missed, refetch ensures
+      // the real message replaces any lingering optimistic entry.
+      void queryClient.invalidateQueries({ queryKey: ['chat', 'messages', roomId] });
     },
 
     onError: (_err, { roomId }, ctx) => {
@@ -59,7 +65,7 @@ export function useSendMessage() {
             data: old.data.filter((m) => m.chat_id !== ctx.optimistic.chat_id),
             meta: { ...old.meta, total: old.meta.total - 1 },
           };
-        }
+        },
       );
     },
   });

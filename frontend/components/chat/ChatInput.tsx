@@ -2,16 +2,17 @@
 
 import { useRef, useState, useCallback } from 'react';
 import { Send, Paperclip, X } from 'lucide-react';
-import { socketManager } from '@/lib/socket';
 import { useSendMessage } from '@/hooks/chat/useSendMessage';
 
 interface ChatInputProps {
   roomId: number;
+  onStartTyping?: (roomId: number) => void;
+  onStopTyping?: (roomId: number) => void;
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime'];
 
-export function ChatInput({ roomId }: ChatInputProps) {
+export function ChatInput({ roomId, onStartTyping, onStopTyping }: ChatInputProps) {
   const [text, setText] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -23,26 +24,25 @@ export function ChatInput({ roomId }: ChatInputProps) {
   const startTyping = useCallback(() => {
     if (!isTyping.current) {
       isTyping.current = true;
-      socketManager.emit('typing:start', roomId);
+      onStartTyping?.(roomId);
     }
     if (typingTimer.current) clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => {
       isTyping.current = false;
-      socketManager.emit('typing:stop', roomId);
+      onStopTyping?.(roomId);
     }, 2000);
-  }, [roomId]);
+  }, [roomId, onStartTyping, onStopTyping]);
 
   const stopTyping = useCallback(() => {
     if (typingTimer.current) clearTimeout(typingTimer.current);
     if (isTyping.current) {
       isTyping.current = false;
-      socketManager.emit('typing:stop', roomId);
+      onStopTyping?.(roomId);
     }
-  }, [roomId]);
+  }, [roomId, onStopTyping]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setText(e.target.value);
-    // Auto-resize
     const el = e.target;
     el.style.height = 'auto';
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
@@ -62,7 +62,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []).filter((f) =>
-      ALLOWED_TYPES.includes(f.type)
+      ALLOWED_TYPES.includes(f.type),
     );
     setFiles((prev) => [...prev, ...picked]);
     e.target.value = '';
@@ -87,7 +87,7 @@ export function ChatInput({ roomId }: ChatInputProps) {
             textareaRef.current.style.height = 'auto';
           }
         },
-      }
+      },
     );
   };
 

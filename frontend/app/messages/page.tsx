@@ -1,29 +1,52 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { ConversationList } from '@/components/chat/ConversationList';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
-import { useSocket } from '@/hooks/useSocket';
+import { useChatSocket } from '@/hooks/useChatSocket';
 import { useChatMessages } from '@/hooks/chat/useChatMessages';
 import { useChatRoom } from '@/hooks/chat/useChatRooms';
+import { useMarkMessagesRead } from '@/hooks/chat/useMarkMessagesRead';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
-import { socketManager } from '@/lib/socket';
-import type { TypingPayload } from '@/lib/services/chat';
 
 export default function MessagesPage() {
+  const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const { activeRoomId, setActiveRoomId } = useChatStore();
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
-  useSocket();
+  // Single WebSocket connection for the entire messages page
+  const { joinRoom, leaveRoom, startTyping, stopTyping, typingUsersByRoom } = useChatSocket({
+    accessToken: token,
+    currentUserId: user?.id,
+  });
 
   const messagesQuery = useChatMessages(activeRoomId);
   const activeRoom = useChatRoom(activeRoomId);
   const messages = messagesQuery.data?.data ?? [];
+  const { mutate: markRead } = useMarkMessagesRead();
+
+  // Join the active room when it changes; leave on cleanup
+  useEffect(() => {
+    if (!activeRoomId) return;
+    joinRoom(activeRoomId);
+    return () => {
+      leaveRoom(activeRoomId);
+    };
+  }, [activeRoomId, joinRoom, leaveRoom]);
+
+  // Mark unread messages from others as read whenever the message list updates
+  useEffect(() => {
+    if (!activeRoomId || !user) return;
+    const unread = messages
+      .filter((m) => !m.is_read && m.sender.id !== user.id && !m.deleted_at)
+      .map((m) => m.chat_id);
+    if (unread.length === 0) return;
+    markRead({ roomId: activeRoomId, chatIds: unread });
+  }, [messages, activeRoomId, user, markRead]);
 
   // Determine the "other" user in private rooms from message history
   const otherUsername = useMemo(() => {
@@ -32,33 +55,15 @@ export default function MessagesPage() {
     return otherMsg?.sender.username;
   }, [activeRoom, messages, user]);
 
-  // Typing indicators for the active room
-  useEffect(() => {
-    if (!activeRoomId || !user) return;
-
-    const usernames = new Map<number, string>();
-
-    const handleStart = (data: unknown) => {
-      const payload = data as TypingPayload;
-      if (payload.room_id !== activeRoomId || payload.user_id === user.id) return;
-      usernames.set(payload.user_id, `User ${payload.user_id}`);
-      setTypingUsers([...usernames.values()]);
-    };
-
-    const handleStop = (data: unknown) => {
-      const payload = data as TypingPayload;
-      if (payload.room_id !== activeRoomId) return;
-      usernames.delete(payload.user_id);
-      setTypingUsers([...usernames.values()]);
-    };
-
-    const unsubStart = socketManager.on('typing:start', handleStart);
-    const unsubStop = socketManager.on('typing:stop', handleStop);
-    return () => {
-      unsubStart();
-      unsubStop();
-    };
-  }, [activeRoomId, user]);
+  // Resolve typing user IDs → display names (uses message history as name lookup)
+  const typingUserNames = useMemo(() => {
+    if (!activeRoomId) return [];
+    const typingIds = typingUsersByRoom[activeRoomId] ?? [];
+    if (typingIds.length === 0) return [];
+    const nameMap = new Map<number, string>();
+    messages.forEach((m) => nameMap.set(m.sender.id, m.sender.username));
+    return typingIds.map((uid) => nameMap.get(uid) ?? `User ${uid}`);
+  }, [typingUsersByRoom, activeRoomId, messages]);
 
   return (
     <div
@@ -91,15 +96,20 @@ export default function MessagesPage() {
             <ChatHeader
               room={activeRoom}
               otherUsername={otherUsername}
-              typingUsers={typingUsers}
+              typingUsers={typingUserNames}
             />
             <MessageList
               messages={messages}
               currentUserId={user?.id ?? 0}
               isLoading={messagesQuery.isLoading}
               roomId={activeRoomId!}
+              typingUsers={typingUserNames}
             />
-            <ChatInput roomId={activeRoomId!} />
+            <ChatInput
+              roomId={activeRoomId!}
+              onStartTyping={startTyping}
+              onStopTyping={stopTyping}
+            />
           </>
         ) : (
           <div

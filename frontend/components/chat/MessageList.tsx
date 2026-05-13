@@ -1,55 +1,29 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { MessageBubble } from './MessageBubble';
-import { socketManager } from '@/lib/socket';
-import type { ChatMessage, TypingPayload } from '@/lib/services/chat';
+import type { ChatMessage } from '@/lib/services/chat';
 
 interface MessageListProps {
   messages: ChatMessage[];
   currentUserId: number;
   isLoading: boolean;
   roomId: number;
+  typingUsers?: string[];
 }
 
-export function MessageList({ messages, currentUserId, isLoading, roomId }: MessageListProps) {
+export function MessageList({
+  messages,
+  currentUserId,
+  isLoading,
+  typingUsers = [],
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
-
-  // Listen to typing events
-  useEffect(() => {
-    const handleTypingStart = (data: unknown) => {
-      const payload = data as TypingPayload;
-      if (payload.room_id !== roomId || payload.user_id === currentUserId) return;
-      setTypingUsers((prev) => {
-        const next = new Map(prev);
-        next.set(payload.user_id, `User ${payload.user_id}`);
-        return next;
-      });
-    };
-
-    const handleTypingStop = (data: unknown) => {
-      const payload = data as TypingPayload;
-      if (payload.room_id !== roomId) return;
-      setTypingUsers((prev) => {
-        const next = new Map(prev);
-        next.delete(payload.user_id);
-        return next;
-      });
-    };
-
-    const unsubStart = socketManager.on('typing:start', handleTypingStart);
-    const unsubStop = socketManager.on('typing:stop', handleTypingStop);
-    return () => {
-      unsubStart();
-      unsubStop();
-    };
-  }, [roomId, currentUserId]);
 
   // Messages come newest-first from API; reverse for display (oldest at top)
   const displayMessages = [...messages].reverse();
@@ -128,7 +102,7 @@ export function MessageList({ messages, currentUserId, isLoading, roomId }: Mess
       })}
 
       {/* Typing indicator */}
-      {typingUsers.size > 0 && (
+      {typingUsers.length > 0 && (
         <div
           style={{
             display: 'flex',

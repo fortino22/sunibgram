@@ -38,7 +38,8 @@
       "Bash(Select-Object -Property FullName, PSIsContainer)",
       "Bash(Format-Table -AutoSize)",
       "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\" -Force)",
-      "Bash(Select-Object Name, Mode)"
+      "Bash(Select-Object Name, Mode)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\" -Recurse -Directory)"
     ]
   }
 }

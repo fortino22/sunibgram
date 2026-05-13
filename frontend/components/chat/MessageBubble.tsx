@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { Check, CheckCheck } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import type { ChatMessage } from '@/lib/services/chat';
 
@@ -139,18 +140,27 @@ export function MessageBubble({ message, isOwn, showSender }: MessageBubbleProps
           </div>
         )}
 
-        {/* Timestamp */}
-        <span
+        {/* Timestamp + read receipt */}
+        <div
           style={{
-            fontSize: 10,
-            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
             marginTop: 3,
             paddingLeft: isOwn ? 0 : 2,
             paddingRight: isOwn ? 2 : 0,
+            flexDirection: isOwn ? 'row-reverse' : 'row',
           }}
         >
-          {formatTime(message.created_at)}
-        </span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+            {formatTime(message.created_at)}
+          </span>
+          {isOwn && !isDeleted && (
+            message.is_read
+              ? <CheckCheck size={12} color="var(--accent)" />
+              : <Check size={12} color="var(--text-muted)" />
+          )}
+        </div>
       </div>
     </div>
   );
