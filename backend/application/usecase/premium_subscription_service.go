@@ -11,10 +11,11 @@ import (
 type PremiumSubscriptionService struct {
 	userRepo                repository.IUserRepository
 	premiumSubscriptionRepo repository.IPremiumSubscriptionRepository
+	communityRepo           repository.ICommunityRepository
 }
 
-func NewPremiumSubscriptionService(userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository) service.IPremiumSubscriptionService {
-	return &PremiumSubscriptionService{userRepo: userRepo, premiumSubscriptionRepo: premiumSubscriptionRepo}
+func NewPremiumSubscriptionService(userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository, communityRepo repository.ICommunityRepository) service.IPremiumSubscriptionService {
+	return &PremiumSubscriptionService{userRepo: userRepo, premiumSubscriptionRepo: premiumSubscriptionRepo, communityRepo: communityRepo}
 }
 
 func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*model.PremiumSubscription, error) {
@@ -42,4 +43,30 @@ func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*model.PremiumS
 	}
 
 	return subscription, nil
+}
+
+func (s *PremiumSubscriptionService) ExpireSubscriptions() error {
+	ownerIDs, err := s.premiumSubscriptionRepo.FindExpiredOwnerIDs()
+	if err != nil {
+		return err
+	}
+	if len(ownerIDs) == 0 {
+		return nil
+	}
+	if err := s.communityRepo.DeactivateByOwnerIDs(ownerIDs); err != nil {
+		return err
+	}
+	for _, id := range ownerIDs {
+		if err := s.userRepo.UpdatePremium(id, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *PremiumSubscriptionService) ExpireForDev(userID uint) error {
+	if err := s.premiumSubscriptionRepo.ExpireForDev(userID); err != nil {
+		return err
+	}
+	return s.ExpireSubscriptions()
 }

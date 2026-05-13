@@ -37,6 +37,9 @@ func (s *CommunityMemberService) Join(ctx context.Context, communityID, userID u
 	if err != nil {
 		return errors.New("community not found")
 	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
+	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err == nil {
 		return errors.New("already a member")
 	}

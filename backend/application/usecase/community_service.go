@@ -40,6 +40,7 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
+
 	if !user.IsPremium {
 		return nil, errors.New("only premium users can create communities")
 	}
@@ -104,6 +105,9 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	community, err := s.communityRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return nil, errors.New("community is inactive")
 	}
 	actor, err := s.memberRepo.FindMember(id, userID)
 	if err != nil || !isAdminOrAbove(actor.Role) {

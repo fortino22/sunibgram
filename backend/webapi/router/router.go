@@ -32,6 +32,7 @@ func Register(
 	facultyCtrl *controller.FacultyController,
 	orderCtrl *controller.OrderController,
 	premiumSubscriptionCtrl *controller.PremiumSubscriptionController,
+	devSubscriptionCtrl *controller.DevSubscriptionController,
 	chatRoomCtrl *controller.ChatRoomController,
 	chatCtrl *controller.ChatController,
 	notificationCtrl *controller.NotificationController,
@@ -54,6 +55,7 @@ func Register(
 	registerFacultyRoutes(api, facultyCtrl, profileCtrl, auth)
 	registerOrderRoutes(api, orderCtrl, auth)
 	registerPremiumSubscriptionRoutes(api, premiumSubscriptionCtrl, auth)
+	registerDevRoutes(api, devSubscriptionCtrl, auth)
 	registerChatRoutes(api, chatRoomCtrl, chatCtrl, auth)
 	registerNotificationRoutes(api, notificationCtrl, auth)
 }

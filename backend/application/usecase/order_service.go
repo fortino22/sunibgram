@@ -18,12 +18,13 @@ import (
 const PremiumAmount int64 = 10000
 
 type OrderService struct {
-	orderRepo  repository.IOrderRepository
-	userRepo   repository.IUserRepository
-	snapClient snap.Client
+	orderRepo               repository.IOrderRepository
+	userRepo                repository.IUserRepository
+	premiumSubscriptionRepo repository.IPremiumSubscriptionRepository
+	snapClient              snap.Client
 }
 
-func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository) service.IOrderService {
+func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository) service.IOrderService {
 	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
 	envStr := os.Getenv("MIDTRANS_ENV")
 
@@ -36,9 +37,10 @@ func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.
 	client.New(serverKey, env)
 
 	return &OrderService{
-		orderRepo:  orderRepo,
-		userRepo:   userRepo,
-		snapClient: client,
+		orderRepo:               orderRepo,
+		userRepo:                userRepo,
+		premiumSubscriptionRepo: premiumSubscriptionRepo,
+		snapClient:              client,
 	}
 }
 
@@ -156,6 +158,16 @@ func (s *OrderService) HandleNotification(payload map[string]interface{}) error 
 	if status == "PAID" && order.Purpose == "PREMIUM" {
 		if err := s.userRepo.UpdatePremium(order.UserID, true); err != nil {
 			return fmt.Errorf("failed to set user premium: %w", err)
+		}
+		now := time.Now()
+		subscription := &model.PremiumSubscription{
+			UserID:                order.UserID,
+			IsTrial:               false,
+			SubscriptionStartDate: now,
+			SubscriptionEndDate:   now.AddDate(0, 1, 0),
+		}
+		if err := s.premiumSubscriptionRepo.Create(subscription); err != nil {
+			return fmt.Errorf("failed to create subscription: %w", err)
 		}
 	}
 

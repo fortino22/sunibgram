@@ -109,6 +109,15 @@ func (r *communityRepository) Delete(id uint) error {
 	return nil
 }
 
+func (r *communityRepository) DeactivateByOwnerIDs(ownerIDs []uint) error {
+	if len(ownerIDs) == 0 {
+		return nil
+	}
+	return r.writeDB.Model(&model.Community{}).
+		Where("user_id IN ?", ownerIDs).
+		Update("is_active", false).Error
+}
+
 func (r *communityRepository) FindAll(page, limit int, category string) ([]model.Community, int64, error) {
 	ctx := context.Background()
 	key := communityListKey(category, page, limit)

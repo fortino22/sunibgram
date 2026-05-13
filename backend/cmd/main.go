@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -89,8 +91,8 @@ func main() {
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
-	orderService := usecase.NewOrderService(orderRepo, userRepo)
-	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo)
+	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo)
+	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo)
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
@@ -120,6 +122,7 @@ func main() {
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
 	premiumSubscriptionCtrl := controller.NewPremiumSubscriptionController(premiumSubscriptionService)
+	devSubscriptionCtrl := controller.NewDevSubscriptionController(premiumSubscriptionService)
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
 	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
 	notificationCtrl := controller.NewNotificationController(notificationService)
@@ -161,10 +164,21 @@ func main() {
 		facultyCtrl,
 		orderCtrl,
 		premiumSubscriptionCtrl,
+		devSubscriptionCtrl,
 		chatRoomCtrl,
 		chatCtrl,
 		notificationCtrl,
 	)
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := premiumSubscriptionService.ExpireSubscriptions(); err != nil {
+				log.Printf("ExpireSubscriptions error: %v", err)
+			}
+		}
+	}()
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
 	fmt.Printf("server running on %s\n", addr)

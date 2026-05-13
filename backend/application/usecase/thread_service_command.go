@@ -49,6 +49,13 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 			rootID = parent.RootID
 		}
 		if parent.CommunityID != nil {
+			community, err := s.communityRepo.FindByID(*parent.CommunityID)
+			if err != nil {
+				return nil, errors.New("community not found")
+			}
+			if !community.IsWritable() {
+				return nil, errors.New("community is inactive")
+			}
 			if _, err := s.memberRepo.FindMember(*parent.CommunityID, userID); err != nil {
 				return nil, errors.New("you must be a member of the community to reply")
 			}
@@ -240,8 +247,12 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 	if err := validateThreadEventID(eventID); err != nil {
 		return nil, err
 	}
-	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
 		return nil, errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return nil, errors.New("community is inactive")
 	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
 		return nil, errors.New("forbidden")

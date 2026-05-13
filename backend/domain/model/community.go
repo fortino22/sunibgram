@@ -23,6 +23,11 @@ type Community struct {
 	BannerObjectName string              `gorm:"type:varchar(500)"`
 	BannerBucket     string              `gorm:"type:varchar(100)"`
 	MemberCount      int                 `gorm:"not null;default:1"`
+	IsActive         bool                `gorm:"not null;default:true;index"`
 	CreatedAt        time.Time           `gorm:"index:idx_community_creator,priority:2,sort:desc"`
 	UpdatedAt        time.Time
+}
+
+func (c *Community) IsWritable() bool {
+	return c.IsActive
 }

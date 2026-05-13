@@ -33,6 +33,9 @@ func (s *CommunityRequestService) Send(ctx context.Context, communityID, userID 
 	if err != nil {
 		return errors.New("community not found")
 	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
+	}
 	if community.Visibility != model.CommunityVisibilityPrivate {
 		return errors.New("community is not private, use join instead")
 	}
