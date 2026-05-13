@@ -23,12 +23,20 @@ export interface ChatMessage {
   created_at: string;
 }
 
+export interface ChatRoomParticipant {
+  user_id: number;
+  username: string;
+  name: string;
+  faculty_name: string;
+}
+
 export interface ChatRoom {
   room_id: number;
   name: string | null;
   description: string | null;
   type: 'private' | 'group';
-  member_count?: number;
+  member_count: number;
+  other_user?: ChatRoomParticipant | null;
   created_at: string;
   updated_at: string;
 }

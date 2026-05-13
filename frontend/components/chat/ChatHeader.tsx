@@ -2,25 +2,25 @@
 
 import { Avatar } from '@/components/shared/Avatar';
 import type { ChatRoom } from '@/lib/services/chat';
+import type { UserProfile } from '@/lib/services/profile';
 
 interface ChatHeaderProps {
   room: ChatRoom;
-  otherUsername?: string;
-  typingUsers: string[];
+  otherProfile?: UserProfile | null;
+  isTyping: boolean;
 }
 
-export function ChatHeader({ room, otherUsername, typingUsers }: ChatHeaderProps) {
-  const displayName =
-    room.type === 'group'
-      ? (room.name ?? 'Group Chat')
-      : (otherUsername ?? 'Direct Message');
+export function ChatHeader({ room, otherProfile, isTyping }: ChatHeaderProps) {
+  const isPrivate = room.type === 'private';
+  const other = room.other_user;
 
-  const subtitle =
-    typingUsers.length > 0
-      ? `${typingUsers.join(', ')} ${typingUsers.length === 1 ? 'is' : 'are'} typing...`
-      : room.type === 'group'
-      ? `${room.member_count ?? '?'} members`
-      : null;
+  const displayName = isPrivate
+    ? (otherProfile?.name || other?.name || other?.username || 'Direct Message')
+    : (room.name ?? 'Group Chat');
+
+  const subtitle = isPrivate
+    ? (otherProfile?.faculty?.faculty_name || other?.faculty_name || other?.username || null)
+    : `${room.member_count ?? '?'} members`;
 
   return (
     <div
@@ -34,7 +34,8 @@ export function ChatHeader({ room, otherUsername, typingUsers }: ChatHeaderProps
         background: 'var(--bg-card)',
       }}
     >
-      {room.type === 'group' ? (
+      {/* Avatar */}
+      {!isPrivate ? (
         <div
           style={{
             width: 36,
@@ -53,9 +54,47 @@ export function ChatHeader({ room, otherUsername, typingUsers }: ChatHeaderProps
           {(room.name ?? 'G').charAt(0).toUpperCase()}
         </div>
       ) : (
-        <Avatar username={otherUsername ?? 'DM'} size={36} />
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Avatar
+            username={other?.username ?? 'DM'}
+            avatarUrl={otherProfile?.avatar}
+            size={36}
+          />
+          {/* Typing dots overlaid on avatar when typing */}
+          {isTyping && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: -2,
+                right: -2,
+                background: 'var(--bg-card)',
+                borderRadius: 10,
+                padding: '2px 5px',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                gap: 3,
+                alignItems: 'center',
+              }}
+            >
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 4,
+                    height: 4,
+                    borderRadius: '50%',
+                    background: 'var(--accent)',
+                    display: 'inline-block',
+                    animation: `bounce 1.1s ease-in-out ${i * 0.18}s infinite`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
+      {/* Name + subtitle */}
       <div>
         <div
           style={{
@@ -68,13 +107,7 @@ export function ChatHeader({ room, otherUsername, typingUsers }: ChatHeaderProps
           {displayName}
         </div>
         {subtitle && (
-          <div
-            style={{
-              fontSize: 12,
-              color: typingUsers.length > 0 ? 'var(--accent)' : 'var(--text-muted)',
-              marginTop: 1,
-            }}
-          >
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
             {subtitle}
           </div>
         )}

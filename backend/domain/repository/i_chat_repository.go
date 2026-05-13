@@ -8,7 +8,7 @@ type IChatRepository interface {
 	FindByID(id uint) (*model.Chat, error)
 	FindByIDs(ids []uint) ([]model.Chat, error)
 	SoftDelete(id uint) error
-	MarkRoomRead(roomID, userID uint) error
+	MarkRoomRead(roomID, userID uint) ([]uint, error)
 	UpdateMessage(chatID uint, message string) error
 	UpdateIsRead(chatID uint) error
 }

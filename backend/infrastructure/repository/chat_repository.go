@@ -75,10 +75,13 @@ func (r *ChatRepository) SoftDelete(id uint) error {
 		Update("deleted_at", &now).Error
 }
 
-func (r *ChatRepository) MarkRoomRead(roomID, userID uint) error {
-	return r.writeDB.Model(&model.Chat{}).
-		Where("room_id = ? AND sender_id != ? AND is_read = false AND deleted_at IS NULL", roomID, userID).
-		Update("is_read", true).Error
+func (r *ChatRepository) MarkRoomRead(roomID, userID uint) ([]uint, error) {
+	var ids []uint
+	err := r.writeDB.Raw(
+		`UPDATE chats SET is_read = true WHERE room_id = ? AND sender_id != ? AND is_read = false AND deleted_at IS NULL RETURNING chat_id`,
+		roomID, userID,
+	).Scan(&ids).Error
+	return ids, err
 }
 
 func (r *ChatRepository) UpdateMessage(chatID uint, message string) error {

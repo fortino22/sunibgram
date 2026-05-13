@@ -93,7 +93,8 @@ func (s *ChatService) MarkRead(roomID, userID uint) ([]uint, error) {
 		return nil, errors.New("chat room not found")
 	}
 	if room.Type == model.ChatRoomTypePrivate {
-		return nil, s.chatRepo.MarkRoomRead(roomID, userID)
+		ids, err := s.chatRepo.MarkRoomRead(roomID, userID)
+		return ids, err
 	}
 
 	inserted, err := s.chatReadRepo.BatchMarkRead(roomID, userID)

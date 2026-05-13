@@ -24,10 +24,16 @@ function formatTime(iso: string): string {
 }
 
 export function ConversationItem({ room, active, onClick }: ConversationItemProps) {
-  const displayName =
-    room.type === 'group'
-      ? (room.name ?? 'Group Chat')
-      : 'Direct Message';
+  const isPrivate = room.type === 'private';
+  const other = room.other_user;
+
+  const displayName = isPrivate
+    ? (other?.name || other?.username || 'Direct Message')
+    : (room.name ?? 'Group Chat');
+
+  const subtitle = isPrivate
+    ? (other?.faculty_name || other?.username || 'Private conversation')
+    : `${room.member_count ?? '?'} members`;
 
   return (
     <button
@@ -54,7 +60,7 @@ export function ConversationItem({ room, active, onClick }: ConversationItemProp
       }}
     >
       <div style={{ flexShrink: 0 }}>
-        {room.type === 'group' ? (
+        {!isPrivate ? (
           <div
             style={{
               width: 40,
@@ -72,7 +78,7 @@ export function ConversationItem({ room, active, onClick }: ConversationItemProp
             {(room.name ?? 'G').charAt(0).toUpperCase()}
           </div>
         ) : (
-          <Avatar username="DM" size={40} />
+          <Avatar username={other?.username ?? 'DM'} size={40} />
         )}
       </div>
 
@@ -111,9 +117,7 @@ export function ConversationItem({ room, active, onClick }: ConversationItemProp
             whiteSpace: 'nowrap',
           }}
         >
-          {room.type === 'group'
-            ? `${room.member_count ?? '?'} members`
-            : 'Private conversation'}
+          {subtitle}
         </div>
       </div>
     </button>

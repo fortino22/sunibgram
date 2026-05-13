@@ -9,6 +9,7 @@ interface MessageBubbleProps {
   message: ChatMessage;
   isOwn: boolean;
   showSender: boolean;
+  isLastInGroup: boolean;
 }
 
 function formatTime(iso: string): string {
@@ -19,7 +20,7 @@ function isImage(mediaType: string) {
   return mediaType.startsWith('image/');
 }
 
-export function MessageBubble({ message, isOwn, showSender }: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, showSender, isLastInGroup }: MessageBubbleProps) {
   const isDeleted = !!message.deleted_at;
 
   return (
@@ -140,27 +141,29 @@ export function MessageBubble({ message, isOwn, showSender }: MessageBubbleProps
           </div>
         )}
 
-        {/* Timestamp + read receipt */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 3,
-            marginTop: 3,
-            paddingLeft: isOwn ? 0 : 2,
-            paddingRight: isOwn ? 2 : 0,
-            flexDirection: isOwn ? 'row-reverse' : 'row',
-          }}
-        >
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-            {formatTime(message.created_at)}
-          </span>
-          {isOwn && !isDeleted && (
-            message.is_read
-              ? <CheckCheck size={12} color="var(--accent)" />
-              : <Check size={12} color="var(--text-muted)" />
-          )}
-        </div>
+        {/* Timestamp + read receipt — only for the last message in a same-minute group */}
+        {isLastInGroup && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              marginTop: 3,
+              paddingLeft: isOwn ? 0 : 2,
+              paddingRight: isOwn ? 2 : 0,
+              flexDirection: isOwn ? 'row-reverse' : 'row',
+            }}
+          >
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+              {formatTime(message.created_at)}
+            </span>
+            {isOwn && !isDeleted && (
+              message.is_read
+                ? <CheckCheck size={12} color="var(--accent)" />
+                : <Check size={12} color="var(--text-muted)" />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

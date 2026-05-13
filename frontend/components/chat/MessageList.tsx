@@ -28,6 +28,18 @@ export function MessageList({
   // Messages come newest-first from API; reverse for display (oldest at top)
   const displayMessages = [...messages].reverse();
 
+  function sameMinute(a: string, b: string) {
+    const da = new Date(a);
+    const db = new Date(b);
+    return (
+      da.getFullYear() === db.getFullYear() &&
+      da.getMonth() === db.getMonth() &&
+      da.getDate() === db.getDate() &&
+      da.getHours() === db.getHours() &&
+      da.getMinutes() === db.getMinutes()
+    );
+  }
+
   if (isLoading) {
     return (
       <div
@@ -86,10 +98,18 @@ export function MessageList({
     >
       {displayMessages.map((msg, idx) => {
         const prevMsg = displayMessages[idx - 1];
+        const nextMsg = displayMessages[idx + 1];
+
         const showSender =
           !prevMsg ||
           prevMsg.sender.id !== msg.sender.id ||
           new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() > 300_000;
+
+        // Last in group if next message is from a different sender or a different minute
+        const isLastInGroup =
+          !nextMsg ||
+          nextMsg.sender.id !== msg.sender.id ||
+          !sameMinute(msg.created_at, nextMsg.created_at);
 
         return (
           <MessageBubble
@@ -97,28 +117,23 @@ export function MessageList({
             message={msg}
             isOwn={msg.sender.id === currentUserId}
             showSender={showSender}
+            isLastInGroup={isLastInGroup}
           />
         );
       })}
 
       {/* Typing indicator */}
       {typingUsers.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 0',
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0 8px' }}>
           <div
             style={{
-              padding: '6px 12px',
-              borderRadius: '14px 14px 14px 4px',
-              background: 'var(--bg)',
+              padding: '10px 16px',
+              borderRadius: '18px 18px 18px 4px',
+              background: 'var(--bg-card)',
               border: '1px solid var(--border)',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
               display: 'flex',
-              gap: 4,
+              gap: 5,
               alignItems: 'center',
             }}
           >
@@ -126,12 +141,12 @@ export function MessageList({
               <span
                 key={i}
                 style={{
-                  width: 6,
-                  height: 6,
+                  width: 8,
+                  height: 8,
                   borderRadius: '50%',
-                  background: 'var(--text-muted)',
+                  background: 'var(--accent)',
                   display: 'inline-block',
-                  animation: `bounce 1s ease-in-out ${i * 0.15}s infinite`,
+                  animation: `bounce 1.1s ease-in-out ${i * 0.18}s infinite`,
                 }}
               />
             ))}

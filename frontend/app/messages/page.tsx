@@ -10,6 +10,7 @@ import { useChatSocket } from '@/hooks/useChatSocket';
 import { useChatMessages } from '@/hooks/chat/useChatMessages';
 import { useChatRoom } from '@/hooks/chat/useChatRooms';
 import { useMarkMessagesRead } from '@/hooks/chat/useMarkMessagesRead';
+import { useProfile } from '@/hooks/useProfile';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -28,6 +29,10 @@ export default function MessagesPage() {
   const activeRoom = useChatRoom(activeRoomId);
   const messages = messagesQuery.data?.data ?? [];
   const { mutate: markRead } = useMarkMessagesRead();
+
+  // For private rooms, fetch the other person's full profile (avatar, name, faculty)
+  const otherUserId = activeRoom?.type === 'private' ? activeRoom.other_user?.user_id : undefined;
+  const { data: otherProfile } = useProfile(otherUserId ?? null);
 
   // Join the active room when it changes; leave on cleanup
   useEffect(() => {
@@ -48,14 +53,14 @@ export default function MessagesPage() {
     markRead({ roomId: activeRoomId, chatIds: unread });
   }, [messages, activeRoomId, user, markRead]);
 
-  // Determine the "other" user in private rooms from message history
-  const otherUsername = useMemo(() => {
-    if (!activeRoom || activeRoom.type !== 'private' || !user) return undefined;
-    const otherMsg = messages.find((m) => m.sender.id !== user.id);
-    return otherMsg?.sender.username;
-  }, [activeRoom, messages, user]);
+  // Whether anyone else is currently typing in this room
+  const isTyping = useMemo(() => {
+    if (!activeRoomId || !user) return false;
+    const typingIds = typingUsersByRoom[activeRoomId] ?? [];
+    return typingIds.some((id) => id !== user.id);
+  }, [typingUsersByRoom, activeRoomId, user]);
 
-  // Resolve typing user IDs → display names (uses message history as name lookup)
+  // Typing user display names — used by MessageList for the bubble label (if any)
   const typingUserNames = useMemo(() => {
     if (!activeRoomId) return [];
     const typingIds = typingUsersByRoom[activeRoomId] ?? [];
@@ -95,8 +100,8 @@ export default function MessagesPage() {
           <>
             <ChatHeader
               room={activeRoom}
-              otherUsername={otherUsername}
-              typingUsers={typingUserNames}
+              otherProfile={otherProfile}
+              isTyping={isTyping}
             />
             <MessageList
               messages={messages}

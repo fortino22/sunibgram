@@ -2,13 +2,22 @@ package dto
 
 import "github.com/sunibgram/dto/utils"
 
+type ChatRoomParticipant struct {
+	UserID      uint   `json:"user_id"`
+	Username    string `json:"username"`
+	Name        string `json:"name"`
+	FacultyName string `json:"faculty_name"`
+}
+
 type ChatRoomResponse struct {
-	RoomID      uint                `json:"room_id"`
-	Name        *string             `json:"name,omitempty"`
-	Description *string             `json:"description,omitempty"`
-	Type        string              `json:"type"`
-	CreatedAt   utils.FormattedTime `json:"created_at"`
-	UpdatedAt   utils.FormattedTime `json:"updated_at"`
+	RoomID      uint                 `json:"room_id"`
+	Name        *string              `json:"name,omitempty"`
+	Description *string              `json:"description,omitempty"`
+	Type        string               `json:"type"`
+	MemberCount int                  `json:"member_count"`
+	OtherUser   *ChatRoomParticipant `json:"other_user,omitempty"`
+	CreatedAt   utils.FormattedTime  `json:"created_at"`
+	UpdatedAt   utils.FormattedTime  `json:"updated_at"`
 }
 
 type ChatMediaResponse struct {

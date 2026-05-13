@@ -152,14 +152,14 @@ func (c *ChatRoomController) GetMyRooms(ctx *fiber.Ctx) error {
 
 	page, limit := ParsePagination(ctx)
 
-	rooms, total, err := c.chatRoomService.GetUserRooms(claims.UserID, page, limit)
+	rooms, total, err := c.chatRoomService.GetUserRoomsWithParticipants(claims.UserID, page, limit)
 	if err != nil {
 		return HandleServiceError(ctx, err)
 	}
 
 	data := make([]dto.ChatRoomResponse, len(rooms))
 	for i := range rooms {
-		data[i] = toChatRoomResponse(&rooms[i])
+		data[i] = toChatRoomResponseWithParticipant(&rooms[i])
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": data,
@@ -191,9 +191,23 @@ func toChatRoomResponse(room *model.ChatRoom) dto.ChatRoomResponse {
 		Name:        room.Name,
 		Description: room.Description,
 		Type:        string(room.Type),
+		MemberCount: room.MemberCount,
 		CreatedAt:   dtoutils.Wrap(room.CreatedAt),
 		UpdatedAt:   dtoutils.Wrap(room.UpdatedAt),
 	}
+}
+
+func toChatRoomResponseWithParticipant(room *service.ChatRoomWithParticipant) dto.ChatRoomResponse {
+	resp := toChatRoomResponse(&room.ChatRoom)
+	if room.OtherUser != nil {
+		resp.OtherUser = &dto.ChatRoomParticipant{
+			UserID:      room.OtherUser.UserID,
+			Username:    room.OtherUser.Username,
+			Name:        room.OtherUser.Name,
+			FacultyName: room.OtherUser.FacultyName,
+		}
+	}
+	return resp
 }
 
 func addedMembers(requested, alreadyMembers []uint) []uint {

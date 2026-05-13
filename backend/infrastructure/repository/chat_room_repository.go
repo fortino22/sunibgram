@@ -149,6 +149,43 @@ func (r *ChatRoomRepository) DeleteGroup(roomID uint) error {
 	return r.cache.Delete(ctx, keys...)
 }
 
+func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID uint) (map[uint]domainrepo.ChatRoomMemberInfo, error) {
+	if len(roomIDs) == 0 {
+		return map[uint]domainrepo.ChatRoomMemberInfo{}, nil
+	}
+	type row struct {
+		RoomID      uint
+		UserID      uint
+		Username    string
+		Name        string
+		FacultyName string
+	}
+	var rows []row
+	err := r.readDB.Raw(`
+		SELECT crm.room_id, u.user_id, u.user_name AS username, u.name,
+		       COALESCE(f.faculty_name, '') AS faculty_name
+		FROM chat_room_members crm
+		JOIN users u ON u.user_id = crm.user_id
+		LEFT JOIN user_faculties uf ON uf.user_id = u.user_id
+		LEFT JOIN faculties f ON f.faculty_id = uf.faculty_id
+		WHERE crm.room_id IN ? AND crm.user_id != ?`,
+		roomIDs, excludeUserID,
+	).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uint]domainrepo.ChatRoomMemberInfo, len(rows))
+	for _, r := range rows {
+		result[r.RoomID] = domainrepo.ChatRoomMemberInfo{
+			UserID:      r.UserID,
+			Username:    r.Username,
+			Name:        r.Name,
+			FacultyName: r.FacultyName,
+		}
+	}
+	return result, nil
+}
+
 func (r *ChatRoomRepository) FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error) {
 	var room model.ChatRoom
 	err := r.readDB.Table("chat_rooms").

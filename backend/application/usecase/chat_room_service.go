@@ -151,6 +151,43 @@ func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]model.Ch
 	return s.roomRepo.FindByUserID(userID, page, limit)
 }
 
+func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit int) ([]service.ChatRoomWithParticipant, int64, error) {
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	rooms, total, err := s.roomRepo.FindByUserID(userID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	privateIDs := make([]uint, 0)
+	for _, r := range rooms {
+		if r.Type == model.ChatRoomTypePrivate {
+			privateIDs = append(privateIDs, r.RoomID)
+		}
+	}
+
+	memberMap := map[uint]repository.ChatRoomMemberInfo{}
+	if len(privateIDs) > 0 {
+		memberMap, err = s.roomRepo.FindOtherMemberInfo(privateIDs, userID)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+
+	result := make([]service.ChatRoomWithParticipant, len(rooms))
+	for i, r := range rooms {
+		result[i] = service.ChatRoomWithParticipant{ChatRoom: r}
+		if info, ok := memberMap[r.RoomID]; ok {
+			result[i].OtherUser = &service.RoomParticipant{
+				UserID:      info.UserID,
+				Username:    info.Username,
+				Name:        info.Name,
+				FacultyName: info.FacultyName,
+			}
+		}
+	}
+	return result, total, nil
+}
+
 func (s *ChatRoomService) GetByID(roomID, userID uint) (*model.ChatRoom, error) {
 	room, err := s.roomRepo.FindByID(roomID)
 	if err != nil {
