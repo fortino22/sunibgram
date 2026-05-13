@@ -113,9 +113,39 @@ func (r *communityRepository) DeactivateByOwnerIDs(ownerIDs []uint) error {
 	if len(ownerIDs) == 0 {
 		return nil
 	}
-	return r.writeDB.Model(&model.Community{}).
+	var communities []model.Community
+	_ = r.writeDB.Select("community_id").Where("user_id IN ?", ownerIDs).Find(&communities).Error
+	if err := r.writeDB.Model(&model.Community{}).
 		Where("user_id IN ?", ownerIDs).
-		Update("is_active", false).Error
+		Update("is_active", false).Error; err != nil {
+		return err
+	}
+	if r.cache != nil {
+		ctx := context.Background()
+		for _, c := range communities {
+			_ = r.cache.Delete(ctx, communityIDKey(c.CommunityID))
+		}
+		_ = r.cache.DeleteByPattern(ctx, "community:list:*")
+	}
+	return nil
+}
+
+func (r *communityRepository) ReactivateByOwnerID(ownerID uint) error {
+	var communities []model.Community
+	_ = r.writeDB.Select("community_id").Where("user_id = ?", ownerID).Find(&communities).Error
+	if err := r.writeDB.Model(&model.Community{}).
+		Where("user_id = ?", ownerID).
+		Update("is_active", true).Error; err != nil {
+		return err
+	}
+	if r.cache != nil {
+		ctx := context.Background()
+		for _, c := range communities {
+			_ = r.cache.Delete(ctx, communityIDKey(c.CommunityID))
+		}
+		_ = r.cache.DeleteByPattern(ctx, "community:list:*")
+	}
+	return nil
 }
 
 func (r *communityRepository) FindAll(page, limit int, category string) ([]model.Community, int64, error) {

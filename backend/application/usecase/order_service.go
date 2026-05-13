@@ -21,10 +21,11 @@ type OrderService struct {
 	orderRepo               repository.IOrderRepository
 	userRepo                repository.IUserRepository
 	premiumSubscriptionRepo repository.IPremiumSubscriptionRepository
+	communityRepo           repository.ICommunityRepository
 	snapClient              snap.Client
 }
 
-func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository) service.IOrderService {
+func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository, communityRepo repository.ICommunityRepository) service.IOrderService {
 	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
 	envStr := os.Getenv("MIDTRANS_ENV")
 
@@ -40,6 +41,7 @@ func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.
 		orderRepo:               orderRepo,
 		userRepo:                userRepo,
 		premiumSubscriptionRepo: premiumSubscriptionRepo,
+		communityRepo:           communityRepo,
 		snapClient:              client,
 	}
 }
@@ -166,8 +168,11 @@ func (s *OrderService) HandleNotification(payload map[string]interface{}) error 
 			SubscriptionStartDate: now,
 			SubscriptionEndDate:   now.AddDate(0, 1, 0),
 		}
-		if err := s.premiumSubscriptionRepo.Create(subscription); err != nil {
+		if err := s.premiumSubscriptionRepo.Upsert(subscription); err != nil {
 			return fmt.Errorf("failed to create subscription: %w", err)
+		}
+		if err := s.communityRepo.ReactivateByOwnerID(order.UserID); err != nil {
+			return fmt.Errorf("failed to reactivate communities: %w", err)
 		}
 	}
 

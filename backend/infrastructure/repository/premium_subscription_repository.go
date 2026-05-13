@@ -21,6 +21,17 @@ func (r *premiumSubscriptionRepository) Create(subscription *model.PremiumSubscr
 	return r.writeDB.Create(subscription).Error
 }
 
+func (r *premiumSubscriptionRepository) Upsert(subscription *model.PremiumSubscription) error {
+	return r.writeDB.Model(&model.PremiumSubscription{}).
+		Where("user_id = ?", subscription.UserID).
+		Assign(model.PremiumSubscription{
+			IsTrial:               subscription.IsTrial,
+			SubscriptionStartDate: subscription.SubscriptionStartDate,
+			SubscriptionEndDate:   subscription.SubscriptionEndDate,
+		}).
+		FirstOrCreate(subscription).Error
+}
+
 func (r *premiumSubscriptionRepository) IsTrialActivated(userID uint) (bool, error) {
 	var count int64
 	if err := r.readDB.Model(&model.PremiumSubscription{}).

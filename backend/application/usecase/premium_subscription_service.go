@@ -38,7 +38,10 @@ func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*model.PremiumS
 	if err := s.userRepo.UpdatePremium(userID, true); err != nil {
 		return nil, err
 	}
-	if err := s.premiumSubscriptionRepo.Create(subscription); err != nil {
+	if err := s.premiumSubscriptionRepo.Upsert(subscription); err != nil {
+		return nil, err
+	}
+	if err := s.communityRepo.ReactivateByOwnerID(userID); err != nil {
 		return nil, err
 	}
 
