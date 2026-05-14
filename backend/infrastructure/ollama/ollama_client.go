@@ -18,7 +18,7 @@ type Client struct {
 
 func NewClient() *Client {
 	return &Client{
-		url:   os.Getenv("OLLAMA_URL"),
+		url:   os.Getenv("OLLAMA_URL_LOCAL"),
 		model: os.Getenv("OLLAMA_MODEL"),
 	}
 }
