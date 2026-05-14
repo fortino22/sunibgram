@@ -34,15 +34,19 @@ func NewThreadSummaryService(
 	}
 }
 
-func (s *ThreadSummaryService) StreamSummary(ctx context.Context, threadID uint, w io.Writer) error {
-	if cached, ok := s.GetCachedSummary(ctx, threadID); ok {
-		_, err := io.WriteString(w, cached)
-		return err
+func (s *ThreadSummaryService) Summarize(ctx context.Context, threadID uint) (string, error) {
+	var cached string
+	if err := s.cacheRepo.Get(ctx, threadSummaryKey(threadID), &cached); err == nil {
+		return cached, nil
 	}
 
 	replies, err := s.topReplies(threadID, 30)
 	if err != nil {
-		return err
+		return "", err
+	}
+
+	if len(replies) == 0 {
+		return "No comments to summarize yet.", nil
 	}
 
 	comments := make([]string, 0, len(replies))
@@ -50,24 +54,18 @@ func (s *ThreadSummaryService) StreamSummary(ctx context.Context, threadID uint,
 		comments = append(comments, reply.Content)
 	}
 	prompt := fmt.Sprintf(
-		"Summarize the following comments on a social media post. Be concise and highlight the main points:\n\n%s",
+		"Summarize the following comments from a university social media post into one concise paragraph. Do not use bullet points or headers, just plain prose:\n\n%s",
 		strings.Join(comments, "\n"),
 	)
 
-	var captured strings.Builder
-	if err := s.ollamaClient.StreamGenerate(ctx, prompt, io.MultiWriter(w, &captured)); err != nil {
-		return err
+	var buf strings.Builder
+	if err := s.ollamaClient.StreamGenerate(ctx, prompt, &buf); err != nil {
+		return "", err
 	}
 
-	return s.cacheRepo.Set(ctx, threadSummaryKey(threadID), captured.String(), threadSummaryTTL)
-}
-
-func (s *ThreadSummaryService) GetCachedSummary(ctx context.Context, threadID uint) (string, bool) {
-	var summary string
-	if err := s.cacheRepo.Get(ctx, threadSummaryKey(threadID), &summary); err != nil {
-		return "", false
-	}
-	return summary, true
+	summary := strings.TrimSpace(buf.String())
+	_ = s.cacheRepo.Set(ctx, threadSummaryKey(threadID), summary, threadSummaryTTL)
+	return summary, nil
 }
 
 func (s *ThreadSummaryService) InvalidateCache(ctx context.Context, threadID uint) error {
@@ -103,3 +101,6 @@ func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]model.Thr
 func threadSummaryKey(threadID uint) string {
 	return fmt.Sprintf("thread:summary:%d", threadID)
 }
+
+// satisfy io.Writer for strings.Builder (already implemented, just alias)
+var _ io.Writer = (*strings.Builder)(nil)

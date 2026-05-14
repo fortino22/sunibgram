@@ -10,6 +10,7 @@ import (
 var allowedChatMediaExts = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
 	".mp4": true, ".mov": true, ".avi": true, ".mkv": true, ".webm": true,
+	".ogg": true, ".mp3": true, ".m4a": true, ".wav": true,
 }
 
 var allowedChatMediaContentTypes = map[string]bool{
@@ -23,12 +24,18 @@ var allowedChatMediaContentTypes = map[string]bool{
 	"video/x-msvideo":  true,
 	"video/x-matroska": true,
 	"video/webm":       true,
+
+	"audio/ogg":  true,
+	"audio/webm": true,
+	"audio/mpeg": true,
+	"audio/mp4":  true,
+	"audio/wav":  true,
 }
 
 func ValidateChatMediaExt(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if !allowedChatMediaExts[ext] {
-		return errors.New("only image and video files are allowed")
+		return errors.New("only image, video, and audio files are allowed")
 	}
 	return nil
 }
@@ -36,9 +43,13 @@ func ValidateChatMediaExt(filename string) error {
 func ValidateChatMediaContentType(contentType string) error {
 	mediaType := strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
 	if !allowedChatMediaContentTypes[mediaType] {
-		return errors.New("only image and video files are allowed")
+		return errors.New("only image, video, and audio files are allowed")
 	}
 	return nil
+}
+
+func IsAudioMediaType(contentType string) bool {
+	return strings.HasPrefix(strings.ToLower(contentType), "audio/")
 }
 
 func ValidateChatMediaCount(count int) error {

@@ -171,6 +171,7 @@ func AutoMigrate(db *gorm.DB) {
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)
+	seeder.SeedThreadWithReplies(db)
 }
 
 func seedRoles(db *gorm.DB) {

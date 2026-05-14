@@ -29,7 +29,7 @@ func registerThreadRoutes(
 	threadsAuth.Get("/:userId/media", threadCtrl.GetMyMediaThread)
 	threadsAuth.Get("/:userID", threadCtrl.GetMyPosts)
 	threadsAuth.Get("/:userID/replies", threadCtrl.GetMyReplies)
-	threadsAuth.Get("/:id/summary/stream", summaryCtrl.Stream)
+	threadsAuth.Get("/:id/summary", summaryCtrl.GetSummary)
 	threadsAuth.Get("/:id", threadCtrl.GetByID)
 	threadsAuth.Get("/:id/chain", threadCtrl.GetChain)
 	threadsAuth.Put("/:id", threadCtrl.Update)

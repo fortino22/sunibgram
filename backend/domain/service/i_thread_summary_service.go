@@ -1,12 +1,8 @@
 package service
 
-import (
-	"context"
-	"io"
-)
+import "context"
 
 type IThreadSummaryService interface {
-	StreamSummary(ctx context.Context, threadID uint, w io.Writer) error
-	GetCachedSummary(ctx context.Context, threadID uint) (string, bool)
+	Summarize(ctx context.Context, threadID uint) (string, error)
 	InvalidateCache(ctx context.Context, threadID uint) error
 }
