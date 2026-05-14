@@ -314,7 +314,13 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, filter s
 	}
 	result = cachedEventThreads{Threads: threads, Total: total}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, result, r.ttl)
+		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+			for _, t := range result.Threads {
+				if t.ThreadID != 0 {
+					r.cache.SAdd(ctx, threadFeedKeysKey(t.ThreadID), key, 24*time.Hour)
+				}
+			}
+		}
 	}
 	return result.Threads, result.Total, nil
 }
