@@ -31,6 +31,7 @@ func (r *userFacultyRepository) Save(uf *model.UserFaculty) error {
 	}
 	r.invalidateUser(uf.UserID)
 	invalidateNotificationSenderCache(context.Background(), r.cache, uf.UserID)
+	r.invalidateThreadCaches()
 	return nil
 }
 
@@ -72,6 +73,7 @@ func (r *userFacultyRepository) Delete(userID, facultyID uint) error {
 	}
 	r.invalidateUser(userID)
 	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
+	r.invalidateThreadCaches()
 	return nil
 }
 
@@ -80,4 +82,14 @@ func (r *userFacultyRepository) invalidateUser(userID uint) {
 		return
 	}
 	r.cache.Delete(context.Background(), userFacultyKey(userID))
+}
+
+func (r *userFacultyRepository) invalidateThreadCaches() {
+	if r.cache == nil {
+		return
+	}
+	ctx := context.Background()
+	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
 }
