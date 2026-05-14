@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -195,18 +196,63 @@ func (r *eventRepository) FindPending(limit int) ([]model.Event, error) {
 	return events, nil
 }
 
+func (r *eventRepository) FindAdmin(status, name string, page, limit int) ([]model.Event, int64, error) {
+	q := r.readDB.Model(&model.Event{})
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if name != "" {
+		q = q.Where("LOWER(title) LIKE ?", "%"+strings.ToLower(name)+"%")
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var events []model.Event
+	offset := (page - 1) * limit
+	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&events).Error; err != nil {
+		return nil, 0, err
+	}
+	return events, total, nil
+}
+
+func (r *eventRepository) FindByUserID(userID uint, status string, page, limit int) ([]model.Event, int64, error) {
+	q := r.readDB.Model(&model.Event{}).Where("user_id = ?", userID)
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var events []model.Event
+	offset := (page - 1) * limit
+	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&events).Error; err != nil {
+		return nil, 0, err
+	}
+	return events, total, nil
+}
+
 func (r *eventRepository) Update(event *model.Event) error {
 	if err := r.writeDB.Model(event).UpdateColumns(map[string]any{
-		"title":              event.Title,
-		"description":        event.Description,
-		"location":           event.Location,
-		"start_time":         event.StartTime,
-		"end_time":           event.EndTime,
-		"status":             event.Status,
-		"banner_object_name": event.BannerObjectName,
-		"banner_bucket":      event.BannerBucket,
-		"pdfs":               event.PDFs,
-		"updated_at":         gorm.Expr("NOW()"),
+		"user_id":                event.UserID,
+		"title":                  event.Title,
+		"description":            event.Description,
+		"location":               event.Location,
+		"type":                   event.Type,
+		"start_time":             event.StartTime,
+		"end_time":               event.EndTime,
+		"status":                 event.Status,
+		"banner_object_name":     event.BannerObjectName,
+		"banner_bucket":          event.BannerBucket,
+		"attachment_object_name": event.AttachmentObjectName,
+		"attachment_bucket":      event.AttachmentBucket,
+		"pdfs":                   event.PDFs,
+		"updated_at":             gorm.Expr("NOW()"),
 	}).Error; err != nil {
 		return err
 	}

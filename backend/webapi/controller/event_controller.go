@@ -28,14 +28,15 @@ func NewEventController(eventService service.IEventService, threadService servic
 }
 
 func (c *EventController) Create(ctx *fiber.Ctx) error {
-	if _, ok := RequireAuth(ctx); !ok {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
 		return nil
 	}
 	req, banner, attachments, err := parseCreateEventRequest(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	_, err = c.eventService.Create(ctx.Context(), req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachments)
+	_, err = c.eventService.Create(ctx.Context(), claims.UserID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachments)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -51,24 +52,46 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	fctx := ctx.Context()
 	return ctx.Status(fiber.StatusOK).JSON(dto.EventGroupsResponse{
-		Trending: c.toResponses(fctx, trending),
-		Running:  c.toResponses(fctx, running),
-		Future:   c.toResponses(fctx, future),
+		Trending: c.toListResponses(trending),
+		Running:  c.toListResponses(running),
+		Future:   c.toListResponses(future),
 	})
 }
 
 func (c *EventController) GetPending(ctx *fiber.Ctx) error {
-	if _, ok := RequireAuth(ctx); !ok {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
 		return nil
 	}
-	_, limit := ParsePagination(ctx)
-	events, err := c.eventService.GetPending(limit)
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	if claims.RoleName != "admin" {
+		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toPendingResponses(ctx.Context(), events))
+	page, limit := ParsePagination(ctx)
+	events, reviews, total, err := c.eventService.GetAdminEvents(ctx.Query("status"), ctx.Query("name"), page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedEventWithReviewHistoryResponse{
+		Data: c.toAdminEventReviewHistoryResponses(ctx.Context(), events, reviews),
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
+}
+
+func (c *EventController) GetMyEvents(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	page, limit := ParsePagination(ctx)
+	events, reviews, total, err := c.eventService.GetMyEvents(claims.UserID, ctx.Query("status"), page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedMyEventResponse{
+		Data: c.toEventReviewHistoryResponses(ctx.Context(), events, reviews),
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
 }
 
 func (c *EventController) GetByID(ctx *fiber.Ctx) error {
@@ -86,11 +109,11 @@ func (c *EventController) Update(ctx *fiber.Ctx) error {
 	if _, ok := RequireAuth(ctx); !ok {
 		return nil
 	}
-	req, banner, clearBanner, err := parseUpdateEventRequest(ctx)
+	req, banner, clearBanner, attachments, err := parseUpdateEventRequest(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
-	_, err = c.eventService.Update(ctx.Context(), ctx.Params("id"), req.Title, req.Description, req.Location, req.StartTime.Time, req.EndTime.Time, banner, clearBanner)
+	_, err = c.eventService.Update(ctx.Context(), ctx.Params("id"), req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, clearBanner, attachments)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -177,20 +200,6 @@ func (c *EventController) RequestRevision(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event revision requested successfully"})
 }
 
-func (c *EventController) GetEventReviews(ctx *fiber.Ctx) error {
-	if _, ok := RequireAuth(ctx); !ok {
-		return nil
-	}
-	reviews, err := c.eventService.GetEventReviews(ctx.Params("id"))
-	if err != nil {
-		if err.Error() == "event not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
-		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toEventReviewResponses(reviews))
-}
-
 func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {
@@ -224,6 +233,7 @@ func (c *EventController) toResponse(ctx context.Context, event *model.Event) dt
 	pdfURLs := c.eventPDFURLs(ctx, event)
 	return dto.EventResponse{
 		ID:               event.ID,
+		UserID:           event.UserID,
 		Title:            event.Title,
 		Description:      event.Description,
 		Location:         event.Location,
@@ -234,13 +244,6 @@ func (c *EventController) toResponse(ctx context.Context, event *model.Event) dt
 		BannerURL:        bannerURL,
 		AttachmentURL:    attachmentURL,
 		PDFURLs:          pdfURLs,
-		ParticipantCount: event.ParticipantCount,
-		ThreadCount:      event.ThreadCount,
-		LikeCount:        event.LikeCount,
-		RepostCount:      event.RepostCount,
-		WeekThreadCount:  event.WeekThreadCount,
-		WeekLikeCount:    event.WeekLikeCount,
-		WeekRepostCount:  event.WeekRepostCount,
 		CreatedAt:        utils.Wrap(event.CreatedAt),
 		UpdatedAt:        utils.Wrap(event.UpdatedAt),
 	}
@@ -254,63 +257,72 @@ func (c *EventController) toResponses(ctx context.Context, events []model.Event)
 	return out
 }
 
-func (c *EventController) toEventReviewResponses(reviews []model.EventReview) []dto.EventReviewResponse {
-	out := make([]dto.EventReviewResponse, len(reviews))
-	for i := range reviews {
-		out[i] = dto.EventReviewResponse{
-			ID:        reviews[i].ID,
-			EventID:   reviews[i].EventID,
-			AdminID:   reviews[i].AdminID,
-			Action:    reviews[i].Action,
-			Note:      reviews[i].Note,
-			CreatedAt: utils.Wrap(reviews[i].CreatedAt),
+func (c *EventController) toListResponse(event *model.Event) dto.EventListResponse {
+	return dto.EventListResponse{
+		ID:          event.ID,
+		UserID:      event.UserID,
+		Title:       event.Title,
+		Description: event.Description,
+		Location:    event.Location,
+		Type:        event.Type,
+		StartTime:   dto.EventTime{Time: event.StartTime},
+		EndTime:     dto.EventTime{Time: event.EndTime},
+		BannerURL:   BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL),
+		CreatedAt:   utils.Wrap(event.CreatedAt),
+		UpdatedAt:   utils.Wrap(event.UpdatedAt),
+	}
+}
+
+func (c *EventController) toListResponses(events []model.Event) []dto.EventListResponse {
+	out := make([]dto.EventListResponse, len(events))
+	for i := range events {
+		out[i] = c.toListResponse(&events[i])
+	}
+	return out
+}
+
+func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []dto.EventWithReviewHistoryResponse {
+	out := make([]dto.EventWithReviewHistoryResponse, len(events))
+	for i := range events {
+		out[i] = dto.EventWithReviewHistoryResponse{
+			EventResponse: c.toResponse(ctx, &events[i]),
+			Notes:         c.toEventReviewNoteResponses(reviews[events[i].ID]),
 		}
 	}
 	return out
 }
 
-type pendingEventResponse struct {
-	ID            string              `json:"id"`
-	Title         string              `json:"title"`
-	Description   string              `json:"description"`
-	Type          string              `json:"type"`
-	Status        string              `json:"status"`
-	Location      string              `json:"location"`
-	StartTime     dto.EventTime       `json:"start_time"`
-	EndTime       dto.EventTime       `json:"end_time"`
-	BannerURL     string              `json:"banner_url,omitempty"`
-	AttachmentURL string              `json:"attachment_url,omitempty"`
-	PDFURLs       []string            `json:"pdf_urls,omitempty"`
-	CreatedAt     utils.FormattedTime `json:"created_at"`
-	UpdatedAt     utils.FormattedTime `json:"updated_at"`
+func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []dto.AdminEventWithReviewHistoryResponse {
+	out := make([]dto.AdminEventWithReviewHistoryResponse, len(events))
+	for i := range events {
+		out[i] = dto.AdminEventWithReviewHistoryResponse{
+			EventResponse: c.toResponse(ctx, &events[i]),
+			Notes:         c.toEventAdminReviewNoteResponses(reviews[events[i].ID]),
+		}
+	}
+	return out
 }
 
-func (c *EventController) toPendingResponses(ctx context.Context, events []model.Event) []pendingEventResponse {
-	out := make([]pendingEventResponse, len(events))
-	for i := range events {
-		e := &events[i]
-		var attachmentURL string
-		if e.AttachmentObjectName != "" {
-			var err error
-			attachmentURL, err = c.eventService.GeneratePresignedAttachmentURL(ctx, e.AttachmentBucket, e.AttachmentObjectName)
-			if err != nil {
-				log.Printf("presign error bucket=%s object=%s: %v", e.AttachmentBucket, e.AttachmentObjectName, err)
-			}
+func (c *EventController) toEventReviewNoteResponses(reviews []model.EventReview) []dto.EventReviewNoteResponse {
+	out := make([]dto.EventReviewNoteResponse, len(reviews))
+	for i := range reviews {
+		out[i] = dto.EventReviewNoteResponse{
+			RevisionNumber: i + 1,
+			Notes:          reviews[i].Note,
+			CreatedAt:      utils.Wrap(reviews[i].CreatedAt),
 		}
-		out[i] = pendingEventResponse{
-			ID:            e.ID,
-			Title:         e.Title,
-			Description:   e.Description,
-			Type:          e.Type,
-			Status:        e.Status,
-			Location:      e.Location,
-			StartTime:     dto.EventTime{Time: e.StartTime},
-			EndTime:       dto.EventTime{Time: e.EndTime},
-			BannerURL:     BuildMediaURL(e.BannerObjectName, e.BannerBucket, c.eventService.GetURL),
-			AttachmentURL: attachmentURL,
-			PDFURLs:       c.eventPDFURLs(ctx, e),
-			CreatedAt:     utils.Wrap(e.CreatedAt),
-			UpdatedAt:     utils.Wrap(e.UpdatedAt),
+	}
+	return out
+}
+
+func (c *EventController) toEventAdminReviewNoteResponses(reviews []model.EventReview) []dto.EventAdminReviewNoteResponse {
+	out := make([]dto.EventAdminReviewNoteResponse, len(reviews))
+	for i := range reviews {
+		out[i] = dto.EventAdminReviewNoteResponse{
+			RevisionNumber: i + 1,
+			Notes:          reviews[i].Note,
+			AdminName:      reviews[i].Admin.Name,
+			CreatedAt:      utils.Wrap(reviews[i].CreatedAt),
 		}
 	}
 	return out
@@ -381,19 +393,23 @@ func validateEventPDFHeaders(files []*multipart.FileHeader) error {
 	return nil
 }
 
-func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart.FileHeader, bool, error) {
+func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart.FileHeader, bool, []*multipart.FileHeader, error) {
 	var req dto.UpdateEventRequest
 	if isMultipart(ctx) {
-		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, nil, &req.StartTime, &req.EndTime); err != nil {
-			return req, nil, false, err
+		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.Type, &req.StartTime, &req.EndTime); err != nil {
+			return req, nil, false, nil, err
 		}
 		banner, _ := ctx.FormFile("banner")
-		return req, banner, ctx.FormValue("clear_banner") == "true", nil
+		attachments := eventPDFFiles(ctx)
+		if err := validateEventPDFHeaders(attachments); err != nil {
+			return req, nil, false, nil, err
+		}
+		return req, banner, ctx.FormValue("clear_banner") == "true", attachments, nil
 	}
 	if err := ctx.BodyParser(&req); err != nil {
-		return req, nil, false, err
+		return req, nil, false, nil, err
 	}
-	return req, nil, false, nil
+	return req, nil, false, nil, nil
 }
 
 func fillEventRequestFromForm(ctx *fiber.Ctx, title, description, location, eventType *string, startTime, endTime *dto.EventTime) error {

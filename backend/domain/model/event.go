@@ -14,6 +14,7 @@ import (
 
 type Event struct {
 	ID                   string    `gorm:"type:varchar(36);primaryKey;column:id"`
+	UserID               uint      `gorm:"not null;index"`
 	Title                string    `gorm:"type:varchar(255);not null"`
 	Description          string    `gorm:"type:text"`
 	Location             string    `gorm:"type:varchar(255)"`
@@ -35,6 +36,7 @@ type Event struct {
 	WeekRepostCount      int       `gorm:"default:0"`
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+	User                 User      `gorm:"foreignKey:UserID;references:UserID"`
 }
 
 func (e *Event) BeforeCreate(tx *gorm.DB) error {

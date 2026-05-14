@@ -26,7 +26,7 @@ func NewEventService(eventRepo repository.IEventRepository, eventReviewRepo repo
 	return &EventService{eventRepo: eventRepo, eventReviewRepo: eventReviewRepo, storageUsecase: storageUsecase}
 }
 
-func (s *EventService) Create(ctx context.Context, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*model.Event, error) {
+func (s *EventService) Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*model.Event, error) {
 	if err := validateEventInput(title, startTime, endTime); err != nil {
 		return nil, err
 	}
@@ -47,6 +47,7 @@ func (s *EventService) Create(ctx context.Context, title, description, location 
 		return nil, err
 	}
 	event := &model.Event{
+		UserID:      userID,
 		Title:       strings.TrimSpace(title),
 		Description: description,
 		Location:    location,
@@ -104,7 +105,49 @@ func (s *EventService) GetPending(limit int) ([]model.Event, error) {
 	return s.eventRepo.FindPending(limit)
 }
 
-func (s *EventService) Update(ctx context.Context, id, title, description, location string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool) (*model.Event, error) {
+func (s *EventService) GetAdminEvents(status, name string, page, limit int) ([]model.Event, map[string][]model.EventReview, int64, error) {
+	status = strings.TrimSpace(status)
+	if err := validateEventStatusFilter(status); err != nil {
+		return nil, nil, 0, err
+	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	events, total, err := s.eventRepo.FindAdmin(status, strings.TrimSpace(name), page, limit)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	reviews, err := s.eventReviewsByEvents(events)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return events, reviews, total, nil
+}
+
+func (s *EventService) GetMyEvents(userID uint, status string, page, limit int) ([]model.Event, map[string][]model.EventReview, int64, error) {
+	status = strings.TrimSpace(status)
+	if err := validateEventStatusFilter(status); err != nil {
+		return nil, nil, 0, err
+	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	events, total, err := s.eventRepo.FindByUserID(userID, status, page, limit)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	reviews, err := s.eventReviewsByEvents(events)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return events, reviews, total, nil
+}
+
+func (s *EventService) eventReviewsByEvents(events []model.Event) (map[string][]model.EventReview, error) {
+	eventIDs := make([]string, 0, len(events))
+	for _, event := range events {
+		eventIDs = append(eventIDs, event.ID)
+	}
+	return s.eventReviewRepo.FindByEventIDs(eventIDs)
+}
+
+func (s *EventService) Update(ctx context.Context, id, title, description, location, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool, attachments []*multipart.FileHeader) (*model.Event, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, err
 	}
@@ -115,10 +158,23 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 	if err != nil {
 		return nil, errors.New("event not found")
 	}
+	eventType = strings.TrimSpace(eventType)
+	if event.Status == "pending" || event.Status == "declined" {
+		return nil, errors.New("event cannot be updated while pending or declined; only events with revision status can be updated")
+	}
+	if event.Status == "approved" && (len(attachments) > 0 || (eventType != "" && eventType != event.Type)) {
+		return nil, errors.New("cannot update event_type or attachments on an approved event")
+	}
+	if eventType != "" {
+		if err := model.ValidateEventType(eventType); err != nil {
+			return nil, err
+		}
+		event.Type = eventType
+	}
 	event.Title = strings.TrimSpace(title)
 	event.Description = description
 	event.Location = location
-	if event.Status == "declined" || event.Status == "revision" {
+	if event.Status == "revision" {
 		event.Status = "pending"
 	}
 	event.StartTime = startTime.UTC()
@@ -137,6 +193,19 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 		}
 		event.BannerObjectName = objName
 		event.BannerBucket = bucket
+	}
+	if len(attachments) > 0 {
+		pdfs, err := s.uploadPDFs(ctx, attachments, "document_event")
+		if err != nil {
+			return nil, err
+		}
+		s.deletePDFs(ctx, event.PDFs)
+		if event.AttachmentObjectName != "" && len(event.PDFs) == 0 {
+			_ = s.storageUsecase.Delete(ctx, event.AttachmentBucket, event.AttachmentObjectName)
+		}
+		event.PDFs = pdfs
+		event.AttachmentObjectName = pdfs[0].ObjectName
+		event.AttachmentBucket = pdfs[0].Bucket
 	}
 	if err := s.eventRepo.Update(event); err != nil {
 		return nil, err
@@ -221,13 +290,6 @@ func (s *EventService) RequestRevision(id, adminID, note string) error {
 	return s.createEventReview(id, adminID, "revision", note)
 }
 
-func (s *EventService) GetEventReviews(eventID string) ([]model.EventReview, error) {
-	if err := validateEventID(eventID); err != nil {
-		return nil, err
-	}
-	return s.eventReviewRepo.FindByEventID(eventID)
-}
-
 func (s *EventService) createEventReview(eventID, adminID, action, note string) error {
 	adminIDUint, err := strconv.ParseUint(adminID, 10, 64)
 	if err != nil {
@@ -260,6 +322,18 @@ func validateEventID(id string) error {
 		return errors.New("invalid event id")
 	}
 	return nil
+}
+
+func validateEventStatusFilter(status string) error {
+	if status == "" {
+		return nil
+	}
+	switch status {
+	case "pending", "approved", "declined", "revision":
+		return nil
+	default:
+		return errors.New("invalid event status")
+	}
 }
 
 func (s *EventService) GetURL(bucket, objectName string) string {

@@ -10,11 +10,15 @@ type RevisionRequest struct {
 	Note string `json:"note" validate:"required"`
 }
 
-type EventReviewResponse struct {
-	ID        string              `json:"id"`
-	EventID   string              `json:"event_id"`
-	AdminID   uint                `json:"admin_id"`
-	Action    string              `json:"action"`
-	Note      string              `json:"note"`
-	CreatedAt utils.FormattedTime `json:"created_at"`
+type EventReviewNoteResponse struct {
+	RevisionNumber int                 `json:"revision_number"`
+	Notes          string              `json:"notes"`
+	CreatedAt      utils.FormattedTime `json:"created_at"`
+}
+
+type EventAdminReviewNoteResponse struct {
+	RevisionNumber int                 `json:"revision_number"`
+	Notes          string              `json:"notes"`
+	AdminName      string              `json:"admin_name"`
+	CreatedAt      utils.FormattedTime `json:"created_at"`
 }

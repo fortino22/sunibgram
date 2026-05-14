@@ -65,6 +65,7 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS week_repost_count INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_object_name VARCHAR(500)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_bucket VARCHAR(100)")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS user_id INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS type VARCHAR(20) NOT NULL DEFAULT 'unofficial'")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending'")
 	db.Exec("ALTER TABLE events ALTER COLUMN status SET DEFAULT 'pending'")

@@ -12,6 +12,8 @@ type IEventRepository interface {
 	FindGrouped(limit int) ([]model.Event, []model.Event, []model.Event, error)
 	FindGroupedApproved(limit int) ([]model.Event, []model.Event, []model.Event, error)
 	FindPending(limit int) ([]model.Event, error)
+	FindAdmin(status, name string, page, limit int) ([]model.Event, int64, error)
+	FindByUserID(userID uint, status string, page, limit int) ([]model.Event, int64, error)
 	Update(event *model.Event) error
 	UpdateStatus(id, status string) error
 	Delete(id string) error

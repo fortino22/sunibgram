@@ -57,12 +57,14 @@ type UpdateEventRequest struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Location    string    `json:"location"`
+	Type        string    `json:"type" form:"type"`
 	StartTime   EventTime `json:"start_time"`
 	EndTime     EventTime `json:"end_time"`
 }
 
 type EventResponse struct {
 	ID               string              `json:"id"`
+	UserID           uint                `json:"user_id"`
 	Title            string              `json:"title"`
 	Description      string              `json:"description"`
 	Location         string              `json:"location"`
@@ -73,19 +75,51 @@ type EventResponse struct {
 	BannerURL        string              `json:"banner_url,omitempty"`
 	AttachmentURL    string              `json:"attachment_url,omitempty"`
 	PDFURLs          []string            `json:"pdf_urls,omitempty"`
-	ParticipantCount int                 `json:"participant_count"`
-	ThreadCount      int                 `json:"thread_count"`
-	LikeCount        int                 `json:"like_count"`
-	RepostCount      int                 `json:"repost_count"`
-	WeekThreadCount  int                 `json:"week_thread_count"`
-	WeekLikeCount    int                 `json:"week_like_count"`
-	WeekRepostCount  int                 `json:"week_repost_count"`
 	CreatedAt        utils.FormattedTime `json:"created_at"`
 	UpdatedAt        utils.FormattedTime `json:"updated_at"`
 }
 
+type EventListResponse struct {
+	ID          string              `json:"id"`
+	UserID      uint                `json:"user_id"`
+	Title       string              `json:"title"`
+	Description string              `json:"description"`
+	Location    string              `json:"location"`
+	Type        string              `json:"type"`
+	StartTime   EventTime           `json:"start_time"`
+	EndTime     EventTime           `json:"end_time"`
+	BannerURL   string              `json:"banner_url,omitempty"`
+	CreatedAt   utils.FormattedTime `json:"created_at"`
+	UpdatedAt   utils.FormattedTime `json:"updated_at"`
+}
+
+type EventWithReviewHistoryResponse struct {
+	EventResponse
+	Notes []EventReviewNoteResponse `json:"notes"`
+}
+
+type AdminEventWithReviewHistoryResponse struct {
+	EventResponse
+	Notes []EventAdminReviewNoteResponse `json:"notes"`
+}
+
 type EventGroupsResponse struct {
-	Trending []EventResponse `json:"trending"`
-	Running  []EventResponse `json:"running"`
-	Future   []EventResponse `json:"future"`
+	Trending []EventListResponse `json:"trending"`
+	Running  []EventListResponse `json:"running"`
+	Future   []EventListResponse `json:"future"`
+}
+
+type PaginatedEventResponse struct {
+	Data []EventResponse `json:"data"`
+	Meta FeedMeta        `json:"meta"`
+}
+
+type PaginatedEventWithReviewHistoryResponse struct {
+	Data []AdminEventWithReviewHistoryResponse `json:"data"`
+	Meta FeedMeta                              `json:"meta"`
+}
+
+type PaginatedMyEventResponse struct {
+	Data []EventWithReviewHistoryResponse `json:"data"`
+	Meta FeedMeta                         `json:"meta"`
 }
