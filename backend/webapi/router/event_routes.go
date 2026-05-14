@@ -18,6 +18,8 @@ func registerEventRoutes(
 	events.Put("/:id", eventCtrl.Update)
 	events.Patch("/:id/approve", eventCtrl.ApproveEvent)
 	events.Patch("/:id/decline", eventCtrl.DeclineEvent)
+	events.Patch("/:id/revision", eventCtrl.RequestRevision)
+	events.Get("/:id/reviews", eventCtrl.GetEventReviews)
 	events.Delete("/:id", eventCtrl.Delete)
 	events.Get("/:id/threads", eventCtrl.GetThreads)
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,12 +17,13 @@ import (
 )
 
 type EventService struct {
-	eventRepo      repository.IEventRepository
-	storageUsecase *StorageUsecase
+	eventRepo       repository.IEventRepository
+	eventReviewRepo repository.IEventReviewRepository
+	storageUsecase  *StorageUsecase
 }
 
-func NewEventService(eventRepo repository.IEventRepository, storageUsecase *StorageUsecase) service.IEventService {
-	return &EventService{eventRepo: eventRepo, storageUsecase: storageUsecase}
+func NewEventService(eventRepo repository.IEventRepository, eventReviewRepo repository.IEventReviewRepository, storageUsecase *StorageUsecase) service.IEventService {
+	return &EventService{eventRepo: eventRepo, eventReviewRepo: eventReviewRepo, storageUsecase: storageUsecase}
 }
 
 func (s *EventService) Create(ctx context.Context, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*model.Event, error) {
@@ -116,6 +118,9 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 	event.Title = strings.TrimSpace(title)
 	event.Description = description
 	event.Location = location
+	if event.Status == "declined" || event.Status == "revision" {
+		event.Status = "pending"
+	}
 	event.StartTime = startTime.UTC()
 	event.EndTime = endTime.UTC()
 	if clearBanner && event.BannerObjectName != "" {
@@ -157,40 +162,86 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 	return s.eventRepo.Delete(id)
 }
 
-func (s *EventService) ApproveEvent(id string) (*model.Event, error) {
+func (s *EventService) ApproveEvent(id, adminID string) error {
 	if err := validateEventID(id); err != nil {
-		return nil, err
+		return err
 	}
 	event, err := s.eventRepo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("event not found")
+		return errors.New("event not found")
 	}
 	if event.Status == "approved" {
-		return nil, errors.New("event already approved")
+		return errors.New("event already approved")
 	}
 	if err := s.eventRepo.UpdateStatus(id, "approved"); err != nil {
-		return nil, err
+		return err
 	}
-	event.Status = "approved"
-	return event, nil
+	return s.createEventReview(id, adminID, "approved", "")
 }
 
-func (s *EventService) DeclineEvent(id string) (*model.Event, error) {
+func (s *EventService) DeclineEvent(id, adminID, reason string) error {
 	if err := validateEventID(id); err != nil {
-		return nil, err
+		return err
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return errors.New("reason is required")
 	}
 	event, err := s.eventRepo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("event not found")
+		return errors.New("event not found")
 	}
 	if event.Status == "declined" {
-		return nil, errors.New("event already declined")
+		return errors.New("event already declined")
 	}
 	if err := s.eventRepo.UpdateStatus(id, "declined"); err != nil {
+		return err
+	}
+	return s.createEventReview(id, adminID, "declined", reason)
+}
+
+func (s *EventService) RequestRevision(id, adminID, note string) error {
+	if err := validateEventID(id); err != nil {
+		return err
+	}
+	note = strings.TrimSpace(note)
+	if note == "" {
+		return errors.New("note is required")
+	}
+	event, err := s.eventRepo.FindByID(id)
+	if err != nil {
+		return errors.New("event not found")
+	}
+	if event.Status == "revision" {
+		return errors.New("event already requested revision")
+	}
+	if err := s.eventRepo.UpdateStatus(id, "revision"); err != nil {
+		return err
+	}
+	return s.createEventReview(id, adminID, "revision", note)
+}
+
+func (s *EventService) GetEventReviews(eventID string) ([]model.EventReview, error) {
+	if err := validateEventID(eventID); err != nil {
 		return nil, err
 	}
-	event.Status = "declined"
-	return event, nil
+	return s.eventReviewRepo.FindByEventID(eventID)
+}
+
+func (s *EventService) createEventReview(eventID, adminID, action, note string) error {
+	adminIDUint, err := strconv.ParseUint(adminID, 10, 64)
+	if err != nil {
+		return errors.New("invalid admin id")
+	}
+	review := &model.EventReview{
+		ID:        uuid.NewString(),
+		EventID:   eventID,
+		AdminID:   uint(adminIDUint),
+		Action:    action,
+		Note:      note,
+		CreatedAt: time.Now(),
+	}
+	return s.eventReviewRepo.Create(review)
 }
 
 func (s *EventService) GetThreads(ctx context.Context, id string, page, limit int) ([]model.Thread, int64, error) {

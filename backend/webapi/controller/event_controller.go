@@ -121,7 +121,8 @@ func (c *EventController) ApproveEvent(ctx *fiber.Ctx) error {
 	if claims.RoleName != "admin" {
 		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 	}
-	_, err := c.eventService.ApproveEvent(ctx.Params("id"))
+	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
+	err := c.eventService.ApproveEvent(ctx.Params("id"), adminID)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -139,7 +140,12 @@ func (c *EventController) DeclineEvent(ctx *fiber.Ctx) error {
 	if claims.RoleName != "admin" {
 		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 	}
-	_, err := c.eventService.DeclineEvent(ctx.Params("id"))
+	var req dto.DeclineEventRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
+	err := c.eventService.DeclineEvent(ctx.Params("id"), adminID, req.Reason)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -147,6 +153,42 @@ func (c *EventController) DeclineEvent(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event declined successfully"})
+}
+
+func (c *EventController) RequestRevision(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	if claims.RoleName != "admin" {
+		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+	}
+	var req dto.RevisionRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
+	if err := c.eventService.RequestRevision(ctx.Params("id"), adminID, req.Note); err != nil {
+		if err.Error() == "event not found" {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event revision requested successfully"})
+}
+
+func (c *EventController) GetEventReviews(ctx *fiber.Ctx) error {
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
+	}
+	reviews, err := c.eventService.GetEventReviews(ctx.Params("id"))
+	if err != nil {
+		if err.Error() == "event not found" {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toEventReviewResponses(reviews))
 }
 
 func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
@@ -208,6 +250,21 @@ func (c *EventController) toResponses(ctx context.Context, events []model.Event)
 	out := make([]dto.EventResponse, len(events))
 	for i := range events {
 		out[i] = c.toResponse(ctx, &events[i])
+	}
+	return out
+}
+
+func (c *EventController) toEventReviewResponses(reviews []model.EventReview) []dto.EventReviewResponse {
+	out := make([]dto.EventReviewResponse, len(reviews))
+	for i := range reviews {
+		out[i] = dto.EventReviewResponse{
+			ID:        reviews[i].ID,
+			EventID:   reviews[i].EventID,
+			AdminID:   reviews[i].AdminID,
+			Action:    reviews[i].Action,
+			Note:      reviews[i].Note,
+			CreatedAt: utils.Wrap(reviews[i].CreatedAt),
+		}
 	}
 	return out
 }

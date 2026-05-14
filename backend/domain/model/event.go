@@ -18,7 +18,7 @@ type Event struct {
 	Description          string    `gorm:"type:text"`
 	Location             string    `gorm:"type:varchar(255)"`
 	Type                 string    `gorm:"type:varchar(20);not null;default:'unofficial'"`
-	Status               string    `gorm:"type:varchar(20);not null;default:'approved'"`
+	Status               string    `gorm:"type:varchar(20);not null;default:'pending'"`
 	StartTime            time.Time `gorm:"not null;index"`
 	EndTime              time.Time `gorm:"not null;index"`
 	BannerObjectName     string    `gorm:"type:varchar(500)"`

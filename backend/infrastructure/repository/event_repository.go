@@ -202,6 +202,7 @@ func (r *eventRepository) Update(event *model.Event) error {
 		"location":           event.Location,
 		"start_time":         event.StartTime,
 		"end_time":           event.EndTime,
+		"status":             event.Status,
 		"banner_object_name": event.BannerObjectName,
 		"banner_bucket":      event.BannerBucket,
 		"pdfs":               event.PDFs,

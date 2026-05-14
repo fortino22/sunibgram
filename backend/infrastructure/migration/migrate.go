@@ -19,6 +19,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.Community{},
 		&model.Thread{},
 		&model.Event{},
+		&model.EventReview{},
 		&model.ThreadEvent{},
 		&model.ThreadMedia{},
 		&model.Like{},
@@ -65,7 +66,8 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_object_name VARCHAR(500)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_bucket VARCHAR(100)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS type VARCHAR(20) NOT NULL DEFAULT 'unofficial'")
-	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'approved'")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending'")
+	db.Exec("ALTER TABLE events ALTER COLUMN status SET DEFAULT 'pending'")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS attachment_object_name VARCHAR(500)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS attachment_bucket VARCHAR(100)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs JSONB NOT NULL DEFAULT '[]'::jsonb")
@@ -82,6 +84,26 @@ func AutoMigrate(db *gorm.DB) {
 	migratePremiumSubscriptions(db)
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time)")
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_event_reviews_event'
+			) THEN
+				ALTER TABLE event_reviews ADD CONSTRAINT fk_event_reviews_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_event_reviews_admin'
+			) THEN
+				ALTER TABLE event_reviews ADD CONSTRAINT fk_event_reviews_admin FOREIGN KEY (admin_id) REFERENCES users(user_id);
+			END IF;
+		END $$;
+	`)
 	db.Exec(`
 		DO $$
 		BEGIN
