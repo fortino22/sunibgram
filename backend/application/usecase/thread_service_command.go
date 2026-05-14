@@ -11,7 +11,7 @@ import (
 )
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error) {
-	if err := validateThreadEventID(eventID); err != nil {
+	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +112,7 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	return thread, nil
 }
 
-func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string, eventID *string, eventIDUpdated bool) (*model.Thread, error) {
+func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error) {
 	thread, err := s.threadRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("thread not found")
@@ -123,12 +123,7 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	if thread.Type == model.ThreadTypeRepost {
 		return nil, errors.New("cannot edit a repost")
 	}
-	if err := validateThreadEventID(eventID); err != nil {
-		return nil, err
-	}
 	thread.Content = content
-	thread.EventID = eventID
-	thread.EventIDUpdated = eventIDUpdated
 	if err := s.threadRepo.Update(thread); err != nil {
 		return nil, err
 	}
@@ -253,7 +248,7 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 }
 
 func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error) {
-	if err := validateThreadEventID(eventID); err != nil {
+	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
 	}
 	community, err := s.communityRepo.FindByID(communityID)
@@ -291,6 +286,23 @@ func validateThreadEventID(eventID *string) error {
 	}
 	if _, err := uuid.Parse(*eventID); err != nil {
 		return errors.New("invalid event id")
+	}
+	return nil
+}
+
+func (s *ThreadService) requireEventApproved(eventID *string) error {
+	if err := validateThreadEventID(eventID); err != nil {
+		return err
+	}
+	if eventID == nil {
+		return nil
+	}
+	event, err := s.eventRepo.FindByID(*eventID)
+	if err != nil {
+		return errors.New("event not found")
+	}
+	if event.Status != "approved" {
+		return errors.New("event is not approved")
 	}
 	return nil
 }

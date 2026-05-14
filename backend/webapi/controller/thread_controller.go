@@ -174,12 +174,8 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 	}
 
 	content := ctx.FormValue("content")
-	eventID, eventIDSent, err := parseOptionalEventID(ctx)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
 
-	if _, err := c.threadService.Update(ctx.Context(), id, claims.UserID, content, eventID, eventIDSent); err != nil {
+	if _, err := c.threadService.Update(ctx.Context(), id, claims.UserID, content); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}

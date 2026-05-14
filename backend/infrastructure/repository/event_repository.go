@@ -51,8 +51,8 @@ func eventPendingListKey(limit int) string {
 	return fmt.Sprintf("event:pending:list:limit:%d", limit)
 }
 
-func eventThreadsKey(id string, page, limit int) string {
-	return fmt.Sprintf("event:threads:%s:page:%d:limit:%d", id, page, limit)
+func eventThreadsKey(id, filter string, page, limit int) string {
+	return fmt.Sprintf("event:threads:%s:filter:%s:page:%d:limit:%d", id, filter, page, limit)
 }
 
 func (r *eventRepository) Save(event *model.Event) error {
@@ -283,9 +283,9 @@ func (r *eventRepository) Delete(id string) error {
 	return nil
 }
 
-func (r *eventRepository) FindThreads(eventID string, page, limit int) ([]model.Thread, int64, error) {
+func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, filter string, page, limit int) ([]model.Thread, int64, error) {
 	ctx := context.Background()
-	key := eventThreadsKey(eventID, page, limit)
+	key := eventThreadsKey(eventID, filter, page, limit)
 	var result cachedEventThreads
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
@@ -298,6 +298,12 @@ func (r *eventRepository) FindThreads(eventID string, page, limit int) ([]model.
 	q := r.readDB.Model(&model.Thread{}).
 		Joins("JOIN thread_events ON thread_events.thread_id = threads.thread_id").
 		Where("thread_events.event_id = ?", eventID)
+	switch filter {
+	case "official":
+		q = q.Where("threads.user_id = ?", ownerUserID)
+	case "unofficial":
+		q = q.Where("threads.user_id != ?", ownerUserID)
+	}
 	q.Count(&total)
 	offset := (page - 1) * limit
 	if err := preloadThreadDetails(q).

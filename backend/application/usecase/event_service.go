@@ -306,15 +306,28 @@ func (s *EventService) createEventReview(eventID, adminID, action, note string) 
 	return s.eventReviewRepo.Create(review)
 }
 
-func (s *EventService) GetThreads(ctx context.Context, id string, page, limit int) ([]model.Thread, int64, error) {
+func (s *EventService) GetThreads(ctx context.Context, id, filter string, page, limit int) ([]model.Thread, int64, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, 0, err
 	}
-	if _, err := s.eventRepo.FindByID(id); err != nil {
+	if err := validateEventThreadFilter(filter); err != nil {
+		return nil, 0, err
+	}
+	event, err := s.eventRepo.FindByID(id)
+	if err != nil {
 		return nil, 0, errors.New("event not found")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	return s.eventRepo.FindThreads(id, page, limit)
+	return s.eventRepo.FindThreads(id, event.UserID, filter, page, limit)
+}
+
+func validateEventThreadFilter(filter string) error {
+	switch filter {
+	case "", "official", "unofficial":
+		return nil
+	default:
+		return errors.New("invalid filter: use official or unofficial")
+	}
 }
 
 func validateEventID(id string) error {
