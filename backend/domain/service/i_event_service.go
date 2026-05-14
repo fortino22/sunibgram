@@ -9,7 +9,7 @@ import (
 )
 
 type IEventService interface {
-	Create(ctx context.Context, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachment *multipart.FileHeader) (*model.Event, error)
+	Create(ctx context.Context, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*model.Event, error)
 	GetByID(id string) (*model.Event, error)
 	GetAll(limit int) ([]model.Event, []model.Event, []model.Event, error)
 	GetPending(limit int) ([]model.Event, error)

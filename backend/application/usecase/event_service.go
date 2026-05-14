@@ -24,8 +24,11 @@ func NewEventService(eventRepo repository.IEventRepository, storageUsecase *Stor
 	return &EventService{eventRepo: eventRepo, storageUsecase: storageUsecase}
 }
 
-func (s *EventService) Create(ctx context.Context, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachment *multipart.FileHeader) (*model.Event, error) {
+func (s *EventService) Create(ctx context.Context, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*model.Event, error) {
 	if err := validateEventInput(title, startTime, endTime); err != nil {
+		return nil, err
+	}
+	if err := model.ValidateEventPDFCount(len(attachments)); err != nil {
 		return nil, err
 	}
 	eventType = strings.TrimSpace(eventType)
@@ -33,6 +36,12 @@ func (s *EventService) Create(ctx context.Context, title, description, location 
 		eventType = "unofficial"
 	}
 	if err := model.ValidateEventType(eventType); err != nil {
+		return nil, err
+	}
+	if eventType == "official" && len(attachments) == 0 {
+		return nil, errors.New("proposal attachment required for official events")
+	}
+	if err := validateEventPDFHeaders(attachments); err != nil {
 		return nil, err
 	}
 	event := &model.Event{
@@ -52,23 +61,21 @@ func (s *EventService) Create(ctx context.Context, title, description, location 
 		event.BannerBucket = bucket
 	}
 	if eventType == "official" {
-		if attachment == nil {
-			return nil, errors.New("proposal attachment required for official events")
-		}
-		if err := model.ValidateEventAttachmentExt(attachment.Filename); err != nil {
-			return nil, err
-		}
-		objName, bucket, err := s.uploadFile(ctx, attachment, "document_event")
-		if err != nil {
-			return nil, err
-		}
-		event.AttachmentObjectName = objName
-		event.AttachmentBucket = bucket
 		event.Status = "pending"
 	} else {
 		event.Status = "approved"
 	}
+	if len(attachments) > 0 {
+		pdfs, err := s.uploadPDFs(ctx, attachments, "document_event")
+		if err != nil {
+			return nil, err
+		}
+		event.PDFs = pdfs
+		event.AttachmentObjectName = pdfs[0].ObjectName
+		event.AttachmentBucket = pdfs[0].Bucket
+	}
 	if err := s.eventRepo.Save(event); err != nil {
+		s.deletePDFs(ctx, event.PDFs)
 		return nil, err
 	}
 	return event, nil
@@ -143,6 +150,10 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 	if event.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, event.BannerBucket, event.BannerObjectName)
 	}
+	s.deletePDFs(ctx, event.PDFs)
+	if event.AttachmentObjectName != "" && len(event.PDFs) == 0 {
+		_ = s.storageUsecase.Delete(ctx, event.AttachmentBucket, event.AttachmentObjectName)
+	}
 	return s.eventRepo.Delete(id)
 }
 
@@ -216,6 +227,9 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 	if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
 		return "", "", err
 	}
+	if err := model.ValidateEventAttachmentContentType(header.Header.Get("Content-Type")); err != nil {
+		return "", "", err
+	}
 	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
 	if err != nil {
 		return "", "", err
@@ -230,6 +244,44 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 		return "", "", err
 	}
 	return objName, bucket, nil
+}
+
+func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.FileHeader, uploadType string) (model.EventPDFs, error) {
+	if err := validateEventPDFHeaders(headers); err != nil {
+		return nil, err
+	}
+
+	pdfs := make(model.EventPDFs, 0, len(headers))
+	for _, header := range headers {
+		objName, bucket, err := s.uploadFile(ctx, header, uploadType)
+		if err != nil {
+			s.deletePDFs(ctx, pdfs)
+			return nil, err
+		}
+		pdfs = append(pdfs, model.EventPDF{ObjectName: objName, Bucket: bucket})
+	}
+	return pdfs, nil
+}
+
+func validateEventPDFHeaders(headers []*multipart.FileHeader) error {
+	if err := model.ValidateEventPDFCount(len(headers)); err != nil {
+		return err
+	}
+	for _, header := range headers {
+		if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+			return err
+		}
+		if err := model.ValidateEventAttachmentContentType(header.Header.Get("Content-Type")); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *EventService) deletePDFs(ctx context.Context, pdfs model.EventPDFs) {
+	for _, pdf := range pdfs {
+		_ = s.storageUsecase.Delete(ctx, pdf.Bucket, pdf.ObjectName)
+	}
 }
 
 func validateEventInput(title string, startTime, endTime time.Time) error {

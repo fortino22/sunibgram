@@ -31,15 +31,15 @@ func (c *EventController) Create(ctx *fiber.Ctx) error {
 	if _, ok := RequireAuth(ctx); !ok {
 		return nil
 	}
-	req, banner, attachment, err := parseCreateEventRequest(ctx)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
-	}
-	_, err = c.eventService.Create(ctx.Context(), req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachment)
+	req, banner, attachments, err := parseCreateEventRequest(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "success"})
+	_, err = c.eventService.Create(ctx.Context(), req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachments)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "success"})
 }
 
 func (c *EventController) GetAll(ctx *fiber.Ctx) error {
@@ -179,6 +179,7 @@ func (c *EventController) toResponse(ctx context.Context, event *model.Event) dt
 			log.Printf("presign error bucket=%s object=%s: %v", event.AttachmentBucket, event.AttachmentObjectName, err)
 		}
 	}
+	pdfURLs := c.eventPDFURLs(ctx, event)
 	return dto.EventResponse{
 		ID:               event.ID,
 		Title:            event.Title,
@@ -190,6 +191,7 @@ func (c *EventController) toResponse(ctx context.Context, event *model.Event) dt
 		EndTime:          dto.EventTime{Time: event.EndTime},
 		BannerURL:        bannerURL,
 		AttachmentURL:    attachmentURL,
+		PDFURLs:          pdfURLs,
 		ParticipantCount: event.ParticipantCount,
 		ThreadCount:      event.ThreadCount,
 		LikeCount:        event.LikeCount,
@@ -221,6 +223,7 @@ type pendingEventResponse struct {
 	EndTime       dto.EventTime       `json:"end_time"`
 	BannerURL     string              `json:"banner_url,omitempty"`
 	AttachmentURL string              `json:"attachment_url,omitempty"`
+	PDFURLs       []string            `json:"pdf_urls,omitempty"`
 	CreatedAt     utils.FormattedTime `json:"created_at"`
 	UpdatedAt     utils.FormattedTime `json:"updated_at"`
 }
@@ -248,6 +251,7 @@ func (c *EventController) toPendingResponses(ctx context.Context, events []model
 			EndTime:       dto.EventTime{Time: e.EndTime},
 			BannerURL:     BuildMediaURL(e.BannerObjectName, e.BannerBucket, c.eventService.GetURL),
 			AttachmentURL: attachmentURL,
+			PDFURLs:       c.eventPDFURLs(ctx, e),
 			CreatedAt:     utils.Wrap(e.CreatedAt),
 			UpdatedAt:     utils.Wrap(e.UpdatedAt),
 		}
@@ -255,20 +259,69 @@ func (c *EventController) toPendingResponses(ctx context.Context, events []model
 	return out
 }
 
-func parseCreateEventRequest(ctx *fiber.Ctx) (dto.CreateEventRequest, *multipart.FileHeader, *multipart.FileHeader, error) {
+func (c *EventController) eventPDFURLs(ctx context.Context, event *model.Event) []string {
+	pdfs := event.PDFs
+	if len(pdfs) == 0 && event.AttachmentObjectName != "" {
+		pdfs = model.EventPDFs{{ObjectName: event.AttachmentObjectName, Bucket: event.AttachmentBucket}}
+	}
+	if len(pdfs) == 0 {
+		return nil
+	}
+	urls := make([]string, 0, len(pdfs))
+	for _, pdf := range pdfs {
+		if pdf.ObjectName == "" {
+			continue
+		}
+		url, err := c.eventService.GeneratePresignedAttachmentURL(ctx, pdf.Bucket, pdf.ObjectName)
+		if err != nil {
+			log.Printf("presign error bucket=%s object=%s: %v", pdf.Bucket, pdf.ObjectName, err)
+			continue
+		}
+		urls = append(urls, url)
+	}
+	return urls
+}
+
+func parseCreateEventRequest(ctx *fiber.Ctx) (dto.CreateEventRequest, *multipart.FileHeader, []*multipart.FileHeader, error) {
 	var req dto.CreateEventRequest
 	if isMultipart(ctx) {
 		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.Type, &req.StartTime, &req.EndTime); err != nil {
 			return req, nil, nil, err
 		}
 		banner, _ := ctx.FormFile("banner")
-		attachment, _ := ctx.FormFile("attachment")
-		return req, banner, attachment, nil
+		attachments := eventPDFFiles(ctx)
+		if err := validateEventPDFHeaders(attachments); err != nil {
+			return req, nil, nil, err
+		}
+		return req, banner, attachments, nil
 	}
 	if err := ctx.BodyParser(&req); err != nil {
 		return req, nil, nil, err
 	}
 	return req, nil, nil, nil
+}
+
+func eventPDFFiles(ctx *fiber.Ctx) []*multipart.FileHeader {
+	form, _ := ctx.MultipartForm()
+	if form == nil {
+		return nil
+	}
+	return form.File["attachment"]
+}
+
+func validateEventPDFHeaders(files []*multipart.FileHeader) error {
+	if err := model.ValidateEventPDFCount(len(files)); err != nil {
+		return err
+	}
+	for _, file := range files {
+		if err := model.ValidateEventAttachmentExt(file.Filename); err != nil {
+			return err
+		}
+		if err := model.ValidateEventAttachmentContentType(file.Header.Get("Content-Type")); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart.FileHeader, bool, error) {

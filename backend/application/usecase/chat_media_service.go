@@ -41,6 +41,9 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 		if err := model.ValidateChatMediaExt(header.Filename); err != nil {
 			return nil, err
 		}
+		if err := model.ValidateChatMediaContentType(header.Header.Get("Content-Type")); err != nil {
+			return nil, err
+		}
 	}
 
 	media := make([]model.ChatMedia, 0, len(files))

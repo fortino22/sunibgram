@@ -204,6 +204,7 @@ func (r *eventRepository) Update(event *model.Event) error {
 		"end_time":           event.EndTime,
 		"banner_object_name": event.BannerObjectName,
 		"banner_bucket":      event.BannerBucket,
+		"pdfs":               event.PDFs,
 		"updated_at":         gorm.Expr("NOW()"),
 	}).Error; err != nil {
 		return err

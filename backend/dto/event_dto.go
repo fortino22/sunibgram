@@ -72,6 +72,7 @@ type EventResponse struct {
 	EndTime          EventTime           `json:"end_time"`
 	BannerURL        string              `json:"banner_url,omitempty"`
 	AttachmentURL    string              `json:"attachment_url,omitempty"`
+	PDFURLs          []string            `json:"pdf_urls,omitempty"`
 	ParticipantCount int                 `json:"participant_count"`
 	ThreadCount      int                 `json:"thread_count"`
 	LikeCount        int                 `json:"like_count"`

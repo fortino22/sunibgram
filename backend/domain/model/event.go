@@ -1,6 +1,8 @@
 package model
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"strings"
@@ -21,8 +23,9 @@ type Event struct {
 	EndTime              time.Time `gorm:"not null;index"`
 	BannerObjectName     string    `gorm:"type:varchar(500)"`
 	BannerBucket         string    `gorm:"type:varchar(100)"`
-	AttachmentObjectName string `gorm:"type:varchar(500)"`
-	AttachmentBucket     string `gorm:"type:varchar(100)"`
+	AttachmentObjectName string    `gorm:"type:varchar(500)"`
+	AttachmentBucket     string    `gorm:"type:varchar(100)"`
+	PDFs                 EventPDFs `gorm:"type:jsonb;default:'[]'"`
 	ParticipantCount     int       `gorm:"not null;default:0"`
 	ThreadCount          int       `gorm:"not null;default:0"`
 	LikeCount            int       `gorm:"not null;default:0"`
@@ -48,12 +51,60 @@ func ValidateEventType(t string) error {
 	return nil
 }
 
-var allowedEventAttachmentExts = map[string]bool{".zip": true}
+var allowedEventAttachmentExts = map[string]bool{".pdf": true}
+
+type EventPDF struct {
+	ObjectName string `json:"object_name"`
+	Bucket     string `json:"bucket"`
+}
+
+type EventPDFs []EventPDF
+
+func (p EventPDFs) Value() (driver.Value, error) {
+	if len(p) == 0 {
+		return "[]", nil
+	}
+	b, err := json.Marshal(p)
+	if err != nil {
+		return nil, err
+	}
+	return string(b), nil
+}
+
+func (p *EventPDFs) Scan(value any) error {
+	if value == nil {
+		*p = EventPDFs{}
+		return nil
+	}
+
+	switch v := value.(type) {
+	case []byte:
+		return json.Unmarshal(v, p)
+	case string:
+		return json.Unmarshal([]byte(v), p)
+	default:
+		return errors.New("invalid event pdfs value")
+	}
+}
+
+func ValidateEventPDFCount(count int) error {
+	if count > 4 {
+		return errors.New("maximum 4 PDF files allowed per event")
+	}
+	return nil
+}
 
 func ValidateEventAttachmentExt(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if !allowedEventAttachmentExts[ext] {
-		return errors.New("attachment must be a .zip file")
+		return errors.New("attachment must be a .pdf file")
+	}
+	return nil
+}
+
+func ValidateEventAttachmentContentType(contentType string) error {
+	if strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0])) != "application/pdf" {
+		return errors.New("attachment must be an application/pdf file")
 	}
 	return nil
 }

@@ -8,21 +8,27 @@ import (
 )
 
 var allowedChatMediaExts = map[string]bool{
-	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
-	".mp4": true, ".mov": true,
+	".pdf": true,
 }
 
 func ValidateChatMediaExt(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if !allowedChatMediaExts[ext] {
-		return errors.New("unsupported file type: " + filename)
+		return errors.New("only PDF files are allowed")
+	}
+	return nil
+}
+
+func ValidateChatMediaContentType(contentType string) error {
+	if strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0])) != "application/pdf" {
+		return errors.New("only PDF files are allowed")
 	}
 	return nil
 }
 
 func ValidateChatMediaCount(count int) error {
 	if count > 4 {
-		return errors.New("maximum 4 media files allowed per message")
+		return errors.New("maximum 4 PDF files allowed per message")
 	}
 	return nil
 }

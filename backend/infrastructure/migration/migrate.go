@@ -68,6 +68,7 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'approved'")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS attachment_object_name VARCHAR(500)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS attachment_bucket VARCHAR(100)")
+	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs JSONB NOT NULL DEFAULT '[]'::jsonb")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_status ON events(status)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS participant_count INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS thread_count INTEGER NOT NULL DEFAULT 0")
