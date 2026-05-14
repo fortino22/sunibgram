@@ -42,6 +42,14 @@ func eventListKey(limit int) string {
 	return fmt.Sprintf("event:list:limit:%d", limit)
 }
 
+func eventApprovedListKey(limit int) string {
+	return fmt.Sprintf("event:approved:list:limit:%d", limit)
+}
+
+func eventPendingListKey(limit int) string {
+	return fmt.Sprintf("event:pending:list:limit:%d", limit)
+}
+
 func eventThreadsKey(id string, page, limit int) string {
 	return fmt.Sprintf("event:threads:%s:page:%d:limit:%d", id, page, limit)
 }
@@ -116,6 +124,77 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 	return result.Trending, result.Running, result.Future, nil
 }
 
+func (r *eventRepository) FindGroupedApproved(limit int) ([]model.Event, []model.Event, []model.Event, error) {
+	ctx := context.Background()
+	key := eventApprovedListKey(limit)
+	var result cachedEvents
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &result); err == nil {
+			return result.Trending, result.Running, result.Future, nil
+		}
+	}
+
+	var trending []model.Event
+	if err := r.readDB.
+		Where("status = ?", "approved").
+		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
+		Limit(limit).
+		Find(&trending).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	now := time.Now().UTC()
+	var running []model.Event
+	if err := r.readDB.
+		Where("status = ?", "approved").
+		Where("start_time <= ? AND end_time >= ?", now, now).
+		Order("start_time ASC").
+		Limit(limit).
+		Find(&running).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	var future []model.Event
+	if err := r.readDB.
+		Where("status = ?", "approved").
+		Where("start_time > ?", now).
+		Order("start_time ASC").
+		Limit(limit).
+		Find(&future).Error; err != nil {
+		return nil, nil, nil, err
+	}
+
+	result = cachedEvents{Trending: trending, Running: running, Future: future}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, result, r.ttl)
+	}
+	return result.Trending, result.Running, result.Future, nil
+}
+
+func (r *eventRepository) FindPending(limit int) ([]model.Event, error) {
+	ctx := context.Background()
+	key := eventPendingListKey(limit)
+	var events []model.Event
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &events); err == nil {
+			return events, nil
+		}
+	}
+
+	if err := r.readDB.
+		Where("status = ?", "pending").
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&events).Error; err != nil {
+		return nil, err
+	}
+
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, events, r.ttl)
+	}
+	return events, nil
+}
+
 func (r *eventRepository) Update(event *model.Event) error {
 	if err := r.writeDB.Model(event).UpdateColumns(map[string]any{
 		"title":              event.Title,
@@ -131,6 +210,19 @@ func (r *eventRepository) Update(event *model.Event) error {
 	}
 	r.invalidateEvent(event.ID)
 	r.invalidateEventThreadCaches(event.ID)
+	return nil
+}
+
+func (r *eventRepository) UpdateStatus(id, status string) error {
+	if err := r.writeDB.Model(&model.Event{}).
+		Where("id = ?", id).
+		UpdateColumns(map[string]any{
+			"status":     status,
+			"updated_at": gorm.Expr("NOW()"),
+		}).Error; err != nil {
+		return err
+	}
+	r.invalidateEvent(id)
 	return nil
 }
 
@@ -235,7 +327,10 @@ func (r *eventRepository) invalidateLists() {
 	if r.cache == nil {
 		return
 	}
-	_ = r.cache.DeleteByPattern(context.Background(), "event:list:*")
+	ctx := context.Background()
+	_ = r.cache.DeleteByPattern(ctx, "event:list:*")
+	_ = r.cache.DeleteByPattern(ctx, "event:approved:list:*")
+	_ = r.cache.DeleteByPattern(ctx, "event:pending:list:*")
 }
 
 func (r *eventRepository) invalidateEvent(id string) {
@@ -245,6 +340,8 @@ func (r *eventRepository) invalidateEvent(id string) {
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, eventIDKey(id))
 	_ = r.cache.DeleteByPattern(ctx, "event:list:*")
+	_ = r.cache.DeleteByPattern(ctx, "event:approved:list:*")
+	_ = r.cache.DeleteByPattern(ctx, "event:pending:list:*")
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:%s:*", id))
 }
 

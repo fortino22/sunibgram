@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+	"log"
 	"mime/multipart"
 	"strconv"
 	"strings"
@@ -29,11 +31,11 @@ func (c *EventController) Create(ctx *fiber.Ctx) error {
 	if _, ok := RequireAuth(ctx); !ok {
 		return nil
 	}
-	req, banner, err := parseCreateEventRequest(ctx)
+	req, banner, attachment, err := parseCreateEventRequest(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
 	}
-	_, err = c.eventService.Create(ctx.Context(), req.Title, req.Description, req.Location, req.StartTime.Time, req.EndTime.Time, banner)
+	_, err = c.eventService.Create(ctx.Context(), req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachment)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -49,11 +51,24 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
+	fctx := ctx.Context()
 	return ctx.Status(fiber.StatusOK).JSON(dto.EventGroupsResponse{
-		Trending: c.toResponses(trending),
-		Running:  c.toResponses(running),
-		Future:   c.toResponses(future),
+		Trending: c.toResponses(fctx, trending),
+		Running:  c.toResponses(fctx, running),
+		Future:   c.toResponses(fctx, future),
 	})
+}
+
+func (c *EventController) GetPending(ctx *fiber.Ctx) error {
+	if _, ok := RequireAuth(ctx); !ok {
+		return nil
+	}
+	_, limit := ParsePagination(ctx)
+	events, err := c.eventService.GetPending(limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toPendingResponses(ctx.Context(), events))
 }
 
 func (c *EventController) GetByID(ctx *fiber.Ctx) error {
@@ -64,7 +79,7 @@ func (c *EventController) GetByID(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "event not found"})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(event))
+	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(ctx.Context(), event))
 }
 
 func (c *EventController) Update(ctx *fiber.Ctx) error {
@@ -98,6 +113,42 @@ func (c *EventController) Delete(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "event deleted successfully"})
 }
 
+func (c *EventController) ApproveEvent(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	if claims.RoleName != "admin" {
+		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+	}
+	_, err := c.eventService.ApproveEvent(ctx.Params("id"))
+	if err != nil {
+		if err.Error() == "event not found" {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event approved successfully"})
+}
+
+func (c *EventController) DeclineEvent(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	if claims.RoleName != "admin" {
+		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+	}
+	_, err := c.eventService.DeclineEvent(ctx.Params("id"))
+	if err != nil {
+		if err.Error() == "event not found" {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event declined successfully"})
+}
+
 func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {
@@ -118,16 +169,27 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *EventController) toResponse(event *model.Event) dto.EventResponse {
+func (c *EventController) toResponse(ctx context.Context, event *model.Event) dto.EventResponse {
 	bannerURL := BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL)
+	var attachmentURL string
+	if event.AttachmentObjectName != "" {
+		var err error
+		attachmentURL, err = c.eventService.GeneratePresignedAttachmentURL(ctx, event.AttachmentBucket, event.AttachmentObjectName)
+		if err != nil {
+			log.Printf("presign error bucket=%s object=%s: %v", event.AttachmentBucket, event.AttachmentObjectName, err)
+		}
+	}
 	return dto.EventResponse{
 		ID:               event.ID,
 		Title:            event.Title,
 		Description:      event.Description,
 		Location:         event.Location,
+		Type:             event.Type,
+		Status:           event.Status,
 		StartTime:        dto.EventTime{Time: event.StartTime},
 		EndTime:          dto.EventTime{Time: event.EndTime},
 		BannerURL:        bannerURL,
+		AttachmentURL:    attachmentURL,
 		ParticipantCount: event.ParticipantCount,
 		ThreadCount:      event.ThreadCount,
 		LikeCount:        event.LikeCount,
@@ -140,33 +202,79 @@ func (c *EventController) toResponse(event *model.Event) dto.EventResponse {
 	}
 }
 
-func (c *EventController) toResponses(events []model.Event) []dto.EventResponse {
+func (c *EventController) toResponses(ctx context.Context, events []model.Event) []dto.EventResponse {
 	out := make([]dto.EventResponse, len(events))
 	for i := range events {
-		out[i] = c.toResponse(&events[i])
+		out[i] = c.toResponse(ctx, &events[i])
 	}
 	return out
 }
 
-func parseCreateEventRequest(ctx *fiber.Ctx) (dto.CreateEventRequest, *multipart.FileHeader, error) {
+type pendingEventResponse struct {
+	ID            string              `json:"id"`
+	Title         string              `json:"title"`
+	Description   string              `json:"description"`
+	Type          string              `json:"type"`
+	Status        string              `json:"status"`
+	Location      string              `json:"location"`
+	StartTime     dto.EventTime       `json:"start_time"`
+	EndTime       dto.EventTime       `json:"end_time"`
+	BannerURL     string              `json:"banner_url,omitempty"`
+	AttachmentURL string              `json:"attachment_url,omitempty"`
+	CreatedAt     utils.FormattedTime `json:"created_at"`
+	UpdatedAt     utils.FormattedTime `json:"updated_at"`
+}
+
+func (c *EventController) toPendingResponses(ctx context.Context, events []model.Event) []pendingEventResponse {
+	out := make([]pendingEventResponse, len(events))
+	for i := range events {
+		e := &events[i]
+		var attachmentURL string
+		if e.AttachmentObjectName != "" {
+			var err error
+			attachmentURL, err = c.eventService.GeneratePresignedAttachmentURL(ctx, e.AttachmentBucket, e.AttachmentObjectName)
+			if err != nil {
+				log.Printf("presign error bucket=%s object=%s: %v", e.AttachmentBucket, e.AttachmentObjectName, err)
+			}
+		}
+		out[i] = pendingEventResponse{
+			ID:            e.ID,
+			Title:         e.Title,
+			Description:   e.Description,
+			Type:          e.Type,
+			Status:        e.Status,
+			Location:      e.Location,
+			StartTime:     dto.EventTime{Time: e.StartTime},
+			EndTime:       dto.EventTime{Time: e.EndTime},
+			BannerURL:     BuildMediaURL(e.BannerObjectName, e.BannerBucket, c.eventService.GetURL),
+			AttachmentURL: attachmentURL,
+			CreatedAt:     utils.Wrap(e.CreatedAt),
+			UpdatedAt:     utils.Wrap(e.UpdatedAt),
+		}
+	}
+	return out
+}
+
+func parseCreateEventRequest(ctx *fiber.Ctx) (dto.CreateEventRequest, *multipart.FileHeader, *multipart.FileHeader, error) {
 	var req dto.CreateEventRequest
 	if isMultipart(ctx) {
-		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.StartTime, &req.EndTime); err != nil {
-			return req, nil, err
+		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.Type, &req.StartTime, &req.EndTime); err != nil {
+			return req, nil, nil, err
 		}
 		banner, _ := ctx.FormFile("banner")
-		return req, banner, nil
+		attachment, _ := ctx.FormFile("attachment")
+		return req, banner, attachment, nil
 	}
 	if err := ctx.BodyParser(&req); err != nil {
-		return req, nil, err
+		return req, nil, nil, err
 	}
-	return req, nil, nil
+	return req, nil, nil, nil
 }
 
 func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart.FileHeader, bool, error) {
 	var req dto.UpdateEventRequest
 	if isMultipart(ctx) {
-		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.StartTime, &req.EndTime); err != nil {
+		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, nil, &req.StartTime, &req.EndTime); err != nil {
 			return req, nil, false, err
 		}
 		banner, _ := ctx.FormFile("banner")
@@ -178,10 +286,13 @@ func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart
 	return req, nil, false, nil
 }
 
-func fillEventRequestFromForm(ctx *fiber.Ctx, title, description, location *string, startTime, endTime *dto.EventTime) error {
+func fillEventRequestFromForm(ctx *fiber.Ctx, title, description, location, eventType *string, startTime, endTime *dto.EventTime) error {
 	*title = ctx.FormValue("title")
 	*description = ctx.FormValue("description")
 	*location = ctx.FormValue("location")
+	if eventType != nil {
+		*eventType = ctx.FormValue("type")
+	}
 	if err := parseEventFormTime(ctx.FormValue("start_time"), startTime); err != nil {
 		return err
 	}

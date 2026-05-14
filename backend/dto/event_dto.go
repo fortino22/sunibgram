@@ -47,6 +47,8 @@ type CreateEventRequest struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Location    string    `json:"location"`
+	Type        string    `json:"type" form:"type"`
+	Status      string    `json:"status"`
 	StartTime   EventTime `json:"start_time"`
 	EndTime     EventTime `json:"end_time"`
 }
@@ -64,9 +66,12 @@ type EventResponse struct {
 	Title            string              `json:"title"`
 	Description      string              `json:"description"`
 	Location         string              `json:"location"`
+	Type             string              `json:"type"`
+	Status           string              `json:"status"`
 	StartTime        EventTime           `json:"start_time"`
 	EndTime          EventTime           `json:"end_time"`
 	BannerURL        string              `json:"banner_url,omitempty"`
+	AttachmentURL    string              `json:"attachment_url,omitempty"`
 	ParticipantCount int                 `json:"participant_count"`
 	ThreadCount      int                 `json:"thread_count"`
 	LikeCount        int                 `json:"like_count"`

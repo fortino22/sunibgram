@@ -24,14 +24,22 @@ func NewEventService(eventRepo repository.IEventRepository, storageUsecase *Stor
 	return &EventService{eventRepo: eventRepo, storageUsecase: storageUsecase}
 }
 
-func (s *EventService) Create(ctx context.Context, title, description, location string, startTime, endTime time.Time, banner *multipart.FileHeader) (*model.Event, error) {
+func (s *EventService) Create(ctx context.Context, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachment *multipart.FileHeader) (*model.Event, error) {
 	if err := validateEventInput(title, startTime, endTime); err != nil {
+		return nil, err
+	}
+	eventType = strings.TrimSpace(eventType)
+	if eventType == "" {
+		eventType = "unofficial"
+	}
+	if err := model.ValidateEventType(eventType); err != nil {
 		return nil, err
 	}
 	event := &model.Event{
 		Title:       strings.TrimSpace(title),
 		Description: description,
 		Location:    location,
+		Type:        eventType,
 		StartTime:   startTime.UTC(),
 		EndTime:     endTime.UTC(),
 	}
@@ -42,6 +50,23 @@ func (s *EventService) Create(ctx context.Context, title, description, location 
 		}
 		event.BannerObjectName = objName
 		event.BannerBucket = bucket
+	}
+	if eventType == "official" {
+		if attachment == nil {
+			return nil, errors.New("proposal attachment required for official events")
+		}
+		if err := model.ValidateEventAttachmentExt(attachment.Filename); err != nil {
+			return nil, err
+		}
+		objName, bucket, err := s.uploadFile(ctx, attachment, "document_event")
+		if err != nil {
+			return nil, err
+		}
+		event.AttachmentObjectName = objName
+		event.AttachmentBucket = bucket
+		event.Status = "pending"
+	} else {
+		event.Status = "approved"
 	}
 	if err := s.eventRepo.Save(event); err != nil {
 		return nil, err
@@ -62,7 +87,12 @@ func (s *EventService) GetByID(id string) (*model.Event, error) {
 
 func (s *EventService) GetAll(limit int) ([]model.Event, []model.Event, []model.Event, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 10)
-	return s.eventRepo.FindGrouped(limit)
+	return s.eventRepo.FindGroupedApproved(limit)
+}
+
+func (s *EventService) GetPending(limit int) ([]model.Event, error) {
+	_, limit = helper.NormalizePageLimit(1, limit, 10)
+	return s.eventRepo.FindPending(limit)
 }
 
 func (s *EventService) Update(ctx context.Context, id, title, description, location string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool) (*model.Event, error) {
@@ -116,6 +146,42 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 	return s.eventRepo.Delete(id)
 }
 
+func (s *EventService) ApproveEvent(id string) (*model.Event, error) {
+	if err := validateEventID(id); err != nil {
+		return nil, err
+	}
+	event, err := s.eventRepo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("event not found")
+	}
+	if event.Status == "approved" {
+		return nil, errors.New("event already approved")
+	}
+	if err := s.eventRepo.UpdateStatus(id, "approved"); err != nil {
+		return nil, err
+	}
+	event.Status = "approved"
+	return event, nil
+}
+
+func (s *EventService) DeclineEvent(id string) (*model.Event, error) {
+	if err := validateEventID(id); err != nil {
+		return nil, err
+	}
+	event, err := s.eventRepo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("event not found")
+	}
+	if event.Status == "declined" {
+		return nil, errors.New("event already declined")
+	}
+	if err := s.eventRepo.UpdateStatus(id, "declined"); err != nil {
+		return nil, err
+	}
+	event.Status = "declined"
+	return event, nil
+}
+
 func (s *EventService) GetThreads(ctx context.Context, id string, page, limit int) ([]model.Thread, int64, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, 0, err
@@ -138,8 +204,32 @@ func (s *EventService) GetURL(bucket, objectName string) string {
 	return s.storageUsecase.GetURL(bucket, objectName)
 }
 
+func (s *EventService) GeneratePresignedAttachmentURL(ctx context.Context, bucket, objectName string) (string, error) {
+	return s.storageUsecase.GeneratePresignedURL(ctx, bucket, objectName)
+}
+
 func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
 	return helper.UploadImage(ctx, s.storageUsecase, header, uploadType)
+}
+
+func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
+	if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+		return "", "", err
+	}
+	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
+	if err != nil {
+		return "", "", err
+	}
+	f, err := header.Open()
+	if err != nil {
+		return "", "", err
+	}
+	defer f.Close()
+	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
+	if err != nil {
+		return "", "", err
+	}
+	return objName, bucket, nil
 }
 
 func validateEventInput(title string, startTime, endTime time.Time) error {

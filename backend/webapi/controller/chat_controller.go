@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+	"log"
 	"mime/multipart"
 	"strings"
 
@@ -64,7 +66,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 		}
 	}
 
-	c.broadcastRoom(chat.RoomID, "message:new", c.toChatResponse(chat, media))
+	c.broadcastRoom(chat.RoomID, "message:new", c.toChatResponse(ctx.Context(), chat, media))
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "chat sent successfully"})
 }
@@ -93,7 +95,7 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 	mediaByChat := c.loadMediaByChat(chats)
 	data := make([]dto.ChatResponse, len(chats))
 	for i := range chats {
-		data[i] = c.toChatResponse(&chats[i], mediaByChat[chats[i].ChatID])
+		data[i] = c.toChatResponse(ctx.Context(), &chats[i], mediaByChat[chats[i].ChatID])
 	}
 
 	if len(markedIDs) > 0 {
@@ -255,7 +257,7 @@ func (c *ChatController) loadMediaByChat(chats []model.Chat) map[uint][]model.Ch
 	return byChat
 }
 
-func (c *ChatController) toChatResponse(chat *model.Chat, media []model.ChatMedia) dto.ChatResponse {
+func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, media []model.ChatMedia) dto.ChatResponse {
 	var deletedAt *dtoutils.FormattedTime
 	if chat.DeletedAt != nil {
 		wrapped := dtoutils.Wrap(*chat.DeletedAt)
@@ -269,19 +271,23 @@ func (c *ChatController) toChatResponse(chat *model.Chat, media []model.ChatMedi
 			Username: chat.Sender.UserName,
 		},
 		Message:   chat.Message,
-		Media:     c.toChatMediaResponses(media),
+		Media:     c.toChatMediaResponses(ctx, media),
 		IsRead:    chat.IsRead,
 		DeletedAt: deletedAt,
 		CreatedAt: dtoutils.Wrap(chat.CreatedAt),
 	}
 }
 
-func (c *ChatController) toChatMediaResponses(media []model.ChatMedia) []dto.ChatMediaResponse {
+func (c *ChatController) toChatMediaResponses(ctx context.Context, media []model.ChatMedia) []dto.ChatMediaResponse {
 	out := make([]dto.ChatMediaResponse, len(media))
 	for i := range media {
+		url, err := c.chatMediaService.GeneratePresignedURL(ctx, media[i].Bucket, media[i].ObjectName)
+		if err != nil {
+			log.Printf("presign error bucket=%s object=%s: %v", media[i].Bucket, media[i].ObjectName, err)
+		}
 		out[i] = dto.ChatMediaResponse{
 			MediaID:   media[i].MediaID,
-			URL:       c.chatMediaService.GetURL(media[i].Bucket, media[i].ObjectName),
+			URL:       url,
 			MediaType: media[i].MediaType,
 			FileSize:  media[i].FileSize,
 		}

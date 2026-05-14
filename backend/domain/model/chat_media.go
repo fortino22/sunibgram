@@ -20,6 +20,13 @@ func ValidateChatMediaExt(filename string) error {
 	return nil
 }
 
+func ValidateChatMediaCount(count int) error {
+	if count > 4 {
+		return errors.New("maximum 4 media files allowed per message")
+	}
+	return nil
+}
+
 func (ChatMedia) TableName() string { return "chat_media" }
 
 type ChatMedia struct {
