@@ -13,6 +13,7 @@ import (
 	"github.com/sunibgram/infrastructure/config"
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
+	"github.com/sunibgram/infrastructure/ollama"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
 	"github.com/sunibgram/infrastructure/scheduler"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
@@ -68,6 +69,7 @@ func main() {
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
 	emailService := usecase.NewEmailService(infraemail.NewSMTPClient())
+	ollamaClient := ollama.NewClient()
 	socketHub := infrasocket.NewHub()
 
 	// --- Usecases ---
@@ -81,7 +83,8 @@ func main() {
 	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
 	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
-	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	summaryService := usecase.NewThreadSummaryService(threadRepo, cacheRepo, ollamaClient)
+	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService, summaryService)
 	eventService := usecase.NewEventService(eventRepo, eventReviewRepo, storageUsecase)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
@@ -116,6 +119,7 @@ func main() {
 	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
+	summaryCtrl := controller.NewThreadSummaryController(summaryService)
 	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
@@ -155,6 +159,7 @@ func main() {
 		bookmarkCtrl,
 		threadPinCtrl,
 		repostCtrl,
+		summaryCtrl,
 		emailCtrl,
 		verificationCtrl,
 		followCtrl,

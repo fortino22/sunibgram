@@ -12,6 +12,7 @@ func registerThreadRoutes(
 	bookmarkCtrl *controller.BookmarkController,
 	threadPinCtrl *controller.ThreadPinController,
 	repostCtrl *controller.RepostController,
+	summaryCtrl *controller.ThreadSummaryController,
 	auth fiber.Handler,
 ) {
 	api.Get("/likes", auth, likeCtrl.GetMyLikes)
@@ -28,6 +29,7 @@ func registerThreadRoutes(
 	threadsAuth.Get("/:userId/media", threadCtrl.GetMyMediaThread)
 	threadsAuth.Get("/:userID", threadCtrl.GetMyPosts)
 	threadsAuth.Get("/:userID/replies", threadCtrl.GetMyReplies)
+	threadsAuth.Get("/:id/summary/stream", summaryCtrl.Stream)
 	threadsAuth.Get("/:id", threadCtrl.GetByID)
 	threadsAuth.Get("/:id/chain", threadCtrl.GetChain)
 	threadsAuth.Put("/:id", threadCtrl.Update)
