@@ -123,7 +123,14 @@ func main() {
 	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
-	communityThreadCtrl := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService, threadPinService)
+	communityThreadCtrl := controller.NewCommunityThreadController(
+		threadService,
+		threadMediaService,
+		likeService,
+		bookmarkService,
+		threadPinService,
+		profileService,
+	)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
 	premiumSubscriptionCtrl := controller.NewPremiumSubscriptionController(premiumSubscriptionService)

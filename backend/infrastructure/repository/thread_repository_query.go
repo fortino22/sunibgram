@@ -91,14 +91,28 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 	return result.Threads, result.Total, nil
 }
 
-func (r *threadCached) FindByCommunityID(communityID uint, page, limit int, sort string) ([]model.Thread, int64, error) {
+func (r *threadCached) FindCommunityTop(communityID uint, page, limit int) ([]model.Thread, int64, error) {
+	return r.findCommunityThreads(
+		communityID,
+		page,
+		limit,
+		"top",
+		"(threads.like_count + threads.repost_count + threads.bookmark_count) DESC, threads.created_at DESC",
+	)
+}
+
+func (r *threadCached) FindCommunityLatest(communityID uint, page, limit int) ([]model.Thread, int64, error) {
+	return r.findCommunityThreads(communityID, page, limit, "latest", "threads.created_at DESC")
+}
+
+func (r *threadCached) findCommunityThreads(communityID uint, page, limit int, keySuffix, orderClause string) ([]model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread
 		Total   int64
 	}
 	ctx := context.Background()
 	var result cached
-	key := threadCommunityKey(communityID, page, limit, sort)
+	key := threadCommunityKey(communityID, page, limit, keySuffix)
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var threads []model.Thread
 		var total int64
@@ -106,10 +120,6 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int, sort
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Count(&total)
 		offset := (page - 1) * limit
-		orderClause := "created_at DESC"
-		if sort == "top" {
-			orderClause = "like_count DESC, created_at DESC"
-		}
 		if err := preloadThreadDetails(r.db.readDB).
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Order(orderClause).
@@ -125,4 +135,30 @@ func (r *threadCached) FindByCommunityID(communityID uint, page, limit int, sort
 		}
 	}
 	return result.Threads, result.Total, nil
+}
+
+func (r *threadCached) FindCommunityMedia(communityID uint) ([]model.CommunityThreadMedia, error) {
+	var rows []model.ThreadMedia
+	if err := r.db.readDB.
+		Table("thread_media").
+		Select("thread_media.media_id, thread_media.thread_id, thread_media.object_name, thread_media.bucket, thread_media.created_at").
+		Joins("JOIN threads ON threads.thread_id = thread_media.thread_id").
+		Where("threads.community_id = ? AND threads.type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+		Order("threads.created_at DESC, thread_media.created_at ASC").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	byThread := make(map[uint]int)
+	result := make([]model.CommunityThreadMedia, 0)
+	for _, media := range rows {
+		idx, ok := byThread[media.ThreadID]
+		if !ok {
+			idx = len(result)
+			byThread[media.ThreadID] = idx
+			result = append(result, model.CommunityThreadMedia{ThreadID: media.ThreadID})
+		}
+		result[idx].Media = append(result[idx].Media, media)
+	}
+	return result, nil
 }

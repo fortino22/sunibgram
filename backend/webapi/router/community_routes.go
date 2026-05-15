@@ -41,5 +41,7 @@ func registerCommunityRoutes(
 
 	//community threads
 	communities.Post("/:id/threads", communityThreadCtrl.Create)
-	communities.Get("/:id/threads", communityThreadCtrl.GetAll)
+	communities.Get("/:id/threads/top", communityThreadCtrl.GetCommunityThreadTop)
+	communities.Get("/:id/threads/latest", communityThreadCtrl.GetCommunityThreadLatest)
+	communities.Get("/:id/threads/media", communityThreadCtrl.GetCommunityThreadMedia)
 }
