@@ -208,7 +208,7 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	}
 	page, limit := ParsePagination(ctx)
 	filter := ctx.Query("filter")
-	threads, total, err := c.eventService.GetThreads(ctx.Context(), ctx.Params("id"), filter, page, limit)
+	threads, total, err := c.eventService.GetThreads(ctx.Context(), &claims.UserID, ctx.Params("id"), filter, page, limit)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})

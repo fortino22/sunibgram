@@ -20,10 +20,24 @@ type EventService struct {
 	eventRepo       repository.IEventRepository
 	eventReviewRepo repository.IEventReviewRepository
 	storageUsecase  *StorageUsecase
+	settingsRepo    repository.IUserSettingsRepository
+	followRepo      repository.IFollowRepository
 }
 
-func NewEventService(eventRepo repository.IEventRepository, eventReviewRepo repository.IEventReviewRepository, storageUsecase *StorageUsecase) service.IEventService {
-	return &EventService{eventRepo: eventRepo, eventReviewRepo: eventReviewRepo, storageUsecase: storageUsecase}
+func NewEventService(
+	eventRepo repository.IEventRepository,
+	eventReviewRepo repository.IEventReviewRepository,
+	storageUsecase *StorageUsecase,
+	settingsRepo repository.IUserSettingsRepository,
+	followRepo repository.IFollowRepository,
+) service.IEventService {
+	return &EventService{
+		eventRepo:       eventRepo,
+		eventReviewRepo: eventReviewRepo,
+		storageUsecase:  storageUsecase,
+		settingsRepo:    settingsRepo,
+		followRepo:      followRepo,
+	}
 }
 
 func (s *EventService) Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*model.Event, error) {
@@ -306,7 +320,7 @@ func (s *EventService) createEventReview(eventID, adminID, action, note string) 
 	return s.eventReviewRepo.Create(review)
 }
 
-func (s *EventService) GetThreads(ctx context.Context, id, filter string, page, limit int) ([]model.Thread, int64, error) {
+func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, filter string, page, limit int) ([]model.Thread, int64, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, 0, err
 	}
@@ -318,7 +332,15 @@ func (s *EventService) GetThreads(ctx context.Context, id, filter string, page, 
 		return nil, 0, errors.New("event not found")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	return s.eventRepo.FindThreads(id, event.UserID, filter, page, limit)
+	threads, _, err := s.eventRepo.FindThreads(id, event.UserID, filter, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := helper.FilterViewableThreads(ctx, s.settingsRepo, s.followRepo, requesterID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, int64(len(filtered)), nil
 }
 
 func validateEventThreadFilter(filter string) error {
