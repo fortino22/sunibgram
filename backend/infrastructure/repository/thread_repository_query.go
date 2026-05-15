@@ -11,7 +11,7 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 	var thread model.Thread
 	key := threadKey(id)
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := preloadThreadDetails(r.db.readDB).First(&thread, id).Error; err != nil {
+		if err := preloadThreadDetails(r.db.readDB).Where("thread_id = ?", id).First(&thread).Error; err != nil {
 			return nil, err
 		}
 		r.cache.Set(ctx, key, thread, r.ttl)
