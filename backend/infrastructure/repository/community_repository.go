@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
@@ -22,10 +24,6 @@ func NewCommunityRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo
 
 func communityIDKey(id uint) string {
 	return fmt.Sprintf("community:id:%d", id)
-}
-
-func communityListKey(category string, page, limit int) string {
-	return fmt.Sprintf("community:list:%s:page:%d:limit:%d", category, page, limit)
 }
 
 func communityCreatedKey(userID uint, page, limit int) string {
@@ -66,7 +64,7 @@ func (r *communityRepository) FindByID(id uint) (*model.Community, error) {
 			return &community, nil
 		}
 	}
-	if err := r.readDB.Preload("User").First(&community, id).Error; err != nil {
+	if err := r.readDB.Preload("User").Preload("Category").First(&community, id).Error; err != nil {
 		return nil, err
 	}
 	if r.cache != nil {
@@ -77,10 +75,12 @@ func (r *communityRepository) FindByID(id uint) (*model.Community, error) {
 
 func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) {
 	type communityRow struct {
-		CommunityID uint
-		Name        string
-		Category    string
-		MemberCount int
+		CommunityID       uint
+		Name              string
+		CategoryID        *uuid.UUID
+		CategoryName      string
+		CategoryCreatedAt *time.Time
+		MemberCount       int
 	}
 
 	var rows []communityRow
@@ -89,11 +89,14 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 		Select(`
 			communities.community_id,
 			communities.name,
-			communities.category,
+			categories.id AS category_id,
+			COALESCE(categories.name, '') AS category_name,
+			categories.created_at AS category_created_at,
 			COUNT(community_members.user_id) AS member_count
 		`).
+		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id").
-		Group("communities.community_id, communities.name, communities.category").
+		Group("communities.community_id, communities.name, categories.id, categories.name, categories.created_at").
 		Order("member_count DESC, communities.name ASC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
@@ -103,10 +106,18 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 	communityIDs := make([]uint, 0, len(rows))
 	byID := make(map[uint]int, len(rows))
 	for i, row := range rows {
+		var category *model.Category
+		if row.CategoryID != nil {
+			category = &model.Category{
+				ID:        *row.CategoryID,
+				Name:      row.CategoryName,
+				CreatedAt: *row.CategoryCreatedAt,
+			}
+		}
 		communities[i] = model.DiscoverCommunity{
 			CommunityID: row.CommunityID,
 			Name:        row.Name,
-			Category:    row.Category,
+			Category:    category,
 			MemberCount: row.MemberCount,
 			TopMembers:  []model.DiscoverCommunityMember{},
 		}
@@ -166,11 +177,15 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 }
 
 func (r *communityRepository) Update(community *model.Community) error {
-	if err := r.writeDB.Model(community).UpdateColumns(map[string]any{
+	var categoryID any
+	if community.CategoryID != nil {
+		categoryID = *community.CategoryID
+	}
+	if err := r.writeDB.Model(&model.Community{}).Where("community_id = ?", community.CommunityID).UpdateColumns(map[string]any{
 		"name":               community.Name,
 		"description":        community.Description,
 		"rules":              community.Rules,
-		"category":           community.Category,
+		"category_id":        categoryID,
 		"visibility":         community.Visibility,
 		"avatar_object_name": community.AvatarObjectName,
 		"avatar_bucket":      community.AvatarBucket,
@@ -215,7 +230,6 @@ func (r *communityRepository) DeactivateByOwnerIDs(ownerIDs []uint) error {
 		for _, c := range communities {
 			_ = r.cache.Delete(ctx, communityIDKey(c.CommunityID))
 		}
-		_ = r.cache.DeleteByPattern(ctx, "community:list:*")
 	}
 	return nil
 }
@@ -233,37 +247,8 @@ func (r *communityRepository) ReactivateByOwnerID(ownerID uint) error {
 		for _, c := range communities {
 			_ = r.cache.Delete(ctx, communityIDKey(c.CommunityID))
 		}
-		_ = r.cache.DeleteByPattern(ctx, "community:list:*")
 	}
 	return nil
-}
-
-func (r *communityRepository) FindAll(page, limit int, category string) ([]model.Community, int64, error) {
-	ctx := context.Background()
-	key := communityListKey(category, page, limit)
-	var result cachedCommunities
-	if r.cache != nil {
-		if err := r.cache.Get(ctx, key, &result); err == nil {
-			return result.Communities, result.Total, nil
-		}
-	}
-
-	var communities []model.Community
-	var total int64
-	q := r.readDB.Model(&model.Community{})
-	if category != "" {
-		q = q.Where("LOWER(category) = LOWER(?)", category)
-	}
-	q.Count(&total)
-	offset := (page - 1) * limit
-	if err := q.Preload("User").Order("created_at DESC").Offset(offset).Limit(limit).Find(&communities).Error; err != nil {
-		return nil, 0, err
-	}
-	if r.cache != nil {
-		result = cachedCommunities{Communities: communities, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
-	}
-	return communities, total, nil
 }
 
 func (r *communityRepository) FindByCreatorID(userID uint, page, limit int) ([]model.Community, int64, error) {
@@ -280,7 +265,7 @@ func (r *communityRepository) FindByCreatorID(userID uint, page, limit int) ([]m
 	var total int64
 	r.readDB.Model(&model.Community{}).Where("user_id = ?", userID).Count(&total)
 	offset := (page - 1) * limit
-	if err := r.readDB.Preload("User").Where("user_id = ?", userID).Order("created_at DESC").Offset(offset).Limit(limit).Find(&communities).Error; err != nil {
+	if err := r.readDB.Preload("User").Preload("Category").Where("user_id = ?", userID).Order("created_at DESC").Offset(offset).Limit(limit).Find(&communities).Error; err != nil {
 		return nil, 0, err
 	}
 	if r.cache != nil {
@@ -307,7 +292,7 @@ func (r *communityRepository) FindJoinedByUserID(userID uint, page, limit int) (
 		Where("community_members.user_id = ?", userID).
 		Count(&total)
 	offset := (page - 1) * limit
-	if err := r.readDB.Preload("User").
+	if err := r.readDB.Preload("User").Preload("Category").
 		Joins("JOIN community_members ON community_members.community_id = communities.community_id").
 		Where("community_members.user_id = ?", userID).
 		Order("community_members.joined_at DESC").
@@ -327,7 +312,6 @@ func (r *communityRepository) invalidateCommunityCreate(creatorID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, "community:list:*")
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:created:%d:*", creatorID))
 	invalidateExploreCache(ctx, r.cache)
 }
@@ -338,7 +322,6 @@ func (r *communityRepository) invalidateCommunityUpdate(id, creatorID uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, communityIDKey(id))
-	_ = r.cache.DeleteByPattern(ctx, "community:list:*")
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:created:%d:*", creatorID))
 	invalidateExploreCache(ctx, r.cache)
 }

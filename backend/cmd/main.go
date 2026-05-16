@@ -53,6 +53,7 @@ func main() {
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
+	categoryRepo := infrarepo.NewCategoryRepository(writeDB, readDB, redisCache)
 	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
@@ -91,7 +92,8 @@ func main() {
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
-	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, cacheRepo, storageUsecase)
+	categoryService := usecase.NewCategoryService(categoryRepo)
+	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, cacheRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
@@ -120,6 +122,7 @@ func main() {
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
 	summaryCtrl := controller.NewThreadSummaryController(summaryService)
+	categoryCtrl := controller.NewCategoryController(categoryService)
 	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
@@ -174,6 +177,7 @@ func main() {
 		communityMemberCtrl,
 		communityRequestCtrl,
 		communityThreadCtrl,
+		categoryCtrl,
 		facultyCtrl,
 		orderCtrl,
 		premiumSubscriptionCtrl,

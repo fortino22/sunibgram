@@ -9,6 +9,6 @@ type DiscoverCommunity struct {
 	CommunityID uint
 	Name        string
 	MemberCount int
-	Category    string
+	Category    *Category
 	TopMembers  []DiscoverCommunityMember
 }

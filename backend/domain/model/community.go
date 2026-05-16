@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type CommunityVisibility string
 
@@ -16,7 +20,8 @@ type Community struct {
 	Name             string              `gorm:"type:varchar(100);not null"`
 	Description      string              `gorm:"type:text"`
 	Rules            string              `gorm:"type:text"`
-	Category         string              `gorm:"type:varchar(50);not null;index"`
+	CategoryID       *uuid.UUID          `gorm:"type:uuid;index"`
+	Category         *Category           `gorm:"foreignKey:CategoryID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Visibility       CommunityVisibility `gorm:"type:varchar(10);not null;default:'PUBLIC';index"`
 	AvatarObjectName string              `gorm:"type:varchar(500)"`
 	AvatarBucket     string              `gorm:"type:varchar(100)"`
