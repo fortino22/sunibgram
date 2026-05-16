@@ -81,6 +81,7 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 
 	if len(files) > 0 {
 		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
+			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
 			return HandleServiceError(ctx, err)
 		}
 	}
