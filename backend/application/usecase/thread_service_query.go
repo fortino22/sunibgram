@@ -26,6 +26,15 @@ func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, l
 	return filtered, int64(len(filtered)), nil
 }
 
+func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	userFaculty, err := s.userFacultyRepo.FindByUserID(userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return s.threadRepo.FindForYouFeed(ctx, userID, userFaculty.FacultyID, page, limit)
+}
+
 func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
 	anchor, err := s.threadRepo.FindByID(anchorID)
 	if err != nil {

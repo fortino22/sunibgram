@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/sunibgram/domain/model"
 )
 
@@ -21,5 +23,6 @@ type IThreadRepository interface {
 	FindCommunityLatest(communityID uint, page, limit int) ([]model.Thread, int64, error)
 	FindCommunityMedia(communityID uint) ([]model.CommunityThreadMedia, error)
 	FindFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	FindForYouFeed(ctx context.Context, userID uint, facultyID uint, page, limit int) ([]model.Thread, int64, error)
 	FindByFacultyID(facultyID uint, page, limit int) ([]model.Thread, int64, error)
 }

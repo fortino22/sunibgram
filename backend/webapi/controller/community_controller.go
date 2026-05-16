@@ -134,7 +134,16 @@ func (c *CommunityController) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
-	communities, err := c.communityService.Discover(ctx.Context())
+	var categoryID *uuid.UUID
+	if raw := ctx.Query("category"); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid category id"})
+		}
+		categoryID = &id
+	}
+
+	communities, err := c.communityService.Discover(ctx.Context(), categoryID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}

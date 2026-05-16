@@ -200,11 +200,11 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	return nil
 }
 
-func (s *CommunityService) Discover(ctx context.Context) ([]model.DiscoverCommunity, error) {
+func (s *CommunityService) Discover(ctx context.Context, categoryID *uuid.UUID) ([]model.DiscoverCommunity, error) {
 	var cached []model.DiscoverCommunity
 	if s.cacheRepo != nil {
 		if err := s.cacheRepo.Get(ctx, discoverCommunitiesCacheKey, &cached); err == nil {
-			return cached, nil
+			return filterDiscoverByCategory(cached, categoryID), nil
 		}
 	}
 
@@ -215,7 +215,20 @@ func (s *CommunityService) Discover(ctx context.Context) ([]model.DiscoverCommun
 	if s.cacheRepo != nil {
 		_ = s.cacheRepo.Set(ctx, discoverCommunitiesCacheKey, communities, discoverCommunitiesTTL)
 	}
-	return communities, nil
+	return filterDiscoverByCategory(communities, categoryID), nil
+}
+
+func filterDiscoverByCategory(communities []model.DiscoverCommunity, categoryID *uuid.UUID) []model.DiscoverCommunity {
+	if categoryID == nil || *categoryID == uuid.Nil {
+		return communities
+	}
+	out := communities[:0:0]
+	for _, c := range communities {
+		if c.Category != nil && c.Category.ID == *categoryID {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 func (s *CommunityService) GetByID(id uint) (*model.Community, error) {

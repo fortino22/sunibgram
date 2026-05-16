@@ -1,7 +1,6 @@
 package controller
 
 import (
-	webapiutils "github.com/sunibgram/webapi/utils"
 	"mime/multipart"
 	"strconv"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type ThreadController struct {
@@ -74,7 +74,14 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 
 	page, limit := ParsePagination(ctx)
 
-	threads, total, err := c.threadService.GetRoots(ctx.Context(), viewerID, page, limit)
+	var threads []model.Thread
+	var total int64
+	var err error
+	if viewerID != nil {
+		threads, total, err = c.threadService.GetForYouFeed(ctx.Context(), *viewerID, page, limit)
+	} else {
+		threads, total, err = c.threadService.GetRoots(ctx.Context(), viewerID, page, limit)
+	}
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
