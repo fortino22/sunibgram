@@ -18,12 +18,12 @@ func registerCommunityRoutes(
 	//communities
 	communities.Post("/", communityCtrl.Create)
 	communities.Get("/", communityCtrl.GetAll)
+	communities.Get("/discover", communityCtrl.Discover)
 	communities.Get("/me", communityCtrl.GetMyCreated)
 	communities.Get("/joined", communityCtrl.GetMyJoined)
 	communities.Get("/:id", communityCtrl.GetByID)
 	communities.Put("/:id", communityCtrl.Update)
 	communities.Delete("/:id", communityCtrl.Delete)
-
 
 	//community members
 	communities.Post("/:id/join", memberCtrl.Join)

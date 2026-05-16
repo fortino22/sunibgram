@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 
 	"github.com/sunibgram/application/helper"
@@ -12,15 +13,17 @@ import (
 type FollowService struct {
 	followRepo   repository.IFollowRepository
 	userRepo     repository.IUserRepository
+	cacheRepo    repository.ICacheRepository
 	notification service.INotificationService
 }
 
 func NewFollowService(
 	followRepo repository.IFollowRepository,
 	userRepo repository.IUserRepository,
+	cacheRepo repository.ICacheRepository,
 	notification service.INotificationService,
 ) service.IFollowService {
-	return &FollowService{followRepo: followRepo, userRepo: userRepo, notification: notification}
+	return &FollowService{followRepo: followRepo, userRepo: userRepo, cacheRepo: cacheRepo, notification: notification}
 }
 
 func (s *FollowService) Follow(followerID, followingID uint) error {
@@ -30,12 +33,17 @@ func (s *FollowService) Follow(followerID, followingID uint) error {
 	if err := s.followRepo.Follow(followerID, followingID); err != nil {
 		return err
 	}
+	invalidateDiscoverCommunitiesCache(context.Background(), s.cacheRepo)
 	helper.SendInteractionNotification(s.notification, "follow", "started following you", followerID, followingID, followingID)
 	return nil
 }
 
 func (s *FollowService) Unfollow(followerID, followingID uint) error {
-	return s.followRepo.Unfollow(followerID, followingID)
+	if err := s.followRepo.Unfollow(followerID, followingID); err != nil {
+		return err
+	}
+	invalidateDiscoverCommunitiesCache(context.Background(), s.cacheRepo)
+	return nil
 }
 
 func (s *FollowService) GetStat(userID uint) (*model.UserStat, error) {

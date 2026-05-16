@@ -10,6 +10,7 @@ type ICommunityRepository interface {
 	SaveWithTx(tx *gorm.DB, community *model.Community) error
 	Transaction(fn func(tx *gorm.DB) error) error
 	FindByID(id uint) (*model.Community, error)
+	FindDiscover() ([]model.DiscoverCommunity, error)
 	Update(community *model.Community) error
 	Delete(id uint) error
 	DeactivateByOwnerIDs(ownerIDs []uint) error

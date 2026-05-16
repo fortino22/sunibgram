@@ -141,6 +141,15 @@ func (c *CommunityController) GetAll(ctx *fiber.Ctx) error {
 	})
 }
 
+func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
+	communities, err := c.communityService.Discover(ctx.Context())
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})
+}
+
 func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {
@@ -203,6 +212,34 @@ func (c *CommunityController) toResponses(communities []model.Community) []dto.C
 	out := make([]dto.CommunityResponse, len(communities))
 	for i := range communities {
 		out[i] = c.toResponse(&communities[i])
+	}
+	return out
+}
+
+func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) dto.DiscoverCommunityResponse {
+	members := make([]dto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
+	for i := range comm.TopMembers {
+		members[i] = dto.DiscoverCommunityMemberResponse{
+			AvatarURL: BuildMediaURL(
+				comm.TopMembers[i].AvatarObjectName,
+				comm.TopMembers[i].AvatarBucket,
+				c.communityService.GetURL,
+			),
+		}
+	}
+
+	return dto.DiscoverCommunityResponse{
+		Name:        comm.Name,
+		MemberCount: comm.MemberCount,
+		Category:    comm.Category,
+		TopMembers:  members,
+	}
+}
+
+func (c *CommunityController) toDiscoverResponses(communities []model.DiscoverCommunity) []dto.DiscoverCommunityResponse {
+	out := make([]dto.DiscoverCommunityResponse, len(communities))
+	for i := range communities {
+		out[i] = c.toDiscoverResponse(&communities[i])
 	}
 	return out
 }

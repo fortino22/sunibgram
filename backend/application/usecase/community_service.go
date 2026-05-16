@@ -18,6 +18,7 @@ type CommunityService struct {
 	communityRepo  repository.ICommunityRepository
 	memberRepo     repository.ICommunityMemberRepository
 	userRepo       repository.IUserRepository
+	cacheRepo      repository.ICacheRepository
 	storageUsecase *StorageUsecase
 }
 
@@ -25,12 +26,14 @@ func NewCommunityService(
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
 	userRepo repository.IUserRepository,
+	cacheRepo repository.ICacheRepository,
 	storageUsecase *StorageUsecase,
 ) service.ICommunityService {
 	return &CommunityService{
 		communityRepo:  communityRepo,
 		memberRepo:     memberRepo,
 		userRepo:       userRepo,
+		cacheRepo:      cacheRepo,
 		storageUsecase: storageUsecase,
 	}
 }
@@ -98,6 +101,7 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 		return nil, err
 	}
 
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	return community, nil
 }
 
@@ -164,6 +168,7 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	if err := s.communityRepo.Update(community); err != nil {
 		return nil, err
 	}
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	return community, nil
 }
 
@@ -182,7 +187,29 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	if community.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, community.BannerBucket, community.BannerObjectName)
 	}
-	return s.communityRepo.Delete(id)
+	if err := s.communityRepo.Delete(id); err != nil {
+		return err
+	}
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	return nil
+}
+
+func (s *CommunityService) Discover(ctx context.Context) ([]model.DiscoverCommunity, error) {
+	var cached []model.DiscoverCommunity
+	if s.cacheRepo != nil {
+		if err := s.cacheRepo.Get(ctx, discoverCommunitiesCacheKey, &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	communities, err := s.communityRepo.FindDiscover()
+	if err != nil {
+		return nil, err
+	}
+	if s.cacheRepo != nil {
+		_ = s.cacheRepo.Set(ctx, discoverCommunitiesCacheKey, communities, discoverCommunitiesTTL)
+	}
+	return communities, nil
 }
 
 func (s *CommunityService) GetByID(id uint) (*model.Community, error) {

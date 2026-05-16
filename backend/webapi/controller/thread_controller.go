@@ -316,13 +316,29 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 	}
 	page, limit := ParsePagination(ctx)
 
-	threads, parents, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
+	threads, _, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildUserFeedItemsWithPin(threads, parents, &claims.UserID),
+	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
+	data := make([]dto.MediaOnlyItem, len(threads))
+	for i, thread := range threads {
+		media := make([]dto.ThreadMediaResponse, len(mediaByThread[thread.ThreadID]))
+		for j, item := range mediaByThread[thread.ThreadID] {
+			media[j] = dto.ThreadMediaResponse{
+				MediaID: item.MediaID,
+				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
+			}
+		}
+		data[i] = dto.MediaOnlyItem{
+			ThreadID: thread.ThreadID,
+			Media:    media,
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedMediaOnlyResponse{
+		Data: data,
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }

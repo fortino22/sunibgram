@@ -75,6 +75,96 @@ func (r *communityRepository) FindByID(id uint) (*model.Community, error) {
 	return &community, nil
 }
 
+func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) {
+	type communityRow struct {
+		CommunityID uint
+		Name        string
+		Category    string
+		MemberCount int
+	}
+
+	var rows []communityRow
+	if err := r.readDB.
+		Table("communities").
+		Select(`
+			communities.community_id,
+			communities.name,
+			communities.category,
+			COUNT(community_members.user_id) AS member_count
+		`).
+		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id").
+		Group("communities.community_id, communities.name, communities.category").
+		Order("member_count DESC, communities.name ASC").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	communities := make([]model.DiscoverCommunity, len(rows))
+	communityIDs := make([]uint, 0, len(rows))
+	byID := make(map[uint]int, len(rows))
+	for i, row := range rows {
+		communities[i] = model.DiscoverCommunity{
+			CommunityID: row.CommunityID,
+			Name:        row.Name,
+			Category:    row.Category,
+			MemberCount: row.MemberCount,
+			TopMembers:  []model.DiscoverCommunityMember{},
+		}
+		communityIDs = append(communityIDs, row.CommunityID)
+		byID[row.CommunityID] = i
+	}
+	if len(communityIDs) == 0 {
+		return communities, nil
+	}
+
+	type memberRow struct {
+		CommunityID      uint
+		AvatarObjectName string
+		AvatarBucket     string
+	}
+
+	var memberRows []memberRow
+	if err := r.readDB.
+		Raw(`
+			SELECT community_id, avatar_object_name, avatar_bucket
+			FROM (
+				SELECT
+					community_members.community_id,
+					COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+					COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
+					ROW_NUMBER() OVER (
+						PARTITION BY community_members.community_id
+						ORDER BY COALESCE(user_stats.follower_count, 0) DESC,
+							community_members.joined_at ASC,
+							community_members.user_id ASC
+					) AS member_rank
+				FROM community_members
+				JOIN users ON users.user_id = community_members.user_id
+				LEFT JOIN user_stats ON user_stats.user_id = users.user_id
+				LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id
+				WHERE community_members.community_id IN ?
+			) ranked_members
+			WHERE member_rank <= 5
+			ORDER BY community_id ASC, member_rank ASC
+		`, communityIDs).
+		Scan(&memberRows).Error; err != nil {
+		return nil, err
+	}
+
+	for _, row := range memberRows {
+		idx, ok := byID[row.CommunityID]
+		if !ok {
+			continue
+		}
+		communities[idx].TopMembers = append(communities[idx].TopMembers, model.DiscoverCommunityMember{
+			AvatarObjectName: row.AvatarObjectName,
+			AvatarBucket:     row.AvatarBucket,
+		})
+	}
+
+	return communities, nil
+}
+
 func (r *communityRepository) Update(community *model.Community) error {
 	if err := r.writeDB.Model(community).UpdateColumns(map[string]any{
 		"name":               community.Name,

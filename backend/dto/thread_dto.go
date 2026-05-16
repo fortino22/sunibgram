@@ -128,6 +128,16 @@ type PaginatedFeedResponse struct {
 	Meta FeedMeta           `json:"meta"`
 }
 
+type MediaOnlyItem struct {
+	ThreadID uint                  `json:"thread_id"`
+	Media    []ThreadMediaResponse `json:"media"`
+}
+
+type PaginatedMediaOnlyResponse struct {
+	Data []MediaOnlyItem `json:"data"`
+	Meta FeedMeta        `json:"meta"`
+}
+
 type CommunityThreadFeedItemResponse struct {
 	FeedItemResponse
 	UserAvatar string `json:"user_avatar"`

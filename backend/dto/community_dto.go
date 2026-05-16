@@ -22,3 +22,14 @@ type PaginatedCommunityResponse struct {
 	Data []CommunityResponse `json:"data"`
 	Meta FeedMeta            `json:"meta"`
 }
+
+type DiscoverCommunityMemberResponse struct {
+	AvatarURL string `json:"avatar_url"`
+}
+
+type DiscoverCommunityResponse struct {
+	Name        string                            `json:"name"`
+	MemberCount int                               `json:"member_count"`
+	Category    string                            `json:"category"`
+	TopMembers  []DiscoverCommunityMemberResponse `json:"top_members"`
+}
