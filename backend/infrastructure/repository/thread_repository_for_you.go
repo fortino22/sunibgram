@@ -21,7 +21,7 @@ type forYouCandidate struct {
 	score  float64
 }
 
-func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, facultyID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
 	key := fmt.Sprintf("feed:foryou:%d:%d:%d", userID, page, limit)
 	var cached cachedForYouFeed
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
@@ -42,29 +42,23 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, facultyI
 		}
 	}
 
+	global, err := r.findForYouGlobal(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	addCandidates(global, 1.0, false)
+
 	following, err := r.findForYouFollowing(userID)
 	if err != nil {
 		return nil, 0, err
 	}
-	addCandidates(following, 1.0, true)
+	addCandidates(following, 0.8, true)
 
 	community, err := r.findForYouCommunity(userID)
 	if err != nil {
 		return nil, 0, err
 	}
-	addCandidates(community, 0.9, false)
-
-	faculty, err := r.findForYouFaculty(userID, facultyID)
-	if err != nil {
-		return nil, 0, err
-	}
-	addCandidates(faculty, 0.7, false)
-
-	global, err := r.findForYouGlobal(ctx)
-	if err != nil {
-		return nil, 0, err
-	}
-	addCandidates(global, 0.5, false)
+	addCandidates(community, 0.7, false)
 
 	candidates := make([]forYouCandidate, 0, len(merged))
 	for _, candidate := range merged {
@@ -135,24 +129,6 @@ func (r *threadCached) findForYouCommunity(userID uint) ([]model.Thread, error) 
 		Where("community_members.user_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
 		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-		Order("threads.feed_score DESC").
-		Limit(100).
-		Find(&threads).Error
-	return threads, err
-}
-
-func (r *threadCached) findForYouFaculty(userID uint, facultyID uint) ([]model.Thread, error) {
-	var threads []model.Thread
-	err := preloadThreadDetails(r.db.readDB).
-		Joins("JOIN user_faculties ON user_faculties.user_id = threads.user_id").
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
-		Where("user_faculties.faculty_id = ?", facultyID).
-		Where("threads.user_id != ?", userID).
-		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-		Where("COALESCE(user_settings.is_private, false) = ?", false).
 		Order("threads.feed_score DESC").
 		Limit(100).
 		Find(&threads).Error

@@ -66,8 +66,11 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	r.patchStatCache(followerID, 0, 1)
 	r.patchStatCache(followingID, 1, 0)
 	r.invalidateFollowLists(followerID, followingID)
-	r.cache.Delete(context.Background(), followExistsKey(followerID, followingID))
-	invalidateExploreCache(context.Background(), r.cache)
+	ctx := context.Background()
+	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
+	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(followerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
+	invalidateExploreCache(ctx, r.cache)
 	return nil
 }
 
@@ -87,8 +90,11 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 	r.patchStatCache(followerID, 0, -1)
 	r.patchStatCache(followingID, -1, 0)
 	r.invalidateFollowLists(followerID, followingID)
-	r.cache.Delete(context.Background(), followExistsKey(followerID, followingID))
-	invalidateExploreCache(context.Background(), r.cache)
+	ctx := context.Background()
+	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
+	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(followerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
+	invalidateExploreCache(ctx, r.cache)
 	return nil
 }
 

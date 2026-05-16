@@ -17,10 +17,9 @@ Threads older than 7 days are reset to `feed_score = 0`.
 
 The repository fetches up to 100 recent post/repost candidates from each source, ordered by `feed_score DESC`:
 
-- Following posts: users followed by the viewer, weight `1.0`.
-- Community posts: communities where the viewer is a member, weight `0.9`.
-- Faculty posts: authors in the viewer's faculty, excluding the viewer, weight `0.7`.
-- Global trending: top public posts from Redis key `feed:trending:global`, weight `0.5`.
+- Following posts: users followed by the viewer, weight `0.8`.
+- Community posts: communities where the viewer is a member, weight `0.7`.
+- Global trending: top public posts from Redis key `feed:trending:global`, weight `1.0`.
 
 Final score is `feed_score * source_weight`. If the same thread appears in multiple sources, the highest final score is kept. Reposts are only allowed from the following source.
 

@@ -86,7 +86,7 @@ func main() {
 	followService := usecase.NewFollowService(followRepo, userRepo, cacheRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
 	summaryService := usecase.NewThreadSummaryService(threadRepo, cacheRepo, ollamaClient)
-	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userFacultyRepo, userSettingsRepo, followRepo, notificationService, summaryService)
+	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService, summaryService)
 	eventService := usecase.NewEventService(eventRepo, eventReviewRepo, storageUsecase, userSettingsRepo, followRepo)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
