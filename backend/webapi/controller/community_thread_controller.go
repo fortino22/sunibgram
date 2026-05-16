@@ -88,7 +88,6 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "community thread created successfully",
-		"data":    thread,
 	})
 }
 
