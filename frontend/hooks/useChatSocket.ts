@@ -9,7 +9,7 @@ import {
   type WebSocketStatus,
   type ClientEnvelope,
 } from './useWebSocket';
-import type { ChatMessage, ChatMessagesResponse } from '@/lib/services/chat';
+import type { ChatMessage, ChatMessagesResponse, ChatReactionSummary } from '@/lib/services/chat';
 
 // ── Payload types matching actual backend broadcasts ──────────────────────────
 
@@ -23,6 +23,7 @@ interface MessageEditedPayload {
   room_id: number;
   sender_id: number;
   message: string;
+  is_edited: boolean;
 }
 
 interface MessageDeletedPayload {
@@ -36,6 +37,13 @@ interface MessageReadPayload {
   room_id: number;
   chat_ids: number[];
   read_by: number;
+}
+
+interface MessageReactionPayload {
+  chat_id: number;
+  room_id: number;
+  user_id: number;
+  emoji: string;
 }
 
 // ── Client → server message shapes ───────────────────────────────────────────
@@ -58,6 +66,39 @@ interface TypingStartMessage extends ClientEnvelope {
 interface TypingStopMessage extends ClientEnvelope {
   event: 'typing:stop';
   room_id: number;
+}
+
+// ── Reaction helpers (mirrors the optimistic helpers in useReactToMessage) ────
+
+function upsertReaction(
+  reactions: ChatReactionSummary[],
+  emoji: string,
+  userId: number,
+): ChatReactionSummary[] {
+  const existing = reactions.find((r) => r.emoji === emoji);
+  if (existing) {
+    if (existing.user_ids.includes(userId)) return reactions;
+    return reactions.map((r) =>
+      r.emoji === emoji
+        ? { ...r, count: r.count + 1, user_ids: [...r.user_ids, userId] }
+        : r,
+    );
+  }
+  return [...reactions, { emoji, count: 1, user_ids: [userId] }];
+}
+
+function dropReaction(
+  reactions: ChatReactionSummary[],
+  emoji: string,
+  userId: number,
+): ChatReactionSummary[] {
+  return reactions
+    .map((r) =>
+      r.emoji === emoji
+        ? { ...r, count: r.count - 1, user_ids: r.user_ids.filter((id) => id !== userId) }
+        : r,
+    )
+    .filter((r) => r.count > 0);
 }
 
 // ── Hook interface ────────────────────────────────────────────────────────────
@@ -110,7 +151,6 @@ export function useChatSocket({
   const queryClient = useQueryClient();
   const [typingUsersByRoom, setTypingUsersByRoom] = useState<Record<number, number[]>>({});
 
-  // Keep currentUserId in a ref so the message handler closure stays stable
   const currentUserIdRef = useRef(currentUserId);
   currentUserIdRef.current = currentUserId;
 
@@ -120,13 +160,17 @@ export function useChatSocket({
         // ── New message ────────────────────────────────────────────────────
         case 'message:new': {
           const raw = message.data as Record<string, unknown>;
-          // Normalise optional fields so ChatMessage types are satisfied
           const msg: ChatMessage = {
             chat_id: raw.chat_id as number,
             room_id: raw.room_id as number,
             sender: raw.sender as ChatMessage['sender'],
+            reply_to: raw.reply_to
+              ? (raw.reply_to as ChatMessage['reply_to'])
+              : undefined,
             message: (raw.message as string | undefined) ?? null,
+            gif_url: (raw.gif_url as string | null | undefined) ?? null,
             media: (raw.media as ChatMessage['media']) ?? [],
+            reactions: (raw.reactions as ChatReactionSummary[]) ?? [],
             is_read: (raw.is_read as boolean) ?? false,
             deleted_at: (raw.deleted_at as string | undefined) ?? null,
             created_at: raw.created_at as string,
@@ -136,21 +180,19 @@ export function useChatSocket({
             ['chat', 'messages', msg.room_id],
             (old) => {
               if (!old) return old;
-              // Replace any pending optimistic messages from the same sender
               const filtered = old.data.filter(
                 (m) => m.chat_id > 0 || m.sender.id !== msg.sender.id,
               );
-              // Deduplicate: skip if we already have this real message
               if (filtered.some((m) => m.chat_id === msg.chat_id)) return old;
+              const replacedOptimistic = filtered.length < old.data.length;
               return {
                 ...old,
                 data: [msg, ...filtered],
-                meta: { ...old.meta, total: old.meta.total + 1 },
+                meta: { ...old.meta, total: replacedOptimistic ? old.meta.total : old.meta.total + 1 },
               };
             },
           );
 
-          // Refresh room list so updated_at order reflects the new message
           void queryClient.invalidateQueries({ queryKey: ['chat', 'rooms'] });
           break;
         }
@@ -165,7 +207,9 @@ export function useChatSocket({
               return {
                 ...old,
                 data: old.data.map((m) =>
-                  m.chat_id === payload.chat_id ? { ...m, message: payload.message } : m,
+                  m.chat_id === payload.chat_id
+                    ? { ...m, message: payload.message, is_edited: true }
+                    : m,
                 ),
               };
             },
@@ -193,7 +237,7 @@ export function useChatSocket({
           break;
         }
 
-        // ── Read receipts (sent only to the original message author) ──────
+        // ── Read receipts ─────────────────────────────────────────────────
         case 'message:read': {
           const payload = message.data as MessageReadPayload;
           const chatIdSet = new Set(payload.chat_ids);
@@ -212,10 +256,49 @@ export function useChatSocket({
           break;
         }
 
+        // ── Reaction added ────────────────────────────────────────────────
+        case 'message:reaction:added': {
+          const payload = message.data as MessageReactionPayload;
+          queryClient.setQueryData<ChatMessagesResponse>(
+            ['chat', 'messages', payload.room_id],
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                data: old.data.map((m) =>
+                  m.chat_id === payload.chat_id
+                    ? { ...m, reactions: upsertReaction(m.reactions ?? [], payload.emoji, payload.user_id) }
+                    : m,
+                ),
+              };
+            },
+          );
+          break;
+        }
+
+        // ── Reaction removed ──────────────────────────────────────────────
+        case 'message:reaction:removed': {
+          const payload = message.data as MessageReactionPayload;
+          queryClient.setQueryData<ChatMessagesResponse>(
+            ['chat', 'messages', payload.room_id],
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                data: old.data.map((m) =>
+                  m.chat_id === payload.chat_id
+                    ? { ...m, reactions: dropReaction(m.reactions ?? [], payload.emoji, payload.user_id) }
+                    : m,
+                ),
+              };
+            },
+          );
+          break;
+        }
+
         // ── Typing indicators ─────────────────────────────────────────────
         case 'typing:start': {
           const payload = message.data as TypingPayload;
-          // Suppress own typing events echoed back by the server
           if (payload.user_id === currentUserIdRef.current) break;
           setTypingUsersByRoom((curr) => addTypingUser(curr, payload));
           break;

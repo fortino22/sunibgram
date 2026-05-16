@@ -201,11 +201,15 @@ export function getFollowingThreads(
 }
 
 export function getMyThreads(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {
-  return api.get<ThreadListResponse>(`/api/threads/${userId}${query(params)}`, token);
+  return api.get<ThreadListResponse>(`/api/threads/user/${userId}${query(params)}`, token);
 }
 
 export function getMyReplies(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {
-  return api.get<ThreadListResponse>(`/api/threads/${userId}/replies${query(params)}`, token);
+  return api.get<ThreadListResponse>(`/api/threads/user/${userId}/replies${query(params)}`, token);
+}
+
+export function getMyMediaThreads(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(`/api/threads/user/${userId}/media${query(params)}`, token);
 }
 
 export function getThread(id: number | string, token: string): Promise<ThreadResponse> {

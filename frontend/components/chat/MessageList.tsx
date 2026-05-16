@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { MessageBubble } from './MessageBubble';
 import type { ChatMessage } from '@/lib/services/chat';
 
@@ -10,6 +10,13 @@ interface MessageListProps {
   isLoading: boolean;
   roomId: number;
   typingUsers?: string[];
+  isPrivateRoom?: boolean;
+  onEditMessage?: (message: ChatMessage) => void;
+  onDeleteMessage?: (chatId: number) => void;
+  onReplyMessage?: (message: ChatMessage) => void;
+  onReact?: (chatId: number, emoji: string) => void;
+  onUnreact?: (chatId: number, emoji: string) => void;
+  onSwapReact?: (chatId: number, oldEmoji: string, newEmoji: string) => void;
 }
 
 export function MessageList({
@@ -17,13 +24,31 @@ export function MessageList({
   currentUserId,
   isLoading,
   typingUsers = [],
+  isPrivateRoom = false,
+  onEditMessage,
+  onDeleteMessage,
+  onReplyMessage,
+  onReact,
+  onUnreact,
+  onSwapReact,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const msgRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
+
+  const scrollToMessage = useCallback((chatId: number) => {
+    const el = msgRefs.current.get(chatId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    setHighlightedId(chatId);
+    highlightTimer.current = setTimeout(() => setHighlightedId(null), 1000);
+  }, []);
 
   // Messages come newest-first from API; reverse for display (oldest at top)
   const displayMessages = [...messages].reverse();
@@ -105,19 +130,34 @@ export function MessageList({
           prevMsg.sender.id !== msg.sender.id ||
           new Date(msg.created_at).getTime() - new Date(prevMsg.created_at).getTime() > 300_000;
 
-        // Last in group if next message is from a different sender or a different minute
         const isLastInGroup =
           !nextMsg ||
           nextMsg.sender.id !== msg.sender.id ||
           !sameMinute(msg.created_at, nextMsg.created_at);
 
+        const isOwn = msg.sender.id === currentUserId;
+
         return (
           <MessageBubble
             key={msg.chat_id}
             message={msg}
-            isOwn={msg.sender.id === currentUserId}
+            isOwn={isOwn}
             showSender={showSender}
             isLastInGroup={isLastInGroup}
+            isPrivateRoom={isPrivateRoom}
+            currentUserId={currentUserId}
+            isHighlighted={highlightedId === msg.chat_id}
+            msgRef={(el) => {
+              if (el) msgRefs.current.set(msg.chat_id, el);
+              else msgRefs.current.delete(msg.chat_id);
+            }}
+            onScrollToMessage={scrollToMessage}
+            onEdit={onEditMessage}
+            onDelete={onDeleteMessage}
+            onReply={onReplyMessage}
+            onReact={onReact}
+            onUnreact={onUnreact}
+            onSwapReact={onSwapReact}
           />
         );
       })}

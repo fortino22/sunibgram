@@ -1,19 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, MessageCircle } from 'lucide-react';
 import { ConversationItem } from './ConversationItem';
-import { NewChatModal } from './NewChatModal';
 import { useChatRooms } from '@/hooks/chat/useChatRooms';
 
 interface ConversationListProps {
   activeRoomId: number | null;
   onRoomSelect: (roomId: number) => void;
+  onNewChat: () => void;
 }
 
-export function ConversationList({ activeRoomId, onRoomSelect }: ConversationListProps) {
+export function ConversationList({ activeRoomId, onRoomSelect, onNewChat }: ConversationListProps) {
   const { data, isLoading } = useChatRooms();
-  const [showNewChat, setShowNewChat] = useState(false);
   const rooms = data?.data ?? [];
 
   return (
@@ -47,7 +45,7 @@ export function ConversationList({ activeRoomId, onRoomSelect }: ConversationLis
           Messages
         </span>
         <button
-          onClick={() => setShowNewChat(true)}
+          onClick={onNewChat}
           title="New message"
           style={{
             width: 30,
@@ -89,14 +87,21 @@ export function ConversationList({ activeRoomId, onRoomSelect }: ConversationLis
         ) : rooms.length === 0 ? (
           <div
             style={{
-              textAlign: 'center',
-              padding: '40px 20px',
-              color: 'var(--text-muted)',
-              fontSize: 13,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '60px 20px',
+              gap: 10,
             }}
           >
-            <div style={{ marginBottom: 6 }}>No conversations yet</div>
-            <div>Start one with the + button above</div>
+            <MessageCircle size={52} color="var(--text-muted)" strokeWidth={1.2} />
+            <div style={{ fontWeight: 600, fontSize: 16, color: 'var(--text)' }}>
+              Empty inbox
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
+              Message someone
+            </div>
           </div>
         ) : (
           rooms.map((room) => (
@@ -110,15 +115,6 @@ export function ConversationList({ activeRoomId, onRoomSelect }: ConversationLis
         )}
       </div>
 
-      {showNewChat && (
-        <NewChatModal
-          onClose={() => setShowNewChat(false)}
-          onRoomCreated={(roomId) => {
-            setShowNewChat(false);
-            onRoomSelect(roomId);
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -12,13 +12,31 @@ export interface ChatMedia {
   file_size: number;
 }
 
+export interface ChatReactionSummary {
+  emoji: string;
+  count: number;
+  user_ids: number[];
+}
+
+export interface ChatReplyInfo {
+  chat_id: number;
+  sender: ChatSender;
+  message: string | null;
+  gif_url?: string | null;
+}
+
 export interface ChatMessage {
   chat_id: number;
   room_id: number;
   sender: ChatSender;
+  reply_to?: ChatReplyInfo | null;
   message: string | null;
+  gif_url?: string | null;
   media: ChatMedia[];
+  reactions?: ChatReactionSummary[];
   is_read: boolean;
+  is_edited?: boolean;
+  edited_at?: string | null;
   deleted_at: string | null;
   created_at: string;
 }
@@ -56,6 +74,7 @@ export interface MessageEditedPayload {
   room_id: number;
   sender_id: number;
   message: string;
+  is_edited: boolean;
 }
 
 export interface MessageDeletedPayload {
@@ -91,10 +110,14 @@ export async function sendMessage(
   roomId: number,
   message: string | null,
   files: File[],
-  token: string
+  token: string,
+  gifUrl?: string | null,
+  replyToId?: number | null,
 ): Promise<void> {
   const form = new FormData();
   if (message) form.append('message', message);
+  if (gifUrl) form.append('gif_url', gifUrl);
+  if (replyToId) form.append('reply_to_id', String(replyToId));
   files.forEach((f) => form.append('files', f));
   await api.post<unknown>(`/api/chats/rooms/${roomId}/messages`, form, token);
 }
@@ -137,4 +160,15 @@ export async function markMessagesRead(
   token: string
 ): Promise<void> {
   await api.post<unknown>('/api/chats/messages/read', { room_id: roomId, chat_ids: chatIds }, token);
+}
+
+export async function addReaction(chatId: number, emoji: string, token: string): Promise<void> {
+  await api.post<unknown>(`/api/chats/messages/${chatId}/reactions`, { emoji }, token);
+}
+
+export async function removeReaction(chatId: number, emoji: string, token: string): Promise<void> {
+  await api.delete<unknown>(
+    `/api/chats/messages/${chatId}/reactions/${encodeURIComponent(emoji)}`,
+    token
+  );
 }

@@ -31,9 +31,10 @@ const NAV_ITEMS: NavItem[] = [
 interface SidebarItemProps {
   item: NavItem;
   active: boolean;
+  collapsed: boolean;
 }
 
-function SidebarItem({ item, active }: SidebarItemProps) {
+function SidebarItem({ item, active, collapsed }: SidebarItemProps) {
   const [hovered, setHovered] = useState(false);
 
   const iconColor =
@@ -44,13 +45,15 @@ function SidebarItem({ item, active }: SidebarItemProps) {
   return (
     <Link
       href={item.href}
+      title={collapsed ? item.label : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex',
         alignItems: 'center',
+        justifyContent: collapsed ? 'center' : undefined,
         gap: 12,
-        padding: '10px 12px',
+        padding: collapsed ? '10px 0' : '10px 12px',
         borderRadius: 10,
         background: active
           ? 'var(--sidebar-active)'
@@ -123,6 +126,7 @@ export function Sidebar() {
   const [postHovered, setPostHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const avatarSrc = profile?.avatar ?? null;
+  const isCollapsed = pathname.startsWith('/messages');
 
   const handleLogout = async () => {
     await fetch('/api/auth/clear-session', { method: 'POST' });
@@ -148,59 +152,42 @@ export function Sidebar() {
   };
 
   return (
-    <nav className="sidebar-nav">
+    <nav className={`sidebar-nav${isCollapsed ? ' sidebar-collapsed' : ''}`}>
       {/* Logo */}
-      <div style={{ padding: '24px 20px 20px' }}>
+      <div style={{ padding: isCollapsed ? '20px 0' : '24px 20px 20px', display: 'flex', justifyContent: isCollapsed ? 'center' : undefined }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={32} height={32} style={{ borderRadius: 10, flexShrink: 0 }} />
           <span
             className="sidebar-label"
-            style={{
-              fontWeight: 500,
-              fontSize: 20,
-              color: 'var(--text-on-dark)',
-              letterSpacing: '-0.02em',
-            }}
+            style={{ fontWeight: 500, fontSize: 20, color: 'var(--text-on-dark)', letterSpacing: '-0.02em' }}
           >
             Sunibgram
           </span>
-        </div>
-        <div
-          className="sidebar-label"
-          style={{
-            fontSize: 10,
-            color: 'var(--text-on-dark-muted)',
-            marginTop: 4,
-            marginLeft: 42,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            fontWeight: 500,
-          }}
-        >
-          Campus Discourse
         </div>
       </div>
 
       {/* Nav items */}
       <div style={{ padding: '0 10px', flex: 1 }}>
         {NAV_ITEMS.map((item) => (
-          <SidebarItem key={item.id} item={item} active={isActive(item)} />
+          <SidebarItem key={item.id} item={item} active={isActive(item)} collapsed={isCollapsed} />
         ))}
 
         {/* New Post button */}
-        <div style={{ marginTop: 16, padding: '0 2px' }}>
+        <div style={{ marginTop: 16, padding: isCollapsed ? '0' : '0 2px', display: 'flex', justifyContent: isCollapsed ? 'center' : undefined }}>
           <button
             type="button"
+            title={isCollapsed ? 'New Post' : undefined}
             onClick={handleNewPostClick}
             onMouseEnter={() => setPostHovered(true)}
             onMouseLeave={() => setPostHovered(false)}
             style={{
-              width: '100%',
-              padding: '11px 0',
+              width: isCollapsed ? 44 : '100%',
+              height: isCollapsed ? 44 : undefined,
+              padding: isCollapsed ? undefined : '11px 0',
               background: postHovered ? 'var(--accent-hover)' : 'var(--accent)',
               border: 'none',
               cursor: 'pointer',
-              borderRadius: 14,
+              borderRadius: isCollapsed ? '50%' : 14,
               color: '#fff',
               fontWeight: 500,
               fontSize: 15,
@@ -213,7 +200,7 @@ export function Sidebar() {
               boxShadow: '0 4px 16px oklch(64% 0.22 270 / 0.35)',
             }}
           >
-            <Icon name="plus" size={18} color="#fff" />
+            <Icon name="plus" size={isCollapsed ? 20 : 18} color="#fff" />
             <span className="sidebar-label">New Post</span>
           </button>
         </div>
@@ -265,12 +252,14 @@ export function Sidebar() {
         )}
 
         <button
+          title={isCollapsed ? (profile?.name ?? user?.username ?? 'Account') : undefined}
           onClick={() => setMenuOpen((v) => !v)}
           style={{
             width: '100%',
             padding: '14px 12px',
             display: 'flex',
             alignItems: 'center',
+            justifyContent: isCollapsed ? 'center' : undefined,
             gap: 10,
             background: menuOpen ? 'var(--sidebar-hover)' : 'none',
             border: 'none',
@@ -284,17 +273,7 @@ export function Sidebar() {
         >
           <Avatar username={user?.username ?? 'Current user'} avatarUrl={avatarSrc} size={36} />
           <div className="sidebar-label" style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontWeight: 500,
-                fontSize: 14,
-                color: 'var(--text-on-dark)',
-                letterSpacing: '-0.02em',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-on-dark)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {profile?.name ?? user?.username ?? '—'}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-on-dark-muted)' }}>

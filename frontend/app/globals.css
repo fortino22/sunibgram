@@ -78,6 +78,14 @@ body {
   overflow-y: auto;
 }
 
+.sidebar-nav.sidebar-collapsed {
+  width: 64px;
+}
+
+.sidebar-nav.sidebar-collapsed .sidebar-label {
+  display: none;
+}
+
 .right-panel {
   width: 300px;
   flex-shrink: 0;
@@ -108,4 +116,24 @@ body {
   .sidebar-nav {
     display: none !important;
   }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+
+@keyframes msg-highlight {
+  0% { background-color: transparent; }
+  30% { background-color: rgba(99, 179, 237, 0.28); }
+  100% { background-color: transparent; }
 }

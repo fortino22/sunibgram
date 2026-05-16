@@ -38,6 +38,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.Chat{},
 		&model.ChatMedia{},
 		&model.ChatRead{},
+		&model.ChatReaction{},
 		&model.Notification{},
 		&model.Hashtag{},
 		&model.ThreadHashtag{},
@@ -146,6 +147,8 @@ func AutoMigrate(db *gorm.DB) {
 		END $$;
 	`)
 
+	db.Exec("ALTER TABLE chats ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES chats(chat_id)")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_chats_reply_to_id ON chats(reply_to_id)")
 	db.Exec("UPDATE chat_rooms SET member_count = (SELECT COUNT(*) FROM chat_room_members WHERE chat_room_members.room_id = chat_rooms.room_id)")
 	db.Exec(`
 		UPDATE hashtags

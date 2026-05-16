@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Search, MessageSquare } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
-import { useFollowing } from '@/hooks/useFollowing';
+import { useExplorePeople, useSuggestedPeople } from '@/hooks/useExplore';
 import { useCreatePrivateRoom } from '@/hooks/chat/useCreateChatRoom';
-import { useAuthStore } from '@/stores/authStore';
-import type { FollowUser } from '@/lib/services/follows';
+import type { ExplorePerson } from '@/lib/services/explore';
 
 interface NewChatModalProps {
   onClose: () => void;
@@ -14,17 +13,24 @@ interface NewChatModalProps {
 }
 
 export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
-  const user = useAuthStore((s) => s.user);
   const [search, setSearch] = useState('');
-  const { data: followingData, isLoading } = useFollowing(user?.id ?? '');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const createRoom = useCreatePrivateRoom();
 
-  const following: FollowUser[] = followingData?.data ?? [];
-  const filtered = following.filter(
-    (u) =>
-      u.username.toLowerCase().includes(search.toLowerCase()) ||
-      (u.name ?? '').toLowerCase().includes(search.toLowerCase())
-  );
+  // 300ms debounce to avoid hammering the API on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const hasQuery = debouncedSearch.length > 0;
+  const searchQuery = useExplorePeople(debouncedSearch);
+  const suggestedQuery = useSuggestedPeople(10);
+
+  const isLoading = hasQuery ? searchQuery.isLoading : suggestedQuery.isLoading;
+  const people: ExplorePerson[] = hasQuery
+    ? (searchQuery.data ?? [])
+    : (suggestedQuery.data ?? []);
 
   const handleSelect = (targetUserId: number) => {
     createRoom.mutate(targetUserId, {
@@ -122,7 +128,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
             <Search size={15} color="var(--text-muted)" />
             <input
               type="text"
-              placeholder="Search people you follow..."
+              placeholder="Search anyone by name or username…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus
@@ -139,8 +145,23 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
           </div>
         </div>
 
+        {/* Section label */}
+        <div
+          style={{
+            padding: '8px 20px 4px',
+            fontSize: 11,
+            fontWeight: 600,
+            color: 'var(--text-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            flexShrink: 0,
+          }}
+        >
+          {hasQuery ? 'Results' : 'Suggested'}
+        </div>
+
         {/* User list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 8px 8px' }}>
           {isLoading ? (
             Array.from({ length: 4 }, (_, i) => (
               <div
@@ -154,7 +175,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
                 }}
               />
             ))
-          ) : filtered.length === 0 ? (
+          ) : people.length === 0 ? (
             <div
               style={{
                 textAlign: 'center',
@@ -163,15 +184,13 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
                 fontSize: 13,
               }}
             >
-              {following.length === 0
-                ? 'Follow someone to start a conversation'
-                : 'No matches found'}
+              {hasQuery ? 'No users found' : 'No suggestions available'}
             </div>
           ) : (
-            filtered.map((u) => (
+            people.map((u) => (
               <button
-                key={u.user_id}
-                onClick={() => handleSelect(u.user_id)}
+                key={u.userId}
+                onClick={() => handleSelect(u.userId)}
                 disabled={createRoom.isPending}
                 style={{
                   width: '100%',
@@ -182,7 +201,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
                   background: 'none',
                   border: 'none',
                   borderRadius: 10,
-                  cursor: 'pointer',
+                  cursor: createRoom.isPending ? 'not-allowed' : 'pointer',
                   textAlign: 'left',
                   transition: 'background 0.1s',
                   opacity: createRoom.isPending ? 0.6 : 1,
@@ -196,19 +215,23 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
               >
                 <Avatar
                   username={u.username}
-                  avatarUrl={u.avatar_url ?? null}
+                  avatarUrl={u.userProfilePic ?? null}
                   size={36}
                 />
-                <div>
-                  <div
-                    style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)' }}
-                  >
-                    {u.name || u.username}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {u.name || u.username}
+                    </span>
+                    {u.isPremium && (
+                      <span style={{ fontSize: 10, color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>★</span>
+                    )}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    @{u.username}
-                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>@{u.username}</div>
                 </div>
+                {u.isFollowing && (
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>Following</span>
+                )}
               </button>
             ))
           )}

@@ -5,6 +5,7 @@ import Cropper from 'react-easy-crop';
 import type { Area, Point } from 'react-easy-crop';
 import { X, Check } from 'lucide-react';
 import { getCroppedFile } from '@/lib/cropImage';
+import { compressImage } from '@/lib/compressImage';
 
 interface ImageCropModalProps {
   imageSrc: string;
@@ -28,9 +29,13 @@ export function ImageCropModal({ imageSrc, filename, aspect, onComplete, onClose
     if (!croppedAreaPixels) return;
     setApplying(true);
     try {
-      const file = await getCroppedFile(imageSrc, croppedAreaPixels, filename);
-      const preview = URL.createObjectURL(file);
-      onComplete(file, preview);
+      const cropped = await getCroppedFile(imageSrc, croppedAreaPixels, filename);
+      const compressed = await compressImage(cropped, {
+        maxDimension: 1200,
+        maxSizeBytes: 500 * 1024, // 500 KB
+      });
+      const preview = URL.createObjectURL(compressed);
+      onComplete(compressed, preview);
     } finally {
       setApplying(false);
     }

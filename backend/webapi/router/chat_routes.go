@@ -20,4 +20,6 @@ func registerChatRoutes(api fiber.Router, chatRoomCtrl *controller.ChatRoomContr
 	chats.Patch("/messages/:id", chatCtrl.EditMessage)
 	chats.Post("/messages/read", chatCtrl.MarkMessagesRead)
 	chats.Delete("/messages/:id", chatCtrl.Unsend)
+	chats.Post("/messages/:id/reactions", chatCtrl.AddReaction)
+	chats.Delete("/messages/:id/reactions/:emoji", chatCtrl.RemoveReaction)
 }

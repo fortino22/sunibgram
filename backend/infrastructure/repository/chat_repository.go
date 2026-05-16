@@ -27,7 +27,7 @@ func (r *ChatRepository) Save(chat *model.Chat) error {
 			Update("updated_at", time.Now()).Error; err != nil {
 			return err
 		}
-		return tx.Preload("Sender").First(chat, chat.ChatID).Error
+		return tx.Preload("Sender").Preload("ReplyTo.Sender").First(chat, chat.ChatID).Error
 	})
 }
 
@@ -41,7 +41,7 @@ func (r *ChatRepository) FindByRoomID(roomID uint, page, limit int) ([]model.Cha
 
 	var chats []model.Chat
 	offset := (page - 1) * limit
-	err := r.readDB.Preload("Sender").
+	err := r.readDB.Preload("Sender").Preload("ReplyTo.Sender").
 		Where("room_id = ? AND deleted_at IS NULL", roomID).
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
@@ -51,7 +51,7 @@ func (r *ChatRepository) FindByRoomID(roomID uint, page, limit int) ([]model.Cha
 
 func (r *ChatRepository) FindByID(id uint) (*model.Chat, error) {
 	var chat model.Chat
-	err := r.readDB.Preload("Sender").
+	err := r.readDB.Preload("Sender").Preload("ReplyTo.Sender").
 		Where("deleted_at IS NULL").
 		First(&chat, id).Error
 	return &chat, err
@@ -62,7 +62,7 @@ func (r *ChatRepository) FindByIDs(ids []uint) ([]model.Chat, error) {
 		return []model.Chat{}, nil
 	}
 	var chats []model.Chat
-	err := r.readDB.Preload("Sender").
+	err := r.readDB.Preload("Sender").Preload("ReplyTo.Sender").
 		Where("chat_id IN ? AND deleted_at IS NULL", ids).
 		Find(&chats).Error
 	return chats, err
@@ -97,9 +97,10 @@ func (r *ChatRepository) MarkRoomRead(roomID, userID uint) ([]uint, error) {
 }
 
 func (r *ChatRepository) UpdateMessage(chatID uint, message string) error {
+	now := time.Now()
 	return r.writeDB.Model(&model.Chat{}).
 		Where("chat_id = ? AND deleted_at IS NULL", chatID).
-		Update("message", message).Error
+		Updates(map[string]any{"message": message, "is_edited": true, "edited_at": &now}).Error
 }
 
 func (r *ChatRepository) UpdateIsRead(chatID uint) error {

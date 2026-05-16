@@ -64,6 +64,7 @@ func main() {
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
 	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
 	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)
+	chatReactionRepo := infrarepo.NewChatReactionRepository(writeDB, readDB)
 	notificationRepo := infrarepo.NewNotificationRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
@@ -100,6 +101,7 @@ func main() {
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
+	chatReactionService := usecase.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
 
 	// --- Controllers ---
 	cacheCtrl := controller.NewCacheController(cacheService)
@@ -136,7 +138,7 @@ func main() {
 	premiumSubscriptionCtrl := controller.NewPremiumSubscriptionController(premiumSubscriptionService)
 	devSubscriptionCtrl := controller.NewDevSubscriptionController(premiumSubscriptionService)
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
-	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
+	chatCtrl := controller.NewChatController(chatService, chatMediaService, chatReactionService, socketHub)
 	notificationCtrl := controller.NewNotificationController(notificationService)
 	notificationHandler := webapisocket.NewNotificationHandler(socketHub, notificationService)
 

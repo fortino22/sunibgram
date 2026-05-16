@@ -68,9 +68,9 @@ function mapProfile(raw: BackendProfileResponse): UserProfile { ... }
 ```
 
 ### Key Backend Gotchas
-- **No `/api/threads/me`** — use `GET /api/threads/:userId` with the user's numeric ID
+- **No `/api/threads/me`** — use `GET /api/threads/user/:userId` with the user's numeric ID
 - **No `/api/profile/me` wrapping** — backend returns flat object, no `{ data: ... }` wrapper
-- **Thread user endpoint:** `GET /api/threads/:userId` and `GET /api/threads/:userId/replies`
+- **Thread user endpoints:** `GET /api/threads/user/:userId`, `GET /api/threads/user/:userId/replies`, `GET /api/threads/user/:userId/media`
 
 ### Query Key Conventions
 ```ts
@@ -144,7 +144,7 @@ All routes prefixed with `/api/`.
 | Profile | GET /profile/me · GET /profile/:userId · PUT /profile/me (multipart) |
 | Users | POST /users/:userId/follow · DELETE /users/:userId/unfollow |
 | Followers | GET /users/:userId/followers · GET /users/:userId/following |
-| Threads | GET /threads · /threads/:userId · /threads/:userId/replies · /threads/:id |
+| Threads | GET /threads · /threads/user/:userId · /threads/user/:userId/replies · /threads/user/:userId/media · /threads/:id |
 | Thread Actions | POST/DELETE /threads/:id/like · /threads/:id/bookmark · /threads/:id/repost |
 | Thread CRUD | POST /threads (multipart) · PUT /threads/:id · DELETE /threads/:id |
 | Communities | CRUD /communities · /communities/:id/join\|leave\|members\|threads |

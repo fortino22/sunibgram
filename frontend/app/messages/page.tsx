@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MessageCircle } from 'lucide-react';
 import { ConversationList } from '@/components/chat/ConversationList';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
+import { NewChatModal } from '@/components/chat/NewChatModal';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import { useChatMessages } from '@/hooks/chat/useChatMessages';
 import { useChatRoom } from '@/hooks/chat/useChatRooms';
@@ -13,11 +14,55 @@ import { useMarkMessagesRead } from '@/hooks/chat/useMarkMessagesRead';
 import { useProfile } from '@/hooks/useProfile';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useDeleteMessage } from '@/hooks/chat/useDeleteMessage';
+import { useAddReaction, useRemoveReaction, useSwapReaction } from '@/hooks/chat/useReactToMessage';
+import type { ChatMessage } from '@/lib/services/chat';
 
 export default function MessagesPage() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const { activeRoomId, setActiveRoomId } = useChatStore();
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+
+  const deleteMessage = useDeleteMessage(activeRoomId ?? 0);
+  const addReaction = useAddReaction(activeRoomId ?? 0);
+  const removeReaction = useRemoveReaction(activeRoomId ?? 0);
+  const swapReaction = useSwapReaction(activeRoomId ?? 0);
+
+  const handleEditMessage = useCallback((message: ChatMessage) => {
+    setEditingMessage(message);
+  }, []);
+
+  const handleDeleteMessage = useCallback((chatId: number) => {
+    deleteMessage.mutate(chatId);
+  }, [deleteMessage]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessage(null);
+  }, []);
+
+  const handleReplyMessage = useCallback((message: ChatMessage) => {
+    setReplyingTo(message);
+    setEditingMessage(null);
+  }, []);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyingTo(null);
+  }, []);
+
+  const handleReact = useCallback((chatId: number, emoji: string) => {
+    addReaction.mutate({ chatId, emoji });
+  }, [addReaction]);
+
+  const handleUnreact = useCallback((chatId: number, emoji: string) => {
+    removeReaction.mutate({ chatId, emoji });
+  }, [removeReaction]);
+
+  const handleSwapReact = useCallback((chatId: number, oldEmoji: string, newEmoji: string) => {
+    swapReaction.mutate({ chatId, oldEmoji, newEmoji });
+  }, [swapReaction]);
 
   // Single WebSocket connection for the entire messages page
   const { joinRoom, leaveRoom, startTyping, stopTyping, typingUsersByRoom } = useChatSocket({
@@ -37,6 +82,8 @@ export default function MessagesPage() {
   // Join the active room when it changes; leave on cleanup
   useEffect(() => {
     if (!activeRoomId) return;
+    setEditingMessage(null);
+    setReplyingTo(null);
     joinRoom(activeRoomId);
     return () => {
       leaveRoom(activeRoomId);
@@ -79,10 +126,11 @@ export default function MessagesPage() {
       }}
     >
       {/* Left — Conversation list */}
-      <div style={{ width: 280, flexShrink: 0 }}>
+      <div style={{ width: 300, flexShrink: 0 }}>
         <ConversationList
           activeRoomId={activeRoomId}
           onRoomSelect={setActiveRoomId}
+          onNewChat={() => setShowNewChat(true)}
         />
       </div>
 
@@ -109,9 +157,20 @@ export default function MessagesPage() {
               isLoading={messagesQuery.isLoading}
               roomId={activeRoomId!}
               typingUsers={typingUserNames}
+              isPrivateRoom={activeRoom.type === 'private'}
+              onEditMessage={handleEditMessage}
+              onDeleteMessage={handleDeleteMessage}
+              onReplyMessage={handleReplyMessage}
+              onReact={handleReact}
+              onUnreact={handleUnreact}
+              onSwapReact={handleSwapReact}
             />
             <ChatInput
               roomId={activeRoomId!}
+              editingMessage={editingMessage}
+              onCancelEdit={handleCancelEdit}
+              replyingTo={replyingTo}
+              onCancelReply={handleCancelReply}
               onStartTyping={startTyping}
               onStopTyping={stopTyping}
             />
@@ -124,20 +183,59 @@ export default function MessagesPage() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--text-muted)',
-              gap: 12,
+              gap: 16,
             }}
           >
-            <MessageSquare size={40} color="var(--text-muted)" strokeWidth={1.2} />
-            <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)' }}>
-              Your messages
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: '50%',
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MessageCircle size={36} color="var(--text)" strokeWidth={1.4} />
             </div>
-            <div style={{ fontSize: 13, textAlign: 'center', maxWidth: 240 }}>
-              Select a conversation on the left, or start a new one with the + button.
+            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+                Start a Conversation
+              </div>
+              <div style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 280 }}>
+                Choose from your existing conversations, or start a new one.
+              </div>
             </div>
+            <button
+              onClick={() => setShowNewChat(true)}
+              style={{
+                padding: '10px 24px',
+                borderRadius: 9999,
+                background: 'var(--text)',
+                color: 'var(--bg)',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: 14,
+                fontFamily: 'inherit',
+              }}
+            >
+              New chat
+            </button>
           </div>
         )}
       </div>
+      {showNewChat && (
+        <NewChatModal
+          onClose={() => setShowNewChat(false)}
+          onRoomCreated={(roomId) => {
+            setShowNewChat(false);
+            setActiveRoomId(roomId);
+          }}
+        />
+      )}
     </div>
   );
 }
