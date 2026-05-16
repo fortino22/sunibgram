@@ -119,20 +119,23 @@ func (c *ExploreController) toExploreCommunityResponses(communities []model.Expl
 func (c *ExploreController) toCommunityResponse(comm *model.Community) dto.CommunityResponse {
 	avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
-
+	var categoryName string
+	if comm.Category != nil {
+		categoryName = comm.Category.Name
+	}
 	return dto.CommunityResponse{
-		CommunityID: comm.CommunityID,
-		UserID:      comm.UserID,
-		Username:    comm.User.UserName,
-		Name:        comm.Name,
-		Description: comm.Description,
-		Rules:       comm.Rules,
-		Category:    comm.Category,
-		Visibility:  string(comm.Visibility),
-		AvatarURL:   avatarURL,
-		BannerURL:   bannerURL,
-		MemberCount: comm.MemberCount,
-		CreatedAt:   dtoutils.Wrap(comm.CreatedAt),
-		UpdatedAt:   dtoutils.Wrap(comm.UpdatedAt),
+		CommunityID:  comm.CommunityID,
+		UserID:       comm.UserID,
+		Username:     comm.User.UserName,
+		Name:         comm.Name,
+		Description:  comm.Description,
+		Rules:        comm.Rules,
+		CategoryName: categoryName,
+		Visibility:   string(comm.Visibility),
+		AvatarURL:    avatarURL,
+		BannerURL:    bannerURL,
+		MemberCount:  comm.MemberCount,
+		CreatedAt:    dtoutils.Wrap(comm.CreatedAt),
+		UpdatedAt:    dtoutils.Wrap(comm.UpdatedAt),
 	}
 }

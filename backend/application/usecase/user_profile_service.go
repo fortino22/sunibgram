@@ -16,6 +16,7 @@ type UserProfileService struct {
 	followRepo      repository.IFollowRepository
 	profileRepo     repository.IUserProfileRepository
 	userFacultyRepo repository.IUserFacultyRepository
+	cacheRepo       repository.ICacheRepository
 	storageUsecase  *StorageUsecase
 }
 
@@ -24,6 +25,7 @@ func NewUserProfileService(
 	followRepo repository.IFollowRepository,
 	profileRepo repository.IUserProfileRepository,
 	userFacultyRepo repository.IUserFacultyRepository,
+	cacheRepo repository.ICacheRepository,
 	storageUsecase *StorageUsecase,
 ) service.IUserProfileService {
 	return &UserProfileService{
@@ -31,6 +33,7 @@ func NewUserProfileService(
 		followRepo:      followRepo,
 		profileRepo:     profileRepo,
 		userFacultyRepo: userFacultyRepo,
+		cacheRepo:       cacheRepo,
 		storageUsecase:  storageUsecase,
 	}
 }
@@ -100,7 +103,13 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 		existing.Bio = *input.Bio
 	}
 
-	return s.profileRepo.Upsert(existing)
+	if err := s.profileRepo.Upsert(existing); err != nil {
+		return err
+	}
+	if input.Avatar != nil {
+		invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	}
+	return nil
 }
 
 func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, input service.UpdateProfileInput) error {
@@ -156,6 +165,9 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			}
 			if err := s.profileRepo.Upsert(existing); err != nil {
 				return err
+			}
+			if input.ClearAvatar {
+				invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 			}
 		}
 	}

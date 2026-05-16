@@ -132,7 +132,8 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 	pattern := likePattern(query)
 	base := r.readDB.WithContext(ctx).
 		Model(&model.Community{}).
-		Where("communities.name ILIKE ? ESCAPE '\\' OR communities.description ILIKE ? ESCAPE '\\' OR communities.category ILIKE ? ESCAPE '\\'", pattern, pattern, pattern)
+		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
+		Where("communities.name ILIKE ? ESCAPE '\\' OR communities.description ILIKE ? ESCAPE '\\' OR categories.name ILIKE ? ESCAPE '\\'", pattern, pattern, pattern)
 
 	var total int64
 	if err := base.Count(&total).Error; err != nil {

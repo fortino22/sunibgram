@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
 )
 
 type IThreadService interface {
 	Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error)
+	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error)
 	GetByID(id uint) (*model.Thread, error)
 	GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error)
 	GetChain(ctx context.Context, rootID, requesterID uint, page, limit int) ([]model.Thread, int64, error)
@@ -21,10 +23,11 @@ type IThreadService interface {
 	GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMyMediaThread(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error)
-	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error)
+	GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error)
 	GetCommunityThreadTop(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetCommunityThreadMedia(communityID, userID uint) ([]model.CommunityThreadMedia, error)
 	GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
+	GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetFacultyThreads(facultyID uint, page, limit int) ([]model.Thread, int64, error)
 }

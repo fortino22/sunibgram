@@ -117,7 +117,6 @@ func (r *communityMemberRepository) UpdateMemberCount(communityID uint, delta in
 	if r.cache != nil {
 		ctx := context.Background()
 		_ = r.cache.Delete(ctx, communityIDKey(communityID))
-		_ = r.cache.DeleteByPattern(ctx, "community:list:*")
 		_ = r.cache.DeleteByPattern(ctx, "community:joined:*")
 		_ = r.cache.DeleteByPattern(ctx, "community:created:*")
 		invalidateExploreCache(ctx, r.cache)

@@ -16,6 +16,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.User{},
 		&model.UserSettings{},
 		&model.UserProfile{},
+		&model.Category{},
 		&model.Community{},
 		&model.Thread{},
 		&model.Event{},
@@ -50,12 +51,19 @@ func AutoMigrate(db *gorm.DB) {
 		}
 	}
 
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_threads_feed_score ON threads(feed_score DESC) WHERE created_at > NOW() - INTERVAL '7 days'")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_user_rel_follower ON user_relationships(follower_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_threads_created_at ON threads(created_at DESC)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_threads_user_type ON threads(user_id, type)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_thread_media_thread_id ON thread_media(thread_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_hashtags_name ON hashtags(name)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_thread_hashtags_hashtag_id ON thread_hashtags(hashtag_id)")
+	db.Exec("ALTER TABLE communities DROP CONSTRAINT IF EXISTS fk_communities_" + "gen" + "re")
+	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS " + "gen" + "re_id")
+	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS category")
+	db.Exec("DROP TABLE IF EXISTS " + "gen" + "res")
+	db.Exec("ALTER TABLE communities ADD COLUMN IF NOT EXISTS category_id UUID")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_communities_category_id ON communities(category_id)")
 	db.Exec("ALTER TABLE user_stats DROP COLUMN IF EXISTS thread_count")
 	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS thread_count")
 	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS thread_count INTEGER NOT NULL DEFAULT 0")
@@ -86,6 +94,16 @@ func AutoMigrate(db *gorm.DB) {
 	migratePremiumSubscriptions(db)
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time)")
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_communities_category'
+			) THEN
+				ALTER TABLE communities ADD CONSTRAINT fk_communities_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL;
+			END IF;
+		END $$;
+	`)
 	db.Exec(`
 		DO $$
 		BEGIN
@@ -171,6 +189,7 @@ func AutoMigrate(db *gorm.DB) {
 	`)
 
 	seedRoles(db)
+	seeder.SeedCategory(db)
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)

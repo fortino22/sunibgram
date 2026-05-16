@@ -4,6 +4,7 @@ import (
 	"mime/multipart"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
@@ -27,7 +28,10 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 	name := ctx.FormValue("name")
 	description := ctx.FormValue("description")
 	rules := ctx.FormValue("rules")
-	category := ctx.FormValue("category")
+	categoryID, ok := parseRequiredFormUUID(ctx, "category_id", "category")
+	if !ok {
+		return nil
+	}
 	visibility := model.CommunityVisibility(ctx.FormValue("visibility"))
 
 	var avatar, banner *multipart.FileHeader
@@ -40,7 +44,7 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 
 	_, err := c.communityService.Create(
 		ctx.Context(), claims.UserID,
-		name, description, rules, category, visibility,
+		name, description, rules, categoryID, visibility,
 		avatar, banner,
 	)
 	if err != nil {
@@ -64,7 +68,10 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 	name := ctx.FormValue("name")
 	description := ctx.FormValue("description")
 	rules := ctx.FormValue("rules")
-	category := ctx.FormValue("category")
+	categoryID, ok := parseRequiredFormUUID(ctx, "category_id", "category")
+	if !ok {
+		return nil
+	}
 	visibility := model.CommunityVisibility(ctx.FormValue("visibility"))
 	clearAvatar := ctx.FormValue("clear_avatar") == "true"
 	clearBanner := ctx.FormValue("clear_banner") == "true"
@@ -79,7 +86,7 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 
 	if _, err := c.communityService.Update(
 		ctx.Context(), id, claims.UserID,
-		name, description, rules, category, visibility,
+		name, description, rules, categoryID, visibility,
 		avatar, banner, clearAvatar, clearBanner,
 	); err != nil {
 		if err.Error() == "forbidden" {
@@ -126,19 +133,22 @@ func (c *CommunityController) GetByID(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(community))
 }
 
-func (c *CommunityController) GetAll(ctx *fiber.Ctx) error {
-	page, limit := ParsePagination(ctx)
-	category := ctx.Query("category", "")
+func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
+	var categoryID *uuid.UUID
+	if raw := ctx.Query("category"); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid category id"})
+		}
+		categoryID = &id
+	}
 
-	communities, total, err := c.communityService.GetAll(page, limit, category)
+	communities, err := c.communityService.Discover(ctx.Context(), categoryID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityResponse{
-		Data: c.toResponses(communities),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
-	})
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})
 }
 
 func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
@@ -182,20 +192,24 @@ func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
 func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityResponse {
 	avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
+	var categoryName string
+	if comm.Category != nil {
+		categoryName = comm.Category.Name
+	}
 	return dto.CommunityResponse{
-		CommunityID: comm.CommunityID,
-		UserID:      comm.UserID,
-		Username:    comm.User.UserName,
-		Name:        comm.Name,
-		Description: comm.Description,
-		Rules:       comm.Rules,
-		Category:    comm.Category,
-		Visibility:  string(comm.Visibility),
-		AvatarURL:   avatarURL,
-		BannerURL:   bannerURL,
-		MemberCount: comm.MemberCount,
-		CreatedAt:   utils.Wrap(comm.CreatedAt),
-		UpdatedAt:   utils.Wrap(comm.UpdatedAt),
+		CommunityID:  comm.CommunityID,
+		UserID:       comm.UserID,
+		Username:     comm.User.UserName,
+		Name:         comm.Name,
+		Description:  comm.Description,
+		Rules:        comm.Rules,
+		CategoryName: categoryName,
+		Visibility:   string(comm.Visibility),
+		AvatarURL:    avatarURL,
+		BannerURL:    bannerURL,
+		MemberCount:  comm.MemberCount,
+		CreatedAt:    utils.Wrap(comm.CreatedAt),
+		UpdatedAt:    utils.Wrap(comm.UpdatedAt),
 	}
 }
 
@@ -205,4 +219,50 @@ func (c *CommunityController) toResponses(communities []model.Community) []dto.C
 		out[i] = c.toResponse(&communities[i])
 	}
 	return out
+}
+
+func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) dto.DiscoverCommunityResponse {
+	members := make([]dto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
+	for i := range comm.TopMembers {
+		members[i] = dto.DiscoverCommunityMemberResponse{
+			AvatarURL: BuildMediaURL(
+				comm.TopMembers[i].AvatarObjectName,
+				comm.TopMembers[i].AvatarBucket,
+				c.communityService.GetURL,
+			),
+		}
+	}
+
+	var categoryName string
+	if comm.Category != nil {
+		categoryName = comm.Category.Name
+	}
+	return dto.DiscoverCommunityResponse{
+		Name:         comm.Name,
+		MemberCount:  comm.MemberCount,
+		CategoryName: categoryName,
+		TopMembers:   members,
+	}
+}
+
+func (c *CommunityController) toDiscoverResponses(communities []model.DiscoverCommunity) []dto.DiscoverCommunityResponse {
+	out := make([]dto.DiscoverCommunityResponse, len(communities))
+	for i := range communities {
+		out[i] = c.toDiscoverResponse(&communities[i])
+	}
+	return out
+}
+
+func parseRequiredFormUUID(ctx *fiber.Ctx, fieldName, entityName string) (*uuid.UUID, bool) {
+	raw := ctx.FormValue(fieldName)
+	if raw == "" {
+		_ = ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: entityName + " is required"})
+		return nil, false
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		_ = ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid " + entityName + " id"})
+		return nil, false
+	}
+	return &id, true
 }

@@ -30,6 +30,7 @@ func Register(
 	communityMemberCtrl *controller.CommunityMemberController,
 	communityRequestCtrl *controller.CommunityRequestController,
 	communityThreadCtrl *controller.CommunityThreadController,
+	categoryCtrl *controller.CategoryController,
 	facultyCtrl *controller.FacultyController,
 	orderCtrl *controller.OrderController,
 	premiumSubscriptionCtrl *controller.PremiumSubscriptionController,
@@ -53,6 +54,7 @@ func Register(
 	registerUserRoutes(api, followCtrl, exploreCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
 	registerCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, auth)
+	registerCategoryRoutes(api, categoryCtrl)
 	registerFacultyRoutes(api, facultyCtrl, profileCtrl, auth)
 	registerOrderRoutes(api, orderCtrl, auth)
 	registerPremiumSubscriptionRoutes(api, premiumSubscriptionCtrl, auth)

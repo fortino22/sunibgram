@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
 )
 
@@ -137,13 +139,16 @@ func (r *threadCached) findCommunityThreads(communityID uint, page, limit int, k
 	return result.Threads, result.Total, nil
 }
 
-func (r *threadCached) FindCommunityMedia(communityID uint) ([]model.CommunityThreadMedia, error) {
+func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]model.CommunityThreadMedia, error) {
 	var rows []model.ThreadMedia
 	if err := r.db.readDB.
 		Table("thread_media").
 		Select("thread_media.media_id, thread_media.thread_id, thread_media.object_name, thread_media.bucket, thread_media.created_at").
 		Joins("JOIN threads ON threads.thread_id = thread_media.thread_id").
+		Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
+		Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", requesterUserID).
 		Where("threads.community_id = ? AND threads.type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+		Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", requesterUserID).
 		Order("threads.created_at DESC, thread_media.created_at ASC").
 		Find(&rows).Error; err != nil {
 		return nil, err
@@ -161,4 +166,66 @@ func (r *threadCached) FindCommunityMedia(communityID uint) ([]model.CommunityTh
 		result[idx].Media = append(result[idx].Media, media)
 	}
 	return result, nil
+}
+
+func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error) {
+	type cached struct {
+		Threads []model.Thread
+		Total   int64
+	}
+	ctx := context.Background()
+	var result cached
+	catStr := "all"
+	if categoryID != nil {
+		catStr = categoryID.String()
+	}
+	key := fmt.Sprintf("thread:all-communities:user:%d:cat:%s:page:%d:limit:%d", userID, catStr, page, limit)
+	if err := r.cache.Get(ctx, key, &result); err != nil {
+		var threads []model.Thread
+		var total int64
+
+		base := r.db.readDB.Model(&model.Thread{}).
+			Joins("JOIN communities ON communities.community_id = threads.community_id").
+			Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
+			Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
+			Where("threads.community_id IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("communities.is_active = ?", true).
+			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
+				model.CommunityVisibilityPublic, userID).
+			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID)
+
+		if categoryID != nil {
+			base = base.Where("communities.category_id = ?", categoryID)
+		}
+
+		if err := base.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+
+		offset := (page - 1) * limit
+		query := preloadThreadDetails(r.db.readDB).
+			Joins("JOIN communities ON communities.community_id = threads.community_id").
+			Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
+			Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
+			Where("threads.community_id IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("communities.is_active = ?", true).
+			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
+				model.CommunityVisibilityPublic, userID).
+			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID)
+		if categoryID != nil {
+			query = query.Where("communities.category_id = ?", categoryID)
+		}
+		if err := query.
+			Order("threads.created_at DESC").
+			Offset(offset).Limit(limit).
+			Find(&threads).Error; err != nil {
+			return nil, 0, err
+		}
+
+		result = cached{Threads: threads, Total: total}
+		r.cache.Set(ctx, key, result, threadFeedTTL)
+	}
+	return result.Threads, result.Total, nil
 }

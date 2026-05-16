@@ -14,17 +14,20 @@ type CommunityRequestService struct {
 	communityRepo repository.ICommunityRepository
 	memberRepo    repository.ICommunityMemberRepository
 	requestRepo   repository.ICommunityRequestRepository
+	cacheRepo     repository.ICacheRepository
 }
 
 func NewCommunityRequestService(
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
 	requestRepo repository.ICommunityRequestRepository,
+	cacheRepo repository.ICacheRepository,
 ) service.ICommunityRequestService {
 	return &CommunityRequestService{
 		communityRepo: communityRepo,
 		memberRepo:    memberRepo,
 		requestRepo:   requestRepo,
+		cacheRepo:     cacheRepo,
 	}
 }
 
@@ -90,7 +93,11 @@ func (s *CommunityRequestService) Approve(ctx context.Context, communityID, admi
 	if err := s.memberRepo.Save(member); err != nil {
 		return err
 	}
-	return s.memberRepo.UpdateMemberCount(communityID, 1)
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	if err := s.memberRepo.UpdateMemberCount(communityID, 1); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *CommunityRequestService) Decline(ctx context.Context, communityID, adminUserID, targetUserID uint) error {

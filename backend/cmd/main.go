@@ -35,6 +35,7 @@ func main() {
 	// --- Cache ---
 	redisCache := cache.New()
 	middleware.Init(redisCache)
+	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 
 	// --- Repositories ---
 	cacheRepo := infrarepo.NewCacheRepository(redisCache)
@@ -53,6 +54,7 @@ func main() {
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
+	categoryRepo := infrarepo.NewCategoryRepository(writeDB, readDB, redisCache)
 	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
@@ -79,10 +81,10 @@ func main() {
 	roleService := usecase.NewRoleService(roleRepo)
 	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
 	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo)
-	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
+	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, cacheRepo, storageUsecase)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
-	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
+	followService := usecase.NewFollowService(followRepo, userRepo, cacheRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
 	summaryService := usecase.NewThreadSummaryService(threadRepo, cacheRepo, ollamaClient)
 	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService, summaryService)
@@ -92,9 +94,10 @@ func main() {
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
-	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, storageUsecase)
-	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
-	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
+	categoryService := usecase.NewCategoryService(categoryRepo)
+	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, cacheRepo, storageUsecase)
+	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
+	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo)
 	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo)
@@ -122,6 +125,7 @@ func main() {
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
 	summaryCtrl := controller.NewThreadSummaryController(summaryService)
+	categoryCtrl := controller.NewCategoryController(categoryService)
 	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
@@ -176,6 +180,7 @@ func main() {
 		communityMemberCtrl,
 		communityRequestCtrl,
 		communityThreadCtrl,
+		categoryCtrl,
 		facultyCtrl,
 		orderCtrl,
 		premiumSubscriptionCtrl,
