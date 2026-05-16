@@ -9,7 +9,6 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type ThreadController struct {
@@ -66,33 +65,20 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
-	claims, ok := webapiutils.Get(ctx)
-	var viewerID *uint
-	if ok {
-		viewerID = &claims.UserID
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
 	}
 
 	page, limit := ParsePagination(ctx)
 
-	var threads []model.Thread
-	var total int64
-	var err error
-	if viewerID != nil {
-		threads, total, err = c.threadService.GetForYouFeed(ctx.Context(), *viewerID, page, limit)
-	} else {
-		threads, total, err = c.threadService.GetRoots(ctx.Context(), viewerID, page, limit)
-	}
+	threads, total, err := c.threadService.GetForYouFeed(ctx.Context(), claims.UserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	data := c.buildFeedItemsNoPin(threads, viewerID)
-	if viewerID == nil {
-		c.ensureFalseViewerFlags(data)
-	}
-
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: data,
+		Data: c.buildFeedItemsNoPin(threads, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
