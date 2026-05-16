@@ -112,6 +112,39 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	return thread, nil
 }
 
+func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error) {
+	if err := s.requireEventApproved(eventID); err != nil {
+		return nil, err
+	}
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
+		return nil, errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return nil, errors.New("community is inactive")
+	}
+	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
+		return nil, errors.New("forbidden")
+	}
+	thread := &model.Thread{
+		UserID:      userID,
+		CommunityID: &communityID,
+		Type:        model.ThreadTypePost,
+		Content:     content,
+		EventID:     eventID,
+	}
+	if err := s.threadRepo.Save(thread); err != nil {
+		return nil, err
+	}
+	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
+		return nil, err
+	}
+	if s.hashtagService != nil {
+		s.hashtagService.InvalidateTrendingCache(ctx)
+	}
+	return thread, nil
+}
+
 func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error) {
 	thread, err := s.threadRepo.FindByID(id)
 	if err != nil {
@@ -122,6 +155,9 @@ func (s *ThreadService) Update(ctx context.Context, id, userID uint, content str
 	}
 	if thread.Type == model.ThreadTypeRepost {
 		return nil, errors.New("cannot edit a repost")
+	}
+	if err := s.ensureThreadCommunityWritable(thread); err != nil {
+		return nil, err
 	}
 	thread.Content = content
 	if err := s.threadRepo.Update(thread); err != nil {
@@ -143,6 +179,9 @@ func (s *ThreadService) Delete(ctx context.Context, id, userID uint) error {
 	}
 	if thread.UserID != userID {
 		return errors.New("forbidden")
+	}
+	if err := s.ensureThreadCommunityWritable(thread); err != nil {
+		return err
 	}
 	if s.hashtagRepo != nil {
 		if err := s.hashtagRepo.UnlinkHashtagsFromThread(ctx, id); err != nil {
@@ -247,37 +286,18 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 	return ok
 }
 
-func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error) {
-	if err := s.requireEventApproved(eventID); err != nil {
-		return nil, err
+func (s *ThreadService) ensureThreadCommunityWritable(thread *model.Thread) error {
+	if thread == nil || thread.CommunityID == nil {
+		return nil
 	}
-	community, err := s.communityRepo.FindByID(communityID)
+	community, err := s.communityRepo.FindByID(*thread.CommunityID)
 	if err != nil {
-		return nil, errors.New("community not found")
+		return errors.New("community not found")
 	}
 	if !community.IsWritable() {
-		return nil, errors.New("community is inactive")
+		return errors.New("community is inactive")
 	}
-	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
-		return nil, errors.New("forbidden")
-	}
-	thread := &model.Thread{
-		UserID:      userID,
-		CommunityID: &communityID,
-		Type:        model.ThreadTypePost,
-		Content:     content,
-		EventID:     eventID,
-	}
-	if err := s.threadRepo.Save(thread); err != nil {
-		return nil, err
-	}
-	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {
-		return nil, err
-	}
-	if s.hashtagService != nil {
-		s.hashtagService.InvalidateTrendingCache(ctx)
-	}
-	return thread, nil
+	return nil
 }
 
 func validateThreadEventID(eventID *string) error {

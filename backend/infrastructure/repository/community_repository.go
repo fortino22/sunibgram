@@ -73,6 +73,18 @@ func (r *communityRepository) FindByID(id uint) (*model.Community, error) {
 	return &community, nil
 }
 
+func (r *communityRepository) ExistsByName(name string, excludeID *uint) (bool, error) {
+	var count int64
+	query := r.readDB.Model(&model.Community{}).Where("LOWER(name) = LOWER(?)", name)
+	if excludeID != nil {
+		query = query.Where("community_id <> ?", *excludeID)
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) {
 	type communityRow struct {
 		CommunityID       uint

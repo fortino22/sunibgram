@@ -92,4 +92,6 @@ func (r *userFacultyRepository) invalidateThreadCaches() {
 	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
 	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
 	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
 }

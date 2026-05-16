@@ -52,8 +52,12 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 		return nil, errors.New("only premium users can create communities")
 	}
 
-	if strings.TrimSpace(name) == "" {
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return nil, errors.New("name is required")
+	}
+	if err := s.ensureCommunityNameAvailable(name, nil); err != nil {
+		return nil, err
 	}
 	if visibility != model.CommunityVisibilityPublic && visibility != model.CommunityVisibilityPrivate {
 		visibility = model.CommunityVisibilityPublic
@@ -122,8 +126,12 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	if err != nil || !isAdminOrAbove(actor.Role) {
 		return nil, errors.New("forbidden")
 	}
-	if strings.TrimSpace(name) == "" {
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return nil, errors.New("name is required")
+	}
+	if err := s.ensureCommunityNameAvailable(name, &id); err != nil {
+		return nil, err
 	}
 	if visibility != model.CommunityVisibilityPublic && visibility != model.CommunityVisibilityPrivate {
 		visibility = model.CommunityVisibilityPublic
@@ -274,6 +282,17 @@ func (s *CommunityService) validateCategoryID(categoryID *uuid.UUID) error {
 	}
 	if _, err := s.categoryRepo.FindByID(*categoryID); err != nil {
 		return errors.New("category not found")
+	}
+	return nil
+}
+
+func (s *CommunityService) ensureCommunityNameAvailable(name string, excludeID *uint) error {
+	exists, err := s.communityRepo.ExistsByName(name, excludeID)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errors.New("community name already taken")
 	}
 	return nil
 }

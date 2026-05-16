@@ -140,7 +140,6 @@ type PaginatedMediaOnlyResponse struct {
 
 type CommunityThreadFeedItemResponse struct {
 	FeedItemResponse
-	UserAvatar string `json:"user_avatar"`
 }
 
 type PaginatedCommunityThreadResponse struct {
