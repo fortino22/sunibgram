@@ -62,7 +62,7 @@ export default function LoginPage() {
     setServerError('');
 
     try {
-      const prodEmails = new Set(['admin@binus.ac.id', 'devin@binus.ac.id', 'octa@binus.ac.id']);
+      const prodEmails = new Set(['admin@binus.ac.id', 'devin@binus.ac.id', 'octa@binus.ac.id', 'chermiese@binus.ac.id']);
       if (prodEmails.has(data.email)) {
         const res = await loginProd(data.email, data.password);
         setToken(res.access_token, res.sid);

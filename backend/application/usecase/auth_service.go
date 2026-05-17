@@ -261,8 +261,9 @@ func (s *AuthService) LoginProd(email, password string) (*model.User, model.Toke
 	}
 
 	allowedEmails := map[string]bool{
-		"devin@binus.ac.id": true,
-		"octa@binus.ac.id":  true,
+		"devin@binus.ac.id":     true,
+		"octa@binus.ac.id":      true,
+		"chermiese@binus.ac.id": true,
 	}
 	if user.Role.Name != "admin" && !allowedEmails[user.Email] {
 		return nil, model.TokenPair{}, errors.New("admin access required")

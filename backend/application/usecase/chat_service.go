@@ -37,6 +37,7 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 	if err := s.chatRepo.Save(chat); err != nil {
 		return nil, err
 	}
+	_ = s.roomRepo.TouchUpdatedAt(roomID)
 	return chat, nil
 }
 

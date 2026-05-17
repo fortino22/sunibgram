@@ -787,6 +787,10 @@ export function MessageBubble({
   const reactions = message.reactions ?? [];
   const showControls = !isDeleted && (onEdit || onDelete || onReply || onReact);
 
+  // Bubble radius: tail only on the last message of a group
+  const ownRadius = isLastInGroup ? '18px 18px 4px 18px' : '18px';
+  const otherRadius = isLastInGroup ? '18px 18px 18px 4px' : '18px';
+
   return (
     <>
       {lightboxIndex !== null && (
@@ -803,247 +807,248 @@ export function MessageBubble({
         onMouseLeave={() => setHovered(false)}
         style={{
           display: 'flex',
-          flexDirection: isOwn ? 'row-reverse' : 'row',
           alignItems: 'flex-end',
+          justifyContent: isOwn ? 'flex-end' : 'flex-start',
           gap: 8,
-          marginBottom: showSender ? 12 : 4,
-          borderRadius: 12,
-          padding: isHighlighted ? '4px 6px' : '0px 6px',
-          margin: isHighlighted ? '-4px -6px' : undefined,
+          marginBottom: isLastInGroup ? 10 : 2,
+          padding: isHighlighted ? '4px 8px' : '0 8px',
           animation: isHighlighted ? 'msg-highlight 1s ease-in-out' : undefined,
         }}
       >
-        {/* Avatar */}
-        {!isOwn && !isPrivateRoom && (
-          <div style={{ flexShrink: 0, marginBottom: 2 }}>
-            {showSender ? (
+        {/* Avatar slot — always reserves 28 px for non-own to keep bubbles aligned */}
+        {!isOwn && (
+          <div style={{ width: 28, flexShrink: 0, alignSelf: 'flex-end' }}>
+            {isLastInGroup && (
               <Avatar username={message.sender.username} size={28} />
-            ) : (
-              <div style={{ width: 28 }} />
             )}
           </div>
         )}
 
-        {/* Hover controls */}
-        {showControls && (
+        {/* Inner row: bubble content + hover controls */}
+        {/* row-reverse for own → controls end up to the LEFT of bubble */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: isOwn ? 'row-reverse' : 'row',
+            alignItems: 'center',
+            gap: 6,
+            maxWidth: '68%',
+          }}
+        >
+          {/* ── Message content column ── */}
           <div
             style={{
-              visibility: hovered ? 'visible' : 'hidden',
-              alignSelf: 'center',
-              flexShrink: 0,
               display: 'flex',
-              alignItems: 'center',
-              gap: 1,
+              flexDirection: 'column',
+              alignItems: isOwn ? 'flex-end' : 'flex-start',
             }}
           >
-            {(onReact || onUnreact) && (
-              <QuickReactButton
+            {/* Reply preview */}
+            {message.reply_to && !isDeleted && (
+              <ReplyBubble
+                replyTo={message.reply_to}
+                isOwn={isOwn}
+                onScrollTo={onScrollToMessage ? () => onScrollToMessage(message.reply_to!.chat_id) : undefined}
+              />
+            )}
+
+            {/* Images */}
+            {imageMedia.length > 0 && !isDeleted && (
+              <div
+                style={{
+                  position: 'relative',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  marginBottom: message.message || audioMedia.length > 0 || videoMedia.length > 0 ? 4 : 0,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+                onClick={() => setLightboxIndex(0)}
+              >
+                <Image
+                  src={imageMedia[0].url}
+                  alt="media"
+                  width={220}
+                  height={160}
+                  style={{ objectFit: 'cover', display: 'block' }}
+                  unoptimized
+                />
+                {extraCount > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 6,
+                      left: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      background: 'rgba(0,0,0,0.55)',
+                      borderRadius: 6,
+                      padding: '2px 6px 2px 4px',
+                      backdropFilter: 'blur(4px)',
+                    }}
+                  >
+                    <Images size={13} color="#fff" />
+                    <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, lineHeight: 1 }}>
+                      +{extraCount}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* GIF */}
+            {message.gif_url && !isDeleted && (
+              <div
+                style={{
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  marginBottom: message.message || audioMedia.length > 0 || videoMedia.length > 0 ? 4 : 0,
+                  flexShrink: 0,
+                  cursor: 'pointer',
+                  maxWidth: 220,
+                }}
+                onClick={() => window.open(message.gif_url!, '_blank', 'noopener')}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={message.gif_url}
+                  alt="GIF"
+                  style={{ width: '100%', maxWidth: 220, display: 'block' }}
+                />
+              </div>
+            )}
+
+            {/* Voice notes */}
+            {audioMedia.length > 0 && !isDeleted && audioMedia.map((m) => (
+              <VoiceNoteBubble key={m.media_id} url={m.url} isOwn={isOwn} />
+            ))}
+
+            {/* Videos */}
+            {videoMedia.length > 0 && !isDeleted && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: message.message ? 4 : 0, justifyContent: isOwn ? 'flex-end' : 'flex-start' }}>
+                {videoMedia.map((m) => (
+                  <div key={m.media_id} style={{ borderRadius: 10, overflow: 'hidden', maxWidth: 220, background: 'var(--bg)' }}>
+                    <video src={m.url} controls style={{ maxWidth: 220, maxHeight: 160, display: 'block' }} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Text bubble */}
+            {(message.message || isDeleted) && (
+              <div
+                style={{
+                  padding: '9px 13px',
+                  borderRadius: isOwn ? ownRadius : otherRadius,
+                  background: isDeleted
+                    ? 'transparent'
+                    : isOwn
+                    ? 'var(--accent)'
+                    : 'oklch(28% 0.01 260)',
+                  border: isDeleted ? '1px dashed var(--border)' : 'none',
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  color: isDeleted ? 'var(--text-muted)' : 'var(--text)',
+                  fontStyle: isDeleted ? 'italic' : 'normal',
+                  wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {isDeleted ? 'This message was deleted' : message.message}
+              </div>
+            )}
+
+            {/* Reaction bar */}
+            {!isDeleted && (
+              <ReactionBar
+                reactions={reactions}
                 chatId={message.chat_id}
                 isOwn={isOwn}
                 currentUserId={currentUserId}
-                reactions={reactions}
                 onReact={onReact}
                 onUnreact={onUnreact}
                 onSwapReact={onSwapReact}
               />
             )}
-            {(onEdit || onDelete || onReply) && (
-              <MessageMenu
-                isOwn={isOwn}
-                hasTextMessage={hasTextMessage}
-                onEdit={() => onEdit?.(message)}
-                onDelete={() => onDelete?.(message.chat_id)}
-                onReply={() => onReply?.(message)}
-              />
+
+            {/* Timestamp + edited + read receipt — only on last bubble of group */}
+            {isLastInGroup && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  marginTop: 4,
+                  flexDirection: isOwn ? 'row-reverse' : 'row',
+                }}
+              >
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  {formatTime(message.created_at)}
+                </span>
+                {message.is_edited && !isDeleted && (
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    edited
+                  </span>
+                )}
+                {isOwn && !isDeleted && (
+                  message.is_read
+                    ? <CheckCheck size={12} style={{ color: 'var(--accent)' }} />
+                    : <Check size={12} style={{ color: 'var(--text-muted)' }} />
+                )}
+              </div>
             )}
           </div>
-        )}
 
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: isOwn ? 'flex-end' : 'flex-start',
-            maxWidth: '68%',
-          }}
-        >
-          {/* Sender name */}
-          {!isOwn && showSender && !isPrivateRoom && (
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: 'var(--accent)',
-                marginBottom: 3,
-                paddingLeft: 2,
-              }}
-            >
-              {message.sender.username}
-            </span>
-          )}
-
-          {/* Reply preview */}
-          {message.reply_to && !isDeleted && (
-            <ReplyBubble
-              replyTo={message.reply_to}
-              isOwn={isOwn}
-              onScrollTo={onScrollToMessage ? () => onScrollToMessage(message.reply_to!.chat_id) : undefined}
-            />
-          )}
-
-          {/* Images */}
-          {imageMedia.length > 0 && !isDeleted && (
+          {/* ── Hover controls: emoji | reply | dots ── */}
+          {showControls && (
             <div
               style={{
-                position: 'relative',
-                borderRadius: 10,
-                overflow: 'hidden',
-                marginBottom: message.message || audioMedia.length > 0 || videoMedia.length > 0 ? 4 : 0,
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
-              onClick={() => setLightboxIndex(0)}
-            >
-              <Image
-                src={imageMedia[0].url}
-                alt="media"
-                width={220}
-                height={160}
-                style={{ objectFit: 'cover', display: 'block' }}
-                unoptimized
-              />
-              {extraCount > 0 && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 6,
-                    left: 6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    background: 'rgba(0,0,0,0.55)',
-                    borderRadius: 6,
-                    padding: '2px 6px 2px 4px',
-                    backdropFilter: 'blur(4px)',
-                  }}
-                >
-                  <Images size={13} color="#fff" />
-                  <span style={{ color: '#fff', fontSize: 11, fontWeight: 600, lineHeight: 1 }}>
-                    +{extraCount}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* GIF */}
-          {message.gif_url && !isDeleted && (
-            <div
-              style={{
-                borderRadius: 10,
-                overflow: 'hidden',
-                marginBottom: message.message || audioMedia.length > 0 || videoMedia.length > 0 ? 4 : 0,
-                flexShrink: 0,
-                cursor: 'pointer',
-                maxWidth: 220,
-              }}
-              onClick={() => window.open(message.gif_url!, '_blank', 'noopener')}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={message.gif_url}
-                alt="GIF"
-                style={{ width: '100%', maxWidth: 220, display: 'block' }}
-              />
-            </div>
-          )}
-
-          {/* Voice notes */}
-          {audioMedia.length > 0 && !isDeleted && audioMedia.map((m) => (
-            <VoiceNoteBubble key={m.media_id} url={m.url} isOwn={isOwn} />
-          ))}
-
-          {/* Videos */}
-          {videoMedia.length > 0 && !isDeleted && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: message.message ? 4 : 0, justifyContent: isOwn ? 'flex-end' : 'flex-start' }}>
-              {videoMedia.map((m) => (
-                <div key={m.media_id} style={{ borderRadius: 10, overflow: 'hidden', maxWidth: 220, background: 'var(--bg)' }}>
-                  <video src={m.url} controls style={{ maxWidth: 220, maxHeight: 160, display: 'block' }} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Text bubble */}
-          {(message.message || isDeleted) && (
-            <div
-              style={{
-                padding: '8px 12px',
-                borderRadius: isOwn ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-                background: isDeleted
-                  ? 'transparent'
-                  : isOwn
-                  ? 'var(--accent)'
-                  : 'var(--bg)',
-                border: isDeleted
-                  ? '1px dashed var(--border)'
-                  : isOwn
-                  ? 'none'
-                  : '1px solid var(--border)',
-                fontSize: 14,
-                lineHeight: 1.45,
-                color: isDeleted
-                  ? 'var(--text-muted)'
-                  : isOwn
-                  ? '#fff'
-                  : 'var(--text)',
-                fontStyle: isDeleted ? 'italic' : 'normal',
-                wordBreak: 'break-word',
-                whiteSpace: 'pre-wrap',
-              }}
-            >
-              {isDeleted ? 'This message was deleted' : message.message}
-            </div>
-          )}
-
-          {/* Reaction bar */}
-          {!isDeleted && (
-            <ReactionBar
-              reactions={reactions}
-              chatId={message.chat_id}
-              isOwn={isOwn}
-              currentUserId={currentUserId}
-              onReact={onReact}
-              onUnreact={onUnreact}
-              onSwapReact={onSwapReact}
-            />
-          )}
-
-          {/* Timestamp + edited label + read receipt */}
-          {isLastInGroup && (
-            <div
-              style={{
+                visibility: hovered ? 'visible' : 'hidden',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
-                marginTop: 3,
-                paddingLeft: isOwn ? 0 : 2,
-                paddingRight: isOwn ? 2 : 0,
-                flexDirection: isOwn ? 'row-reverse' : 'row',
+                gap: 2,
+                flexShrink: 0,
               }}
             >
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                {formatTime(message.created_at)}
-              </span>
-              {message.is_edited && !isDeleted && (
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                  edited
-                </span>
+              {(onReact || onUnreact) && (
+                <QuickReactButton
+                  chatId={message.chat_id}
+                  isOwn={isOwn}
+                  currentUserId={currentUserId}
+                  reactions={reactions}
+                  onReact={onReact}
+                  onUnreact={onUnreact}
+                  onSwapReact={onSwapReact}
+                />
               )}
-              {isOwn && !isDeleted && (
-                message.is_read
-                  ? <CheckCheck size={12} color="var(--accent)" />
-                  : <Check size={12} color="var(--text-muted)" />
+              {onReply && (
+                <button
+                  onClick={() => onReply(message)}
+                  title="Reply"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '2px 4px',
+                    borderRadius: 6,
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    opacity: 0.8,
+                  }}
+                >
+                  <Reply size={15} />
+                </button>
+              )}
+              {(onEdit || onDelete || onReply) && (
+                <MessageMenu
+                  isOwn={isOwn}
+                  hasTextMessage={hasTextMessage}
+                  onEdit={() => onEdit?.(message)}
+                  onDelete={() => onDelete?.(message.chat_id)}
+                  onReply={() => onReply?.(message)}
+                />
               )}
             </div>
           )}

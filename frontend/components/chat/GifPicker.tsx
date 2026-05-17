@@ -62,7 +62,7 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
     >
       {/* Search bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <Search size={14} color="var(--text-muted)" />
+        <Search size={14} style={{ color: 'var(--text-muted)' }} />
         <input
           autoFocus
           value={query}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MessageBubble } from './MessageBubble';
+import { Avatar } from '@/components/shared/Avatar';
 import type { ChatMessage } from '@/lib/services/chat';
 
 interface MessageListProps {
@@ -116,7 +117,7 @@ export function MessageList({
       style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '16px 20px',
+        padding: '16px 12px',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -162,16 +163,29 @@ export function MessageList({
         );
       })}
 
-      {/* Typing indicator */}
+      {/* Typing indicator — same layout as an other-user message bubble */}
       {typingUsers.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0 8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'flex-start',
+            gap: 8,
+            padding: '0 8px',
+            marginBottom: 8,
+          }}
+        >
+          {/* Avatar slot */}
+          <div style={{ width: 28, flexShrink: 0 }}>
+            <Avatar username={typingUsers[0]} size={28} />
+          </div>
+
+          {/* Dots bubble */}
           <div
             style={{
-              padding: '10px 16px',
+              padding: '13px 16px',
               borderRadius: '18px 18px 18px 4px',
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+              background: 'oklch(28% 0.01 260)',
               display: 'flex',
               gap: 5,
               alignItems: 'center',
@@ -181,10 +195,10 @@ export function MessageList({
               <span
                 key={i}
                 style={{
-                  width: 8,
-                  height: 8,
+                  width: 7,
+                  height: 7,
                   borderRadius: '50%',
-                  background: 'var(--accent)',
+                  background: 'rgba(255,255,255,0.55)',
                   display: 'inline-block',
                   animation: `bounce 1.1s ease-in-out ${i * 0.18}s infinite`,
                 }}

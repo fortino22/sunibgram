@@ -505,7 +505,7 @@ export function ChatInput({
                   title="Cancel"
                   style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <X size={14} color="var(--text-muted)" />
+                  <X size={14} style={{ color: 'var(--text-muted)' }} />
                 </button>
                 <button
                   onClick={handleSaveEdit}

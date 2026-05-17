@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import {
   getTrendingHashtags,
@@ -79,6 +79,7 @@ export function useExplorePeople(q: string) {
       return getPeople(q, token);
     },
     enabled: token !== null && q.trim().length > 0,
+    placeholderData: keepPreviousData,
   });
 }
 

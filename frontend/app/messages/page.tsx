@@ -1,28 +1,32 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { MessageCircle } from 'lucide-react';
 import { ConversationList } from '@/components/chat/ConversationList';
 import { ChatHeader } from '@/components/chat/ChatHeader';
 import { MessageList } from '@/components/chat/MessageList';
 import { ChatInput } from '@/components/chat/ChatInput';
 import { NewChatModal } from '@/components/chat/NewChatModal';
+import { GroupSettingsModal } from '@/components/chat/GroupSettingsModal';
 import { useChatSocket } from '@/hooks/useChatSocket';
 import { useChatMessages } from '@/hooks/chat/useChatMessages';
-import { useChatRoom } from '@/hooks/chat/useChatRooms';
+import { useChatRoom, useChatRooms } from '@/hooks/chat/useChatRooms';
 import { useMarkMessagesRead } from '@/hooks/chat/useMarkMessagesRead';
 import { useProfile } from '@/hooks/useProfile';
 import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useDeleteMessage } from '@/hooks/chat/useDeleteMessage';
 import { useAddReaction, useRemoveReaction, useSwapReaction } from '@/hooks/chat/useReactToMessage';
-import type { ChatMessage } from '@/lib/services/chat';
+import type { ChatMessage, ChatRoomsResponse } from '@/lib/services/chat';
 
 export default function MessagesPage() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
+  const queryClient = useQueryClient();
   const { activeRoomId, setActiveRoomId } = useChatStore();
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
 
@@ -65,10 +69,21 @@ export default function MessagesPage() {
   }, [swapReaction]);
 
   // Single WebSocket connection for the entire messages page
-  const { joinRoom, leaveRoom, startTyping, stopTyping, typingUsersByRoom } = useChatSocket({
+  const { joinRoom, startTyping, stopTyping, typingUsersByRoom, status: socketStatus } = useChatSocket({
     accessToken: token,
     currentUserId: user?.id,
+    activeRoomId,
   });
+
+  const allRoomsQuery = useChatRooms();
+  const allRooms = allRoomsQuery.data?.data ?? [];
+
+  // Auto-join ALL rooms when the socket opens so we receive broadcasts for every room
+  // (enables real-time updates in conversation list, avatar changes, etc.)
+  useEffect(() => {
+    if (socketStatus !== 'open' || allRooms.length === 0) return;
+    allRooms.forEach((r) => joinRoom(r.room_id));
+  }, [socketStatus, allRooms, joinRoom]);
 
   const messagesQuery = useChatMessages(activeRoomId);
   const activeRoom = useChatRoom(activeRoomId);
@@ -79,16 +94,22 @@ export default function MessagesPage() {
   const otherUserId = activeRoom?.type === 'private' ? activeRoom.other_user?.user_id : undefined;
   const { data: otherProfile } = useProfile(otherUserId ?? null);
 
-  // Join the active room when it changes; leave on cleanup
+  // Join the active room when it changes and zero out its unread count
   useEffect(() => {
     if (!activeRoomId) return;
     setEditingMessage(null);
     setReplyingTo(null);
     joinRoom(activeRoomId);
-    return () => {
-      leaveRoom(activeRoomId);
-    };
-  }, [activeRoomId, joinRoom, leaveRoom]);
+    queryClient.setQueryData<ChatRoomsResponse>(['chat', 'rooms'], (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        data: old.data.map((r) =>
+          r.room_id === activeRoomId ? { ...r, unread_count: 0 } : r,
+        ),
+      };
+    });
+  }, [activeRoomId, joinRoom, queryClient]);
 
   // Mark unread messages from others as read whenever the message list updates
   useEffect(() => {
@@ -131,6 +152,7 @@ export default function MessagesPage() {
           activeRoomId={activeRoomId}
           onRoomSelect={setActiveRoomId}
           onNewChat={() => setShowNewChat(true)}
+          typingUsersByRoom={typingUsersByRoom}
         />
       </div>
 
@@ -150,6 +172,11 @@ export default function MessagesPage() {
               room={activeRoom}
               otherProfile={otherProfile}
               isTyping={isTyping}
+              onGroupSettings={
+                activeRoom.type === 'group'
+                  ? () => setShowGroupSettings(true)
+                  : undefined
+              }
             />
             <MessageList
               messages={messages}
@@ -198,7 +225,7 @@ export default function MessagesPage() {
                 justifyContent: 'center',
               }}
             >
-              <MessageCircle size={36} color="var(--text)" strokeWidth={1.4} />
+              <MessageCircle size={36} strokeWidth={1.4} style={{ color: 'var(--text)' }} />
             </div>
             <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
@@ -233,6 +260,16 @@ export default function MessagesPage() {
           onRoomCreated={(roomId) => {
             setShowNewChat(false);
             setActiveRoomId(roomId);
+          }}
+        />
+      )}
+      {showGroupSettings && activeRoom?.type === 'group' && (
+        <GroupSettingsModal
+          room={activeRoom}
+          onClose={() => setShowGroupSettings(false)}
+          onLeave={() => {
+            setShowGroupSettings(false);
+            setActiveRoomId(null);
           }}
         />
       )}

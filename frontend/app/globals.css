@@ -17,6 +17,7 @@
   --amber:           oklch(72% 0.14 70);
   --amber-soft:      oklch(16% 0.05 70);
   --text:            oklch(96% 0.003 260);
+  --text-muted:      oklch(55% 0.006 260);
   --text-secondary:  oklch(65% 0.006 260);
   --text-tertiary:   oklch(44% 0.006 260);
   --text-on-dark:    oklch(96% 0.003 260);

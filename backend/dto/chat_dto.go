@@ -3,21 +3,43 @@ package dto
 import "github.com/sunibgram/dto/utils"
 
 type ChatRoomParticipant struct {
-	UserID      uint   `json:"user_id"`
-	Username    string `json:"username"`
-	Name        string `json:"name"`
-	FacultyName string `json:"faculty_name"`
+	UserID      uint    `json:"user_id"`
+	Username    string  `json:"username"`
+	Name        string  `json:"name"`
+	FacultyName string  `json:"faculty_name"`
+	AvatarURL   *string `json:"avatar_url,omitempty"`
+}
+
+type LastMessagePreview struct {
+	ChatID    uint                `json:"chat_id"`
+	SenderID  uint                `json:"sender_id"`
+	Message   *string             `json:"message,omitempty"`
+	GifURL    *string             `json:"gif_url,omitempty"`
+	HasMedia  bool                `json:"has_media"`
+	CreatedAt utils.FormattedTime `json:"created_at"`
 }
 
 type ChatRoomResponse struct {
 	RoomID      uint                 `json:"room_id"`
 	Name        *string              `json:"name,omitempty"`
 	Description *string              `json:"description,omitempty"`
+	AvatarURL   *string              `json:"avatar_url,omitempty"`
 	Type        string               `json:"type"`
 	MemberCount int                  `json:"member_count"`
+	IsMuted     bool                 `json:"is_muted"`
+	UnreadCount int                  `json:"unread_count"`
 	OtherUser   *ChatRoomParticipant `json:"other_user,omitempty"`
+	LastMessage *LastMessagePreview  `json:"last_message,omitempty"`
 	CreatedAt   utils.FormattedTime  `json:"created_at"`
 	UpdatedAt   utils.FormattedTime  `json:"updated_at"`
+}
+
+type GroupMemberResponse struct {
+	UserID      uint   `json:"user_id"`
+	Username    string `json:"username"`
+	Name        string `json:"name"`
+	FacultyName string `json:"faculty_name"`
+	AvatarURL   string `json:"avatar_url"`
 }
 
 type ChatMediaResponse struct {

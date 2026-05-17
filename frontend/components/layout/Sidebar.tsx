@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { LogOut } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Avatar } from '@/components/shared/Avatar';
 import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
@@ -123,6 +124,7 @@ export function Sidebar() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const { data: profile } = useMyProfile();
+  const queryClient = useQueryClient();
   const [postHovered, setPostHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const avatarSrc = profile?.avatar ?? null;
@@ -131,6 +133,7 @@ export function Sidebar() {
   const handleLogout = async () => {
     await fetch('/api/auth/clear-session', { method: 'POST' });
     logout();
+    queryClient.clear();
     router.replace('/login');
   };
 

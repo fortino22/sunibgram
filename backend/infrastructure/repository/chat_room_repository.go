@@ -103,10 +103,34 @@ func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 	return nil
 }
 
-func (r *ChatRoomRepository) UpdateGroup(roomID uint, name string, description *string) error {
+func (r *ChatRoomRepository) RemoveMember(roomID, userID uint) error {
+	ctx := context.Background()
+	result := r.writeDB.Where("room_id = ? AND user_id = ?", roomID, userID).Delete(&model.ChatRoomMember{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected > 0 {
+		r.writeDB.Model(&model.ChatRoom{}).Where("room_id = ?", roomID).
+			UpdateColumn("member_count", gorm.Expr("GREATEST(member_count - 1, 0)"))
+		_ = r.cache.Delete(ctx,
+			fmt.Sprintf("chat:member:%d:%d", roomID, userID),
+			fmt.Sprintf("chat:room:%d", roomID),
+		)
+	}
+	return nil
+}
+
+func (r *ChatRoomRepository) UpdateGroup(roomID uint, name string, description *string, avatarURL *string) error {
+	updates := map[string]any{
+		"name":        name,
+		"description": description,
+	}
+	if avatarURL != nil {
+		updates["avatar_url"] = *avatarURL
+	}
 	err := r.writeDB.Model(&model.ChatRoom{}).
 		Where("room_id = ?", roomID).
-		Updates(map[string]any{"name": name, "description": description}).Error
+		Updates(updates).Error
 	if err != nil {
 		return err
 	}
@@ -149,25 +173,71 @@ func (r *ChatRoomRepository) DeleteGroup(roomID uint) error {
 	return r.cache.Delete(ctx, keys...)
 }
 
+func (r *ChatRoomRepository) FindMembers(roomID uint) ([]domainrepo.ChatRoomMemberInfo, error) {
+	type row struct {
+		UserID           uint
+		Username         string
+		Name             string
+		FacultyName      string
+		AvatarObjectName string
+		AvatarBucket     string
+	}
+	var rows []row
+	err := r.readDB.Raw(`
+		SELECT u.user_id, u.user_name AS username, u.name,
+		       COALESCE(f.faculty_name, '') AS faculty_name,
+		       COALESCE(up.avatar_object_name, '') AS avatar_object_name,
+		       COALESCE(up.avatar_bucket, '') AS avatar_bucket
+		FROM chat_room_members crm
+		JOIN users u ON u.user_id = crm.user_id
+		LEFT JOIN user_profiles up ON up.user_id = u.user_id
+		LEFT JOIN user_faculties uf ON uf.user_id = u.user_id
+		LEFT JOIN faculties f ON f.faculty_id = uf.faculty_id
+		WHERE crm.room_id = ?
+		ORDER BY crm.joined_at ASC`,
+		roomID,
+	).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make([]domainrepo.ChatRoomMemberInfo, len(rows))
+	for i, row := range rows {
+		result[i] = domainrepo.ChatRoomMemberInfo{
+			UserID:           row.UserID,
+			Username:         row.Username,
+			Name:             row.Name,
+			FacultyName:      row.FacultyName,
+			AvatarObjectName: row.AvatarObjectName,
+			AvatarBucket:     row.AvatarBucket,
+		}
+	}
+	return result, nil
+}
+
 func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID uint) (map[uint]domainrepo.ChatRoomMemberInfo, error) {
 	if len(roomIDs) == 0 {
 		return map[uint]domainrepo.ChatRoomMemberInfo{}, nil
 	}
 	type row struct {
-		RoomID      uint
-		UserID      uint
-		Username    string
-		Name        string
-		FacultyName string
+		RoomID           uint
+		UserID           uint
+		Username         string
+		Name             string
+		FacultyName      string
+		AvatarObjectName string
+		AvatarBucket     string
 	}
 	var rows []row
 	err := r.readDB.Raw(`
 		SELECT crm.room_id, u.user_id, u.user_name AS username, u.name,
-		       COALESCE(f.faculty_name, '') AS faculty_name
+		       COALESCE(f.faculty_name, '') AS faculty_name,
+		       COALESCE(up.avatar_object_name, '') AS avatar_object_name,
+		       COALESCE(up.avatar_bucket, '') AS avatar_bucket
 		FROM chat_room_members crm
 		JOIN users u ON u.user_id = crm.user_id
 		LEFT JOIN user_faculties uf ON uf.user_id = u.user_id
 		LEFT JOIN faculties f ON f.faculty_id = uf.faculty_id
+		LEFT JOIN user_profiles up ON up.user_id = u.user_id
 		WHERE crm.room_id IN ? AND crm.user_id != ?`,
 		roomIDs, excludeUserID,
 	).Scan(&rows).Error
@@ -177,13 +247,145 @@ func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID u
 	result := make(map[uint]domainrepo.ChatRoomMemberInfo, len(rows))
 	for _, r := range rows {
 		result[r.RoomID] = domainrepo.ChatRoomMemberInfo{
-			UserID:      r.UserID,
-			Username:    r.Username,
-			Name:        r.Name,
-			FacultyName: r.FacultyName,
+			UserID:           r.UserID,
+			Username:         r.Username,
+			Name:             r.Name,
+			FacultyName:      r.FacultyName,
+			AvatarObjectName: r.AvatarObjectName,
+			AvatarBucket:     r.AvatarBucket,
 		}
 	}
 	return result, nil
+}
+
+func (r *ChatRoomRepository) FindLastMessages(roomIDs []uint) (map[uint]domainrepo.LastMessageInfo, error) {
+	if len(roomIDs) == 0 {
+		return map[uint]domainrepo.LastMessageInfo{}, nil
+	}
+	type row struct {
+		RoomID   uint
+		ChatID   uint
+		SenderID uint
+		Message  *string
+		GifURL   *string
+		HasMedia bool
+		CreatedAt time.Time
+	}
+	var rows []row
+	err := r.readDB.Raw(`
+		SELECT c.room_id, c.chat_id, c.sender_id, c.message, c.gif_url, c.created_at,
+		       EXISTS(SELECT 1 FROM chat_media cm WHERE cm.chat_id = c.chat_id) AS has_media
+		FROM chats c
+		WHERE c.room_id IN ?
+		  AND c.deleted_at IS NULL
+		  AND c.chat_id = (
+		      SELECT MAX(c2.chat_id) FROM chats c2
+		      WHERE c2.room_id = c.room_id AND c2.deleted_at IS NULL
+		  )`,
+		roomIDs,
+	).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uint]domainrepo.LastMessageInfo, len(rows))
+	for _, row := range rows {
+		result[row.RoomID] = domainrepo.LastMessageInfo{
+			RoomID:    row.RoomID,
+			ChatID:    row.ChatID,
+			SenderID:  row.SenderID,
+			Message:   row.Message,
+			GifURL:    row.GifURL,
+			HasMedia:  row.HasMedia,
+			CreatedAt: row.CreatedAt,
+		}
+	}
+	return result, nil
+}
+
+func (r *ChatRoomRepository) FindUnreadCounts(userID uint, roomIDs []uint) (map[uint]int, error) {
+	if len(roomIDs) == 0 {
+		return map[uint]int{}, nil
+	}
+	type row struct {
+		RoomID      uint
+		UnreadCount int
+	}
+	var rows []row
+	err := r.readDB.Raw(`
+		SELECT c.room_id, COUNT(*) AS unread_count
+		FROM chats c
+		JOIN chat_rooms r ON r.room_id = c.room_id
+		WHERE c.room_id IN ?
+		  AND c.sender_id != ?
+		  AND c.deleted_at IS NULL
+		  AND (
+		      (r.type = 'private' AND c.is_read = false)
+		      OR
+		      (r.type = 'group' AND NOT EXISTS (
+		          SELECT 1 FROM chat_reads cr
+		          WHERE cr.chat_id = c.chat_id AND cr.user_id = ?
+		      ))
+		  )
+		GROUP BY c.room_id`,
+		roomIDs, userID, userID,
+	).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uint]int, len(rows))
+	for _, row := range rows {
+		result[row.RoomID] = row.UnreadCount
+	}
+	return result, nil
+}
+
+func (r *ChatRoomRepository) GetUserRoomIDs(userID uint) ([]uint, error) {
+	var ids []uint
+	err := r.readDB.Model(&model.ChatRoomMember{}).
+		Where("user_id = ?", userID).
+		Pluck("room_id", &ids).Error
+	return ids, err
+}
+
+func (r *ChatRoomRepository) ToggleMute(roomID, userID uint) (bool, error) {
+	var member model.ChatRoomMember
+	if err := r.readDB.Where("room_id = ? AND user_id = ?", roomID, userID).First(&member).Error; err != nil {
+		return false, err
+	}
+	newState := !member.IsMuted
+	err := r.writeDB.Model(&model.ChatRoomMember{}).
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		UpdateColumn("is_muted", newState).Error
+	return newState, err
+}
+
+func (r *ChatRoomRepository) GetMuteStatuses(userID uint, roomIDs []uint) (map[uint]bool, error) {
+	if len(roomIDs) == 0 {
+		return map[uint]bool{}, nil
+	}
+	type row struct {
+		RoomID  uint
+		IsMuted bool
+	}
+	var rows []row
+	err := r.readDB.Model(&model.ChatRoomMember{}).
+		Where("user_id = ? AND room_id IN ?", userID, roomIDs).
+		Select("room_id, is_muted").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[uint]bool, len(rows))
+	for _, row := range rows {
+		result[row.RoomID] = row.IsMuted
+	}
+	return result, nil
+}
+
+func (r *ChatRoomRepository) TouchUpdatedAt(roomID uint) error {
+	return r.writeDB.Model(&model.ChatRoom{}).
+		Where("room_id = ?", roomID).
+		UpdateColumn("updated_at", gorm.Expr("NOW()")).Error
 }
 
 func (r *ChatRoomRepository) FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error) {

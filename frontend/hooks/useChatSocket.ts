@@ -9,7 +9,7 @@ import {
   type WebSocketStatus,
   type ClientEnvelope,
 } from './useWebSocket';
-import type { ChatMessage, ChatMessagesResponse, ChatReactionSummary } from '@/lib/services/chat';
+import type { ChatMessage, ChatMessagesResponse, ChatRoom, ChatRoomsResponse, ChatReactionSummary } from '@/lib/services/chat';
 
 // ── Payload types matching actual backend broadcasts ──────────────────────────
 
@@ -44,6 +44,11 @@ interface MessageReactionPayload {
   room_id: number;
   user_id: number;
   emoji: string;
+}
+
+interface UserProfileUpdatedPayload {
+  user_id: number;
+  avatar_url: string;
 }
 
 // ── Client → server message shapes ───────────────────────────────────────────
@@ -106,6 +111,7 @@ function dropReaction(
 export interface UseChatSocketOptions {
   accessToken: string | null;
   currentUserId?: number;
+  activeRoomId?: number | null;
   onSocketError?: (payload: SocketErrorPayload) => void;
 }
 
@@ -146,6 +152,7 @@ function removeTypingUser(
 export function useChatSocket({
   accessToken,
   currentUserId,
+  activeRoomId,
   onSocketError,
 }: UseChatSocketOptions): UseChatSocketResult {
   const queryClient = useQueryClient();
@@ -153,6 +160,12 @@ export function useChatSocket({
 
   const currentUserIdRef = useRef(currentUserId);
   currentUserIdRef.current = currentUserId;
+
+  const activeRoomIdRef = useRef(activeRoomId);
+  activeRoomIdRef.current = activeRoomId;
+
+  // Ref so we can call sendJson from inside handleMessage without a circular dep
+  const sendJsonRef = useRef<((msg: ClientEnvelope) => boolean) | null>(null);
 
   const handleMessage = useCallback(
     (message: ServerEnvelope): void => {
@@ -193,7 +206,80 @@ export function useChatSocket({
             },
           );
 
-          void queryClient.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+          // Update room list: move to top, update last_message, increment unread for non-active rooms
+          queryClient.setQueryData<ChatRoomsResponse>(
+            ['chat', 'rooms'],
+            (old) => {
+              if (!old) return old;
+              const now = new Date().toISOString();
+              const isFromOther = msg.sender.id !== currentUserIdRef.current;
+              const isActiveRoom = msg.room_id === activeRoomIdRef.current;
+              const updated = old.data.map((r) =>
+                r.room_id === msg.room_id
+                  ? {
+                      ...r,
+                      updated_at: now,
+                      last_message: {
+                        chat_id: msg.chat_id,
+                        sender_id: msg.sender.id,
+                        message: msg.message,
+                        gif_url: msg.gif_url ?? null,
+                        has_media: (msg.media?.length ?? 0) > 0,
+                        created_at: msg.created_at,
+                      },
+                      unread_count: isFromOther && !isActiveRoom
+                        ? (r.unread_count ?? 0) + 1
+                        : (r.unread_count ?? 0),
+                    }
+                  : r,
+              );
+              updated.sort(
+                (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+              );
+              return { ...old, data: updated };
+            },
+          );
+          break;
+        }
+
+        // ── New room (created by someone else or first DM) ─────────────────
+        case 'room:new': {
+          const room = message.data as ChatRoom;
+          queryClient.setQueryData<ChatRoomsResponse>(
+            ['chat', 'rooms'],
+            (old) => {
+              if (!old) return old;
+              // Skip if already in the list
+              if (old.data.some((r) => r.room_id === room.room_id)) return old;
+              const updated = [room, ...old.data];
+              return { ...old, data: updated, meta: { ...old.meta, total: old.meta.total + 1 } };
+            },
+          );
+          // Auto-join the socket room so we receive future broadcasts for it
+          sendJsonRef.current?.({ event: 'join_room', room_id: room.room_id } as ClientEnvelope);
+          break;
+        }
+
+        // ── Avatar / profile updated ───────────────────────────────────────
+        case 'user:profile_updated': {
+          const payload = message.data as UserProfileUpdatedPayload;
+          // Update avatar in all rooms where the updated user is the other participant
+          queryClient.setQueryData<ChatRoomsResponse>(
+            ['chat', 'rooms'],
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                data: old.data.map((r) =>
+                  r.other_user?.user_id === payload.user_id
+                    ? { ...r, other_user: { ...r.other_user!, avatar_url: payload.avatar_url } }
+                    : r,
+                ),
+              };
+            },
+          );
+          // Also invalidate the profile cache so ChatHeader and other components update
+          void queryClient.invalidateQueries({ queryKey: ['profile', payload.user_id] });
           break;
         }
 
@@ -319,6 +405,9 @@ export function useChatSocket({
     onMessage: handleMessage,
     onErrorMessage: onSocketError,
   });
+
+  // Keep ref in sync so handleMessage can emit join_room for room:new events
+  sendJsonRef.current = socket.sendJson;
 
   const joinRoom = useCallback(
     (roomId: number): boolean =>
