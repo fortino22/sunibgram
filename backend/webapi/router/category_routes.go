@@ -7,9 +7,9 @@ import (
 )
 
 func registerCategoryRoutes(api fiber.Router, categoryCtrl *controller.CategoryController) {
-	categories := api.Group("/categories", middleware.Auth(), middleware.AdminOnly())
+	api.Get("/categories", middleware.Auth(), categoryCtrl.GetAll)
 
-	categories.Get("", categoryCtrl.GetAll)
+	categories := api.Group("/categories", middleware.Auth(), middleware.AdminOnly())
 	categories.Post("", categoryCtrl.Create)
 	categories.Put("/:id", categoryCtrl.Update)
 	categories.Delete("/:id", categoryCtrl.Delete)
