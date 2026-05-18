@@ -12,10 +12,23 @@ export interface Community {
   name: string;
   description?: string;
   rules?: string;
-  category?: string;
+  category_id?: string;
+  category?: Category | null;
   visibility?: CommunityVisibility;
   avatar?: string | null;
   banner?: string | null;
+  [key: string]: unknown;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  created_at?: string;
+}
+
+export interface CategoryListResponse {
+  data: Category[];
   [key: string]: unknown;
 }
 
@@ -58,7 +71,7 @@ export interface CommunityParams {
   name: string;
   description: string;
   rules: string;
-  category: string;
+  categoryId: string;
   visibility: CommunityVisibility;
   avatar?: File | null;
   banner?: File | null;
@@ -86,7 +99,7 @@ function buildCommunityFormData(params: CommunityParams | UpdateCommunityParams)
   appendOptionalString(formData, 'name', params.name);
   appendOptionalString(formData, 'description', params.description);
   appendOptionalString(formData, 'rules', params.rules);
-  appendOptionalString(formData, 'category', params.category);
+  appendOptionalString(formData, 'category_id', params.categoryId);
   appendOptionalString(formData, 'visibility', params.visibility);
 
   if ('clearAvatar' in params) {
@@ -149,9 +162,8 @@ async function requestWithMethod<T>(
   return res.json() as Promise<T>;
 }
 
-export function getCommunities(category?: string, token?: string): Promise<CommunityListResponse> {
-  const path = category ? `/api/communities?category=${encodeURIComponent(category)}` : '/api/communities';
-  return api.get<CommunityListResponse>(path, token);
+export function getCategories(token?: string): Promise<CategoryListResponse> {
+  return api.get<CategoryListResponse>('/api/categories', token);
 }
 
 export function getMyCommunities(token: string): Promise<CommunityListResponse> {

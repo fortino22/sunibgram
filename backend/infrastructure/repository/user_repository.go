@@ -114,6 +114,7 @@ func (r *UserRepository) UpdateInfo(userID uint, name, username string) error {
 	r.invalidateUser(userID)
 	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	invalidateExploreCache(context.Background(), r.cache)
+	r.invalidateUserThreadCaches(userID)
 	return nil
 }
 
@@ -124,7 +125,20 @@ func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
 	r.invalidateUser(userID)
 	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	invalidateExploreCache(context.Background(), r.cache)
+	r.invalidateUserThreadCaches(userID)
 	return nil
+}
+
+func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
+	if r.cache == nil {
+		return
+	}
+	ctx := context.Background()
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
 }
 
 func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {

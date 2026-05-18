@@ -13,6 +13,7 @@ import (
 type CommunityMemberService struct {
 	communityRepo repository.ICommunityRepository
 	memberRepo    repository.ICommunityMemberRepository
+	cacheRepo     repository.ICacheRepository
 }
 
 func isModeratorOrAbove(role model.CommunityMemberRole) bool {
@@ -28,8 +29,9 @@ func isAdminOrAbove(role model.CommunityMemberRole) bool {
 func NewCommunityMemberService(
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
+	cacheRepo repository.ICacheRepository,
 ) service.ICommunityMemberService {
-	return &CommunityMemberService{communityRepo: communityRepo, memberRepo: memberRepo}
+	return &CommunityMemberService{communityRepo: communityRepo, memberRepo: memberRepo, cacheRepo: cacheRepo}
 }
 
 func (s *CommunityMemberService) Join(ctx context.Context, communityID, userID uint) error {
@@ -54,7 +56,11 @@ func (s *CommunityMemberService) Join(ctx context.Context, communityID, userID u
 	if err := s.memberRepo.Save(member); err != nil {
 		return err
 	}
-	return s.memberRepo.UpdateMemberCount(communityID, 1)
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	if err := s.memberRepo.UpdateMemberCount(communityID, 1); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *CommunityMemberService) Leave(ctx context.Context, communityID, userID uint) error {
@@ -71,7 +77,11 @@ func (s *CommunityMemberService) Leave(ctx context.Context, communityID, userID 
 	if err := s.memberRepo.Delete(communityID, userID); err != nil {
 		return err
 	}
-	return s.memberRepo.UpdateMemberCount(communityID, -1)
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	if err := s.memberRepo.UpdateMemberCount(communityID, -1); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) ([]model.CommunityMember, int64, error) {
@@ -101,7 +111,11 @@ func (s *CommunityMemberService) RemoveMember(ctx context.Context, communityID, 
 	if err := s.memberRepo.Delete(communityID, targetUserID); err != nil {
 		return err
 	}
-	return s.memberRepo.UpdateMemberCount(communityID, -1)
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	if err := s.memberRepo.UpdateMemberCount(communityID, -1); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *CommunityMemberService) IsMember(communityID, userID uint) bool {

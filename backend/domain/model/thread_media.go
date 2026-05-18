@@ -38,3 +38,8 @@ type ThreadMedia struct {
 	Bucket     string `gorm:"not null"`
 	CreatedAt  time.Time
 }
+
+type CommunityThreadMedia struct {
+	ThreadID uint
+	Media    []ThreadMedia
+}

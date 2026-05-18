@@ -8,9 +8,10 @@ interface ChatHeaderProps {
   room: ChatRoom;
   otherProfile?: UserProfile | null;
   isTyping: boolean;
+  onGroupSettings?: () => void;
 }
 
-export function ChatHeader({ room, otherProfile, isTyping }: ChatHeaderProps) {
+export function ChatHeader({ room, otherProfile, isTyping, onGroupSettings }: ChatHeaderProps) {
   const isPrivate = room.type === 'private';
   const other = room.other_user;
 
@@ -36,23 +37,31 @@ export function ChatHeader({ room, otherProfile, isTyping }: ChatHeaderProps) {
     >
       {/* Avatar */}
       {!isPrivate ? (
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: 'var(--accent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 15,
-            color: '#fff',
-            fontWeight: 600,
-            flexShrink: 0,
-          }}
-        >
-          {(room.name ?? 'G').charAt(0).toUpperCase()}
-        </div>
+        room.avatar_url ? (
+          <img
+            src={room.avatar_url}
+            alt={room.name ?? 'Group'}
+            style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              background: 'var(--accent)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 15,
+              color: '#fff',
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            {(room.name ?? 'G').charAt(0).toUpperCase()}
+          </div>
+        )
       ) : (
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <Avatar
@@ -97,12 +106,16 @@ export function ChatHeader({ room, otherProfile, isTyping }: ChatHeaderProps) {
       {/* Name + subtitle */}
       <div>
         <div
+          onClick={!isPrivate ? onGroupSettings : undefined}
           style={{
             fontWeight: 600,
             fontSize: 15,
             color: 'var(--text)',
             letterSpacing: '-0.02em',
+            cursor: !isPrivate ? 'pointer' : 'default',
+            display: 'inline-block',
           }}
+          title={!isPrivate ? 'Edit group settings' : undefined}
         >
           {displayName}
         </div>

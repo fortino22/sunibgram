@@ -127,3 +127,27 @@ type PaginatedFeedResponse struct {
 	Data []FeedItemResponse `json:"data"`
 	Meta FeedMeta           `json:"meta"`
 }
+
+type MediaOnlyItem struct {
+	ThreadID uint                  `json:"thread_id"`
+	Media    []ThreadMediaResponse `json:"media"`
+}
+
+type PaginatedMediaOnlyResponse struct {
+	Data []MediaOnlyItem `json:"data"`
+	Meta FeedMeta        `json:"meta"`
+}
+
+type CommunityThreadFeedItemResponse struct {
+	FeedItemResponse
+}
+
+type PaginatedCommunityThreadResponse struct {
+	Data []CommunityThreadFeedItemResponse `json:"data"`
+	Meta FeedMeta                          `json:"meta"`
+}
+
+type CommunityThreadMediaResponse struct {
+	ThreadID uint                  `json:"thread_id"`
+	Media    []ThreadMediaResponse `json:"media"`
+}

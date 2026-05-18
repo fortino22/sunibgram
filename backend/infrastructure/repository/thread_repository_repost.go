@@ -39,6 +39,9 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	r.invalidateInteractions(ctx, originalThreadID)
 	r.invalidateUserFeedCache(ctx, repost.UserID)
 	r.invalidateFollowingFeedCache(ctx)
+	r.invalidateForYouFeedCacheForUser(ctx, repost.UserID)
+	r.invalidateForYouFeedCachesForFollowers(ctx, repost.UserID)
+	r.invalidateTrendingFeed(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	var orig model.Thread
 	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {

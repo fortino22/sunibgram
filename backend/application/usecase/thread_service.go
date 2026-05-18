@@ -15,6 +15,7 @@ type ThreadService struct {
 	settingsRepo   repository.IUserSettingsRepository
 	followRepo     repository.IFollowRepository
 	notification   service.INotificationService
+	summaryService service.IThreadSummaryService
 }
 
 func NewThreadService(
@@ -27,6 +28,7 @@ func NewThreadService(
 	settingsRepo repository.IUserSettingsRepository,
 	followRepo repository.IFollowRepository,
 	notification service.INotificationService,
+	summaryService service.IThreadSummaryService,
 ) service.IThreadService {
 	return &ThreadService{
 		threadRepo:     threadRepo,
@@ -38,5 +40,6 @@ func NewThreadService(
 		settingsRepo:   settingsRepo,
 		followRepo:     followRepo,
 		notification:   notification,
+		summaryService: summaryService,
 	}
 }

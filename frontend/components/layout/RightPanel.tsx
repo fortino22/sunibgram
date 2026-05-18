@@ -72,6 +72,8 @@ export function RightPanel() {
   const pathname = usePathname();
   const isExplorePage = pathname === '/explore';
 
+  if (pathname.startsWith('/messages')) return null;
+
   return (
     <aside className="right-panel">
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>

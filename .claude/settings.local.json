@@ -39,7 +39,22 @@
       "Bash(Format-Table -AutoSize)",
       "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\" -Force)",
       "Bash(Select-Object Name, Mode)",
-      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\" -Recurse -Directory)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\" -Recurse -Directory)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\backend\" -Recurse -Filter \"*chat*\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(cd /c/Coding/sunibgram/backend && find . -type f -name \"*.go\" | head -30)",
+      "Read(//c/c/Coding/sunibgram/**)",
+      "Bash(xargs grep -l \"socket\\\\|\\\\.on\\\\\\(\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\\\\src\" -Recurse -Include \"*.tsx\", \"*.ts\", \"*.jsx\", \"*.js\")",
+      "Bash(Select-Object -First 50)",
+      "Bash(npm install *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\\\\src\" -Recurse -Directory)",
+      "Bash(Head -50)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Coding\\\\sunibgram\\\\frontend\\\\src\" -Recurse -File)",
+      "Bash(Where-Object Name -match \"\\(message|chat|conversation|dialog|modal\\)\")",
+      "Bash(xargs grep -l \"socket\\\\.io\\\\|socketio\\\\|websocket\")",
+      "Bash(xargs grep -l \"socket\\\\.io\\\\|io\\(\")",
+      "Bash(xargs grep -l \"useChatSocket\")"
     ]
   }
 }

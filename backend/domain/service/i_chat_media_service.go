@@ -12,4 +12,5 @@ type IChatMediaService interface {
 	GetByChatID(chatID uint) ([]model.ChatMedia, error)
 	GetByChatIDs(chatIDs []uint) ([]model.ChatMedia, error)
 	GetURL(bucket, objectName string) string
+	GeneratePresignedURL(ctx context.Context, bucket, objectName string) (string, error)
 }

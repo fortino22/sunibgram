@@ -17,6 +17,7 @@
   --amber:           oklch(72% 0.14 70);
   --amber-soft:      oklch(16% 0.05 70);
   --text:            oklch(96% 0.003 260);
+  --text-muted:      oklch(55% 0.006 260);
   --text-secondary:  oklch(65% 0.006 260);
   --text-tertiary:   oklch(44% 0.006 260);
   --text-on-dark:    oklch(96% 0.003 260);
@@ -78,6 +79,14 @@ body {
   overflow-y: auto;
 }
 
+.sidebar-nav.sidebar-collapsed {
+  width: 64px;
+}
+
+.sidebar-nav.sidebar-collapsed .sidebar-label {
+  display: none;
+}
+
 .right-panel {
   width: 300px;
   flex-shrink: 0;
@@ -108,4 +117,24 @@ body {
   .sidebar-nav {
     display: none !important;
   }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+
+@keyframes msg-highlight {
+  0% { background-color: transparent; }
+  30% { background-color: rgba(99, 179, 237, 0.28); }
+  100% { background-color: transparent; }
 }

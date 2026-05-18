@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 )
@@ -24,6 +25,11 @@ func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, l
 		return nil, 0, err
 	}
 	return filtered, int64(len(filtered)), nil
+}
+
+func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	return s.threadRepo.FindForYouFeed(ctx, userID, page, limit)
 }
 
 func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
@@ -193,15 +199,53 @@ func (s *ThreadService) filterCommunityMemberFeed(requesterID uint, threads []mo
 	return outThreads, outParents, int64(len(outThreads)), nil
 }
 
-func (s *ThreadService) GetCommunityThreads(communityID, userID uint, page, limit int, sort string) ([]model.Thread, int64, error) {
+func (s *ThreadService) ensureCommunityThreadAccess(communityID, userID uint) error {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
-		return nil, 0, errors.New("community not found")
+		return errors.New("community not found")
 	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
-		return nil, 0, errors.New("forbidden")
+		return errors.New("forbidden")
+	}
+	return nil
+}
+
+func (s *ThreadService) GetCommunityThreadTop(communityID, userID uint, page, limit int) ([]model.Thread, int64, error) {
+	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
+		return nil, 0, err
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	return s.threadRepo.FindByCommunityID(communityID, page, limit, sort)
+	threads, total, err := s.threadRepo.FindCommunityTop(communityID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := s.filterViewableThreads(context.Background(), &userID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, total, nil
+}
+
+func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, int64, error) {
+	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
+		return nil, 0, err
+	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	threads, total, err := s.threadRepo.FindCommunityLatest(communityID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := s.filterViewableThreads(context.Background(), &userID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, total, nil
+}
+
+func (s *ThreadService) GetCommunityThreadMedia(communityID, userID uint) ([]model.CommunityThreadMedia, error) {
+	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
+		return nil, err
+	}
+	return s.threadRepo.FindCommunityMedia(communityID, userID)
 }
 
 func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
@@ -211,4 +255,17 @@ func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.
 		return nil, nil, 0, err
 	}
 	return s.filterUserFeed(context.Background(), userID, threads, parents)
+}
+
+func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error) {
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	threads, total, err := s.threadRepo.FindAllCommunityThreads(userID, categoryID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := s.filterViewableThreads(ctx, &userID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, total, nil
 }

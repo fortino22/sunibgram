@@ -1,8 +1,8 @@
 package controller
 
 import (
-	webapiutils "github.com/sunibgram/webapi/utils"
 	"strconv"
+	webapiutils "github.com/sunibgram/webapi/utils"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
@@ -11,12 +11,24 @@ import (
 )
 
 type UserProfileController struct {
-	profileService service.IUserProfileService
-	facultyService service.IFacultyService
+	profileService  service.IUserProfileService
+	facultyService  service.IFacultyService
+	hub             service.IHub
+	chatRoomService service.IChatRoomService
 }
 
-func NewUserProfileController(profileService service.IUserProfileService, facultyService service.IFacultyService) *UserProfileController {
-	return &UserProfileController{profileService: profileService, facultyService: facultyService}
+func NewUserProfileController(
+	profileService service.IUserProfileService,
+	facultyService service.IFacultyService,
+	hub service.IHub,
+	chatRoomService service.IChatRoomService,
+) *UserProfileController {
+	return &UserProfileController{
+		profileService:  profileService,
+		facultyService:  facultyService,
+		hub:             hub,
+		chatRoomService: chatRoomService,
+	}
 }
 
 func (c *UserProfileController) GetMyFaculty(ctx *fiber.Ctx) error {
@@ -96,6 +108,8 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 		input.Bio = &bio
 	}
 
+	avatarChanged := input.Avatar != nil || input.ClearAvatar
+
 	if err := c.profileService.UpdateProfile(ctx.Context(), claims.UserID, input); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -104,6 +118,26 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 		if err := c.facultyService.SetUserFaculty(claims.UserID, facultyID); err != nil {
 			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
+	}
+
+	// Broadcast avatar change to all rooms so other users see the update in real-time
+	if avatarChanged && c.hub != nil && c.chatRoomService != nil {
+		go func(userID uint) {
+			fp, err := c.profileService.GetProfile(userID, nil)
+			if err != nil {
+				return
+			}
+			avatarURL := ""
+			if fp.Profile != nil {
+				avatarURL = BuildMediaURL(fp.Profile.AvatarObjectName, fp.Profile.AvatarBucket, c.profileService.GetURL)
+			}
+			payload := fiber.Map{"user_id": userID, "avatar_url": avatarURL}
+			c.hub.EmitToUser(userID, "user:profile_updated", payload)
+			roomIDs, _ := c.chatRoomService.GetUserRoomIDs(userID)
+			for _, roomID := range roomIDs {
+				c.hub.Broadcast(roomID, "user:profile_updated", payload)
+			}
+		}(claims.UserID)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "profile updated successfully"})

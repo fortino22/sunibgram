@@ -15,10 +15,7 @@ import (
 	"github.com/sunibgram/infrastructure/cache"
 )
 
-const (
-	claimKindAccess = "access"
-	localSocketUser = "socket_user_id"
-)
+const claimKindAccess = "access"
 
 func Mount(app *fiber.App, hub service.IHub, roomService service.IChatRoomService, notificationHandler *NotificationHandler, sessionCache *cache.Cache) {
 	handler := NewChatHandler(hub, roomService)
@@ -49,17 +46,21 @@ func Mount(app *fiber.App, hub service.IHub, roomService service.IChatRoomServic
 			return fiber.ErrUpgradeRequired
 		}
 
-		userID, err := authenticateSocket(c, sessionCache)
-		if err != nil {
+		if _, err := authenticateSocket(c, sessionCache); err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": err.Error()})
 		}
-		c.Locals(localSocketUser, userID)
 		return c.Next()
 	})
 
 	app.Get("/ws", fibersocketio.New(func(kws *fibersocketio.Websocket) {
-		userID, ok := kws.Locals(localSocketUser).(uint)
-		if !ok || userID == 0 {
+		// Re-authenticate from the query token; kws.Locals may not carry Fiber context
+		// locals set by the middleware across the WebSocket upgrade boundary.
+		tokenStr := kws.Conn.Query("token")
+		if tokenStr == "" {
+			tokenStr = kws.Conn.Query("access_token")
+		}
+		userID, err := validateToken(tokenStr, sessionCache)
+		if err != nil {
 			kws.Close()
 			return
 		}
@@ -77,6 +78,10 @@ func authenticateSocket(c *fiber.Ctx, sessionCache *cache.Cache) (uint, error) {
 	if tokenStr == "" {
 		tokenStr = c.Query("access_token")
 	}
+	return validateToken(tokenStr, sessionCache)
+}
+
+func validateToken(tokenStr string, sessionCache *cache.Cache) (uint, error) {
 	if tokenStr == "" {
 		return 0, errors.New("missing token")
 	}

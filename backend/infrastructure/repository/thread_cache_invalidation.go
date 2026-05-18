@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/sunibgram/domain/model"
 )
 
 func threadKey(id uint) string {
@@ -32,6 +34,10 @@ func threadMediaFeedKey(userID, requesterID uint, page, limit int) string {
 
 func threadFollowingFeedKey(userID uint, page, limit int) string {
 	return fmt.Sprintf("thread:following:%d:page:%d:limit:%d", userID, page, limit)
+}
+
+func threadForYouFeedPattern(userID uint) string {
+	return fmt.Sprintf("feed:foryou:%d:*", userID)
 }
 
 func threadFeedKeysKey(threadID uint) string {
@@ -83,4 +89,38 @@ func (r *threadCached) invalidateUserMediaCache(ctx context.Context, userID uint
 
 func (r *threadCached) invalidateFollowingFeedCache(ctx context.Context) {
 	r.cache.DeleteByPattern(ctx, "thread:following:*")
+}
+
+func (r *threadCached) invalidateForYouFeedCacheForUser(ctx context.Context, userID uint) {
+	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(userID))
+}
+
+func (r *threadCached) invalidateForYouFeedCachesForFollowers(ctx context.Context, userID uint) {
+	var followerIDs []uint
+	if err := r.db.readDB.WithContext(ctx).
+		Model(&model.UserRelationship{}).
+		Where("following_id = ?", userID).
+		Pluck("follower_id", &followerIDs).Error; err != nil {
+		return
+	}
+	for _, followerID := range followerIDs {
+		r.invalidateForYouFeedCacheForUser(ctx, followerID)
+	}
+}
+
+func (r *threadCached) invalidateForYouFeedCachesForCommunity(ctx context.Context, communityID uint) {
+	var memberIDs []uint
+	if err := r.db.readDB.WithContext(ctx).
+		Model(&model.CommunityMember{}).
+		Where("community_id = ?", communityID).
+		Pluck("user_id", &memberIDs).Error; err != nil {
+		return
+	}
+	for _, memberID := range memberIDs {
+		r.invalidateForYouFeedCacheForUser(ctx, memberID)
+	}
+}
+
+func (r *threadCached) invalidateTrendingFeed(ctx context.Context) {
+	r.cache.Delete(ctx, "feed:trending:global")
 }

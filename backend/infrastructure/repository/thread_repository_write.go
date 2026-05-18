@@ -41,6 +41,12 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	r.invalidateUserFeedCache(ctx, thread.UserID)
 	r.invalidateUserMediaCache(ctx, thread.UserID)
 	r.invalidateFollowingFeedCache(ctx)
+	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
+	r.invalidateForYouFeedCachesForFollowers(ctx, thread.UserID)
+	if thread.CommunityID != nil {
+		r.invalidateForYouFeedCachesForCommunity(ctx, *thread.CommunityID)
+	}
+	r.invalidateTrendingFeed(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreCache(ctx, r.cache)
 	return nil
@@ -51,6 +57,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	thread, err := r.FindByID(threadID)
 	if err != nil {
 		r.cache.Delete(ctx, threadKey(threadID))
+		r.invalidateTrendingFeed(ctx)
 		return
 	}
 	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
@@ -58,6 +65,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	r.invalidateInteractions(ctx, threadID)
 	r.invalidateFollowingFeedCache(ctx)
+	r.invalidateTrendingFeed(ctx)
 	invalidateExploreCache(ctx, r.cache)
 }
 
@@ -85,6 +93,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	r.invalidateUserFeedCache(ctx, thread.UserID)
 	r.invalidateUserMediaCache(ctx, thread.UserID)
 	r.invalidateFollowingFeedCache(ctx)
+	r.invalidateTrendingFeed(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreCache(ctx, r.cache)
 	return nil
@@ -187,6 +196,7 @@ func (r *threadCached) Delete(id uint) error {
 	r.invalidateUserMediaCache(ctx, thread.UserID)
 	r.invalidateFeedCachesByThreadID(ctx, id)
 	r.invalidateFollowingFeedCache(ctx)
+	r.invalidateTrendingFeed(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
 
 	r.likes.deleteByThreadID(id)

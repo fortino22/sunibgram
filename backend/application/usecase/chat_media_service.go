@@ -21,6 +21,9 @@ func NewChatMediaService(chatRepo repository.IChatRepository, mediaRepo reposito
 }
 
 func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, files []*multipart.FileHeader) ([]model.ChatMedia, error) {
+	if err := model.ValidateChatMediaCount(len(files)); err != nil {
+		return nil, err
+	}
 	chat, err := s.chatRepo.FindByID(chatID)
 	if err != nil {
 		return nil, errors.New("chat not found")
@@ -36,6 +39,9 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 
 	for _, header := range files {
 		if err := model.ValidateChatMediaExt(header.Filename); err != nil {
+			return nil, err
+		}
+		if err := model.ValidateChatMediaContentType(header.Header.Get("Content-Type")); err != nil {
 			return nil, err
 		}
 	}
@@ -91,4 +97,8 @@ func (s *ChatMediaService) GetByChatIDs(chatIDs []uint) ([]model.ChatMedia, erro
 
 func (s *ChatMediaService) GetURL(bucket, objectName string) string {
 	return s.storage.GetURL(bucket, objectName)
+}
+
+func (s *ChatMediaService) GeneratePresignedURL(ctx context.Context, bucket, objectName string) (string, error) {
+	return s.storage.GeneratePresignedURL(ctx, bucket, objectName)
 }

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	webapiutils "github.com/sunibgram/webapi/utils"
 	"mime/multipart"
 	"strconv"
 	"strings"
@@ -66,26 +65,20 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 }
 
 func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
-	claims, ok := webapiutils.Get(ctx)
-	var viewerID *uint
-	if ok {
-		viewerID = &claims.UserID
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
 	}
 
 	page, limit := ParsePagination(ctx)
 
-	threads, total, err := c.threadService.GetRoots(ctx.Context(), viewerID, page, limit)
+	threads, total, err := c.threadService.GetForYouFeed(ctx.Context(), claims.UserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	data := c.buildFeedItemsNoPin(threads, viewerID)
-	if viewerID == nil {
-		c.ensureFalseViewerFlags(data)
-	}
-
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: data,
+		Data: c.buildFeedItemsNoPin(threads, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -174,12 +167,8 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 	}
 
 	content := ctx.FormValue("content")
-	eventID, eventIDSent, err := parseOptionalEventID(ctx)
-	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
-	}
 
-	if _, err := c.threadService.Update(ctx.Context(), id, claims.UserID, content, eventID, eventIDSent); err != nil {
+	if _, err := c.threadService.Update(ctx.Context(), id, claims.UserID, content); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
@@ -320,13 +309,29 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 	}
 	page, limit := ParsePagination(ctx)
 
-	threads, parents, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
+	threads, _, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildUserFeedItemsWithPin(threads, parents, &claims.UserID),
+	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
+	data := make([]dto.MediaOnlyItem, len(threads))
+	for i, thread := range threads {
+		media := make([]dto.ThreadMediaResponse, len(mediaByThread[thread.ThreadID]))
+		for j, item := range mediaByThread[thread.ThreadID] {
+			media[j] = dto.ThreadMediaResponse{
+				MediaID: item.MediaID,
+				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
+			}
+		}
+		data[i] = dto.MediaOnlyItem{
+			ThreadID: thread.ThreadID,
+			Media:    media,
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedMediaOnlyResponse{
+		Data: data,
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }

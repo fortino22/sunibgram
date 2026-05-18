@@ -21,7 +21,7 @@ func NewChatService(chatRepo repository.IChatRepository, roomRepo repository.ICh
 	return &ChatService{chatRepo: chatRepo, roomRepo: roomRepo, chatReadRepo: chatReadRepo}
 }
 
-func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string) (*model.Chat, error) {
+func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string, gifURL *string, replyToID *uint) (*model.Chat, error) {
 	if !s.roomRepo.IsMember(roomID, senderID) {
 		return nil, errors.New("forbidden")
 	}
@@ -33,10 +33,11 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 			message = &trimmed
 		}
 	}
-	chat := &model.Chat{RoomID: roomID, SenderID: senderID, Message: message}
+	chat := &model.Chat{RoomID: roomID, SenderID: senderID, Message: message, GifURL: gifURL, ReplyToID: replyToID}
 	if err := s.chatRepo.Save(chat); err != nil {
 		return nil, err
 	}
+	_ = s.roomRepo.TouchUpdatedAt(roomID)
 	return chat, nil
 }
 

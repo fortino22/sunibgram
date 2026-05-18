@@ -13,6 +13,7 @@ import (
 	"github.com/sunibgram/infrastructure/config"
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
+	"github.com/sunibgram/infrastructure/ollama"
 	infrarepo "github.com/sunibgram/infrastructure/repository"
 	"github.com/sunibgram/infrastructure/scheduler"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
@@ -34,6 +35,7 @@ func main() {
 	// --- Cache ---
 	redisCache := cache.New()
 	middleware.Init(redisCache)
+	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 
 	// --- Repositories ---
 	cacheRepo := infrarepo.NewCacheRepository(redisCache)
@@ -45,12 +47,14 @@ func main() {
 	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
 	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
 	eventRepo := infrarepo.NewEventRepository(writeDB, readDB, redisCache)
+	eventReviewRepo := infrarepo.NewEventReviewRepository(writeDB, readDB)
 	hashtagRepo := infrarepo.NewHashtagRepository(writeDB, readDB)
 	exploreRepo := infrarepo.NewExploreRepository(readDB, redisCache)
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
+	categoryRepo := infrarepo.NewCategoryRepository(writeDB, readDB, redisCache)
 	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
@@ -62,11 +66,13 @@ func main() {
 	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
 	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
 	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)
+	chatReactionRepo := infrarepo.NewChatReactionRepository(writeDB, readDB)
 	notificationRepo := infrarepo.NewNotificationRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
 	emailService := usecase.NewEmailService(infraemail.NewSMTPClient())
+	ollamaClient := ollama.NewClient()
 	socketHub := infrasocket.NewHub()
 
 	// --- Usecases ---
@@ -75,27 +81,30 @@ func main() {
 	roleService := usecase.NewRoleService(roleRepo)
 	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
 	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo)
-	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, storageUsecase)
+	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, cacheRepo, storageUsecase)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
-	followService := usecase.NewFollowService(followRepo, userRepo, notificationService)
+	followService := usecase.NewFollowService(followRepo, userRepo, cacheRepo, notificationService)
 	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
-	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
-	eventService := usecase.NewEventService(eventRepo, storageUsecase)
+	summaryService := usecase.NewThreadSummaryService(threadRepo, cacheRepo, ollamaClient)
+	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService, summaryService)
+	eventService := usecase.NewEventService(eventRepo, eventReviewRepo, storageUsecase, userSettingsRepo, followRepo)
 	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
 	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
-	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, storageUsecase)
-	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo)
-	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo)
+	categoryService := usecase.NewCategoryService(categoryRepo)
+	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, cacheRepo, storageUsecase)
+	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
+	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo)
 	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo)
-	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo)
+	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo, storageUsecase)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
+	chatReactionService := usecase.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
 
 	// --- Controllers ---
 	cacheCtrl := controller.NewCacheController(cacheService)
@@ -103,28 +112,37 @@ func main() {
 	roleCtrl := controller.NewRoleController(roleService)
 	userCtrl := controller.NewUserController(userService, profileService)
 	userSettingsCtrl := controller.NewUserSettingsController(userSettingsService)
-	profileCtrl := controller.NewUserProfileController(profileService, facultyService)
+	profileCtrl := controller.NewUserProfileController(profileService, facultyService, socketHub, chatRoomService)
 	emailCtrl := controller.NewEmailController(emailService)
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
 	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService)
-	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService)
+	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService)
 	hashtagCtrl := controller.NewHashtagController(hashtagService)
 	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService)
 	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
 	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
+	summaryCtrl := controller.NewThreadSummaryController(summaryService)
+	categoryCtrl := controller.NewCategoryController(categoryService)
 	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
-	communityThreadCtrl := controller.NewCommunityThreadController(threadService, threadMediaService, likeService, bookmarkService, threadPinService)
+	communityThreadCtrl := controller.NewCommunityThreadController(
+		threadService,
+		threadMediaService,
+		likeService,
+		bookmarkService,
+		threadPinService,
+		profileService,
+	)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
 	premiumSubscriptionCtrl := controller.NewPremiumSubscriptionController(premiumSubscriptionService)
 	devSubscriptionCtrl := controller.NewDevSubscriptionController(premiumSubscriptionService)
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
-	chatCtrl := controller.NewChatController(chatService, chatMediaService, socketHub)
+	chatCtrl := controller.NewChatController(chatService, chatMediaService, chatReactionService, socketHub)
 	notificationCtrl := controller.NewNotificationController(notificationService)
 	notificationHandler := webapisocket.NewNotificationHandler(socketHub, notificationService)
 
@@ -154,6 +172,7 @@ func main() {
 		bookmarkCtrl,
 		threadPinCtrl,
 		repostCtrl,
+		summaryCtrl,
 		emailCtrl,
 		verificationCtrl,
 		followCtrl,
@@ -161,6 +180,7 @@ func main() {
 		communityMemberCtrl,
 		communityRequestCtrl,
 		communityThreadCtrl,
+		categoryCtrl,
 		facultyCtrl,
 		orderCtrl,
 		premiumSubscriptionCtrl,

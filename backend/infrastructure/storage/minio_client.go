@@ -16,10 +16,9 @@ import (
 )
 
 type MinioStorage struct {
-	client         *minio.Client
-	endpoint       string
-	publicEndpoint string
-	useSSL         bool
+	client       *minio.Client
+	publicClient *minio.Client
+	useSSL       bool
 }
 
 func NewMinioClient() domainservice.IStorageService {
@@ -45,11 +44,20 @@ func NewMinioClient() domainservice.IStorageService {
 		panic(fmt.Sprintf("failed to connect to MinIO: %v", err))
 	}
 
+	publicClient, err := minio.New(publicEndpoint, &minio.Options{
+		Creds:     credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure:    useSSL,
+		Region:    "us-east-1",
+		Transport: transport,
+	})
+	if err != nil {
+		panic(fmt.Sprintf("failed to create MinIO public client: %v", err))
+	}
+
 	return &MinioStorage{
-		client:         client,
-		endpoint:       endpoint,
-		publicEndpoint: publicEndpoint,
-		useSSL:         useSSL,
+		client:       client,
+		publicClient: publicClient,
+		useSSL:       useSSL,
 	}
 }
 
@@ -110,7 +118,7 @@ func (s *MinioStorage) GetURL(bucket, objectName string) string {
 	if s.useSSL {
 		scheme = "https"
 	}
-	return fmt.Sprintf("%s://%s/%s/%s", scheme, s.publicEndpoint, bucket, objectName)
+	return fmt.Sprintf("%s://%s/%s/%s", scheme, s.publicClient.EndpointURL().Host, bucket, objectName)
 }
 
 func (s *MinioStorage) Delete(ctx context.Context, bucket, objectName string) error {
@@ -120,10 +128,10 @@ func (s *MinioStorage) Delete(ctx context.Context, bucket, objectName string) er
 	return nil
 }
 
-func (s *MinioStorage) GeneratePresignedURL(ctx context.Context, bucket, objectName string, expires time.Duration) (string, error) {
-	url, err := s.client.PresignedGetObject(ctx, bucket, objectName, expires, nil)
+func (s *MinioStorage) GeneratePresignedURL(_ context.Context, bucket, objectName string, expires time.Duration) (string, error) {
+	u, err := s.publicClient.PresignedGetObject(context.Background(), bucket, objectName, expires, nil)
 	if err != nil {
 		return "", fmt.Errorf("presign failed: %w", err)
 	}
-	return url.String(), nil
+	return u.String(), nil
 }

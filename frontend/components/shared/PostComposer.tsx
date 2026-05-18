@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, LoaderCircle, X } from 'lucide-react';
+import { ImagePlus, LoaderCircle, X, Loader2 } from 'lucide-react';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -19,6 +19,7 @@ import {
   type ThreadItem,
 } from '@/lib/services/threads';
 import type { ThreadDetailData } from '@/hooks/useThread';
+import { compressImages } from '@/lib/compressImage';
 
 type PreviewKind = 'image' | 'video' | 'file';
 
@@ -65,6 +66,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const previewsRef = useRef<FilePreview[]>([]);
   const [content, setContent] = useState('');
   const [previews, setPreviews] = useState<FilePreview[]>([]);
+  const [compressing, setCompressing] = useState(false);
 
   useEffect(() => {
     previewsRef.current = previews;
@@ -163,20 +165,27 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const canSubmit =
     token !== null &&
     !isPending &&
+    !compressing &&
     (normalizedContent.length > 0 || selectedFiles.length > 0);
 
-  function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
+  async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(event.target.files ?? []);
-    if (incoming.length === 0) return;
-    setPreviews((cur) => [
-      ...cur,
-      ...incoming.map((file) => ({
-        file,
-        kind: getPreviewKind(file),
-        url: URL.createObjectURL(file),
-      })),
-    ]);
     event.target.value = '';
+    if (incoming.length === 0) return;
+    setCompressing(true);
+    try {
+      const ready = await compressImages(incoming);
+      setPreviews((cur) => [
+        ...cur,
+        ...ready.map((file) => ({
+          file,
+          kind: getPreviewKind(file),
+          url: URL.createObjectURL(file),
+        })),
+      ]);
+    } finally {
+      setCompressing(false);
+    }
   }
 
   function removeSelectedFile(target: File) {
@@ -367,17 +376,21 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   padding: '8px 12px',
                   borderRadius: 10,
                   border: '1px solid var(--border)',
-                  color: 'var(--text-secondary)',
+                  color: compressing ? 'var(--accent)' : 'var(--text-secondary)',
                   fontSize: 13,
                   fontWeight: 500,
-                  cursor: isPending ? 'not-allowed' : 'pointer',
-                  opacity: isPending ? 0.6 : 1,
+                  cursor: isPending || compressing ? 'not-allowed' : 'pointer',
+                  opacity: isPending || compressing ? 0.6 : 1,
+                  pointerEvents: compressing ? 'none' : undefined,
                 }}
               >
-                <ImagePlus size={16} />
+                {compressing ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <ImagePlus size={16} />}
               </label>
 
-              {selectedFiles.length > 0 && (
+              {compressing && (
+                <span style={{ color: 'var(--accent)', fontSize: 13 }}>Compressing…</span>
+              )}
+              {!compressing && selectedFiles.length > 0 && (
                 <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
                   {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected
                 </span>
