@@ -151,6 +151,15 @@ func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})
 }
 
+func (c *CommunityController) SearchByName(ctx *fiber.Ctx) error {
+	communities, err := c.communityService.SearchByName(ctx.Context(), ctx.Query("community_name"))
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})
+}
+
 func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {

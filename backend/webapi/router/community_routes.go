@@ -18,8 +18,15 @@ func registerCommunityRoutes(
 	//communities
 	communities.Post("/", communityCtrl.Create)
 	communities.Get("/discover", communityCtrl.Discover)
+	communities.Get("/search", communityCtrl.SearchByName)
 	communities.Get("/me", communityCtrl.GetMyCreated)
 	communities.Get("/joined", communityCtrl.GetMyJoined)
+	
+	//community threads (static paths before /:id wildcard)
+	communities.Get("/threads", communityThreadCtrl.GetAllCommunityThreads)
+	communities.Get("/threads/top", communityThreadCtrl.GetCommunityThreadTopByName)
+	communities.Get("/threads/latest", communityThreadCtrl.GetCommunityThreadLatestByName)
+
 	communities.Get("/:id", communityCtrl.GetByID)
 	communities.Put("/:id", communityCtrl.Update)
 	communities.Delete("/:id", communityCtrl.Delete)
@@ -37,9 +44,6 @@ func registerCommunityRoutes(
 	communities.Get("/:id/requests", requestCtrl.GetPending)
 	communities.Post("/:id/requests/:userId/approve", requestCtrl.Approve)
 	communities.Post("/:id/requests/:userId/decline", requestCtrl.Decline)
-
-	//community threads
-	communities.Get("/threads", communityThreadCtrl.GetAllCommunityThreads)
 	communities.Post("/:communityID/threads", communityThreadCtrl.CreateCommunityThread)
 	communities.Get("/:id/threads/top", communityThreadCtrl.GetCommunityThreadTop)
 	communities.Get("/:id/threads/latest", communityThreadCtrl.GetCommunityThreadLatest)

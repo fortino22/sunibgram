@@ -109,6 +109,11 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	if input.Avatar != nil {
 		invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	}
+	if s.cacheRepo != nil {
+		_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
+		_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
+		_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
+	}
 	return nil
 }
 
@@ -144,6 +149,11 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		if err := s.userRepo.UpdateInfo(userID, name, username); err != nil {
 			return err
 		}
+		if s.cacheRepo != nil {
+			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
+		}
 	}
 
 	if input.ClearAvatar || input.ClearBanner {
@@ -168,6 +178,11 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			}
 			if input.ClearAvatar {
 				invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+				if s.cacheRepo != nil {
+					_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
+					_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
+					_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
+				}
 			}
 		}
 	}

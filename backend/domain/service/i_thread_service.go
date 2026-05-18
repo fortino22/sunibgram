@@ -24,6 +24,8 @@ type IThreadService interface {
 	GetMyMediaThread(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error)
 	GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error)
+	GetAllCommunityThreadsByQueryTop(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, int64, error)
+	GetAllCommunityThreadsByQueryLatest(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, int64, error)
 	GetCommunityThreadTop(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetCommunityThreadMedia(communityID, userID uint) ([]model.CommunityThreadMedia, error)

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
@@ -226,6 +227,79 @@ func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUI
 
 		result = cached{Threads: threads, Total: total}
 		r.cache.Set(ctx, key, result, threadFeedTTL)
+	}
+	return result.Threads, result.Total, nil
+}
+
+func (r *threadCached) FindAllCommunityThreadsByQueryTop(userID uint, query string, page, limit int) ([]model.Thread, int64, error) {
+	return r.findAllCommunityThreadsByQuery(
+		userID,
+		query,
+		page,
+		limit,
+		"top",
+		"(threads.like_count + threads.repost_count + threads.bookmark_count) DESC, threads.created_at DESC",
+	)
+}
+
+func (r *threadCached) FindAllCommunityThreadsByQueryLatest(userID uint, query string, page, limit int) ([]model.Thread, int64, error) {
+	return r.findAllCommunityThreadsByQuery(userID, query, page, limit, "latest", "threads.created_at DESC")
+}
+
+func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string, page, limit int, keySuffix, orderClause string) ([]model.Thread, int64, error) {
+	type cached struct {
+		Threads []model.Thread
+		Total   int64
+	}
+	ctx := context.Background()
+	var result cached
+	query = strings.TrimSpace(query)
+	queryLike := "%" + query + "%"
+	key := communityThreadsQueryKey(keySuffix, strings.ToLower(query), userID, page, limit)
+	if err := r.cache.Get(ctx, key, &result); err != nil {
+		var threads []model.Thread
+		var total int64
+
+		base := r.db.readDB.Model(&model.Thread{}).
+			Joins("JOIN communities ON communities.community_id = threads.community_id").
+			Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
+			Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
+			Where("threads.community_id IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("communities.is_active = ?", true).
+			Where("(communities.name ILIKE ? OR threads.content ILIKE ?)", queryLike, queryLike).
+			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
+				model.CommunityVisibilityPublic, userID).
+			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID)
+
+		if err := base.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+
+		offset := (page - 1) * limit
+		if err := preloadThreadDetails(r.db.readDB).
+			Joins("JOIN communities ON communities.community_id = threads.community_id").
+			Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
+			Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
+			Where("threads.community_id IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("communities.is_active = ?", true).
+			Where("(communities.name ILIKE ? OR threads.content ILIKE ?)", queryLike, queryLike).
+			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
+				model.CommunityVisibilityPublic, userID).
+			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID).
+			Order(orderClause).
+			Offset(offset).Limit(limit).
+			Find(&threads).Error; err != nil {
+			return nil, 0, err
+		}
+
+		result = cached{Threads: threads, Total: total}
+		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+			for _, t := range result.Threads {
+				r.trackFeedCacheKey(ctx, t.ThreadID, key)
+			}
+		}
 	}
 	return result.Threads, result.Total, nil
 }

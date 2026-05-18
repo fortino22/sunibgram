@@ -40,6 +40,16 @@ func threadForYouFeedPattern(userID uint) string {
 	return fmt.Sprintf("feed:foryou:%d:*", userID)
 }
 
+func communityThreadsQueryKey(sort, query string, userID uint, page, limit int) string {
+	return fmt.Sprintf("community:threads:%s:%s:user:%d:page:%d:limit:%d", sort, query, userID, page, limit)
+}
+
+func (r *threadCached) invalidateCommunityThreadQueryCaches(ctx context.Context) {
+	r.cache.DeleteByPattern(ctx, "community:threads:top:*")
+	r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
+}
+
 func threadFeedKeysKey(threadID uint) string {
 	return fmt.Sprintf("thread:feed_keys:%d", threadID)
 }

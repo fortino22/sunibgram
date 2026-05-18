@@ -269,3 +269,34 @@ func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint,
 	}
 	return filtered, total, nil
 }
+
+func (s *ThreadService) GetAllCommunityThreadsByQueryTop(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, int64, error) {
+	return s.getAllCommunityThreadsByQuery(ctx, userID, query, page, limit, s.threadRepo.FindAllCommunityThreadsByQueryTop)
+}
+
+func (s *ThreadService) GetAllCommunityThreadsByQueryLatest(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, int64, error) {
+	return s.getAllCommunityThreadsByQuery(ctx, userID, query, page, limit, s.threadRepo.FindAllCommunityThreadsByQueryLatest)
+}
+
+func (s *ThreadService) getAllCommunityThreadsByQuery(
+	ctx context.Context,
+	userID uint,
+	query string,
+	page, limit int,
+	load func(userID uint, query string, page, limit int) ([]model.Thread, int64, error),
+) ([]model.Thread, int64, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, 0, errors.New("query is required")
+	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	threads, total, err := load(userID, query, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := s.filterViewableThreads(ctx, &userID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, total, nil
+}

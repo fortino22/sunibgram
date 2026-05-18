@@ -31,3 +31,7 @@ func (r *CacheRepository) Set(ctx context.Context, key string, value any, ttl ti
 func (r *CacheRepository) Delete(ctx context.Context, keys ...string) error {
 	return r.cache.Delete(ctx, keys...)
 }
+
+func (r *CacheRepository) DeleteByPattern(ctx context.Context, pattern string) error {
+	return r.cache.DeleteByPattern(ctx, pattern)
+}

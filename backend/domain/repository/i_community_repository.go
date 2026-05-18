@@ -12,6 +12,7 @@ type ICommunityRepository interface {
 	FindByID(id uint) (*model.Community, error)
 	ExistsByName(name string, excludeID *uint) (bool, error)
 	FindDiscover() ([]model.DiscoverCommunity, error)
+	FindDiscoverByName(name string) ([]model.DiscoverCommunity, error)
 	Update(community *model.Community) error
 	Delete(id uint) error
 	DeactivateByOwnerIDs(ownerIDs []uint) error

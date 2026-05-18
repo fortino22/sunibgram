@@ -226,6 +226,25 @@ func (s *CommunityService) Discover(ctx context.Context, categoryID *uuid.UUID) 
 	return filterDiscoverByCategory(communities, categoryID), nil
 }
 
+func (s *CommunityService) SearchByName(ctx context.Context, name string) ([]model.DiscoverCommunity, error) {
+	name = strings.TrimSpace(name)
+	var cached []model.DiscoverCommunity
+	if s.cacheRepo != nil {
+		if err := s.cacheRepo.Get(ctx, communitySearchCacheKey(name), &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	communities, err := s.communityRepo.FindDiscoverByName(name)
+	if err != nil {
+		return nil, err
+	}
+	if s.cacheRepo != nil {
+		_ = s.cacheRepo.Set(ctx, communitySearchCacheKey(name), communities, discoverCommunitiesTTL)
+	}
+	return communities, nil
+}
+
 func filterDiscoverByCategory(communities []model.DiscoverCommunity, categoryID *uuid.UUID) []model.DiscoverCommunity {
 	if categoryID == nil || *categoryID == uuid.Nil {
 		return communities

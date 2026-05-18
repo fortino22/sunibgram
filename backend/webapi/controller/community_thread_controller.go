@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
@@ -41,6 +43,14 @@ func (c *CommunityThreadController) GetCommunityThreadTop(ctx *fiber.Ctx) error 
 
 func (c *CommunityThreadController) GetCommunityThreadLatest(ctx *fiber.Ctx) error {
 	return c.getCommunityThreads(ctx, c.threadService.GetCommunityThreadLatest)
+}
+
+func (c *CommunityThreadController) GetCommunityThreadTopByName(ctx *fiber.Ctx) error {
+	return c.getCommunityThreadsByQuery(ctx, c.threadService.GetAllCommunityThreadsByQueryTop)
+}
+
+func (c *CommunityThreadController) GetCommunityThreadLatestByName(ctx *fiber.Ctx) error {
+	return c.getCommunityThreadsByQuery(ctx, c.threadService.GetAllCommunityThreadsByQueryLatest)
 }
 
 func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error {
@@ -113,6 +123,45 @@ func (c *CommunityThreadController) getCommunityThreads(
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
 		}
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	tc := &ThreadController{
+		threadService:    c.threadService,
+		mediaService:     c.mediaService,
+		likeService:      c.likeService,
+		bookmarkService:  c.bookmarkService,
+		threadPinService: c.threadPinService,
+		profileService:   c.profileService,
+	}
+	data := tc.buildFeedItemsWithPin(threads, &claims.UserID)
+	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
+	for i, item := range data {
+		response[i] = dto.CommunityThreadFeedItemResponse{
+			FeedItemResponse: item,
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityThreadResponse{
+		Data: response,
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
+}
+
+func (c *CommunityThreadController) getCommunityThreadsByQuery(
+	ctx *fiber.Ctx,
+	load func(context.Context, uint, string, int, int) ([]model.Thread, int64, error),
+) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	query := ctx.Query("query")
+	page, limit := ParsePagination(ctx)
+
+	threads, total, err := load(ctx.Context(), claims.UserID, query, page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	tc := &ThreadController{

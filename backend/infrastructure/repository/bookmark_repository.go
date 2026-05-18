@@ -31,6 +31,8 @@ func (r *BookmarkRepository) Save(bookmark *model.Bookmark) error {
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, bookmark.UserID)
 	r.patchCount(bookmark.ThreadID, "bookmark_count", 1)
+	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
+	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
 	invalidateExploreCache(ctx, r.base.cache)
 	return nil
 }
@@ -44,6 +46,8 @@ func (r *BookmarkRepository) Delete(userID, threadID uint) error {
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, userID)
 	r.patchCount(threadID, "bookmark_count", -1)
+	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
+	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
 	invalidateExploreCache(ctx, r.base.cache)
 	return nil
 }
