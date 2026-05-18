@@ -36,6 +36,26 @@ func (r *ThreadPinRepository) ExistsPin(userID, threadID uint) (bool, error) {
 	return count > 0, err
 }
 
+func (r *ThreadPinRepository) ArePinnedFor(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	result := make(map[uint]bool, len(threadIDs))
+	if len(threadIDs) == 0 {
+		return result, nil
+	}
+
+	var ids []uint
+	err := r.readDB.Model(&model.ThreadPin{}).
+		Select("thread_id").
+		Where("user_id = ? AND thread_id IN ?", userID, threadIDs).
+		Scan(&ids).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		result[id] = true
+	}
+	return result, nil
+}
+
 func (r *ThreadPinRepository) FindPinnedByUserID(userID uint) (*model.ThreadPin, error) {
 	var pin model.ThreadPin
 	err := r.readDB.Where("user_id = ?", userID).First(&pin).Error

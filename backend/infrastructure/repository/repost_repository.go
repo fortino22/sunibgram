@@ -58,6 +58,10 @@ func (r *RepostRepository) Exists(userID, threadID uint) (bool, error) {
 	return r.base.exists(userID, threadID, &model.Repost{})
 }
 
+func (r *RepostRepository) AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	return r.base.areThreadsInteracted(userID, threadIDs)
+}
+
 func (r *RepostRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	return r.base.findByUserID(userID, page, limit)
 }

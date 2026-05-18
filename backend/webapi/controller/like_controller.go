@@ -100,6 +100,7 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 		ThreadSvc:   c.threadService,
 		ViewerID:    &claims.UserID,
 	}
+	fb.LoadViewerFlagsForThreads(threads)
 	for i, t := range threads {
 		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 		wrapped := dtoutils.Wrap(timestamps[i])

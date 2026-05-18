@@ -73,6 +73,26 @@ func (r *interactionRepo) exists(userID, threadID uint, model any) (bool, error)
 	return count > 0, err
 }
 
+func (r *interactionRepo) areThreadsInteracted(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	result := make(map[uint]bool, len(threadIDs))
+	if len(threadIDs) == 0 {
+		return result, nil
+	}
+
+	var ids []uint
+	err := r.readDB.Table(r.table).
+		Select("thread_id").
+		Where("user_id = ? AND thread_id IN ?", userID, threadIDs).
+		Scan(&ids).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		result[id] = true
+	}
+	return result, nil
+}
+
 func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	type cachedResult struct {
 		Threads    []model.Thread

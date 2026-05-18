@@ -93,6 +93,10 @@ func (s *LikeService) IsLiked(userID, threadID uint) bool {
 	return ok
 }
 
+func (s *LikeService) AreThreadsLiked(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	return s.likeRepo.AreThreadsLiked(userID, threadIDs)
+}
+
 func (s *LikeService) GetMyLikes(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.likeRepo.FindByUserID(userID, page, limit)

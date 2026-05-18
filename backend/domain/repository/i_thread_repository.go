@@ -19,6 +19,7 @@ type IThreadRepository interface {
 	FindReplyTabByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	FindMediaByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	ExistsRepost(userID, originalThreadID uint) (bool, error)
+	AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error)
 	DeleteRepost(userID, originalThreadID uint) error
 	FindCommunityTop(communityID uint, page, limit int) ([]model.Thread, int64, error)
 	FindCommunityLatest(communityID uint, page, limit int) ([]model.Thread, int64, error)

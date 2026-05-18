@@ -15,6 +15,26 @@ func (r *threadCached) ExistsRepost(userID, originalThreadID uint) (bool, error)
 	return count > 0, err
 }
 
+func (r *threadCached) AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	result := make(map[uint]bool, len(threadIDs))
+	if len(threadIDs) == 0 {
+		return result, nil
+	}
+
+	var ids []uint
+	err := r.db.readDB.Model(&model.Thread{}).
+		Select("original_thread_id").
+		Where("user_id = ? AND type = ? AND original_thread_id IN ?", userID, model.ThreadTypeRepost, threadIDs).
+		Scan(&ids).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		result[id] = true
+	}
+	return result, nil
+}
+
 func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	var repost model.Thread
 	if err := r.db.readDB.

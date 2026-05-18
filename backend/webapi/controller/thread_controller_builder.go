@@ -78,6 +78,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 		}
 	}
 	fb.LoadAvatarsForUserIDs(authorIDs)
+	fb.LoadViewerFlagsForThreads(threads)
 
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {

@@ -59,6 +59,10 @@ func (s *RepostService) Unrepost(userID, threadID uint) error {
 	return nil
 }
 
+func (s *RepostService) AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	return s.repostRepo.AreThreadsReposted(userID, threadIDs)
+}
+
 func (s *RepostService) GetMyReposts(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.repostRepo.FindByUserID(userID, page, limit)

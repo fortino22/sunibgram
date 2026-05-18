@@ -16,6 +16,11 @@ type FeedBuilder struct {
 	ProfileSvc  service.IUserProfileService
 	ViewerID    *uint
 	avatarCache map[uint]string
+	flagsLoaded bool
+	liked       map[uint]bool
+	bookmarked  map[uint]bool
+	reposted    map[uint]bool
+	pinned      map[uint]bool
 }
 
 func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []dto.ThreadMediaResponse {
@@ -98,8 +103,85 @@ func (fb FeedBuilder) AuthorField(u model.User) dto.FeedAuthor {
 	return a
 }
 
+func feedFlagThreadID(t *model.Thread) uint {
+	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+		return t.OriginalThread.ThreadID
+	}
+	return t.ThreadID
+}
+
+// LoadViewerFlagsForThreads batch-fetches viewer flags for the feed's effective thread IDs.
+func (fb *FeedBuilder) LoadViewerFlagsForThreads(threads []model.Thread) {
+	if fb.ViewerID == nil {
+		return
+	}
+	seen := make(map[uint]struct{}, len(threads))
+	threadIDs := make([]uint, 0, len(threads))
+	for i := range threads {
+		id := feedFlagThreadID(&threads[i])
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		threadIDs = append(threadIDs, id)
+	}
+
+	fb.flagsLoaded = true
+	if len(threadIDs) == 0 {
+		return
+	}
+
+	uid := *fb.ViewerID
+	if fb.LikeSvc != nil {
+		fb.liked, _ = fb.LikeSvc.AreThreadsLiked(uid, threadIDs)
+		if fb.liked == nil {
+			fb.liked = make(map[uint]bool)
+		}
+	}
+	if fb.BookmarkSvc != nil {
+		fb.bookmarked, _ = fb.BookmarkSvc.AreThreadsBookmarked(uid, threadIDs)
+		if fb.bookmarked == nil {
+			fb.bookmarked = make(map[uint]bool)
+		}
+	}
+	if fb.ThreadSvc != nil {
+		fb.reposted, _ = fb.ThreadSvc.AreThreadsReposted(uid, threadIDs)
+		if fb.reposted == nil {
+			fb.reposted = make(map[uint]bool)
+		}
+	}
+	if fb.PinSvc != nil {
+		fb.pinned, _ = fb.PinSvc.ArePinnedFor(uid, threadIDs)
+		if fb.pinned == nil {
+			fb.pinned = make(map[uint]bool)
+		}
+	}
+}
+
 func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isReposted, isPinned *bool) {
 	if fb.ViewerID == nil {
+		return
+	}
+	if fb.flagsLoaded {
+		if fb.LikeSvc != nil {
+			v := fb.liked[threadID]
+			isLiked = &v
+		}
+		if fb.BookmarkSvc != nil {
+			v := fb.bookmarked[threadID]
+			isBookmarked = &v
+		}
+		if fb.ThreadSvc != nil {
+			v := fb.reposted[threadID]
+			isReposted = &v
+		}
+		if fb.PinSvc != nil {
+			v := fb.pinned[threadID]
+			isPinned = &v
+		}
 		return
 	}
 	uid := *fb.ViewerID
