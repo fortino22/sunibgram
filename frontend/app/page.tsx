@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { EventsFeedPanel } from '@/components/events/EventsFeedPanel';
 import { CreatePostBox } from '@/components/shared/CreatePostBox';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
@@ -119,6 +120,7 @@ export default function HomePage() {
   const followingThreadsQuery = useFollowingThreads(1, 10, activeTab === 'following');
   const isForYouTab = activeTab === 'for-you';
   const isFollowingTab = activeTab === 'following';
+  const isEventsTab = activeTab === 'events';
   const activeQuery = isFollowingTab ? followingThreadsQuery : threadsQuery;
   const activeThreads = activeQuery.data?.data ?? [];
 
@@ -160,9 +162,11 @@ export default function HomePage() {
         </div>
       </div>
 
-      <CreatePostBox />
+      {!isEventsTab && <CreatePostBox />}
 
-      {(isForYouTab || isFollowingTab) && activeQuery.isLoading ? (
+      {isEventsTab ? (
+        <EventsFeedPanel active={isEventsTab} />
+      ) : (isForYouTab || isFollowingTab) && activeQuery.isLoading ? (
         <div>
           {Array.from({ length: 3 }, (_, i) => <ThreadCardSkeleton key={i} />)}
         </div>
