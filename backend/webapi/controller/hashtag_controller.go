@@ -7,6 +7,8 @@ import (
 	"github.com/sunibgram/dto"
 )
 
+const trendingHashtagLimit = 30
+
 type HashtagController struct {
 	hashtagService service.IHashtagService
 }
@@ -18,8 +20,7 @@ func NewHashtagController(hashtagService service.IHashtagService) *HashtagContro
 }
 
 func (c *HashtagController) GetTrending(ctx *fiber.Ctx) error {
-	_, limit := ParsePagination(ctx)
-	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), limit)
+	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), trendingHashtagLimit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -32,7 +33,6 @@ func toTrendingHashtagResponses(hashtags []model.TrendingHashtag) []dto.Trending
 		responses[i] = dto.TrendingHashtagResponse{
 			Name:        hashtag.Name,
 			ThreadCount: hashtag.ThreadCount,
-			Score:       hashtag.Score,
 		}
 	}
 	return responses

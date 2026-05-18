@@ -5,7 +5,6 @@ type HashtagResponse struct {
 }
 
 type TrendingHashtagResponse struct {
-	Name        string  `json:"name"`
-	ThreadCount int64   `json:"thread_count"`
-	Score       float64 `json:"score"`
+	Name        string `json:"name"`
+	ThreadCount int64  `json:"thread_count"`
 }
