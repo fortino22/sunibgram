@@ -102,7 +102,7 @@ func main() {
 	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo)
 	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo, storageUsecase)
-	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo)
+	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo, notificationService)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
 	chatReactionService := usecase.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
 

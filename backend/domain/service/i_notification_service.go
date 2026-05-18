@@ -8,11 +8,13 @@ type CreateNotificationInput struct {
 	SenderUserID    uint
 	RecipientUserID uint
 	ReferenceID     *uint
+	Data            any
 }
 
 type NotificationListItem struct {
 	Notification *model.Notification
 	Actor        *model.NotificationSender
+	Data         any `json:"data,omitempty"`
 }
 
 type INotificationService interface {

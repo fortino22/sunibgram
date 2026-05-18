@@ -74,6 +74,7 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 		s.hub.EmitToUser(input.RecipientUserID, "notification:new", service.NotificationListItem{
 			Notification: notification,
 			Actor:        actor,
+			Data:         input.Data,
 		})
 	}
 	return nil

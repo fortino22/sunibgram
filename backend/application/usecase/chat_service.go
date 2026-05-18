@@ -12,18 +12,37 @@ import (
 )
 
 type ChatService struct {
-	chatRepo     repository.IChatRepository
-	roomRepo     repository.IChatRoomRepository
-	chatReadRepo repository.IChatReadRepository
+	chatRepo            repository.IChatRepository
+	roomRepo            repository.IChatRoomRepository
+	chatReadRepo        repository.IChatReadRepository
+	notificationService service.INotificationService
 }
 
-func NewChatService(chatRepo repository.IChatRepository, roomRepo repository.IChatRoomRepository, chatReadRepo repository.IChatReadRepository) service.IChatService {
-	return &ChatService{chatRepo: chatRepo, roomRepo: roomRepo, chatReadRepo: chatReadRepo}
+func NewChatService(
+	chatRepo repository.IChatRepository,
+	roomRepo repository.IChatRoomRepository,
+	chatReadRepo repository.IChatReadRepository,
+	notificationServices ...service.INotificationService,
+) service.IChatService {
+	var notificationService service.INotificationService
+	if len(notificationServices) > 0 {
+		notificationService = notificationServices[0]
+	}
+	return &ChatService{
+		chatRepo:            chatRepo,
+		roomRepo:            roomRepo,
+		chatReadRepo:        chatReadRepo,
+		notificationService: notificationService,
+	}
 }
 
 func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string, gifURL *string, replyToID *uint) (*model.Chat, error) {
 	if !s.roomRepo.IsMember(roomID, senderID) {
 		return nil, errors.New("forbidden")
+	}
+	room, err := s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return nil, errors.New("chat room not found")
 	}
 	if message != nil {
 		trimmed := strings.TrimSpace(*message)
@@ -38,7 +57,70 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 		return nil, err
 	}
 	_ = s.roomRepo.TouchUpdatedAt(roomID)
+	s.sendMessageNotifications(room, chat)
 	return chat, nil
+}
+
+func (s *ChatService) sendMessageNotifications(room *model.ChatRoom, chat *model.Chat) {
+	if s.notificationService == nil || room == nil || chat == nil {
+		return
+	}
+
+	members, err := s.roomRepo.FindMembers(chat.RoomID)
+	if err != nil {
+		return
+	}
+
+	preview := chatMessagePreview(chat)
+	referenceID := chat.RoomID
+	payload := map[string]any{
+		"sender": map[string]any{
+			"user_id": chat.SenderID,
+		},
+		"sender_user_id":  chat.SenderID,
+		"chat_id":         chat.ChatID,
+		"room_id":         chat.RoomID,
+		"conversation_id": chat.RoomID,
+		"message":         preview,
+		"preview":         preview,
+		"message_type":    string(room.Type),
+	}
+
+	seen := make(map[uint]struct{}, len(members))
+	for _, member := range members {
+		if member.UserID == chat.SenderID {
+			continue
+		}
+		if _, ok := seen[member.UserID]; ok {
+			continue
+		}
+		seen[member.UserID] = struct{}{}
+
+		_ = s.notificationService.SendNotification(service.CreateNotificationInput{
+			Type:            "chat_message",
+			Message:         preview,
+			SenderUserID:    chat.SenderID,
+			RecipientUserID: member.UserID,
+			ReferenceID:     &referenceID,
+			Data:            payload,
+		})
+	}
+}
+
+func chatMessagePreview(chat *model.Chat) string {
+	if chat == nil {
+		return "sent a message"
+	}
+	if chat.Message != nil {
+		trimmed := strings.TrimSpace(*chat.Message)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	if chat.GifURL != nil && strings.TrimSpace(*chat.GifURL) != "" {
+		return "sent a GIF"
+	}
+	return "sent an attachment"
 }
 
 func (s *ChatService) GetByID(ctx context.Context, chatID uint) (*model.Chat, error) {
