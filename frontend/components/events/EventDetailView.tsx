@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { ArrowLeft, Bookmark, CalendarDays, Clock, Link2, LoaderCircle, MapPin } from 'lucide-react';
+import { ArrowLeft, Bookmark, CalendarDays, Link2, LoaderCircle, MapPin } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -302,12 +302,6 @@ export function EventDetailView({ eventId }: { eventId: string }) {
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-tertiary)' }}>
               <CalendarDays size={15} style={{ flexShrink: 0 }} />
               {formatDateTimeRange(event.startTime, event.endTime)}
-            </span>
-          )}
-          {event.status && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-tertiary)' }}>
-              <Clock size={15} style={{ flexShrink: 0 }} />
-              {event.status}
             </span>
           )}
         </div>
