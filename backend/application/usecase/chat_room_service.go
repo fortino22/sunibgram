@@ -31,10 +31,16 @@ func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, target
 		return nil, errors.New("target user not found")
 	}
 	if room, err := s.roomRepo.FindPrivateRoom(initiatorID, targetUserID); err == nil {
+		if _, err := s.roomKey(room); err != nil {
+			return nil, err
+		}
 		return room, nil
 	}
 
 	room := &model.ChatRoom{Type: model.ChatRoomTypePrivate}
+	if err := s.assignRoomKey(room); err != nil {
+		return nil, err
+	}
 	if err := s.roomRepo.Save(room); err != nil {
 		return nil, err
 	}
@@ -54,6 +60,9 @@ func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name 
 	}
 
 	room := &model.ChatRoom{Name: &name, Description: description, Type: model.ChatRoomTypeGroup}
+	if err := s.assignRoomKey(room); err != nil {
+		return nil, err
+	}
 	if err := s.roomRepo.Save(room); err != nil {
 		return nil, err
 	}
@@ -276,6 +285,7 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 			}
 		}
 		if lm, ok := lastMessages[r.RoomID]; ok {
+			s.decryptLastMessage(&r, &lm)
 			result[i].LastMessage = &service.LastMessage{
 				ChatID:    lm.ChatID,
 				SenderID:  lm.SenderID,
@@ -339,4 +349,63 @@ func (s *ChatRoomService) GetByID(roomID, userID uint) (*model.ChatRoom, error) 
 		return nil, errors.New("forbidden")
 	}
 	return room, nil
+}
+
+func (s *ChatRoomService) assignRoomKey(room *model.ChatRoom) error {
+	masterKey, err := helper.ChatMasterKeyFromEnv("CHAT_MASTER_KEY")
+	if err != nil {
+		return err
+	}
+	roomKey, err := helper.ChatGenerateKey()
+	if err != nil {
+		return err
+	}
+	encryptedKey, err := helper.ChatEncrypt(roomKey, masterKey)
+	if err != nil {
+		return err
+	}
+	room.EncryptedKey = &encryptedKey
+	return nil
+}
+
+func (s *ChatRoomService) roomKey(room *model.ChatRoom) ([]byte, error) {
+	if room == nil {
+		return nil, errors.New("chat room not found")
+	}
+	masterKey, err := helper.ChatMasterKeyFromEnv("CHAT_MASTER_KEY")
+	if err != nil {
+		return nil, err
+	}
+	if room.EncryptedKey != nil && strings.TrimSpace(*room.EncryptedKey) != "" {
+		return helper.ChatDecrypt(*room.EncryptedKey, masterKey)
+	}
+	roomKey, err := helper.ChatGenerateKey()
+	if err != nil {
+		return nil, err
+	}
+	encryptedKey, err := helper.ChatEncrypt(roomKey, masterKey)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.roomRepo.UpdateEncryptedKey(room.RoomID, encryptedKey); err != nil {
+		return nil, err
+	}
+	room.EncryptedKey = &encryptedKey
+	return roomKey, nil
+}
+
+func (s *ChatRoomService) decryptLastMessage(room *model.ChatRoom, message *repository.LastMessageInfo) {
+	if room == nil || message == nil || message.Message == nil || strings.TrimSpace(*message.Message) == "" {
+		return
+	}
+	roomKey, err := s.roomKey(room)
+	if err != nil {
+		return
+	}
+	plaintext, err := helper.ChatDecrypt(*message.Message, roomKey)
+	if err != nil {
+		return
+	}
+	value := string(plaintext)
+	message.Message = &value
 }

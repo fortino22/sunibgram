@@ -166,6 +166,7 @@ func AutoMigrate(db *gorm.DB) {
 	`)
 
 	db.Exec("ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)")
+	migrateChatEncryption(db)
 	db.Exec("ALTER TABLE chat_room_members ADD COLUMN IF NOT EXISTS is_muted BOOLEAN NOT NULL DEFAULT false")
 	db.Exec("ALTER TABLE chats ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES chats(chat_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_chats_reply_to_id ON chats(reply_to_id)")
