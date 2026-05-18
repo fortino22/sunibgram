@@ -24,12 +24,19 @@ type PaginatedCommunityResponse struct {
 }
 
 type DiscoverCommunityMemberResponse struct {
-	AvatarURL string `json:"avatar_url"`
+	BannerURL string `json:"banner_url"`
 }
 
 type DiscoverCommunityResponse struct {
+	CommunityID  uint                              `json:"community_id"`
 	Name         string                            `json:"name"`
 	MemberCount  int                               `json:"member_count"`
 	CategoryName string                            `json:"category_name"`
 	TopMembers   []DiscoverCommunityMemberResponse `json:"top_members"`
+}
+
+type MyCommunityResponse struct {
+	CommunityID   uint   `json:"community_id"`
+	CommunityName string `json:"community_name"`
+	BannerURL     string `json:"community_banner"`
 }

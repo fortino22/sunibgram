@@ -23,6 +23,7 @@ type IThreadRepository interface {
 	FindCommunityTop(communityID uint, page, limit int) ([]model.Thread, int64, error)
 	FindCommunityLatest(communityID uint, page, limit int) ([]model.Thread, int64, error)
 	FindCommunityMedia(communityID, requesterUserID uint) ([]model.CommunityThreadMedia, error)
+	FindMyCommunityThreads(userID uint, page, limit int) ([]model.Thread, int64, error)
 	FindAllCommunityThreads(userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error)
 	FindAllCommunityThreadsByQueryTop(userID uint, query string, page, limit int) ([]model.Thread, int64, error)
 	FindAllCommunityThreadsByQueryLatest(userID uint, query string, page, limit int) ([]model.Thread, int64, error)

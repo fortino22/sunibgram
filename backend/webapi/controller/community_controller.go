@@ -173,9 +173,18 @@ func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityResponse{
-		Data: c.toResponses(communities),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	slim := make([]dto.MyCommunityResponse, len(communities))
+	for i := range communities {
+		slim[i] = dto.MyCommunityResponse{
+			CommunityID:   communities[i].CommunityID,
+			CommunityName: communities[i].Name,
+			BannerURL:     BuildMediaURL(communities[i].BannerObjectName, communities[i].BannerBucket, c.communityService.GetURL),
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"data": slim,
+		"meta": dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -234,9 +243,9 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 	members := make([]dto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
 	for i := range comm.TopMembers {
 		members[i] = dto.DiscoverCommunityMemberResponse{
-			AvatarURL: BuildMediaURL(
-				comm.TopMembers[i].AvatarObjectName,
-				comm.TopMembers[i].AvatarBucket,
+			BannerURL: BuildMediaURL(
+				comm.TopMembers[i].BannerObjectName,
+				comm.TopMembers[i].BannerBucket,
 				c.communityService.GetURL,
 			),
 		}
@@ -247,6 +256,7 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 		categoryName = comm.Category.Name
 	}
 	return dto.DiscoverCommunityResponse{
+		CommunityID:  comm.CommunityID,
 		Name:         comm.Name,
 		MemberCount:  comm.MemberCount,
 		CategoryName: categoryName,

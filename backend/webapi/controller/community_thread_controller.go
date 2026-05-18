@@ -186,6 +186,39 @@ func (c *CommunityThreadController) getCommunityThreadsByQuery(
 	})
 }
 
+func (c *CommunityThreadController) GetMyCommunityThreads(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	page, limit := ParsePagination(ctx)
+
+	threads, total, err := c.threadService.GetMyCommunityThreads(ctx.Context(), claims.UserID, page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	tc := &ThreadController{
+		threadService:    c.threadService,
+		mediaService:     c.mediaService,
+		likeService:      c.likeService,
+		bookmarkService:  c.bookmarkService,
+		threadPinService: c.threadPinService,
+		profileService:   c.profileService,
+	}
+	data := tc.buildFeedItemsWithPin(threads, &claims.UserID)
+	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
+	for i, item := range data {
+		response[i] = dto.CommunityThreadFeedItemResponse{FeedItemResponse: item}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityThreadResponse{
+		Data: response,
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
+}
+
 func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {

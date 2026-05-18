@@ -23,6 +23,7 @@ func registerCommunityRoutes(
 	communities.Get("/joined", communityCtrl.GetMyJoined)
 	
 	//community threads (static paths before /:id wildcard)
+	communities.Get("/me/threads", communityThreadCtrl.GetMyCommunityThreads)
 	communities.Get("/threads", communityThreadCtrl.GetAllCommunityThreads)
 	communities.Get("/threads/top", communityThreadCtrl.GetCommunityThreadTopByName)
 	communities.Get("/threads/latest", communityThreadCtrl.GetCommunityThreadLatestByName)

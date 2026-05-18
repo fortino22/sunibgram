@@ -257,6 +257,19 @@ func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.
 	return s.filterUserFeed(context.Background(), userID, threads, parents)
 }
 
+func (s *ThreadService) GetMyCommunityThreads(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	threads, total, err := s.threadRepo.FindMyCommunityThreads(userID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	filtered, err := s.filterViewableThreads(ctx, &userID, threads)
+	if err != nil {
+		return nil, 0, err
+	}
+	return filtered, total, nil
+}
+
 func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, total, err := s.threadRepo.FindAllCommunityThreads(userID, categoryID, page, limit)

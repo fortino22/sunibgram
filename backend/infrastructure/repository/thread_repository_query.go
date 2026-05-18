@@ -169,6 +169,48 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 	return result, nil
 }
 
+func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]model.Thread, int64, error) {
+	type cached struct {
+		Threads []model.Thread
+		Total   int64
+	}
+	ctx := context.Background()
+	var result cached
+	key := fmt.Sprintf("thread:my-communities:user:%d:page:%d:limit:%d", userID, page, limit)
+	if err := r.cache.Get(ctx, key, &result); err != nil {
+		var threads []model.Thread
+		var total int64
+
+		base := r.db.readDB.Model(&model.Thread{}).
+			Joins("JOIN communities ON communities.community_id = threads.community_id").
+			Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
+			Where("threads.community_id IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("communities.is_active = ?", true)
+
+		if err := base.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+
+		offset := (page - 1) * limit
+		if err := preloadThreadDetails(r.db.readDB).
+			Joins("JOIN communities ON communities.community_id = threads.community_id").
+			Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
+			Where("threads.community_id IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("communities.is_active = ?", true).
+			Order("threads.created_at DESC").
+			Offset(offset).Limit(limit).
+			Find(&threads).Error; err != nil {
+			return nil, 0, err
+		}
+
+		result = cached{Threads: threads, Total: total}
+		r.cache.Set(ctx, key, result, threadFeedTTL)
+	}
+	return result.Threads, result.Total, nil
+}
+
 func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread

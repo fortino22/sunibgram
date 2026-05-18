@@ -1,8 +1,8 @@
 package model
 
 type DiscoverCommunityMember struct {
-	AvatarObjectName string
-	AvatarBucket     string
+	BannerObjectName string
+	BannerBucket     string
 }
 
 type DiscoverCommunity struct {

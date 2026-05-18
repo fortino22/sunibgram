@@ -48,6 +48,7 @@ func (r *threadCached) invalidateCommunityThreadQueryCaches(ctx context.Context)
 	r.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
 	r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
+	r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
 }
 
 func threadFeedKeysKey(threadID uint) string {
