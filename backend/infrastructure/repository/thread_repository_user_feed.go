@@ -26,16 +26,19 @@ func (r *threadCached) findUserFeed(requesterID, userID uint, types []string, pa
 	}
 
 	var total int64
-	r.db.readDB.Model(&model.Thread{}).
+	requester := &requesterID
+	if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requester).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", requesterID).
 		Where("threads.user_id = ? AND threads.type IN ?", userID, types).
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", model.CommunityVisibilityPublic, requesterID).
-		Count(&total)
+		Count(&total).Error; err != nil {
+		return nil, nil, 0, err
+	}
 
 	offset := (page - 1) * limit
 	var threads []model.Thread
-	if err := preloadThreadDetails(r.db.readDB).
+	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requester).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", requesterID).
 		Where("threads.user_id = ? AND threads.type IN ?", userID, types).
@@ -46,32 +49,9 @@ func (r *threadCached) findUserFeed(requesterID, userID uint, types []string, pa
 		return nil, nil, 0, err
 	}
 
-	parentIDSet := make(map[uint]struct{})
-	for _, t := range threads {
-		if t.ParentID != nil {
-			parentIDSet[*t.ParentID] = struct{}{}
-		}
-	}
-	parentMap := make(map[uint]*model.Thread)
-	if len(parentIDSet) > 0 {
-		pids := make([]uint, 0, len(parentIDSet))
-		for id := range parentIDSet {
-			pids = append(pids, id)
-		}
-		var parentThreads []model.Thread
-		if err := preloadThreadParentDetails(r.db.readDB).Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
-			return nil, nil, 0, err
-		}
-		for i := range parentThreads {
-			parentMap[parentThreads[i].ThreadID] = &parentThreads[i]
-		}
-	}
-
-	parents := make([]*model.Thread, len(threads))
-	for i, t := range threads {
-		if t.ParentID != nil {
-			parents[i] = parentMap[*t.ParentID]
-		}
+	threads, parents, err := r.attachVisibleParents(threads, requester)
+	if err != nil {
+		return nil, nil, 0, err
 	}
 	if err := r.cache.Set(ctx, key, cachedFeed{Threads: threads, Parents: parents, Total: total}, threadFeedTTL); err == nil {
 		for _, t := range threads {
@@ -112,8 +92,9 @@ func (r *threadCached) FindMediaByUserID(requesterID, userID uint, page, limit i
 		string(model.ThreadTypeReply),
 	}
 
+	requester := &requesterID
 	baseJoins := func() *gorm.DB {
-		return r.db.readDB.Model(&model.Thread{}).
+		return applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requester).
 			Joins("JOIN thread_media ON thread_media.thread_id = threads.thread_id").
 			Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", requesterID).
 			Where("threads.user_id = ? AND threads.type IN ?", userID, types).
@@ -147,32 +128,9 @@ func (r *threadCached) FindMediaByUserID(requesterID, userID uint, page, limit i
 		return nil, nil, 0, err
 	}
 
-	parentIDSet := make(map[uint]struct{})
-	for _, t := range threads {
-		if t.ParentID != nil {
-			parentIDSet[*t.ParentID] = struct{}{}
-		}
-	}
-	parentMap := make(map[uint]*model.Thread)
-	if len(parentIDSet) > 0 {
-		pids := make([]uint, 0, len(parentIDSet))
-		for id := range parentIDSet {
-			pids = append(pids, id)
-		}
-		var parentThreads []model.Thread
-		if err := preloadThreadParentDetails(r.db.readDB).Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
-			return nil, nil, 0, err
-		}
-		for i := range parentThreads {
-			parentMap[parentThreads[i].ThreadID] = &parentThreads[i]
-		}
-	}
-
-	parents := make([]*model.Thread, len(threads))
-	for i, t := range threads {
-		if t.ParentID != nil {
-			parents[i] = parentMap[*t.ParentID]
-		}
+	threads, parents, err := r.attachVisibleParents(threads, requester)
+	if err != nil {
+		return nil, nil, 0, err
 	}
 	if err := r.cache.Set(ctx, key, cachedMedia{Threads: threads, Parents: parents, Total: total}, threadFeedTTL); err == nil {
 		for _, t := range threads {
@@ -202,18 +160,21 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 	}
 
 	var total int64
-	r.db.readDB.Model(&model.Thread{}).
+	requester := &userID
+	if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requester).
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
 		Where("user_relationships.follower_id = ? AND threads.type IN ?", userID, types).
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
 			model.CommunityVisibilityPublic, userID).
-		Count(&total)
+		Count(&total).Error; err != nil {
+		return nil, nil, 0, err
+	}
 
 	offset := (page - 1) * limit
 	var threads []model.Thread
-	if err := preloadThreadDetails(r.db.readDB).
+	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requester).
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
@@ -226,6 +187,19 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 		return nil, nil, 0, err
 	}
 
+	threads, parents, err := r.attachVisibleParents(threads, requester)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	if err := r.cache.Set(ctx, key, cachedFollowing{Threads: threads, Parents: parents, Total: total}, followingFeedTTL); err == nil {
+		for _, t := range threads {
+			r.trackFeedCacheKey(ctx, t.ThreadID, key)
+		}
+	}
+	return threads, parents, total, nil
+}
+
+func (r *threadCached) attachVisibleParents(threads []model.Thread, requesterID *uint) ([]model.Thread, []*model.Thread, error) {
 	parentIDSet := make(map[uint]struct{})
 	for _, t := range threads {
 		if t.ParentID != nil {
@@ -239,24 +213,29 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 			pids = append(pids, id)
 		}
 		var parentThreads []model.Thread
-		if err := preloadThreadParentDetails(r.db.readDB).Where("thread_id IN ?", pids).Find(&parentThreads).Error; err != nil {
-			return nil, nil, 0, err
+		if err := applyThreadVisibility(preloadThreadParentDetails(r.db.readDB), requesterID).
+			Where("threads.thread_id IN ?", pids).
+			Find(&parentThreads).Error; err != nil {
+			return nil, nil, err
 		}
 		for i := range parentThreads {
 			parentMap[parentThreads[i].ThreadID] = &parentThreads[i]
 		}
 	}
 
-	parents := make([]*model.Thread, len(threads))
-	for i, t := range threads {
-		if t.ParentID != nil {
-			parents[i] = parentMap[*t.ParentID]
+	outThreads := make([]model.Thread, 0, len(threads))
+	parents := make([]*model.Thread, 0, len(threads))
+	for _, thread := range threads {
+		var parent *model.Thread
+		if thread.ParentID != nil {
+			var ok bool
+			parent, ok = parentMap[*thread.ParentID]
+			if !ok {
+				continue
+			}
 		}
+		outThreads = append(outThreads, thread)
+		parents = append(parents, parent)
 	}
-	if err := r.cache.Set(ctx, key, cachedFollowing{Threads: threads, Parents: parents, Total: total}, followingFeedTTL); err == nil {
-		for _, t := range threads {
-			r.trackFeedCacheKey(ctx, t.ThreadID, key)
-		}
-	}
-	return threads, parents, total, nil
+	return outThreads, parents, nil
 }

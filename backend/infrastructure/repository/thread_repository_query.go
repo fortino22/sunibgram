@@ -22,24 +22,26 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 	return &thread, nil
 }
 
-func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread
 		Total   int64
 	}
 	ctx := context.Background()
 	var result cached
-	key := threadRootsKey(page, limit)
+	key := fmt.Sprintf("%s:viewer:%s", threadRootsKey(page, limit), threadVisibilityCachePart(requesterID))
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var threads []model.Thread
 		var total int64
-		r.db.readDB.Model(&model.Thread{}).
+		countQuery := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-			Count(&total)
+			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+		if err := countQuery.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
 		offset := (page - 1) * limit
-		if err := preloadThreadDetails(r.db.readDB).
+		if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
@@ -56,6 +58,28 @@ func (r *threadCached) FindRoots(page, limit int) ([]model.Thread, int64, error)
 		}
 	}
 	return result.Threads, result.Total, nil
+}
+
+func (r *threadCached) FindChain(anchorID uint) (model.Thread, []model.Thread, error) {
+	var anchor model.Thread
+	if err := preloadThreadParentDetails(r.db.readDB).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.thread_id = ?", anchorID).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		First(&anchor).Error; err != nil {
+		return model.Thread{}, nil, err
+	}
+
+	var children []model.Thread
+	if err := preloadThreadParentDetails(r.db.readDB).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.parent_id = ?", anchorID).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Order("threads.created_at ASC").
+		Find(&children).Error; err != nil {
+		return model.Thread{}, nil, err
+	}
+	return anchor, children, nil
 }
 
 func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error) {
@@ -94,9 +118,10 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 	return result.Threads, result.Total, nil
 }
 
-func (r *threadCached) FindCommunityTop(communityID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindCommunityTop(communityID, requesterUserID uint, page, limit int) ([]model.Thread, int64, error) {
 	return r.findCommunityThreads(
 		communityID,
+		requesterUserID,
 		page,
 		limit,
 		"top",
@@ -104,26 +129,29 @@ func (r *threadCached) FindCommunityTop(communityID uint, page, limit int) ([]mo
 	)
 }
 
-func (r *threadCached) FindCommunityLatest(communityID uint, page, limit int) ([]model.Thread, int64, error) {
-	return r.findCommunityThreads(communityID, page, limit, "latest", "threads.created_at DESC")
+func (r *threadCached) FindCommunityLatest(communityID, requesterUserID uint, page, limit int) ([]model.Thread, int64, error) {
+	return r.findCommunityThreads(communityID, requesterUserID, page, limit, "latest", "threads.created_at DESC")
 }
 
-func (r *threadCached) findCommunityThreads(communityID uint, page, limit int, keySuffix, orderClause string) ([]model.Thread, int64, error) {
+func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, page, limit int, keySuffix, orderClause string) ([]model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread
 		Total   int64
 	}
 	ctx := context.Background()
 	var result cached
-	key := threadCommunityKey(communityID, page, limit, keySuffix)
+	key := fmt.Sprintf("%s:viewer:%d", threadCommunityKey(communityID, page, limit, keySuffix), requesterUserID)
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var threads []model.Thread
 		var total int64
-		r.db.readDB.Model(&model.Thread{}).
+		requesterID := &requesterUserID
+		if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Count(&total)
+			Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
 		offset := (page - 1) * limit
-		if err := preloadThreadDetails(r.db.readDB).
+		if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
 			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
 			Order(orderClause).
 			Offset(offset).Limit(limit).
@@ -149,7 +177,7 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 		Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
 		Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", requesterUserID).
 		Where("threads.community_id = ? AND threads.type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-		Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", requesterUserID).
+		Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", requesterUserID).
 		Order("threads.created_at DESC, thread_media.created_at ASC").
 		Find(&rows).Error; err != nil {
 		return nil, err
@@ -181,7 +209,8 @@ func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]m
 		var threads []model.Thread
 		var total int64
 
-		base := r.db.readDB.Model(&model.Thread{}).
+		requesterID := &userID
+		base := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
 			Joins("JOIN communities ON communities.community_id = threads.community_id").
 			Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
 			Where("threads.community_id IS NOT NULL").
@@ -193,7 +222,7 @@ func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]m
 		}
 
 		offset := (page - 1) * limit
-		if err := preloadThreadDetails(r.db.readDB).
+		if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
 			Joins("JOIN communities ON communities.community_id = threads.community_id").
 			Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
 			Where("threads.community_id IS NOT NULL").
@@ -236,7 +265,7 @@ func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUI
 			Where("communities.is_active = ?", true).
 			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 				model.CommunityVisibilityPublic, userID).
-			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID)
+			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
 
 		if categoryID != nil {
 			base = base.Where("communities.category_id = ?", categoryID)
@@ -256,7 +285,7 @@ func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUI
 			Where("communities.is_active = ?", true).
 			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 				model.CommunityVisibilityPublic, userID).
-			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID)
+			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
 		if categoryID != nil {
 			query = query.Where("communities.category_id = ?", categoryID)
 		}
@@ -312,7 +341,7 @@ func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string,
 			Where("(communities.name ILIKE ? OR threads.content ILIKE ?)", queryLike, queryLike).
 			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 				model.CommunityVisibilityPublic, userID).
-			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID)
+			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
 
 		if err := base.Count(&total).Error; err != nil {
 			return nil, 0, err
@@ -329,7 +358,7 @@ func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string,
 			Where("(communities.name ILIKE ? OR threads.content ILIKE ?)", queryLike, queryLike).
 			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 				model.CommunityVisibilityPublic, userID).
-			Where("threads.user_id = ? OR us.is_private = false OR ur.following_id IS NOT NULL", userID).
+			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID).
 			Order(orderClause).
 			Offset(offset).Limit(limit).
 			Find(&threads).Error; err != nil {

@@ -332,15 +332,11 @@ func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, fi
 		return nil, 0, errors.New("event not found")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, _, err := s.eventRepo.FindThreads(id, event.UserID, filter, page, limit)
+	threads, total, err := s.eventRepo.FindThreads(id, event.UserID, requesterID, filter, page, limit)
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := helper.FilterViewableThreads(ctx, s.settingsRepo, s.followRepo, requesterID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, int64(len(filtered)), nil
+	return threads, total, nil
 }
 
 func validateEventThreadFilter(filter string) error {

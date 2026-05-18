@@ -1,4 +1,4 @@
-# Costly APIs — Backend Optimization Report
+view# Costly APIs — Backend Optimization Report
 
 Scan of `backend/` for expensive endpoints. Each item: where, why costly, cheap fix (no logic change).
 
