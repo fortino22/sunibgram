@@ -134,7 +134,6 @@ func (r *hashtagRepository) GetTrending(ctx context.Context, limit int) ([]model
 		result[i] = model.TrendingHashtag{
 			Name:        row.Name,
 			ThreadCount: row.ThreadCount,
-			Score:       float64(row.WeekThreadCount*3 + row.WeekLikeCount + row.WeekRepostCount*2),
 		}
 	}
 	return result, nil

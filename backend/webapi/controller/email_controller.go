@@ -35,9 +35,9 @@ func (c *EmailController) Send(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "body is required"})
 	}
 
-	if err := c.emailService.SendMail(req.To, req.Subject, req.Body); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "failed to send email: " + err.Error()})
+	if err := c.emailService.QueueMail(ctx.Context(), req.To, req.Subject, req.Body); err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "failed to queue email: " + err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "email sent successfully"})
+	return ctx.Status(fiber.StatusAccepted).JSON(fiber.Map{"message": "email queued"})
 }

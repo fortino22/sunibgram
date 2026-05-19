@@ -16,15 +16,11 @@ func (s *ThreadService) GetByID(id uint) (*model.Thread, error) {
 
 func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, _, err := s.threadRepo.FindRoots(page, limit)
+	threads, total, err := s.threadRepo.FindRoots(requesterID, page, limit)
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := s.filterViewableThreads(ctx, requesterID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, int64(len(filtered)), nil
+	return threads, total, nil
 }
 
 func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
@@ -33,7 +29,7 @@ func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, li
 }
 
 func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
-	anchor, err := s.threadRepo.FindByID(anchorID)
+	anchor, children, err := s.threadRepo.FindChain(anchorID)
 	if err != nil {
 		return nil, 0, errors.New("thread not found")
 	}
@@ -42,29 +38,9 @@ func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 
-	// Determine the true root to fetch all threads in the conversation
-	trueRootID := anchorID
-	if anchor.RootID != nil {
-		trueRootID = *anchor.RootID
-	}
-
-	// Fetch all threads in the conversation
-	all, _, err := s.threadRepo.FindByRootID(trueRootID, 1, 10000)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	// Collect anchor + only its direct children (parent_id = anchorID)
-	var chain []model.Thread
-	for _, t := range all {
-		if t.ThreadID == anchorID {
-			chain = append([]model.Thread{t}, chain...)
-			continue
-		}
-		if t.ParentID != nil && *t.ParentID == anchorID {
-			chain = append(chain, t)
-		}
-	}
+	chain := make([]model.Thread, 0, 1+len(children))
+	chain = append(chain, anchor)
+	chain = append(chain, children...)
 
 	filtered, err := s.filterViewableThreads(ctx, &requesterID, chain)
 	if err != nil {
@@ -135,46 +111,7 @@ func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query 
 }
 
 func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []model.Thread, parents []*model.Thread) ([]model.Thread, []*model.Thread, int64, error) {
-	filteredThreads, err := s.filterViewableThreads(ctx, &requesterID, threads)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	allowedThreadIDs := make(map[uint]struct{}, len(filteredThreads))
-	for _, thread := range filteredThreads {
-		allowedThreadIDs[thread.ThreadID] = struct{}{}
-	}
-
-	parentThreads := make([]model.Thread, 0, len(parents))
-	for _, parent := range parents {
-		if parent != nil {
-			parentThreads = append(parentThreads, *parent)
-		}
-	}
-	filteredParents, err := s.filterViewableThreads(ctx, &requesterID, parentThreads)
-	if err != nil {
-		return nil, nil, 0, err
-	}
-	allowedParentIDs := make(map[uint]struct{}, len(filteredParents))
-	for _, parent := range filteredParents {
-		allowedParentIDs[parent.ThreadID] = struct{}{}
-	}
-
-	outThreads := make([]model.Thread, 0, len(threads))
-	outParents := make([]*model.Thread, 0, len(parents))
-	for i, thread := range threads {
-		if _, ok := allowedThreadIDs[thread.ThreadID]; !ok {
-			continue
-		}
-		parent := parents[i]
-		if parent != nil {
-			if _, ok := allowedParentIDs[parent.ThreadID]; !ok {
-				continue
-			}
-		}
-		outThreads = append(outThreads, thread)
-		outParents = append(outParents, parent)
-	}
-	return outThreads, outParents, int64(len(outThreads)), nil
+	return threads, parents, int64(len(threads)), nil
 }
 
 func (s *ThreadService) filterCommunityMemberFeed(requesterID uint, threads []model.Thread, parents []*model.Thread) ([]model.Thread, []*model.Thread, int64, error) {
@@ -214,15 +151,11 @@ func (s *ThreadService) GetCommunityThreadTop(communityID, userID uint, page, li
 		return nil, 0, err
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := s.threadRepo.FindCommunityTop(communityID, page, limit)
+	threads, total, err := s.threadRepo.FindCommunityTop(communityID, userID, page, limit)
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := s.filterViewableThreads(context.Background(), &userID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, total, nil
+	return threads, total, nil
 }
 
 func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, int64, error) {
@@ -230,15 +163,11 @@ func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page,
 		return nil, 0, err
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := s.threadRepo.FindCommunityLatest(communityID, page, limit)
+	threads, total, err := s.threadRepo.FindCommunityLatest(communityID, userID, page, limit)
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := s.filterViewableThreads(context.Background(), &userID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, total, nil
+	return threads, total, nil
 }
 
 func (s *ThreadService) GetCommunityThreadMedia(communityID, userID uint) ([]model.CommunityThreadMedia, error) {
@@ -263,11 +192,7 @@ func (s *ThreadService) GetMyCommunityThreads(ctx context.Context, userID uint, 
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := s.filterViewableThreads(ctx, &userID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, total, nil
+	return threads, total, nil
 }
 
 func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error) {
@@ -276,11 +201,7 @@ func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint,
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := s.filterViewableThreads(ctx, &userID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, total, nil
+	return threads, total, nil
 }
 
 func (s *ThreadService) GetAllCommunityThreadsByQueryTop(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, int64, error) {
@@ -307,9 +228,5 @@ func (s *ThreadService) getAllCommunityThreadsByQuery(
 	if err != nil {
 		return nil, 0, err
 	}
-	filtered, err := s.filterViewableThreads(ctx, &userID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, total, nil
+	return threads, total, nil
 }

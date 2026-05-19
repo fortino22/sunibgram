@@ -93,6 +93,10 @@ func (s *BookmarkService) IsBookmarked(userID, threadID uint) bool {
 	return ok
 }
 
+func (s *BookmarkService) AreThreadsBookmarked(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	return s.bookmarkRepo.AreThreadsBookmarked(userID, threadIDs)
+}
+
 func (s *BookmarkService) GetMyBookmarks(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.bookmarkRepo.FindByUserID(userID, page, limit)

@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	defaultHashtagLimit = 20
-	trendingHashtagTTL  = 5 * time.Minute
+	trendingHashtagLimit = 30
+	trendingHashtagTTL   = 5 * time.Minute
 )
 
 type HashtagService struct {
@@ -27,7 +27,10 @@ func NewHashtagService(hashtagRepo repository.IHashtagRepository, c *cache.Cache
 }
 
 func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]model.TrendingHashtag, error) {
-	_, limit = helper.NormalizePageLimit(1, limit, defaultHashtagLimit)
+	_, limit = helper.NormalizePageLimit(1, limit, trendingHashtagLimit)
+	if limit > trendingHashtagLimit {
+		limit = trendingHashtagLimit
+	}
 
 	key := fmt.Sprintf("trending_hashtags:%d", limit)
 	var cached []model.TrendingHashtag

@@ -52,10 +52,22 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 			message = &trimmed
 		}
 	}
+	roomKey, err := s.roomKey(room)
+	if err != nil {
+		return nil, err
+	}
+	if message != nil {
+		encrypted, err := helper.ChatEncrypt([]byte(*message), roomKey)
+		if err != nil {
+			return nil, err
+		}
+		message = &encrypted
+	}
 	chat := &model.Chat{RoomID: roomID, SenderID: senderID, Message: message, GifURL: gifURL, ReplyToID: replyToID}
 	if err := s.chatRepo.Save(chat); err != nil {
 		return nil, err
 	}
+	s.decryptChat(chat, roomKey)
 	_ = s.roomRepo.TouchUpdatedAt(roomID)
 	s.sendMessageNotifications(room, chat)
 	return chat, nil
@@ -98,7 +110,7 @@ func (s *ChatService) sendMessageNotifications(room *model.ChatRoom, chat *model
 
 		_ = s.notificationService.SendNotification(service.CreateNotificationInput{
 			Type:            "chat_message",
-			Message:         preview,
+			Message:         chatNotificationMessage(chat),
 			SenderUserID:    chat.SenderID,
 			RecipientUserID: member.UserID,
 			ReferenceID:     &referenceID,
@@ -123,11 +135,30 @@ func chatMessagePreview(chat *model.Chat) string {
 	return "sent an attachment"
 }
 
+func chatNotificationMessage(chat *model.Chat) string {
+	if chat == nil {
+		return "sent a message"
+	}
+	if chat.GifURL != nil && strings.TrimSpace(*chat.GifURL) != "" {
+		return "sent a GIF"
+	}
+	return "sent a message"
+}
+
 func (s *ChatService) GetByID(ctx context.Context, chatID uint) (*model.Chat, error) {
 	chat, err := s.chatRepo.FindByID(chatID)
 	if err != nil {
 		return nil, errors.New("chat not found")
 	}
+	room, err := s.roomRepo.FindByID(chat.RoomID)
+	if err != nil {
+		return nil, errors.New("chat room not found")
+	}
+	roomKey, err := s.roomKey(room)
+	if err != nil {
+		return nil, err
+	}
+	s.decryptChat(chat, roomKey)
 	return chat, nil
 }
 
@@ -136,7 +167,22 @@ func (s *ChatService) GetMessages(roomID, userID uint, page, limit int) ([]model
 		return nil, 0, errors.New("forbidden")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	return s.chatRepo.FindByRoomID(roomID, page, limit)
+	chats, total, err := s.chatRepo.FindByRoomID(roomID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	room, err := s.roomRepo.FindByID(roomID)
+	if err != nil {
+		return nil, 0, errors.New("chat room not found")
+	}
+	roomKey, err := s.roomKey(room)
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range chats {
+		s.decryptChat(&chats[i], roomKey)
+	}
+	return chats, total, nil
 }
 
 func (s *ChatService) Unsend(ctx context.Context, chatID, senderID uint) error {
@@ -167,7 +213,19 @@ func (s *ChatService) UpdateMessage(ctx context.Context, chatID, senderID uint, 
 	if chat.SenderID != senderID {
 		return errors.New("forbidden")
 	}
-	return s.chatRepo.UpdateMessage(chatID, trimmed)
+	room, err := s.roomRepo.FindByID(chat.RoomID)
+	if err != nil {
+		return errors.New("chat room not found")
+	}
+	roomKey, err := s.roomKey(room)
+	if err != nil {
+		return err
+	}
+	encrypted, err := helper.ChatEncrypt([]byte(trimmed), roomKey)
+	if err != nil {
+		return err
+	}
+	return s.chatRepo.UpdateMessage(chatID, encrypted)
 }
 
 func (s *ChatService) MarkRead(roomID, userID uint) ([]uint, error) {
@@ -199,6 +257,53 @@ func (s *ChatService) MarkRead(roomID, userID uint) ([]uint, error) {
 		}
 	}
 	return inserted, nil
+}
+
+func (s *ChatService) roomKey(room *model.ChatRoom) ([]byte, error) {
+	if room == nil {
+		return nil, errors.New("chat room not found")
+	}
+	masterKey, err := helper.ChatMasterKeyFromEnv("CHAT_MASTER_KEY")
+	if err != nil {
+		return nil, err
+	}
+	if room.EncryptedKey != nil && strings.TrimSpace(*room.EncryptedKey) != "" {
+		return helper.ChatDecrypt(*room.EncryptedKey, masterKey)
+	}
+	roomKey, err := helper.ChatGenerateKey()
+	if err != nil {
+		return nil, err
+	}
+	encryptedKey, err := helper.ChatEncrypt(roomKey, masterKey)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.roomRepo.UpdateEncryptedKey(room.RoomID, encryptedKey); err != nil {
+		return nil, err
+	}
+	room.EncryptedKey = &encryptedKey
+	return roomKey, nil
+}
+
+func (s *ChatService) decryptChat(chat *model.Chat, roomKey []byte) {
+	if chat == nil {
+		return
+	}
+	decryptMessage := func(message *string) {
+		if message == nil || strings.TrimSpace(*message) == "" {
+			return
+		}
+		plaintext, err := helper.ChatDecrypt(*message, roomKey)
+		if err != nil {
+			return
+		}
+		value := string(plaintext)
+		*message = value
+	}
+	decryptMessage(chat.Message)
+	if chat.ReplyTo != nil {
+		decryptMessage(chat.ReplyTo.Message)
+	}
 }
 
 func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs []uint, userID uint) ([]service.ChatMarkResult, error) {

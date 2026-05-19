@@ -19,7 +19,7 @@ type Cache struct {
 
 func New() *Cache {
 	addr := os.Getenv("REDIS_ADDR")
-	
+
 	password := os.Getenv("REDIS_PASSWORD")
 	client := redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -42,6 +42,25 @@ func (c *Cache) Set(ctx context.Context, key string, value any, ttl time.Duratio
 		return err
 	}
 	return c.client.Set(ctx, key, b, ttl).Err()
+}
+
+func (c *Cache) RPush(ctx context.Context, key string, value any) error {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return c.client.RPush(ctx, key, b).Err()
+}
+
+func (c *Cache) BLPop(ctx context.Context, key string, timeout time.Duration) (string, error) {
+	values, err := c.client.BLPop(ctx, timeout, key).Result()
+	if err != nil {
+		return "", err
+	}
+	if len(values) < 2 {
+		return "", fmt.Errorf("cache blpop: empty result")
+	}
+	return values[1], nil
 }
 
 func (c *Cache) Delete(ctx context.Context, keys ...string) error {

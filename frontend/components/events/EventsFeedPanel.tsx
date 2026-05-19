@@ -56,11 +56,24 @@ function EventSection({
 export function EventsFeedPanel({ active }: { active: boolean }) {
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [trendingFilterActive, setTrendingFilterActive] = useState(false);
+  const [runningFilterActive, setRunningFilterActive] = useState(false);
+  const [upcomingFilterActive, setUpcomingFilterActive] = useState(false);
   const query = useEventsFeed(active);
 
   const trending = query.data?.trending ?? [];
   const running = query.data?.running ?? [];
   const future = query.data?.future ?? [];
+  const showAllEvents = !trendingFilterActive && !runningFilterActive && !upcomingFilterActive;
+  const showTrendingSection = showAllEvents || trendingFilterActive;
+  const showRunningSection = showAllEvents || runningFilterActive;
+  const showUpcomingSection = showAllEvents || upcomingFilterActive;
+
+  function resetFilters() {
+    setTrendingFilterActive(false);
+    setRunningFilterActive(false);
+    setUpcomingFilterActive(false);
+  }
 
   return (
     <>
@@ -125,6 +138,94 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
         <CreateEventDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       )}
 
+      <div
+        style={{
+          display: 'flex',
+          gap: 10,
+          padding: '14px 20px 10px',
+          overflowX: 'auto',
+          borderBottom: '1px solid var(--border)',
+          background: 'var(--bg-card)',
+        }}
+      >
+        <button
+          type="button"
+          onClick={resetFilters}
+          aria-pressed={showAllEvents}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 999,
+            border: `1px solid ${showAllEvents ? 'var(--accent)' : 'var(--border)'}`,
+            background: showAllEvents ? 'var(--accent)' : 'transparent',
+            color: showAllEvents ? '#fff' : 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          See All
+        </button>
+        <button
+          type="button"
+          onClick={() => setTrendingFilterActive((current) => !current)}
+          aria-pressed={trendingFilterActive}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 999,
+            border: `1px solid ${trendingFilterActive ? 'var(--accent)' : 'var(--border)'}`,
+            background: trendingFilterActive ? 'var(--accent)' : 'transparent',
+            color: trendingFilterActive ? '#fff' : 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          Trending
+        </button>
+        <button
+          type="button"
+          onClick={() => setRunningFilterActive((current) => !current)}
+          aria-pressed={runningFilterActive}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 999,
+            border: `1px solid ${runningFilterActive ? 'var(--accent)' : 'var(--border)'}`,
+            background: runningFilterActive ? 'var(--accent)' : 'transparent',
+            color: runningFilterActive ? '#fff' : 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          Running Now
+        </button>
+        <button
+          type="button"
+          onClick={() => setUpcomingFilterActive((current) => !current)}
+          aria-pressed={upcomingFilterActive}
+          style={{
+            padding: '8px 14px',
+            borderRadius: 999,
+            border: `1px solid ${upcomingFilterActive ? 'var(--accent)' : 'var(--border)'}`,
+            background: upcomingFilterActive ? 'var(--accent)' : 'transparent',
+            color: upcomingFilterActive ? '#fff' : 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          Upcoming
+        </button>
+      </div>
+
       {query.isLoading ? (
         <>
           <EventCardSkeleton />
@@ -137,16 +238,22 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
         </div>
       ) : (
         <>
-          <EventSection label="Trending" events={trending} />
-          <EventSection
-            label="Running Now"
-            events={running}
-            emptyState={{
-              title: 'No events running now',
-              subtitle: 'Check back soon or create an event for later.',
-            }}
-          />
-          <EventSection label="Upcoming" events={future} />
+          {showTrendingSection && (
+            <EventSection label="Trending" events={trending} />
+          )}
+          {showRunningSection && (
+            <EventSection
+              label="Running Now"
+              events={running}
+              emptyState={{
+                title: 'No events running now',
+                subtitle: 'Check back soon or create an event for later.',
+              }}
+            />
+          )}
+          {showUpcomingSection && (
+            <EventSection label="Upcoming" events={future} />
+          )}
         </>
       )}
     </>

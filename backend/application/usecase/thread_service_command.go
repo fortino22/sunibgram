@@ -287,6 +287,10 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 	return ok
 }
 
+func (s *ThreadService) AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	return s.threadRepo.AreThreadsReposted(userID, threadIDs)
+}
+
 func (s *ThreadService) ensureThreadCommunityWritable(thread *model.Thread) error {
 	if thread == nil || thread.CommunityID == nil {
 		return nil

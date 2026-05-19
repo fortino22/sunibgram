@@ -103,6 +103,16 @@ func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 	return nil
 }
 
+func (r *ChatRoomRepository) UpdateEncryptedKey(roomID uint, encryptedKey string) error {
+	err := r.writeDB.Model(&model.ChatRoom{}).
+		Where("room_id = ?", roomID).
+		Update("encrypted_key", encryptedKey).Error
+	if err != nil {
+		return err
+	}
+	return r.cache.Delete(context.Background(), fmt.Sprintf("chat:room:%d", roomID))
+}
+
 func (r *ChatRoomRepository) RemoveMember(roomID, userID uint) error {
 	ctx := context.Background()
 	result := r.writeDB.Where("room_id = ? AND user_id = ?", roomID, userID).Delete(&model.ChatRoomMember{})
@@ -263,12 +273,12 @@ func (r *ChatRoomRepository) FindLastMessages(roomIDs []uint) (map[uint]domainre
 		return map[uint]domainrepo.LastMessageInfo{}, nil
 	}
 	type row struct {
-		RoomID   uint
-		ChatID   uint
-		SenderID uint
-		Message  *string
-		GifURL   *string
-		HasMedia bool
+		RoomID    uint
+		ChatID    uint
+		SenderID  uint
+		Message   *string
+		GifURL    *string
+		HasMedia  bool
 		CreatedAt time.Time
 	}
 	var rows []row

@@ -28,11 +28,12 @@ type NotificationSenderResponse struct {
 }
 
 type NotificationListResponse struct {
-	ID        uint                       `json:"id"`
-	Type      string                     `json:"type"`
-	Message   string                     `json:"message"`
-	CreatedAt dtoutils.FormattedTime     `json:"created_at"`
-	Actor     NotificationSenderResponse `json:"actor"`
+	ID          uint                       `json:"id"`
+	Type        string                     `json:"type"`
+	Message     string                     `json:"message"`
+	ReferenceID *uint                      `json:"reference_id"`
+	CreatedAt   dtoutils.FormattedTime     `json:"created_at"`
+	Actor       NotificationSenderResponse `json:"actor"`
 }
 
 type NotificationListMeta struct {

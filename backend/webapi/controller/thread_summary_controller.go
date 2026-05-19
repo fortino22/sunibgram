@@ -1,7 +1,10 @@
 package controller
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/sunibgram/application/usecase"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 )
@@ -22,6 +25,9 @@ func (c *ThreadSummaryController) GetSummary(ctx *fiber.Ctx) error {
 
 	summary, err := c.summaryService.Summarize(ctx.Context(), threadID)
 	if err != nil {
+		if errors.Is(err, usecase.ErrThreadSummaryNotReady) {
+			return ctx.Status(fiber.StatusAccepted).JSON(fiber.Map{"status": "processing"})
+		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 

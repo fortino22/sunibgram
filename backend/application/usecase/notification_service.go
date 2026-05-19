@@ -93,15 +93,16 @@ func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID 
 		return nil, err
 	}
 
+	senders, err := s.senderProfilesByUserID(notifications)
+	if err != nil {
+		return nil, err
+	}
+
 	items := make([]service.NotificationListItem, len(notifications))
 	for i := range notifications {
-		actor, err := s.senderProfile(notifications[i].SenderUserID)
-		if err != nil {
-			return nil, err
-		}
 		items[i] = service.NotificationListItem{
 			Notification: &notifications[i],
-			Actor:        actor,
+			Actor:        senders[notifications[i].SenderUserID],
 		}
 	}
 	return items, nil
@@ -116,6 +117,71 @@ func (s *NotificationService) DeleteNotification(id, requesterID uint, isAdmin b
 		return errors.New("forbidden")
 	}
 	return s.notificationRepo.Delete(id)
+}
+
+func (s *NotificationService) senderProfilesByUserID(notifications []model.Notification) (map[uint]*model.NotificationSender, error) {
+	ids := make([]uint, 0, len(notifications))
+	seen := make(map[uint]struct{}, len(notifications))
+	for i := range notifications {
+		userID := notifications[i].SenderUserID
+		if _, ok := seen[userID]; ok {
+			continue
+		}
+		seen[userID] = struct{}{}
+		ids = append(ids, userID)
+	}
+	if len(ids) == 0 {
+		return map[uint]*model.NotificationSender{}, nil
+	}
+
+	users, err := s.userRepo.FindByIDs(ids)
+	if err != nil {
+		return nil, err
+	}
+	profiles, err := s.profileRepo.FindByUserIDs(ids)
+	if err != nil {
+		return nil, err
+	}
+	userFaculties, err := s.userFacultyRepo.FindByUserIDs(ids)
+	if err != nil {
+		return nil, err
+	}
+
+	profilesByUserID := make(map[uint]model.UserProfile, len(profiles))
+	for i := range profiles {
+		profilesByUserID[profiles[i].UserID] = profiles[i]
+	}
+
+	facultiesByUserID := make(map[uint]*model.Faculty, len(userFaculties))
+	for i := range userFaculties {
+		facultiesByUserID[userFaculties[i].UserID] = &userFaculties[i].Faculty
+	}
+
+	senders := make(map[uint]*model.NotificationSender, len(users))
+	for i := range users {
+		var avatarURL string
+		if profile, ok := profilesByUserID[users[i].UserID]; ok && profile.AvatarBucket != "" && profile.AvatarObjectName != "" {
+			avatarURL = s.storageUsecase.GetURL(profile.AvatarBucket, profile.AvatarObjectName)
+		}
+
+		sender := &model.NotificationSender{
+			UserID:    users[i].UserID,
+			Username:  users[i].UserName,
+			Name:      users[i].Name,
+			AvatarURL: avatarURL,
+			IsPremium: users[i].IsPremium,
+			Faculty:   facultiesByUserID[users[i].UserID],
+		}
+		senders[users[i].UserID] = sender
+		_ = s.notificationRepo.SetSenderCache(sender)
+	}
+
+	for _, id := range ids {
+		if _, ok := senders[id]; !ok {
+			return nil, errors.New("sender user not found")
+		}
+	}
+	return senders, nil
 }
 
 func (s *NotificationService) senderProfile(userID uint) (*model.NotificationSender, error) {

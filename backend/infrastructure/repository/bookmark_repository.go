@@ -56,6 +56,10 @@ func (r *BookmarkRepository) Exists(userID, threadID uint) (bool, error) {
 	return r.base.exists(userID, threadID, &model.Bookmark{})
 }
 
+func (r *BookmarkRepository) AreThreadsBookmarked(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	return r.base.areThreadsInteracted(userID, threadIDs)
+}
+
 func (r *BookmarkRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	return r.base.findByUserID(userID, page, limit)
 }

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"fmt"
 	"time"
 
 	domainrepo "github.com/sunibgram/domain/repository"
@@ -46,6 +47,26 @@ func preloadThreadParentDetails(db *gorm.DB) *gorm.DB {
 		Preload("Community").
 		Preload("User.UserFaculty.Faculty").
 		Preload("ThreadEvents.Event")
+}
+
+func applyThreadVisibility(db *gorm.DB, requesterID *uint) *gorm.DB {
+	db = db.Joins("LEFT JOIN user_settings thread_visibility_settings ON thread_visibility_settings.user_id = threads.user_id")
+	if requesterID == nil {
+		return db.Where("COALESCE(thread_visibility_settings.is_private, false) = ?", false)
+	}
+	db = db.Joins("LEFT JOIN user_relationships thread_visibility_relationships ON thread_visibility_relationships.follower_id = ? AND thread_visibility_relationships.following_id = threads.user_id", *requesterID)
+	return db.Where(
+		"threads.user_id = ? OR COALESCE(thread_visibility_settings.is_private, false) = ? OR thread_visibility_relationships.following_id IS NOT NULL",
+		*requesterID,
+		false,
+	)
+}
+
+func threadVisibilityCachePart(requesterID *uint) string {
+	if requesterID == nil {
+		return "guest"
+	}
+	return fmt.Sprintf("%d", *requesterID)
 }
 
 func NewThreadRepository(writeDB, readDB *gorm.DB, c *cache.Cache) (domainrepo.IThreadRepository, func(uint, string, int)) {

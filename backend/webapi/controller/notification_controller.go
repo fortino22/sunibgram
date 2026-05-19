@@ -102,11 +102,12 @@ func (c *NotificationController) Delete(ctx *fiber.Ctx) error {
 func toNotificationListResponse(item service.NotificationListItem) dto.NotificationListResponse {
 	n := item.Notification
 	return dto.NotificationListResponse{
-		ID:        n.ID,
-		Type:      n.Type,
-		Message:   n.Message,
-		CreatedAt: dtoutils.Wrap(n.CreatedAt),
-		Actor:     toNotificationSenderResponse(item.Actor),
+		ID:          n.ID,
+		Type:        n.Type,
+		Message:     n.Message,
+		ReferenceID: n.ReferenceID,
+		CreatedAt:   dtoutils.Wrap(n.CreatedAt),
+		Actor:       toNotificationSenderResponse(item.Actor),
 	}
 }
 

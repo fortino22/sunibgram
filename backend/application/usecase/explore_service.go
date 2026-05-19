@@ -72,11 +72,11 @@ func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requeste
 	if err != nil {
 		return nil, 0, err
 	}
-	threads, _, err := s.exploreRepo.FindTopPosts(ctx, query, defaultExploreLimit)
+	threads, total, err := s.exploreRepo.FindTopPosts(ctx, query, requesterID, defaultExploreLimit)
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.filterExploreThreads(ctx, requesterID, threads)
+	return threads, total, nil
 }
 
 func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, int64, error) {
@@ -84,11 +84,11 @@ func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, reque
 	if err != nil {
 		return nil, 0, err
 	}
-	threads, _, err := s.exploreRepo.FindLatestPosts(ctx, query, defaultExploreLimit)
+	threads, total, err := s.exploreRepo.FindLatestPosts(ctx, query, requesterID, defaultExploreLimit)
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.filterExploreThreads(ctx, requesterID, threads)
+	return threads, total, nil
 }
 
 func (s *ExploreService) GetPeople(ctx context.Context, query string, requesterID uint) ([]model.ExploreUserResult, error) {
@@ -104,11 +104,11 @@ func (s *ExploreService) GetMediaPosts(ctx context.Context, query string, reques
 	if err != nil {
 		return nil, 0, err
 	}
-	threads, _, err := s.exploreRepo.FindMediaPosts(ctx, query, defaultExploreLimit)
+	threads, total, err := s.exploreRepo.FindMediaPosts(ctx, query, requesterID, defaultExploreLimit)
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.filterExploreThreads(ctx, requesterID, threads)
+	return threads, total, nil
 }
 
 func (s *ExploreService) GetCommunities(ctx context.Context, query string, requesterID uint) ([]model.ExploreCommunityResult, int64, error) {
@@ -130,16 +130,4 @@ func normalizeExploreQuery(query string) (string, error) {
 		return "", errors.New("query is required")
 	}
 	return query, nil
-}
-
-func (s *ExploreService) filterExploreThreads(ctx context.Context, requesterID uint, threads []model.Thread) ([]model.Thread, int64, error) {
-	filtered, err := s.filterViewableThreads(ctx, requesterID, threads)
-	if err != nil {
-		return nil, 0, err
-	}
-	return filtered, int64(len(filtered)), nil
-}
-
-func (s *ExploreService) filterViewableThreads(ctx context.Context, requesterID uint, threads []model.Thread) ([]model.Thread, error) {
-	return helper.FilterViewableThreads(ctx, s.settingsRepo, s.followRepo, &requesterID, threads)
 }

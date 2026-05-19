@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"mime/multipart"
+	"sync"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
@@ -46,36 +47,67 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 		}
 	}
 
-	media := make([]model.ChatMedia, 0, len(files))
-	for _, header := range files {
-		file, err := header.Open()
-		if err != nil {
-			s.rollbackUploaded(ctx, chatID, media)
-			return nil, err
-		}
-		objectName, uploadErr := s.storage.Upload(ctx, bucket, file, header)
-		file.Close()
-		if uploadErr != nil {
-			s.rollbackUploaded(ctx, chatID, media)
-			return nil, uploadErr
-		}
+	media, err := s.uploadFiles(ctx, chatID, bucket, files)
+	if err != nil {
+		s.rollbackUploaded(ctx, chatID, media)
+		return nil, err
+	}
 
-		item := model.ChatMedia{
-			ChatID:     chatID,
-			ObjectName: objectName,
-			Bucket:     bucket,
-			MediaType:  header.Header.Get("Content-Type"),
-			FileSize:   header.Size,
-		}
-		if item.MediaType == "" {
-			item.MediaType = "application/octet-stream"
-		}
+	for i := range media {
+		item := media[i]
 		if err := s.mediaRepo.Save(&item); err != nil {
-			media = append(media, item)
 			s.rollbackUploaded(ctx, chatID, media)
 			return nil, err
 		}
-		media = append(media, item)
+		media[i] = item
+	}
+	return media, nil
+}
+
+func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket string, files []*multipart.FileHeader) ([]model.ChatMedia, error) {
+	media := make([]model.ChatMedia, len(files))
+	errCh := make(chan error, len(files))
+	var wg sync.WaitGroup
+
+	for i, header := range files {
+		i, header := i, header
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			file, err := header.Open()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			defer file.Close()
+
+			objectName, err := s.storage.Upload(ctx, bucket, file, header)
+			if err != nil {
+				errCh <- err
+				return
+			}
+
+			mediaType := header.Header.Get("Content-Type")
+			if mediaType == "" {
+				mediaType = "application/octet-stream"
+			}
+			media[i] = model.ChatMedia{
+				ChatID:     chatID,
+				ObjectName: objectName,
+				Bucket:     bucket,
+				MediaType:  mediaType,
+				FileSize:   header.Size,
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err != nil {
+			return media, err
+		}
 	}
 	return media, nil
 }
@@ -83,6 +115,9 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 func (s *ChatMediaService) rollbackUploaded(ctx context.Context, chatID uint, media []model.ChatMedia) {
 	_ = s.mediaRepo.DeleteByChatID(chatID)
 	for _, item := range media {
+		if item.ObjectName == "" {
+			continue
+		}
 		_ = s.storage.Delete(ctx, item.Bucket, item.ObjectName)
 	}
 }

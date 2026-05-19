@@ -19,6 +19,8 @@ type followRepository struct {
 	ttl     time.Duration
 }
 
+const followingSetTTL = 5 * time.Minute
+
 func NewFollowRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IFollowRepository {
 	return &followRepository{
 		writeDB: writeDB,
@@ -38,6 +40,10 @@ func followListKey(userID uint, listType string, page, limit int) string {
 
 func followExistsKey(followerID, followingID uint) string {
 	return fmt.Sprintf("follow:exists:%d:%d", followerID, followingID)
+}
+
+func userFollowingKey(userID uint) string {
+	return fmt.Sprintf("user:following:%d", userID)
 }
 
 func (r *followRepository) Follow(followerID, followingID uint) error {
@@ -68,6 +74,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	r.invalidateFollowLists(followerID, followingID)
 	ctx := context.Background()
 	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
+	r.cache.Delete(ctx, userFollowingKey(followerID))
 	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(followerID))
 	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
 	invalidateExploreCache(ctx, r.cache)
@@ -92,6 +99,7 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 	r.invalidateFollowLists(followerID, followingID)
 	ctx := context.Background()
 	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
+	r.cache.Delete(ctx, userFollowingKey(followerID))
 	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(followerID))
 	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
 	invalidateExploreCache(ctx, r.cache)
@@ -120,15 +128,36 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 		return result, nil
 	}
 
+	if r.cache != nil {
+		followingSet := map[uint]bool{}
+		if err := r.cache.Get(ctx, userFollowingKey(followerID), &followingSet); err == nil {
+			for _, id := range targetIDs {
+				if followingSet[id] {
+					result[id] = true
+				}
+			}
+			return result, nil
+		}
+	}
+
 	var followingIDs []uint
 	if err := r.readDB.WithContext(ctx).
 		Model(&model.UserRelationship{}).
-		Where("follower_id = ? AND following_id IN ?", followerID, targetIDs).
+		Where("follower_id = ?", followerID).
 		Pluck("following_id", &followingIDs).Error; err != nil {
 		return nil, err
 	}
+	followingSet := make(map[uint]bool, len(followingIDs))
 	for _, id := range followingIDs {
-		result[id] = true
+		followingSet[id] = true
+	}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, userFollowingKey(followerID), followingSet, followingSetTTL)
+	}
+	for _, id := range targetIDs {
+		if followingSet[id] {
+			result[id] = true
+		}
 	}
 	return result, nil
 }

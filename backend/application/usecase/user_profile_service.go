@@ -11,6 +11,10 @@ import (
 	"github.com/sunibgram/domain/service"
 )
 
+func userAvatarCacheKey(userID uint) string {
+	return fmt.Sprintf("user:%d:avatar", userID)
+}
+
 type UserProfileService struct {
 	userRepo        repository.IUserRepository
 	followRepo      repository.IFollowRepository
@@ -36,6 +40,10 @@ func NewUserProfileService(
 		cacheRepo:       cacheRepo,
 		storageUsecase:  storageUsecase,
 	}
+}
+
+func (s *UserProfileService) AvatarCacheRepository() repository.ICacheRepository {
+	return s.cacheRepo
 }
 
 func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, input service.UpsertProfileInput) error {
@@ -109,11 +117,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	if input.Avatar != nil {
 		invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	}
-	if s.cacheRepo != nil {
-		_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
-		_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
-		_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-	}
+	s.invalidateUserProfileCaches(ctx, userID)
 	return nil
 }
 
@@ -160,6 +164,7 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
 			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:following:*")
 		}
+		s.invalidateUserProfileCaches(ctx, userID)
 	}
 
 	if input.ClearAvatar || input.ClearBanner {
@@ -184,12 +189,8 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			}
 			if input.ClearAvatar {
 				invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
-				if s.cacheRepo != nil {
-					_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
-					_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
-					_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-				}
 			}
+			s.invalidateUserProfileCaches(ctx, userID)
 		}
 	}
 
@@ -202,6 +203,33 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		return s.UpsertProfile(ctx, userID, mediaInput)
 	}
 	return nil
+}
+
+func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, userID uint) {
+	if s.cacheRepo == nil {
+		return
+	}
+	_ = s.cacheRepo.Delete(ctx,
+		userAvatarCacheKey(userID),
+		fmt.Sprintf("user:id:%d", userID),
+		fmt.Sprintf("profile:user:%d", userID),
+		fmt.Sprintf("notification:sender:%d", userID),
+		fmt.Sprintf("userfaculty:user:%d", userID),
+	)
+	_ = s.cacheRepo.Delete(ctx, "reports:all")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "reports:id:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("bookmarks:user:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("likes:user:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:roots:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:following:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:community:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "event:threads:*")
+	_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
 }
 
 func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {
@@ -236,6 +264,14 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.F
 
 func (s *UserProfileService) GetProfiles(userIDs []uint) ([]model.UserProfile, error) {
 	return s.profileRepo.FindByUserIDs(userIDs)
+}
+
+func (s *UserProfileService) GetUsers(userIDs []uint) ([]model.User, error) {
+	return s.userRepo.FindByIDs(userIDs)
+}
+
+func (s *UserProfileService) GetUserFaculties(userIDs []uint) ([]model.UserFaculty, error) {
+	return s.userFacultyRepo.FindByUserIDs(userIDs)
 }
 
 func (s *UserProfileService) GetURL(bucket, objectName string) string {

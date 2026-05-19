@@ -35,6 +35,7 @@ func (r *RepostRepository) Save(repost *model.Repost) error {
 	r.patchCount(repost.ThreadID, "repost_count", 1)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }
 
@@ -51,11 +52,16 @@ func (r *RepostRepository) Delete(userID, threadID uint) error {
 	r.patchCount(threadID, "repost_count", -1)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }
 
 func (r *RepostRepository) Exists(userID, threadID uint) (bool, error) {
 	return r.base.exists(userID, threadID, &model.Repost{})
+}
+
+func (r *RepostRepository) AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error) {
+	return r.base.areThreadsInteracted(userID, threadIDs)
 }
 
 func (r *RepostRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {

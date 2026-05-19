@@ -45,6 +45,7 @@ func loadThreadMediaByID(mediaService service.IThreadMediaService, threadIDs []u
 }
 
 func buildFeedItemsFromThreads(threads []model.Thread, mediaByThread map[uint][]model.ThreadMedia, fb webapiutils.FeedBuilder) []dto.FeedItemResponse {
+	fb.LoadViewerFlagsForThreads(threads)
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, thread := range threads {
 		data[i] = fb.ToFeedItem(&thread, mediaByThread[thread.ThreadID])

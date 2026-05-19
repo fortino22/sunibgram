@@ -14,3 +14,18 @@ func invalidateExploreCache(ctx context.Context, c *cache.Cache) {
 	}
 	_ = c.DeleteByPattern(ctx, exploreCachePattern)
 }
+
+func invalidateExplorePostCaches(ctx context.Context, c *cache.Cache) {
+	if c == nil {
+		return
+	}
+	_ = c.DeleteByPattern(ctx, "explore:top:*")
+	_ = c.DeleteByPattern(ctx, "explore:latest:*")
+}
+
+func invalidateExploreTopCache(ctx context.Context, c *cache.Cache) {
+	if c == nil {
+		return
+	}
+	_ = c.DeleteByPattern(ctx, "explore:top:*")
+}

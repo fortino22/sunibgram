@@ -17,8 +17,10 @@ func AutoMigrate(db *gorm.DB) {
 		&model.UserSettings{},
 		&model.UserProfile{},
 		&model.Category{},
+		&model.Violation{},
 		&model.Community{},
 		&model.Thread{},
+		&model.Report{},
 		&model.Event{},
 		&model.EventReview{},
 		&model.ThreadEvent{},
@@ -92,6 +94,9 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS view_count")
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS trending_score")
 	migratePremiumSubscriptions(db)
+	migrateViolations(db)
+	migrateReportReporter(db)
+	migrateReports(db)
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time)")
 	db.Exec(`
@@ -166,6 +171,7 @@ func AutoMigrate(db *gorm.DB) {
 	`)
 
 	db.Exec("ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)")
+	migrateChatEncryption(db)
 	db.Exec("ALTER TABLE chat_room_members ADD COLUMN IF NOT EXISTS is_muted BOOLEAN NOT NULL DEFAULT false")
 	db.Exec("ALTER TABLE chats ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES chats(chat_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_chats_reply_to_id ON chats(reply_to_id)")
@@ -192,6 +198,7 @@ func AutoMigrate(db *gorm.DB) {
 
 	seedRoles(db)
 	seeder.SeedCategory(db)
+	seeder.SeedViolation(db)
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)

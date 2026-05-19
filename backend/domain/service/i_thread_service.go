@@ -18,6 +18,7 @@ type IThreadService interface {
 	Repost(ctx context.Context, userID, threadID uint) error
 	Unrepost(ctx context.Context, userID, threadID uint) error
 	IsReposted(userID, threadID uint) bool
+	AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error)
 	CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error
 	GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -55,6 +56,8 @@ func main() {
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
 	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
 	categoryRepo := infrarepo.NewCategoryRepository(writeDB, readDB, redisCache)
+	violationRepo := infrarepo.NewViolationRepository(writeDB, readDB)
+	reportRepo := infrarepo.NewReportRepository(writeDB, readDB)
 	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
@@ -71,7 +74,8 @@ func main() {
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
-	emailService := usecase.NewEmailService(infraemail.NewSMTPClient())
+	emailService := usecase.NewEmailService(infraemail.NewSMTPClient(), redisCache)
+	go emailService.StartWorker(context.Background())
 	ollamaClient := ollama.NewClient()
 	socketHub := infrasocket.NewHub()
 
@@ -95,6 +99,8 @@ func main() {
 	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
 	categoryService := usecase.NewCategoryService(categoryRepo)
+	violationService := usecase.NewViolationService(violationRepo)
+	reportService := usecase.NewReportService(reportRepo, violationRepo, userRepo, threadRepo, profileService, cacheRepo)
 	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, cacheRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
@@ -126,6 +132,8 @@ func main() {
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
 	summaryCtrl := controller.NewThreadSummaryController(summaryService)
 	categoryCtrl := controller.NewCategoryController(categoryService)
+	violationCtrl := controller.NewViolationController(violationService)
+	reportCtrl := controller.NewReportController(reportService)
 	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
@@ -181,6 +189,8 @@ func main() {
 		communityRequestCtrl,
 		communityThreadCtrl,
 		categoryCtrl,
+		violationCtrl,
+		reportCtrl,
 		facultyCtrl,
 		orderCtrl,
 		premiumSubscriptionCtrl,

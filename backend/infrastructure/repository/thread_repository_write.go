@@ -49,7 +49,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	}
 	r.invalidateTrendingFeed(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	invalidateExploreCache(ctx, r.cache)
+	invalidateExplorePostCaches(ctx, r.cache)
 	return nil
 }
 
@@ -68,7 +68,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	r.invalidateInteractions(ctx, threadID)
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
-	invalidateExploreCache(ctx, r.cache)
+	invalidateExplorePostCaches(ctx, r.cache)
 }
 
 func (r *threadCached) Update(thread *model.Thread) error {
@@ -98,7 +98,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	invalidateExploreCache(ctx, r.cache)
+	invalidateExplorePostCaches(ctx, r.cache)
 	return nil
 }
 
@@ -219,6 +219,6 @@ func (r *threadCached) Delete(id uint) error {
 	if hasEvent {
 		refreshEventParticipantCount(r.db.writeDB, r.cache, eventID)
 	}
-	invalidateExploreCache(ctx, r.cache)
+	invalidateExplorePostCaches(ctx, r.cache)
 	return nil
 }
