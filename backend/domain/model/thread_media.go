@@ -12,7 +12,7 @@ import (
 const MaxThreadMediaItems = 4
 
 var allowedThreadMediaExts = map[string]bool{
-	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
+	".jpg": true, ".jpeg": true, ".png": true, ".webp": true, ".gif": true,
 	".mp4": true, ".mov": true, ".avi": true,
 }
 

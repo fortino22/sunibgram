@@ -50,7 +50,9 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID)
+	isPrivate := ctx.FormValue("is_private") == "true"
+
+	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID, isPrivate)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}

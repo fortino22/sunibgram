@@ -43,15 +43,6 @@ func NewCommunityService(
 }
 
 func (s *CommunityService) Create(ctx context.Context, userID uint, name, description, rules string, categoryID *uuid.UUID, visibility model.CommunityVisibility, avatar, banner *multipart.FileHeader) (*model.Community, error) {
-	user, err := s.userRepo.FindByID(userID)
-	if err != nil {
-		return nil, errors.New("user not found")
-	}
-
-	if !user.IsPremium {
-		return nil, errors.New("only premium users can create communities")
-	}
-
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("name is required")

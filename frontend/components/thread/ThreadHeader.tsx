@@ -32,13 +32,16 @@ export function ThreadHeader({
 
       <div className={cn('mb-1.5 flex min-w-0 items-center gap-1.5', compact && 'mb-1 flex-wrap')}>
         <span className="truncate text-sm font-bold" style={{ color: 'var(--text)' }}>
-          @{author.username}
+          {author.name || author.username}
         </span>
         {author.is_premium && (
           <span aria-label="Premium" title="Premium" className="shrink-0 text-sm" style={{ color: 'var(--amber)' }}>
             ★
           </span>
         )}
+        <span className="shrink-0 text-sm" style={{ color: 'var(--text-tertiary)' }}>
+          @{author.username}
+        </span>
         {showFaculty && author.faculty && (
           <span
             className="rounded-full border px-2 py-0.5 text-xs font-bold"

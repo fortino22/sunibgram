@@ -85,6 +85,7 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 func (fb FeedBuilder) AuthorField(u model.User) dto.FeedAuthor {
 	a := dto.FeedAuthor{
 		ID:        u.UserID,
+		Name:      u.Name,
 		Username:  u.UserName,
 		IsPremium: u.IsPremium,
 		AvatarURL: fb.avatarCache[u.UserID],

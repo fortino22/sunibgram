@@ -60,6 +60,7 @@ type FeedAuthorFaculty struct {
 
 type FeedAuthor struct {
 	ID        uint               `json:"id"`
+	Name      string             `json:"name"`
 	Username  string             `json:"username"`
 	IsPremium bool               `json:"is_premium"`
 	AvatarURL string             `json:"avatar_url,omitempty"`
