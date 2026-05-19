@@ -42,6 +42,12 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 		}
 	}
 
+	own, err := r.findForYouOwn(userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	addCandidates(own, 1.0, true)
+
 	global, err := r.findForYouGlobal(ctx)
 	if err != nil {
 		return nil, 0, err
@@ -104,6 +110,18 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 		}
 	}
 	return result.Threads, result.Total, nil
+}
+
+func (r *threadCached) findForYouOwn(userID uint) ([]model.Thread, error) {
+	var threads []model.Thread
+	err := preloadThreadDetails(r.db.readDB).
+		Where("threads.user_id = ?", userID).
+		Where("threads.created_at > NOW() - INTERVAL '7 days'").
+		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+		Order("threads.feed_score DESC").
+		Limit(100).
+		Find(&threads).Error
+	return threads, err
 }
 
 func (r *threadCached) findForYouFollowing(userID uint) ([]model.Thread, error) {

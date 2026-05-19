@@ -135,3 +135,13 @@ func (r *threadCached) invalidateForYouFeedCachesForCommunity(ctx context.Contex
 func (r *threadCached) invalidateTrendingFeed(ctx context.Context) {
 	r.cache.Delete(ctx, "feed:trending:global")
 }
+
+func (r *threadCached) InvalidateUserFeedCaches(ctx context.Context, userID uint) {
+	r.invalidateUserFeedCache(ctx, userID)
+	r.invalidateUserMediaCache(ctx, userID)
+	r.invalidateTrendingFeed(ctx)
+	r.invalidateForYouFeedCacheForUser(ctx, userID)
+	r.invalidateForYouFeedCachesForFollowers(ctx, userID)
+	r.invalidateFollowingFeedCache(ctx)
+	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+}

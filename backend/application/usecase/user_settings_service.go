@@ -12,10 +12,11 @@ import (
 
 type UserSettingsService struct {
 	settingsRepo repository.IUserSettingsRepository
+	threadRepo   repository.IThreadRepository
 }
 
-func NewUserSettingsService(settingsRepo repository.IUserSettingsRepository) service.IUserSettingsService {
-	return &UserSettingsService{settingsRepo: settingsRepo}
+func NewUserSettingsService(settingsRepo repository.IUserSettingsRepository, threadRepo repository.IThreadRepository) service.IUserSettingsService {
+	return &UserSettingsService{settingsRepo: settingsRepo, threadRepo: threadRepo}
 }
 
 func (s *UserSettingsService) GetUserSettingByUserID(ctx context.Context, userID uint) (*model.UserSettings, error) {
@@ -34,8 +35,14 @@ func (s *UserSettingsService) UpdateUserSetting(ctx context.Context, userID uint
 	if existing != nil && existing.UserID != userID {
 		return errors.New("only the owner can update this setting")
 	}
-	return s.settingsRepo.UpdateUserSetting(ctx, &model.UserSettings{
+	if err := s.settingsRepo.UpdateUserSetting(ctx, &model.UserSettings{
 		UserID:    userID,
 		IsPrivate: isPrivate,
-	})
+	}); err != nil {
+		return err
+	}
+	if s.threadRepo != nil {
+		s.threadRepo.InvalidateUserFeedCaches(ctx, userID)
+	}
+	return nil
 }

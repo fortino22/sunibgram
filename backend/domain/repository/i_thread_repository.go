@@ -32,4 +32,5 @@ type IThreadRepository interface {
 	FindFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error)
 	FindByFacultyID(facultyID uint, page, limit int) ([]model.Thread, int64, error)
+	InvalidateUserFeedCaches(ctx context.Context, userID uint)
 }

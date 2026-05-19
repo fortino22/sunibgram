@@ -84,7 +84,7 @@ func main() {
 	authService := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
 	roleService := usecase.NewRoleService(roleRepo)
 	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
-	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo)
+	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo, threadRepo)
 	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, cacheRepo, storageUsecase)
 	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
 	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
