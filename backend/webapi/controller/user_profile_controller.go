@@ -2,6 +2,7 @@ package controller
 
 import (
 	"strconv"
+
 	webapiutils "github.com/sunibgram/webapi/utils"
 
 	"github.com/gofiber/fiber/v2"
@@ -107,6 +108,13 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	if bio := ctx.FormValue("bio"); bio != "" {
 		input.Bio = &bio
 	}
+	if raw := ctx.FormValue("birthday_date"); raw != "" {
+		birthdayDate, err := ParseDateField(raw, "birthday_date")
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		input.BirthdayDate = &birthdayDate
+	}
 
 	avatarChanged := input.Avatar != nil || input.ClearAvatar
 
@@ -163,8 +171,12 @@ func toUserProfileResponse(fp *service.FullProfile, getURL func(string, string) 
 		bannerURL = BuildMediaURL(fp.Profile.BannerObjectName, fp.Profile.BannerBucket, getURL)
 	}
 	bio := ""
+	gender := ""
+	birthdayDate := ""
 	if fp.Profile != nil {
 		bio = fp.Profile.Bio
+		gender = string(fp.Profile.Gender)
+		birthdayDate = FormatDate(fp.Profile.BirthdayDate)
 	}
 	followerCount := 0
 	followingCount := 0
@@ -185,6 +197,8 @@ func toUserProfileResponse(fp *service.FullProfile, getURL func(string, string) 
 		Username:       fp.User.UserName,
 		Email:          fp.User.Email,
 		IsPremium:      fp.User.IsPremium,
+		Gender:         gender,
+		BirthdayDate:   birthdayDate,
 		Bio:            bio,
 		AvatarURL:      avatarURL,
 		BannerURL:      bannerURL,

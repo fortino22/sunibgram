@@ -94,6 +94,7 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS view_count")
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS trending_score")
 	migratePremiumSubscriptions(db)
+	migrateUserProfiles(db)
 	migrateViolations(db)
 	migrateReportReporter(db)
 	migrateReports(db)

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"mime/multipart"
+	"time"
 
 	"github.com/sunibgram/domain/model"
 )
@@ -22,13 +23,14 @@ type UpsertProfileInput struct {
 }
 
 type UpdateProfileInput struct {
-	Name        *string
-	Username    *string
-	Avatar      *multipart.FileHeader
-	Banner      *multipart.FileHeader
-	Bio         *string
-	ClearAvatar bool
-	ClearBanner bool
+	Name         *string
+	Username     *string
+	Avatar       *multipart.FileHeader
+	Banner       *multipart.FileHeader
+	Bio          *string
+	BirthdayDate *time.Time
+	ClearAvatar  bool
+	ClearBanner  bool
 }
 
 type IUserProfileService interface {

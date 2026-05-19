@@ -21,6 +21,20 @@ func NewAuthController(authService service.IAuthService, profileService service.
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
+	req := dto.RegisterRequest{
+		Name:            ctx.FormValue("name"),
+		UserName:        ctx.FormValue("username"),
+		Email:           ctx.FormValue("email"),
+		Password:        ctx.FormValue("password"),
+		ConfirmPassword: ctx.FormValue("confirm_password"),
+		Gender:          ctx.FormValue("gender"),
+		BirthdayDate:    ctx.FormValue("birthday_date"),
+	}
+	birthdayDate, err := ParseDateField(req.BirthdayDate, "birthday_date")
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
 	var facultyID *uint
 	if raw := ctx.FormValue("faculty_id"); raw != "" {
 		fid, err := strconv.ParseUint(raw, 10, 64)
@@ -35,14 +49,17 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 
 	user := &model.User{
-		Name:     ctx.FormValue("name"),
-		UserName: ctx.FormValue("username"),
-		Email:    ctx.FormValue("email"),
-		Password: ctx.FormValue("password"),
+		Name:     req.Name,
+		UserName: req.UserName,
+		Email:    req.Email,
+		Password: req.Password,
 	}
-	confirmPassword := ctx.FormValue("confirm_password")
+	profile := &model.UserProfile{
+		Gender:       model.ParseGender(req.Gender),
+		BirthdayDate: birthdayDate,
+	}
 
-	if err := c.authService.Register(user, confirmPassword); err != nil {
+	if err := c.authService.Register(user, profile, req.ConfirmPassword); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 

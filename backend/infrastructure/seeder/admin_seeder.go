@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/sunibgram/domain/model"
 	"golang.org/x/crypto/bcrypt"
@@ -26,7 +27,11 @@ func SeedAdmin(db *gorm.DB) {
 	if err := db.Where("email = ?", email).First(&existing).Error; err == nil {
 		var existingProfile model.UserProfile
 		if err := db.Where("user_id = ?", existing.UserID).First(&existingProfile).Error; err != nil {
-			profile := model.UserProfile{UserID: existing.UserID}
+			profile := model.UserProfile{
+				UserID:       existing.UserID,
+				Gender:       model.GenderPreferNotToSay,
+				BirthdayDate: defaultSeedBirthdayDate(),
+			}
 			db.Create(&profile)
 		}
 		var existingSettings model.UserSettings
@@ -57,7 +62,11 @@ func SeedAdmin(db *gorm.DB) {
 		return
 	}
 
-	profile := model.UserProfile{UserID: admin.UserID}
+	profile := model.UserProfile{
+		UserID:       admin.UserID,
+		Gender:       model.GenderPreferNotToSay,
+		BirthdayDate: defaultSeedBirthdayDate(),
+	}
 	if err := db.Create(&profile).Error; err != nil {
 		log.Printf("admin seeder: failed to create admin profile: %v", err)
 	}
@@ -68,4 +77,8 @@ func SeedAdmin(db *gorm.DB) {
 	}
 
 	log.Println("admin seeder: admin user created")
+}
+
+func defaultSeedBirthdayDate() time.Time {
+	return time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 }

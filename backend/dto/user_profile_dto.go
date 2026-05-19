@@ -8,6 +8,8 @@ type UserProfileResponse struct {
 	Username       string              `json:"username"`
 	Email          string              `json:"email"`
 	IsPremium      bool                `json:"is_premium"`
+	Gender         string              `json:"gender"`
+	BirthdayDate   string              `json:"birthday_date"`
 	Bio            string              `json:"bio"`
 	AvatarURL      string              `json:"avatar_url"`
 	BannerURL      string              `json:"banner_url"`
@@ -16,4 +18,11 @@ type UserProfileResponse struct {
 	IsFollowing    bool                `json:"is_following"`
 	Faculty        *FeedAuthorFaculty  `json:"faculty,omitempty"`
 	CreatedAt      utils.FormattedTime `json:"created_at"`
+}
+
+type UpdateProfileRequest struct {
+	Name         string `json:"name,omitempty"`
+	Username     string `json:"username,omitempty"`
+	BirthdayDate string `json:"birthday_date,omitempty"`
+	Bio          string `json:"bio,omitempty"`
 }

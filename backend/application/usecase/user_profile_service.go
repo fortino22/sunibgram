@@ -157,7 +157,7 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
 			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
 			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-			
+
 			// Invalidate all feed caches that embed the user's name inside thread objects.
 			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
 			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
@@ -193,6 +193,21 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			}
 			s.invalidateUserProfileCaches(ctx, userID)
 		}
+	}
+
+	if input.BirthdayDate != nil {
+		if err := model.ValidateBirthdayDate(*input.BirthdayDate); err != nil {
+			return err
+		}
+		existing, _ := s.profileRepo.FindByUserID(userID)
+		if existing == nil {
+			return errors.New("profile not found")
+		}
+		existing.BirthdayDate = *input.BirthdayDate
+		if err := s.profileRepo.Upsert(existing); err != nil {
+			return err
+		}
+		s.invalidateUserProfileCaches(ctx, userID)
 	}
 
 	mediaInput := service.UpsertProfileInput{

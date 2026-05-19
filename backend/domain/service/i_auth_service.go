@@ -7,7 +7,7 @@ import (
 )
 
 type IAuthService interface {
-	Register(user *model.User, confirmPassword string) error
+	Register(user *model.User, profile *model.UserProfile, confirmPassword string) error
 	Login(email, password string) (model.TokenPair, error)
 	LoginWithOTP(email, password, otp string) (model.TokenPair, error)
 	LoginProd(email, password string) (*model.User, model.TokenPair, error)

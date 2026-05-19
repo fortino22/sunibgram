@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/dto"
@@ -61,4 +63,23 @@ func BuildMediaURL(objectName, bucket string, getURL func(string, string) string
 		return ""
 	}
 	return getURL(bucket, objectName)
+}
+
+func ParseDateField(raw string, fieldName string) (time.Time, error) {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return time.Time{}, errors.New(fieldName + " is required")
+	}
+	parsed, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return time.Time{}, errors.New(fieldName + " must use YYYY-MM-DD format")
+	}
+	return parsed, nil
+}
+
+func FormatDate(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02")
 }

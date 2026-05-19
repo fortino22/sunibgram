@@ -20,7 +20,7 @@ type dummyAccount struct {
 var dummyAccounts = []dummyAccount{
 	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "admin"},
 	{Name: "Devin", Username: "devin.hi", Email: "devin@binus.ac.id", Password: "dummy123", RoleName: "user"},
-	{Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin"},
+	// {Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin"},
 	{Name: "chermiese", Username: "chermiese", Email: "chermiese@binus.ac.id", Password: "dummy123", RoleName: "user"},
 }
 
@@ -35,7 +35,11 @@ func SeedDummy(db *gorm.DB) {
 		if err := db.Where("email = ?", acc.Email).First(&existing).Error; err == nil {
 			var existingProfile model.UserProfile
 			if err := db.Where("user_id = ?", existing.UserID).First(&existingProfile).Error; err != nil {
-				db.Create(&model.UserProfile{UserID: existing.UserID})
+				db.Create(&model.UserProfile{
+					UserID:       existing.UserID,
+					Gender:       model.GenderPreferNotToSay,
+					BirthdayDate: defaultSeedBirthdayDate(),
+				})
 			}
 			var existingSettings model.UserSettings
 			if err := db.Where("user_id = ?", existing.UserID).First(&existingSettings).Error; err != nil {
@@ -72,7 +76,11 @@ func SeedDummy(db *gorm.DB) {
 			continue
 		}
 
-		if err := db.Create(&model.UserProfile{UserID: user.UserID}).Error; err != nil {
+		if err := db.Create(&model.UserProfile{
+			UserID:       user.UserID,
+			Gender:       model.GenderPreferNotToSay,
+			BirthdayDate: defaultSeedBirthdayDate(),
+		}).Error; err != nil {
 			log.Printf("dummy seeder: failed to create profile for %s: %v", acc.Email, err)
 			continue
 		}

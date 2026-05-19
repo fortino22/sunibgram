@@ -71,11 +71,17 @@ func userSessionsKey(userID uint) string {
 	return fmt.Sprintf("user_sessions:%d", userID)
 }
 
-func (s *AuthService) Register(user *model.User, confirmPassword string) error {
+func (s *AuthService) Register(user *model.User, profile *model.UserProfile, confirmPassword string) error {
 	if user.Password != confirmPassword {
 		return errors.New("password and confirm password do not match")
 	}
 	if err := user.ValidateRegister(); err != nil {
+		return err
+	}
+	if profile == nil {
+		return errors.New("profile is required")
+	}
+	if err := profile.ValidateRequiredFields(); err != nil {
 		return err
 	}
 
@@ -111,7 +117,6 @@ func (s *AuthService) Register(user *model.User, confirmPassword string) error {
 	}
 	user.Password = string(hashed)
 
-	profile := &model.UserProfile{}
 	if err := s.userRepo.SaveWithProfile(user, profile); err != nil {
 		return err
 	}
