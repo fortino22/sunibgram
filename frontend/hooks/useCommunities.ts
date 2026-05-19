@@ -14,6 +14,9 @@ import {
   getCategories,
   getMyCommunitiesThreadsFeed,
   getExploreCommunitiesThreads,
+  searchCommunities,
+  searchCommunityThreadsTop,
+  searchCommunityThreadsLatest,
 } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -125,5 +128,35 @@ export function useExploreCommunitiesThreads(categoryId?: string) {
     queryFn: () => getExploreCommunitiesThreads(token!, categoryId, { limit: 20 }),
     enabled: !!token,
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useSearchCommunities(query: string) {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['communities', 'search', query],
+    queryFn: () => searchCommunities(query, token!),
+    enabled: !!token && query.trim().length > 0,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useSearchCommunityThreadsTop(query: string) {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['communities', 'threads', 'search', 'top', query],
+    queryFn: () => searchCommunityThreadsTop(token!, query, { limit: 20 }),
+    enabled: !!token && query.trim().length > 0,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useSearchCommunityThreadsLatest(query: string) {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['communities', 'threads', 'search', 'latest', query],
+    queryFn: () => searchCommunityThreadsLatest(token!, query, { limit: 20 }),
+    enabled: !!token && query.trim().length > 0,
+    staleTime: 60 * 1000,
   });
 }

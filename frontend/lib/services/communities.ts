@@ -63,9 +63,12 @@ export interface DiscoverCommunityMemberData {
 }
 
 export interface DiscoverCommunityData {
+  community_id: number;
   name: string;
   member_count: number;
   category_name: string;
+  avatar_url?: string;
+  banner_url?: string;
   top_members: DiscoverCommunityMemberData[];
 }
 
@@ -381,10 +384,41 @@ export function getExploreCommunitiesThreads(
   params?: { page?: number; limit?: number }
 ): Promise<ThreadListResponse> {
   const search = new URLSearchParams();
-  if (categoryId) search.set('category', categoryId);
+  if (categoryId) search.set('categoryId', categoryId);
   if (params?.page !== undefined) search.set('page', String(params.page));
   if (params?.limit !== undefined) search.set('limit', String(params.limit));
   const q = search.toString() ? `?${search.toString()}` : '';
   return api.get<ThreadListResponse>(`/api/communities/threads${q}`, token);
 }
 
+export function searchCommunities(
+  query: string,
+  token: string
+): Promise<{ data: DiscoverCommunityData[] }> {
+  return api.get<{ data: DiscoverCommunityData[] }>(
+    `/api/communities/search?community_name=${encodeURIComponent(query)}`,
+    token
+  );
+}
+
+export function searchCommunityThreadsTop(
+  token: string,
+  query: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  const search = new URLSearchParams({ query });
+  if (params?.page !== undefined) search.set('page', String(params.page));
+  if (params?.limit !== undefined) search.set('limit', String(params.limit));
+  return api.get<ThreadListResponse>(`/api/communities/threads/top?${search.toString()}`, token);
+}
+
+export function searchCommunityThreadsLatest(
+  token: string,
+  query: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  const search = new URLSearchParams({ query });
+  if (params?.page !== undefined) search.set('page', String(params.page));
+  if (params?.limit !== undefined) search.set('limit', String(params.limit));
+  return api.get<ThreadListResponse>(`/api/communities/threads/latest?${search.toString()}`, token);
+}

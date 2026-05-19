@@ -1,60 +1,71 @@
-import { Avatar } from '@/components/shared/Avatar';
+'use client';
+
 import type { DiscoverCommunityData } from '@/lib/services/communities';
 
 interface CommunityDiscoverCardProps {
   community: DiscoverCommunityData;
-  showDivider?: boolean;
+  onClick: () => void;
 }
 
-export function CommunityDiscoverCard({ community, showDivider = true }: CommunityDiscoverCardProps) {
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+const MONOGRAM_COLORS = [
+  '#e57373', '#f06292', '#ba68c8', '#7986cb',
+  '#4fc3f7', '#4db6ac', '#81c784', '#ffb74d',
+];
+
+function monogramColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return MONOGRAM_COLORS[Math.abs(hash) % MONOGRAM_COLORS.length];
+}
+
+export function CommunityDiscoverCard({ community, onClick }: CommunityDiscoverCardProps) {
+  const color = monogramColor(community.name);
+  const initial = community.name.charAt(0).toUpperCase();
+  const thumbUrl = community.avatar_url ?? community.banner_url ?? null;
+
   return (
     <div
+      onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
-        padding: '14px 20px',
-        borderBottom: showDivider ? '1px solid var(--border)' : 'none',
+        gap: 14,
+        padding: '12px 16px',
+        cursor: 'pointer',
+        transition: 'background 0.12s',
       }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-subtle)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
     >
-      {/* Top member avatars stacked */}
-      <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
-        {community.top_members.slice(0, 3).map((m, i) => (
-          <div
-            key={i}
-            style={{
-              position: 'absolute',
-              width: 24,
-              height: 24,
-              borderRadius: '50%',
-              border: '2px solid var(--bg)',
-              overflow: 'hidden',
-              top: i === 0 ? 0 : i === 1 ? 8 : 16,
-              left: i === 0 ? 0 : i === 1 ? 8 : 16,
-              zIndex: 3 - i,
-            }}
-          >
-            <Avatar username="member" avatarUrl={m.avatar_url || null} size={20} />
-          </div>
-        ))}
-        {community.top_members.length === 0 && (
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              background: 'var(--bg-subtle)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 18,
-            }}
-          >
-            👥
-          </div>
-        )}
+      {/* Thumbnail */}
+      <div
+        style={{
+          width: 72,
+          height: 72,
+          borderRadius: 14,
+          flexShrink: 0,
+          overflow: 'hidden',
+          background: thumbUrl ? `url(${thumbUrl}) center/cover no-repeat` : color,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 28,
+          fontWeight: 800,
+          color: '#fff',
+          letterSpacing: '-0.02em',
+          userSelect: 'none',
+        }}
+      >
+        {!thumbUrl && initial}
       </div>
 
+      {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -64,28 +75,47 @@ export function CommunityDiscoverCard({ community, showDivider = true }: Communi
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
+            marginBottom: 2,
           }}
         >
           {community.name}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginTop: 2 }}>
-          {community.member_count.toLocaleString()} members
+
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+          <span style={{ fontWeight: 600, color: 'var(--text)' }}>
+            {formatCount(community.member_count)}
+          </span>
+          {' Members'}
           {community.category_name && (
-            <span
-              style={{
-                marginLeft: 8,
-                padding: '1px 6px',
-                borderRadius: 999,
-                background: 'var(--bg-subtle)',
-                fontSize: 11,
-                fontWeight: 500,
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {community.category_name}
+            <span style={{ color: 'var(--text-tertiary)' }}>
+              {' · '}{community.category_name}
             </span>
           )}
         </div>
+
+        {community.top_members.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {community.top_members.slice(0, 5).map((m, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: '50%',
+                  border: '2px solid var(--bg-card)',
+                  overflow: 'hidden',
+                  marginLeft: i > 0 ? -6 : 0,
+                  flexShrink: 0,
+                  background: m.avatar_url
+                    ? `url(${m.avatar_url}) center/cover no-repeat`
+                    : 'var(--bg-subtle)',
+                  zIndex: 5 - i,
+                  position: 'relative',
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

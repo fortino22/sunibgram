@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CommunityThreadCard } from '@/components/community/CommunityThreadCard';
 import { CreateCommunityModal } from '@/components/community/CreateCommunityModal';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { Icon } from '@/components/ui/Icon';
 import {
   useJoinedCommunities,
   useCategories,
@@ -19,6 +20,61 @@ export default function CommunitiesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [showCreate, setShowCreate] = useState(false);
+
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const drag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
+  const categorySliderRef = useRef<HTMLDivElement>(null);
+  const categoryDrag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
+
+  const onSliderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = sliderRef.current;
+    if (!el) return;
+    drag.current = { active: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft, moved: false };
+    el.style.cursor = 'grabbing';
+    el.style.userSelect = 'none';
+  };
+
+  const onSliderMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!drag.current.active) return;
+    const el = sliderRef.current;
+    if (!el) return;
+    const walk = e.pageX - el.offsetLeft - drag.current.startX;
+    if (Math.abs(walk) > 4) drag.current.moved = true;
+    el.scrollLeft = drag.current.scrollLeft - walk;
+  };
+
+  const onSliderMouseUp = () => {
+    drag.current.active = false;
+    if (sliderRef.current) {
+      sliderRef.current.style.cursor = 'grab';
+      sliderRef.current.style.userSelect = '';
+    }
+  };
+
+  const onCategoryMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = categorySliderRef.current;
+    if (!el) return;
+    categoryDrag.current = { active: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft, moved: false };
+    el.style.cursor = 'grabbing';
+    el.style.userSelect = 'none';
+  };
+
+  const onCategoryMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!categoryDrag.current.active) return;
+    const el = categorySliderRef.current;
+    if (!el) return;
+    const walk = e.pageX - el.offsetLeft - categoryDrag.current.startX;
+    if (Math.abs(walk) > 4) categoryDrag.current.moved = true;
+    el.scrollLeft = categoryDrag.current.scrollLeft - walk;
+  };
+
+  const onCategoryMouseUp = () => {
+    categoryDrag.current.active = false;
+    if (categorySliderRef.current) {
+      categorySliderRef.current.style.cursor = 'grab';
+      categorySliderRef.current.style.userSelect = '';
+    }
+  };
 
   const joinedQuery = useJoinedCommunities();
   const homeFeedQuery = useMyCommunitiesThreadsFeed();
@@ -52,21 +108,40 @@ export default function CommunitiesPage() {
           <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)', letterSpacing: '-0.02em' }}>
             Communities
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            style={{
-              padding: '7px 14px',
-              borderRadius: 999,
-              border: 'none',
-              background: 'var(--text)',
-              color: 'var(--bg)',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            + Create
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              onClick={() => router.push('/communities/discover')}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                border: '1px solid var(--border)',
+                background: 'transparent',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="search" size={16} />
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              style={{
+                padding: '7px 14px',
+                borderRadius: 999,
+                border: 'none',
+                background: 'var(--text)',
+                color: 'var(--bg)',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              + Create
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', padding: '0 20px' }}>
@@ -97,19 +172,27 @@ export default function CommunitiesPage() {
         <>
           {communities.length > 0 && (
             <div
+              ref={sliderRef}
+              onMouseDown={onSliderMouseDown}
+              onMouseMove={onSliderMouseMove}
+              onMouseUp={onSliderMouseUp}
+              onMouseLeave={onSliderMouseUp}
               style={{
                 display: 'flex',
                 gap: 12,
-                padding: '16px 20px',
+                padding: '16px 20px 12px',
                 overflowX: 'auto',
                 borderBottom: '1px solid var(--border)',
-                scrollbarWidth: 'none',
+                scrollbarWidth: 'thin',
+                scrollbarColor: 'var(--border) transparent',
+                paddingBottom: 12,
+                cursor: 'grab',
               }}
             >
               {communities.map((c) => (
                 <button
                   key={c.community_id}
-                  onClick={() => router.push(`/communities/${c.community_id}`)}
+                  onClick={() => { if (drag.current.moved) return; router.push(`/communities/${c.community_id}`); }}
                   style={{
                     position: 'relative',
                     flexShrink: 0,
@@ -180,16 +263,24 @@ export default function CommunitiesPage() {
       {activeTab === 'explore' && (
         <>
           <div
+            ref={categorySliderRef}
+            onMouseDown={onCategoryMouseDown}
+            onMouseMove={onCategoryMouseMove}
+            onMouseUp={onCategoryMouseUp}
+            onMouseLeave={onCategoryMouseUp}
             style={{
               display: 'flex',
               gap: 8,
               padding: '12px 20px',
               overflowX: 'auto',
               borderBottom: '1px solid var(--border)',
+              cursor: 'grab',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'var(--border) transparent',
             }}
           >
             <button
-              onClick={() => setCategoryId(undefined)}
+              onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(undefined); }}
               style={{
                 padding: '5px 14px',
                 borderRadius: 999,
@@ -208,7 +299,7 @@ export default function CommunitiesPage() {
             {categories.map((c) => (
               <button
                 key={c.id}
-                onClick={() => setCategoryId(c.id)}
+                onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(c.id); }}
                 style={{
                   padding: '5px 14px',
                   borderRadius: 999,

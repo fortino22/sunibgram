@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, AtSign, BadgeCheck, UserCheck, Check } from 'lucide-react';
+import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, Check } from 'lucide-react';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -33,14 +33,6 @@ import type { EmojiClickData } from 'emoji-picker-react';
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 type PreviewKind = 'image' | 'video' | 'file';
-type ReplyPermission = 'everyone' | 'following' | 'mentioned' | 'verified';
-
-const REPLY_PERMS: { value: ReplyPermission; label: string; desc: string; Icon: React.ElementType }[] = [
-  { value: 'everyone',  label: 'Everyone',               desc: 'Anyone can reply',                Icon: Globe       },
-  { value: 'following', label: 'Accounts you follow',    desc: 'Only accounts you follow',         Icon: UserCheck   },
-  { value: 'mentioned', label: 'Only people you mention', desc: 'Only @mentioned accounts',        Icon: AtSign      },
-  { value: 'verified',  label: 'Verified accounts',      desc: 'Only verified accounts',           Icon: BadgeCheck  },
-];
 
 interface FilePreview {
   file: File;
@@ -86,7 +78,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const audienceMenuRef = useRef<HTMLDivElement | null>(null);
-  const replyPermMenuRef = useRef<HTMLDivElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
 
   const [content, setContent] = useState('');
@@ -96,10 +87,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   // Audience
   const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
   const [showAudienceMenu, setShowAudienceMenu] = useState(false);
-
-  // Reply permission
-  const [replyPerm, setReplyPerm] = useState<ReplyPermission>('everyone');
-  const [showReplyPermMenu, setShowReplyPermMenu] = useState(false);
 
   // Emoji / GIF
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -138,17 +125,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showAudienceMenu]);
-
-  useEffect(() => {
-    if (!showReplyPermMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (replyPermMenuRef.current && !replyPermMenuRef.current.contains(e.target as Node)) {
-        setShowReplyPermMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showReplyPermMenu]);
 
   const avatarSrc = profile?.avatar ?? null;
   const selectedFiles = previews.map((p) => p.file);
@@ -339,7 +315,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
         await mutation.mutateAsync({
           content: normalizedContent,
           files: selectedFiles,
-          isPrivate: !isReply && replyPerm !== 'everyone',
+          isPrivate: false,
           ...(isReply && { parentId }),
         });
       }
@@ -353,8 +329,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   }
 
   const inputId = `composer-files-${parentId ?? 'new'}`;
-  const currentPermDef = REPLY_PERMS.find((p) => p.value === replyPerm) ?? REPLY_PERMS[0];
-  const PermIcon = currentPermDef.Icon;
 
   return (
     <form
@@ -518,11 +492,11 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={placeholder}
-            rows={isReply ? 3 : 4}
+            rows={isReply ? 2 : 2}
             style={{
               width: '100%',
               resize: 'vertical',
-              minHeight: isReply ? 76 : 108,
+              minHeight: isReply ? 48 : 48,
               background: 'transparent',
               border: 'none',
               outline: 'none',
@@ -612,91 +586,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   </button>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Reply permission indicator — new posts only, not community posts */}
-          {!isReply && !selectedCommunity && (
-            <div style={{ position: 'relative' }} ref={replyPermMenuRef}>
-              <button
-                type="button"
-                onClick={() => setShowReplyPermMenu((v) => !v)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '4px 0',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--accent)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  marginBottom: 8,
-                }}
-              >
-                <PermIcon size={14} />
-                {currentPermDef.label} can reply
-              </button>
-
-              {showReplyPermMenu && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 4px)',
-                    left: 0,
-                    minWidth: 260,
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 16,
-                    boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
-                    zIndex: 60,
-                    overflow: 'hidden',
-                    padding: '14px 0 8px',
-                  }}
-                >
-                  <div style={{ padding: '0 16px 10px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-                    Who can reply?
-                  </div>
-                  {REPLY_PERMS.map(({ value, label, Icon }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => { setReplyPerm(value); setShowReplyPermMenu(false); }}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 14,
-                        padding: '10px 16px',
-                        background: replyPerm === value ? 'var(--bg-subtle)' : 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <div style={{
-                        width: 36, height: 36, borderRadius: '50%',
-                        background: 'var(--bg-subtle)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0,
-                      }}>
-                        <Icon size={18} style={{ color: 'var(--text)' }} />
-                      </div>
-                      <span style={{ flex: 1, fontSize: 15, color: 'var(--text)' }}>{label}</span>
-                      {replyPerm === value ? (
-                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Check size={12} color="#fff" />
-                        </div>
-                      ) : (
-                        <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--border)', flexShrink: 0 }} />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           )}
 
