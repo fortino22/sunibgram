@@ -35,7 +35,7 @@ func (r *LikeRepository) Save(like *model.Like) error {
 	r.patchCount(like.ThreadID, "like_count", 1)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	invalidateExploreCache(ctx, r.base.cache)
+	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (r *LikeRepository) Delete(userID, threadID uint) error {
 	r.patchCount(threadID, "like_count", -1)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	invalidateExploreCache(ctx, r.base.cache)
+	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }
 

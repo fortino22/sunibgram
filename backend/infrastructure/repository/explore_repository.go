@@ -14,7 +14,11 @@ import (
 	"gorm.io/gorm"
 )
 
-const exploreTTL = 60 * time.Second
+const (
+	exploreTTL       = 60 * time.Second
+	exploreSearchTTL = 30 * time.Second
+	explorePage      = 1
+)
 
 type exploreRepository struct {
 	readDB *gorm.DB
@@ -56,10 +60,9 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 		limit = defaultRepositoryExploreLimit
 	}
 
-	key := exploreKey(query, requesterID, limit)
+	key := exploreSearchKey(query, requesterID, explorePage, limit)
 	var result model.ExploreResult
-	cacheable := requesterID == nil && r.cache != nil
-	if cacheable {
+	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
 			return &result, nil
 		}
@@ -75,8 +78,8 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 	}
 
 	result = model.ExploreResult{Users: users, Threads: threads}
-	if cacheable {
-		r.cache.Set(ctx, key, result, r.ttl)
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, result, exploreSearchTTL)
 	}
 	return &result, nil
 }
@@ -229,6 +232,9 @@ func (r *exploreRepository) findExploreThreads(ctx context.Context, section, que
 	}
 
 	key := exploreSectionKey(section, query, fmt.Sprintf("%d", requesterID), limit)
+	if section == "top" || section == "latest" {
+		key = exploreThreadSectionKey(section, query, requesterID, explorePage, limit)
+	}
 	var result cachedExploreThreads
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
@@ -418,20 +424,29 @@ func (r *exploreRepository) exploreThreads(ctx context.Context, query string, li
 	return threads, nil
 }
 
-func exploreKey(query string, requesterID *uint, limit int) string {
+func exploreSearchKey(query string, requesterID *uint, page, limit int) string {
 	viewer := "guest"
 	if requesterID != nil {
 		viewer = fmt.Sprintf("%d", *requesterID)
 	}
-	return exploreSectionKey("", query, viewer, limit)
+	return fmt.Sprintf("explore:search:%s:%d:%d:viewer:%s", exploreQueryHash(query), page, limit, viewer)
+}
+
+func exploreThreadSectionKey(section, query string, requesterID uint, page, limit int) string {
+	return fmt.Sprintf("explore:%s:%s:%d:%d:viewer:%d", section, exploreQueryHash(query), page, limit, requesterID)
 }
 
 func exploreSectionKey(section, query, viewer string, limit int) string {
-	sum := sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))
+	sum := exploreQueryHash(query)
 	if section == "" {
-		return fmt.Sprintf("explore:%s:viewer:%s:limit:%d", hex.EncodeToString(sum[:]), viewer, limit)
+		return fmt.Sprintf("explore:%s:viewer:%s:limit:%d", sum, viewer, limit)
 	}
-	return fmt.Sprintf("explore:%s:%s:viewer:%s:limit:%d", section, hex.EncodeToString(sum[:]), viewer, limit)
+	return fmt.Sprintf("explore:%s:%s:viewer:%s:limit:%d", section, sum, viewer, limit)
+}
+
+func exploreQueryHash(query string) string {
+	sum := sha1.Sum([]byte(strings.ToLower(strings.TrimSpace(query))))
+	return hex.EncodeToString(sum[:])
 }
 
 func likePattern(query string) string {

@@ -67,6 +67,6 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {
 		r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
 	}
-	invalidateExploreCache(ctx, r.cache)
+	invalidateExploreTopCache(ctx, r.cache)
 	return nil
 }
