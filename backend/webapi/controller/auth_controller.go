@@ -35,18 +35,19 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	var facultyID *uint
-	if raw := ctx.FormValue("faculty_id"); raw != "" {
-		fid, err := strconv.ParseUint(raw, 10, 64)
-		if err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty_id"})
-		}
-		v := uint(fid)
-		if _, err := c.facultyService.GetByID(v); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty not found"})
-		}
-		facultyID = &v
+	raw := ctx.FormValue("faculty_id")
+	if raw == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty_id is required"})
 	}
+	fid, err := strconv.ParseUint(raw, 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty_id"})
+	}
+	v := uint(fid)
+	if _, err := c.facultyService.GetByID(v); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty not found"})
+	}
+	facultyID := &v
 
 	user := &model.User{
 		Name:     req.Name,
