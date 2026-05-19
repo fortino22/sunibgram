@@ -208,8 +208,13 @@ func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, us
 	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
 	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
 	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("bookmarks:user:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("likes:user:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", userID))
 	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:roots:*")
 	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:following:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:community:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
 	_ = s.cacheRepo.DeleteByPattern(ctx, "event:threads:*")
 	_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
 }

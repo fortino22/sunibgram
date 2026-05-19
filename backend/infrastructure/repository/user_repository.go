@@ -146,8 +146,13 @@ func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("bookmarks:user:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("likes:user:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", userID))
 	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
 	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
 	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
 	_ = r.cache.Delete(ctx, "feed:trending:global")
 }
