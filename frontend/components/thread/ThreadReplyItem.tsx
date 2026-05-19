@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Users } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
@@ -50,9 +52,25 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
 
   return (
     <div
-      className="flex cursor-pointer gap-3"
+      className="cursor-pointer"
       onClick={() => router.push(`/thread/${thread.id}`)}
     >
+      {thread.community && (
+        <div
+          className="flex items-center gap-1"
+          style={{ paddingLeft: compact ? 27 : 35 }}
+        >
+          <Users size={13} strokeWidth={2} color="var(--text-tertiary)" />
+          <Link
+            href={`/communities/${thread.community.id}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ color: 'var(--text-tertiary)', textDecoration: 'none', fontWeight: 700, fontSize: 14, letterSpacing: '-0.01em' }}
+          >
+            {thread.community.name}
+          </Link>
+        </div>
+      )}
+      <div className="flex gap-3">
       <Avatar
         username={author.username}
         avatarUrl={getAuthorAvatarUrl(author)}
@@ -151,6 +169,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
           onNavigate={setLightboxIndex}
         />
       )}
+      </div>
     </div>
   );
 }

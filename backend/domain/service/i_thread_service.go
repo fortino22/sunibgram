@@ -8,7 +8,7 @@ import (
 )
 
 type IThreadService interface {
-	Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error)
+	Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, isPrivate bool) (*model.Thread, error)
 	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error)
 	GetByID(id uint) (*model.Thread, error)
 	GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error)

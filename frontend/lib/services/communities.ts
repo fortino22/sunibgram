@@ -1,23 +1,76 @@
 import { api } from '../api';
+import type { ThreadListResponse } from './threads';
 
 export type CommunityVisibility = 'PUBLIC' | 'PRIVATE';
 export type CommunityRole = 'MEMBER' | 'MODERATOR' | 'ADMIN' | 'OWNER';
 
-export interface CommunityMessageResponse {
-  message: string;
+// Backend DTO types — match exact JSON field names from Go backend
+export interface CommunityData {
+  community_id: number;
+  user_id: number;
+  username: string;
+  name: string;
+  description: string;
+  rules: string;
+  category_name: string;
+  visibility: CommunityVisibility;
+  avatar_url: string;
+  banner_url: string;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface Community {
-  id: number;
+export interface CommunityMeta {
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedCommunityData {
+  data: CommunityData[];
+  meta: CommunityMeta;
+}
+
+export interface CommunityMemberData {
+  community_id: number;
+  user_id: number;
+  username: string;
+  role: CommunityRole;
+  joined_at: string;
+}
+
+export interface PaginatedCommunityMemberData {
+  data: CommunityMemberData[];
+  meta: CommunityMeta;
+}
+
+export interface CommunityRequestData {
+  community_id: number;
+  user_id: number;
+  username: string;
+  status: string;
+  created_at: string;
+}
+
+export interface PaginatedCommunityRequestData {
+  data: CommunityRequestData[];
+  meta: CommunityMeta;
+}
+
+export interface DiscoverCommunityMemberData {
+  avatar_url: string;
+}
+
+export interface DiscoverCommunityData {
   name: string;
-  description?: string;
-  rules?: string;
-  category_id?: string;
-  category?: Category | null;
-  visibility?: CommunityVisibility;
-  avatar?: string | null;
-  banner?: string | null;
-  [key: string]: unknown;
+  member_count: number;
+  category_name: string;
+  top_members: DiscoverCommunityMemberData[];
+}
+
+export interface CommunityMessageResponse {
+  message: string;
 }
 
 export interface Category {
@@ -29,42 +82,6 @@ export interface Category {
 
 export interface CategoryListResponse {
   data: Category[];
-  [key: string]: unknown;
-}
-
-export interface CommunityMember {
-  id: number;
-  user_id?: number;
-  role?: CommunityRole;
-  [key: string]: unknown;
-}
-
-export interface CommunityThread {
-  id: number;
-  content: string;
-  community_id?: number;
-  [key: string]: unknown;
-}
-
-export interface CommunityListResponse {
-  data: Community[];
-  [key: string]: unknown;
-}
-
-export interface CommunityResponse {
-  data: Community;
-  message?: string;
-  [key: string]: unknown;
-}
-
-export interface CommunityMembersResponse {
-  data: CommunityMember[];
-  [key: string]: unknown;
-}
-
-export interface CommunityThreadsResponse {
-  data: CommunityThread[];
-  [key: string]: unknown;
 }
 
 export interface CommunityParams {
@@ -85,7 +102,6 @@ export interface UpdateCommunityParams extends Partial<CommunityParams> {
 export interface CommunityThreadParams {
   content: string;
   files?: File[];
-  clearMedia?: boolean;
 }
 
 function appendOptionalString(formData: FormData, key: string, value?: string | boolean): void {
@@ -121,39 +137,25 @@ function buildCommunityFormData(params: CommunityParams | UpdateCommunityParams)
 function buildCommunityThreadFormData(params: CommunityThreadParams): FormData {
   const formData = new FormData();
   formData.append('content', params.content);
-  if (params.clearMedia !== undefined) {
-    formData.append('clear_media', String(params.clearMedia));
-  }
   params.files?.forEach((file) => {
     formData.append('files', file);
   });
   return formData;
 }
 
-async function requestWithMethod<T>(
-  method: 'PATCH' | 'PUT',
-  path: string,
-  body: FormData | Record<string, string>,
-  token: string
-): Promise<T> {
+async function patchJson<T>(path: string, body: Record<string, string>, token: string): Promise<T> {
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  const isFormData = body instanceof FormData;
   const res = await fetch(`${baseUrl}${normalizedPath}`, {
-    method,
-    headers: isFormData
-      ? { Authorization: `Bearer ${token}` }
-      : { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: isFormData ? body : JSON.stringify(body),
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const error: unknown = await res.json().catch(() => ({ message: 'Request failed' }));
     const message =
-      typeof error === 'object' &&
-      error !== null &&
-      'message' in error &&
-      typeof error.message === 'string'
+      typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
         ? error.message
         : 'Request failed';
     throw new Error(message);
@@ -162,32 +164,76 @@ async function requestWithMethod<T>(
   return res.json() as Promise<T>;
 }
 
+async function putFormData<T>(path: string, formData: FormData, token: string): Promise<T> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const res = await fetch(`${baseUrl}${normalizedPath}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error: unknown = await res.json().catch(() => ({ message: 'Request failed' }));
+    const message =
+      typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+        ? error.message
+        : 'Request failed';
+    throw new Error(message);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+function paginationQuery(params?: { page?: number; limit?: number }): string {
+  const search = new URLSearchParams();
+  if (params?.page !== undefined) search.set('page', String(params.page));
+  if (params?.limit !== undefined) search.set('limit', String(params.limit));
+  const value = search.toString();
+  return value ? `?${value}` : '';
+}
+
 export function getCategories(token?: string): Promise<CategoryListResponse> {
   return api.get<CategoryListResponse>('/api/categories', token);
 }
 
-export function getMyCommunities(token: string): Promise<CommunityListResponse> {
-  return api.get<CommunityListResponse>('/api/communities/me', token);
+export function getMyCommunities(
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<PaginatedCommunityData> {
+  return api.get<PaginatedCommunityData>(`/api/communities/me${paginationQuery(params)}`, token);
 }
 
-export function getJoinedCommunities(token: string): Promise<CommunityListResponse> {
-  return api.get<CommunityListResponse>('/api/communities/joined', token);
+export function getJoinedCommunities(
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<PaginatedCommunityData> {
+  return api.get<PaginatedCommunityData>(`/api/communities/joined${paginationQuery(params)}`, token);
 }
 
-export function getCommunity(id: number | string, token: string): Promise<CommunityResponse> {
-  return api.get<CommunityResponse>(`/api/communities/${id}`, token);
+export function getCommunity(id: number | string, token: string): Promise<CommunityData> {
+  return api.get<CommunityData>(`/api/communities/${id}`, token);
 }
 
-export function createCommunity(params: CommunityParams, token: string): Promise<CommunityResponse> {
-  return api.post<CommunityResponse>('/api/communities', buildCommunityFormData(params), token);
+export async function getDiscoverCommunities(
+  token: string,
+  categoryId?: string
+): Promise<DiscoverCommunityData[]> {
+  const q = categoryId ? `?category=${encodeURIComponent(categoryId)}` : '';
+  const res = await api.get<{ data: DiscoverCommunityData[] }>(`/api/communities/discover${q}`, token);
+  return res.data;
+}
+
+export function createCommunity(params: CommunityParams, token: string): Promise<CommunityData> {
+  return api.post<CommunityData>('/api/communities', buildCommunityFormData(params), token);
 }
 
 export function updateCommunity(
   id: number | string,
   params: UpdateCommunityParams,
   token: string
-): Promise<CommunityResponse> {
-  return requestWithMethod<CommunityResponse>('PUT', `/api/communities/${id}`, buildCommunityFormData(params), token);
+): Promise<CommunityData> {
+  return putFormData<CommunityData>(`/api/communities/${id}`, buildCommunityFormData(params), token);
 }
 
 export function deleteCommunity(id: number | string, token: string): Promise<CommunityMessageResponse> {
@@ -204,9 +250,13 @@ export function leaveCommunity(id: number | string, token: string): Promise<Comm
 
 export function getCommunityMembers(
   id: number | string,
-  token: string
-): Promise<CommunityMembersResponse> {
-  return api.get<CommunityMembersResponse>(`/api/communities/${id}/members`, token);
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<PaginatedCommunityMemberData> {
+  return api.get<PaginatedCommunityMemberData>(
+    `/api/communities/${id}/members${paginationQuery(params)}`,
+    token
+  );
 }
 
 export function kickCommunityMember(
@@ -223,25 +273,30 @@ export function updateCommunityMemberRole(
   role: CommunityRole,
   token: string
 ): Promise<CommunityMessageResponse> {
-  return requestWithMethod<CommunityMessageResponse>('PATCH', `/api/communities/${id}/members/${userId}/role`, { role }, token);
+  return patchJson<CommunityMessageResponse>(
+    `/api/communities/${id}/members/${userId}/role`,
+    { role },
+    token
+  );
 }
 
 export function requestToJoinCommunity(id: number | string, token: string): Promise<CommunityMessageResponse> {
   return api.post<CommunityMessageResponse>(`/api/communities/${id}/requests`, undefined, token);
 }
 
-export function cancelCommunityJoinRequest(
-  id: number | string,
-  token: string
-): Promise<CommunityMessageResponse> {
+export function cancelCommunityJoinRequest(id: number | string, token: string): Promise<CommunityMessageResponse> {
   return api.delete<CommunityMessageResponse>(`/api/communities/${id}/requests`, token);
 }
 
 export function getCommunityJoinRequests(
   id: number | string,
-  token: string
-): Promise<CommunityMembersResponse> {
-  return api.get<CommunityMembersResponse>(`/api/communities/${id}/requests`, token);
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<PaginatedCommunityRequestData> {
+  return api.get<PaginatedCommunityRequestData>(
+    `/api/communities/${id}/requests${paginationQuery(params)}`,
+    token
+  );
 }
 
 export function approveCommunityJoinRequest(
@@ -249,7 +304,11 @@ export function approveCommunityJoinRequest(
   userId: number | string,
   token: string
 ): Promise<CommunityMessageResponse> {
-  return api.post<CommunityMessageResponse>(`/api/communities/${id}/requests/${userId}/approve`, undefined, token);
+  return api.post<CommunityMessageResponse>(
+    `/api/communities/${id}/requests/${userId}/approve`,
+    undefined,
+    token
+  );
 }
 
 export function declineCommunityJoinRequest(
@@ -257,24 +316,75 @@ export function declineCommunityJoinRequest(
   userId: number | string,
   token: string
 ): Promise<CommunityMessageResponse> {
-  return api.post<CommunityMessageResponse>(`/api/communities/${id}/requests/${userId}/decline`, undefined, token);
+  return api.post<CommunityMessageResponse>(
+    `/api/communities/${id}/requests/${userId}/decline`,
+    undefined,
+    token
+  );
 }
 
-export function getCommunityThreads(
+export function getCommunityThreadsLatest(
   id: number | string,
-  token: string
-): Promise<CommunityThreadsResponse> {
-  return api.get<CommunityThreadsResponse>(`/api/communities/${id}/threads`, token);
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(
+    `/api/communities/${id}/threads/latest${paginationQuery(params)}`,
+    token
+  );
+}
+
+export function getCommunityThreadsTop(
+  id: number | string,
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(
+    `/api/communities/${id}/threads/top${paginationQuery(params)}`,
+    token
+  );
+}
+
+export function getCommunityThreadsMedia(
+  id: number | string,
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(
+    `/api/communities/${id}/threads/media${paginationQuery(params)}`,
+    token
+  );
 }
 
 export function createCommunityThread(
   id: number | string,
   params: CommunityThreadParams,
   token: string
-): Promise<CommunityThreadsResponse> {
-  return api.post<CommunityThreadsResponse>(
+): Promise<CommunityMessageResponse> {
+  return api.post<CommunityMessageResponse>(
     `/api/communities/${id}/threads`,
     buildCommunityThreadFormData(params),
     token
   );
 }
+
+export function getMyCommunitiesThreadsFeed(
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(`/api/communities/me/threads${paginationQuery(params)}`, token);
+}
+
+export function getExploreCommunitiesThreads(
+  token: string,
+  categoryId?: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  const search = new URLSearchParams();
+  if (categoryId) search.set('category', categoryId);
+  if (params?.page !== undefined) search.set('page', String(params.page));
+  if (params?.limit !== undefined) search.set('limit', String(params.limit));
+  const q = search.toString() ? `?${search.toString()}` : '';
+  return api.get<ThreadListResponse>(`/api/communities/threads${q}`, token);
+}
+

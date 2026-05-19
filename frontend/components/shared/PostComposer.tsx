@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, LoaderCircle, X, Loader2 } from 'lucide-react';
+import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, AtSign, BadgeCheck, UserCheck, Check } from 'lucide-react';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import dynamic from 'next/dynamic';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar } from './Avatar';
 import { useMyProfile } from '@/hooks/useMyProfile';
@@ -18,10 +19,28 @@ import {
   type ThreadResponse,
   type ThreadItem,
 } from '@/lib/services/threads';
+import {
+  createCommunityThread,
+  type CommunityData,
+  type CommunityMessageResponse,
+} from '@/lib/services/communities';
+import { useJoinedCommunities } from '@/hooks/useCommunities';
 import type { ThreadDetailData } from '@/hooks/useThread';
 import { compressImages } from '@/lib/compressImage';
+import { GifPicker } from '@/components/chat/GifPicker';
+import type { EmojiClickData } from 'emoji-picker-react';
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 type PreviewKind = 'image' | 'video' | 'file';
+type ReplyPermission = 'everyone' | 'following' | 'mentioned' | 'verified';
+
+const REPLY_PERMS: { value: ReplyPermission; label: string; desc: string; Icon: React.ElementType }[] = [
+  { value: 'everyone',  label: 'Everyone',               desc: 'Anyone can reply',                Icon: Globe       },
+  { value: 'following', label: 'Accounts you follow',    desc: 'Only accounts you follow',         Icon: UserCheck   },
+  { value: 'mentioned', label: 'Only people you mention', desc: 'Only @mentioned accounts',        Icon: AtSign      },
+  { value: 'verified',  label: 'Verified accounts',      desc: 'Only verified accounts',           Icon: BadgeCheck  },
+];
 
 interface FilePreview {
   file: File;
@@ -31,9 +50,7 @@ interface FilePreview {
 
 export interface PostComposerProps {
   placeholder?: string;
-  /** When set, the composer posts a reply to this thread ID instead of a new root thread. */
   parentId?: number;
-  /** HTML id attribute for the <form> element. */
   formId?: string;
 }
 
@@ -62,11 +79,32 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const user = useAuthStore((state) => state.user);
   const token = useAuthStore((state) => state.token);
   const { data: profile } = useMyProfile();
+  const { data: joinedCommData } = useJoinedCommunities();
+  const communities = joinedCommData?.data ?? [];
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null);
+  const audienceMenuRef = useRef<HTMLDivElement | null>(null);
+  const replyPermMenuRef = useRef<HTMLDivElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
+
   const [content, setContent] = useState('');
   const [previews, setPreviews] = useState<FilePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
+
+  // Audience
+  const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
+  const [showAudienceMenu, setShowAudienceMenu] = useState(false);
+
+  // Reply permission
+  const [replyPerm, setReplyPerm] = useState<ReplyPermission>('everyone');
+  const [showReplyPermMenu, setShowReplyPermMenu] = useState(false);
+
+  // Emoji / GIF
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifFetching, setGifFetching] = useState(false);
 
   useEffect(() => {
     previewsRef.current = previews;
@@ -78,10 +116,45 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     };
   }, []);
 
+  // Close dropdowns on outside click
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handler = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEmojiPicker]);
+
+  useEffect(() => {
+    if (!showAudienceMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (audienceMenuRef.current && !audienceMenuRef.current.contains(e.target as Node)) {
+        setShowAudienceMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAudienceMenu]);
+
+  useEffect(() => {
+    if (!showReplyPermMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (replyPermMenuRef.current && !replyPermMenuRef.current.contains(e.target as Node)) {
+        setShowReplyPermMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showReplyPermMenu]);
+
   const avatarSrc = profile?.avatar ?? null;
   const selectedFiles = previews.map((p) => p.file);
   const normalizedContent = content.trim();
 
+  // Regular thread mutation
   const mutation = useMutation<ThreadResponse, Error, ThreadMutationParams, MutateContext | undefined>({
     mutationFn: async (params) => {
       if (token === null) throw new Error('Authentication token is required.');
@@ -161,11 +234,33 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     },
   });
 
-  const isPending = mutation.isPending;
+  // Community thread mutation
+  const communityMutation = useMutation<
+    CommunityMessageResponse,
+    Error,
+    { communityId: number; content: string; files: File[] }
+  >({
+    mutationFn: async ({ communityId, content: c, files }) => {
+      if (!token) throw new Error('Authentication token is required.');
+      return createCommunityThread(communityId, { content: c, files }, token);
+    },
+    onSuccess: (_, { communityId }) => {
+      void queryClient.invalidateQueries({ queryKey: ['community', communityId, 'threads'] });
+      void queryClient.invalidateQueries({ queryKey: ['communities', 'threads', 'feed'] });
+      void queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] });
+      void queryClient.invalidateQueries({ queryKey: ['threads'] });
+    },
+  });
+
+  const isPending = mutation.isPending || communityMutation.isPending;
+  const isError = mutation.isError || communityMutation.isError;
+  const errorMessage = mutation.error?.message ?? communityMutation.error?.message ?? '';
+
   const canSubmit =
     token !== null &&
     !isPending &&
     !compressing &&
+    !gifFetching &&
     (normalizedContent.length > 0 || selectedFiles.length > 0);
 
   async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
@@ -196,16 +291,58 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     });
   }
 
+  function handleEmojiClick(emojiData: EmojiClickData) {
+    const el = textareaRef.current;
+    if (!el) {
+      setContent((prev) => prev + emojiData.emoji);
+    } else {
+      const start = el.selectionStart ?? content.length;
+      const end = el.selectionEnd ?? content.length;
+      const next = content.slice(0, start) + emojiData.emoji + content.slice(end);
+      setContent(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + emojiData.emoji.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+    setShowEmojiPicker(false);
+  }
+
+  async function handleGifSelect(gifUrl: string) {
+    setShowGifPicker(false);
+    setGifFetching(true);
+    try {
+      const res = await fetch(gifUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `gif-${Date.now()}.gif`, { type: blob.type || 'image/gif' });
+      const url = URL.createObjectURL(file);
+      setPreviews((cur) => [...cur, { file, kind: 'image', url }]);
+    } catch {
+      // silently ignore if CORS blocks
+    } finally {
+      setGifFetching(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
     try {
-      await mutation.mutateAsync({
-        content: normalizedContent,
-        files: selectedFiles,
-        ...(isReply && { parentId }),
-      });
-      // For reply mode, content is already cleared optimistically in onMutate.
+      if (!isReply && selectedCommunity) {
+        await communityMutation.mutateAsync({
+          communityId: selectedCommunity.community_id,
+          content: normalizedContent,
+          files: selectedFiles,
+        });
+      } else {
+        await mutation.mutateAsync({
+          content: normalizedContent,
+          files: selectedFiles,
+          isPrivate: !isReply && replyPerm !== 'everyone',
+          ...(isReply && { parentId }),
+        });
+      }
       if (!isReply) setContent('');
       previews.forEach((p) => URL.revokeObjectURL(p.url));
       setPreviews([]);
@@ -216,6 +353,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   }
 
   const inputId = `composer-files-${parentId ?? 'new'}`;
+  const currentPermDef = REPLY_PERMS.find((p) => p.value === replyPerm) ?? REPLY_PERMS[0];
+  const PermIcon = currentPermDef.Icon;
 
   return (
     <form
@@ -225,13 +364,157 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
         padding: '16px 20px',
         borderBottom: '1px solid var(--border)',
         background: 'var(--bg-card)',
+        position: 'relative',
       }}
     >
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
         <Avatar username={user?.username ?? ''} avatarUrl={avatarSrc} size="md" />
 
         <div style={{ flex: 1, minWidth: 0 }}>
+
+          {/* Audience selector — new posts only */}
+          {!isReply && (
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: 8 }} ref={audienceMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowAudienceMenu((v) => !v)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  borderRadius: 20,
+                  border: '1px solid var(--accent)',
+                  background: 'transparent',
+                  color: 'var(--accent)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {selectedCommunity ? (
+                  <>
+                    <Users size={13} />
+                    {selectedCommunity.name}
+                  </>
+                ) : (
+                  <>
+                    <Globe size={13} />
+                    Everyone
+                  </>
+                )}
+                <ChevronDown size={13} />
+              </button>
+
+              {showAudienceMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    left: 0,
+                    minWidth: 240,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 16,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
+                    zIndex: 60,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div style={{ padding: '14px 16px 8px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                    Choose audience
+                  </div>
+
+                  {/* Everyone option */}
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedCommunity(null); setShowAudienceMenu(false); }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 16px',
+                      background: selectedCommunity === null ? 'var(--bg-subtle)' : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <div style={{
+                      width: 40, height: 40, borderRadius: '50%',
+                      background: 'var(--accent)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <Globe size={20} color="#fff" />
+                    </div>
+                    <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Everyone</span>
+                    {selectedCommunity === null && <Check size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+                  </button>
+
+                  {communities.length > 0 && (
+                    <>
+                      <div style={{ padding: '8px 16px 4px', fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        My Communities
+                      </div>
+                      {communities.map((c) => (
+                        <button
+                          key={c.community_id}
+                          type="button"
+                          onClick={() => { setSelectedCommunity(c); setShowAudienceMenu(false); }}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '10px 16px',
+                            background: selectedCommunity?.community_id === c.community_id ? 'var(--bg-subtle)' : 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <div style={{ position: 'relative', width: 56, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)' }}>
+                            {c.banner_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={c.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Users size={18} style={{ color: 'var(--text-muted)' }} />
+                              </div>
+                            )}
+                            {c.avatar_url && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={c.avatar_url} alt={c.name} style={{ position: 'absolute', bottom: 2, right: 2, width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--bg-card)' }} />
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.name}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                              {c.member_count >= 1000
+                                ? `${(c.member_count / 1000).toFixed(1)}K`
+                                : c.member_count} Members
+                            </div>
+                          </div>
+                          {selectedCommunity?.community_id === c.community_id && (
+                            <Check size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                          )}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  <div style={{ height: 8 }} />
+                </div>
+              )}
+            </div>
+          )}
+
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={placeholder}
@@ -270,6 +553,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     border: '1px solid var(--border)',
                     background: 'var(--bg-subtle)',
                     minHeight: 140,
+                    maxHeight: 220,
                   }}
                 >
                   {preview.kind === 'video' ? (
@@ -278,13 +562,14 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                       muted
                       playsInline
                       controls
-                      style={{ width: '100%', height: '100%', maxHeight: 220, display: 'block', objectFit: 'cover' }}
+                      style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
                     />
                   ) : preview.kind === 'image' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={preview.url}
                       alt={preview.file.name}
-                      style={{ width: '100%', height: '100%', maxHeight: 220, display: 'block', objectFit: 'cover' }}
+                      style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
                     />
                   ) : (
                     <div
@@ -330,9 +615,94 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             </div>
           )}
 
+          {/* Reply permission indicator — new posts only, not community posts */}
+          {!isReply && !selectedCommunity && (
+            <div style={{ position: 'relative' }} ref={replyPermMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowReplyPermMenu((v) => !v)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 0',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--accent)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  marginBottom: 8,
+                }}
+              >
+                <PermIcon size={14} />
+                {currentPermDef.label} can reply
+              </button>
+
+              {showReplyPermMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 4px)',
+                    left: 0,
+                    minWidth: 260,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 16,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
+                    zIndex: 60,
+                    overflow: 'hidden',
+                    padding: '14px 0 8px',
+                  }}
+                >
+                  <div style={{ padding: '0 16px 10px', fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                    Who can reply?
+                  </div>
+                  {REPLY_PERMS.map(({ value, label, Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { setReplyPerm(value); setShowReplyPermMenu(false); }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        padding: '10px 16px',
+                        background: replyPerm === value ? 'var(--bg-subtle)' : 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <div style={{
+                        width: 36, height: 36, borderRadius: '50%',
+                        background: 'var(--bg-subtle)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <Icon size={18} style={{ color: 'var(--text)' }} />
+                      </div>
+                      <span style={{ flex: 1, fontSize: 15, color: 'var(--text)' }}>{label}</span>
+                      {replyPerm === value ? (
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Check size={12} color="#fff" />
+                        </div>
+                      ) : (
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--border)', flexShrink: 0 }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ height: 1, background: 'var(--border)', margin: '0 0 12px' }} />
 
-          {mutation.isError && (
+          {isError && (
             <div
               style={{
                 marginBottom: 12,
@@ -344,7 +714,27 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                 lineHeight: 1.5,
               }}
             >
-              {mutation.error.message}
+              {errorMessage}
+            </div>
+          )}
+
+          {/* Emoji picker popover */}
+          {showEmojiPicker && (
+            <div
+              ref={emojiPickerRef}
+              style={{ position: 'relative', zIndex: 50, marginBottom: 8 }}
+            >
+              <EmojiPicker onEmojiClick={handleEmojiClick} lazyLoadEmojis height={360} width="100%" />
+            </div>
+          )}
+
+          {/* GIF picker popover */}
+          {showGifPicker && (
+            <div style={{ position: 'relative', marginBottom: 8 }}>
+              <GifPicker
+                onSelect={(url) => void handleGifSelect(url)}
+                onClose={() => setShowGifPicker(false)}
+              />
             </div>
           )}
 
@@ -357,7 +747,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               flexWrap: 'wrap',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {/* Image upload */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -369,31 +760,78 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               />
               <label
                 htmlFor={inputId}
+                title="Add image or video"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 10,
-                  border: '1px solid var(--border)',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
                   color: compressing ? 'var(--accent)' : 'var(--text-secondary)',
-                  fontSize: 13,
-                  fontWeight: 500,
                   cursor: isPending || compressing ? 'not-allowed' : 'pointer',
                   opacity: isPending || compressing ? 0.6 : 1,
                   pointerEvents: compressing ? 'none' : undefined,
                 }}
               >
-                {compressing ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <ImagePlus size={16} />}
+                {compressing ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <ImagePlus size={18} />}
               </label>
 
+              {/* GIF button */}
+              <button
+                type="button"
+                title="Add GIF"
+                onClick={() => { setShowGifPicker((v) => !v); setShowEmojiPicker(false); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: 'none',
+                  border: 'none',
+                  color: showGifPicker ? 'var(--accent)' : 'var(--text-secondary)',
+                  cursor: gifFetching ? 'not-allowed' : 'pointer',
+                  opacity: gifFetching ? 0.6 : 1,
+                  transition: 'color 0.15s',
+                }}
+              >
+                {gifFetching ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Film size={18} />}
+              </button>
+
+              {/* Emoji button */}
+              <button
+                type="button"
+                title="Add emoji"
+                onClick={() => { setShowEmojiPicker((v) => !v); setShowGifPicker(false); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: 'none',
+                  border: 'none',
+                  color: showEmojiPicker ? 'var(--accent)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'color 0.15s',
+                }}
+              >
+                <Smile size={18} />
+              </button>
+
               {compressing && (
-                <span style={{ color: 'var(--accent)', fontSize: 13 }}>Compressing…</span>
+                <span style={{ color: 'var(--accent)', fontSize: 13, marginLeft: 4 }}>Compressing…</span>
               )}
-              {!compressing && selectedFiles.length > 0 && (
-                <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
-                  {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected
+              {!compressing && !gifFetching && selectedFiles.length > 0 && (
+                <span style={{ color: 'var(--text-tertiary)', fontSize: 13, marginLeft: 4 }}>
+                  {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}
                 </span>
+              )}
+              {gifFetching && (
+                <span style={{ color: 'var(--accent)', fontSize: 13, marginLeft: 4 }}>Adding GIF…</span>
               )}
             </div>
 

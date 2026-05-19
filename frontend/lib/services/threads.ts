@@ -55,6 +55,7 @@ export interface FeedAuthorFaculty {
 
 export interface FeedAuthor {
   id: number;
+  name: string;
   username: string;
   is_premium: boolean;
   avatar_url?: string | null;
@@ -131,6 +132,7 @@ export interface ThreadMutationParams {
   files?: File[];
   parentId?: number | string;
   clearMedia?: boolean;
+  isPrivate?: boolean;
 }
 
 export const DEFAULT_THREAD_CHAIN_PARAMS: Required<PaginationParams> = {
@@ -158,6 +160,9 @@ function buildThreadFormData(params: ThreadMutationParams): FormData {
   }
   if (params.clearMedia !== undefined) {
     formData.append('clear_media', String(params.clearMedia));
+  }
+  if (params.isPrivate !== undefined) {
+    formData.append('is_private', String(params.isPrivate));
   }
   params.files?.forEach((file) => {
     formData.append('files', file);

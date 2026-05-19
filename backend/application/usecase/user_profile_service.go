@@ -153,6 +153,17 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		if err := s.userRepo.UpdateInfo(userID, name, username); err != nil {
 			return err
 		}
+		if s.cacheRepo != nil {
+			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
+			// Invalidate all feed caches that embed the user's name inside thread objects.
+			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
+			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
+			_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:following:*")
+		}
 		s.invalidateUserProfileCaches(ctx, userID)
 	}
 
