@@ -36,5 +36,7 @@ type IUserProfileService interface {
 	UpdateProfile(ctx context.Context, userID uint, input UpdateProfileInput) error
 	GetProfile(userID uint, viewerID *uint) (*FullProfile, error)
 	GetProfiles(userIDs []uint) ([]model.UserProfile, error)
+	GetUsers(userIDs []uint) ([]model.User, error)
+	GetUserFaculties(userIDs []uint) ([]model.UserFaculty, error)
 	GetURL(bucket, objectName string) string
 }

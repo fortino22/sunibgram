@@ -26,7 +26,9 @@ type FeedBuilder struct {
 	PinSvc      service.IThreadPinService
 	ProfileSvc  service.IUserProfileService
 	ViewerID    *uint
-	avatarCache map[uint]string
+	avatarCache    map[uint]string
+	isPremiumCache map[uint]bool
+	facultyCache   map[uint]*dto.FeedAuthorFaculty
 	flagsLoaded bool
 	liked       map[uint]bool
 	bookmarked  map[uint]bool
@@ -72,13 +74,19 @@ func (fb *FeedBuilder) avatarCacheRepo() repository.ICacheRepository {
 	return provider.AvatarCacheRepository()
 }
 
-// LoadAvatarsForUserIDs batch-fetches and caches avatar URLs for the given user IDs.
+// LoadAvatarsForUserIDs batch-fetches avatar URLs, is_premium, and faculty for the given user IDs.
 func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	if fb.ProfileSvc == nil || len(userIDs) == 0 {
 		return
 	}
 	if fb.avatarCache == nil {
 		fb.avatarCache = make(map[uint]string)
+	}
+	if fb.isPremiumCache == nil {
+		fb.isPremiumCache = make(map[uint]bool)
+	}
+	if fb.facultyCache == nil {
+		fb.facultyCache = make(map[uint]*dto.FeedAuthorFaculty)
 	}
 	seen := make(map[uint]struct{}, len(userIDs))
 	needed := make([]uint, 0, len(userIDs))
@@ -138,18 +146,49 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 			_ = cacheRepo.Set(ctx, avatarCacheKey(id), "", avatarCacheTTL)
 		}
 	}
+
+	// Batch-load is_premium fresh from DB (not from stale thread cache).
+	users, err := fb.ProfileSvc.GetUsers(misses)
+	if err == nil {
+		for _, u := range users {
+			fb.isPremiumCache[u.UserID] = u.IsPremium
+		}
+	}
+
+	// Batch-load faculty fresh from DB.
+	faculties, err := fb.ProfileSvc.GetUserFaculties(misses)
+	if err == nil {
+		// mark all misses as looked up (nil = no faculty)
+		for _, id := range misses {
+			fb.facultyCache[id] = nil
+		}
+		for _, uf := range faculties {
+			fb.facultyCache[uf.UserID] = &dto.FeedAuthorFaculty{
+				FacultyID:   uf.FacultyID,
+				FacultyName: uf.Faculty.FacultyName,
+			}
+		}
+	}
 }
 
-// AuthorField builds a FeedAuthor from a User, resolving the avatar from the cache.
-// Reading from a nil map in Go returns the zero value, so it is safe when avatarCache is nil.
+// AuthorField builds a FeedAuthor from a User.
+// is_premium and faculty come from FeedBuilder caches (loaded fresh from DB via LoadAvatarsForUserIDs)
+// rather than the embedded User struct, which may be stale from a thread list cache.
 func (fb FeedBuilder) AuthorField(u model.User) dto.FeedAuthor {
+	isPremium := u.IsPremium
+	if v, ok := fb.isPremiumCache[u.UserID]; ok {
+		isPremium = v
+	}
 	a := dto.FeedAuthor{
 		ID:        u.UserID,
 		Username:  u.UserName,
-		IsPremium: u.IsPremium,
+		IsPremium: isPremium,
 		AvatarURL: fb.avatarCache[u.UserID],
 	}
-	if u.UserFaculty != nil {
+	if f, ok := fb.facultyCache[u.UserID]; ok {
+		a.Faculty = f
+	} else if u.UserFaculty != nil {
+		// fallback: use embedded struct if cache not populated
 		a.Faculty = &dto.FeedAuthorFaculty{
 			FacultyID:   u.UserFaculty.FacultyID,
 			FacultyName: u.UserFaculty.Faculty.FacultyName,

@@ -205,6 +205,13 @@ func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, us
 		fmt.Sprintf("notification:sender:%d", userID),
 		fmt.Sprintf("userfaculty:user:%d", userID),
 	)
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:roots:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:following:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "event:threads:*")
+	_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
 }
 
 func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {
@@ -239,6 +246,14 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.F
 
 func (s *UserProfileService) GetProfiles(userIDs []uint) ([]model.UserProfile, error) {
 	return s.profileRepo.FindByUserIDs(userIDs)
+}
+
+func (s *UserProfileService) GetUsers(userIDs []uint) ([]model.User, error) {
+	return s.userRepo.FindByIDs(userIDs)
+}
+
+func (s *UserProfileService) GetUserFaculties(userIDs []uint) ([]model.UserFaculty, error) {
+	return s.userFacultyRepo.FindByUserIDs(userIDs)
 }
 
 func (s *UserProfileService) GetURL(bucket, objectName string) string {

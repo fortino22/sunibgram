@@ -145,9 +145,11 @@ func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
 	ctx := context.Background()
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
 	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
 	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
+	_ = r.cache.Delete(ctx, "feed:trending:global")
 }
 
 func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {
