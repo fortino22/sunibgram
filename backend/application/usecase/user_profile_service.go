@@ -11,6 +11,10 @@ import (
 	"github.com/sunibgram/domain/service"
 )
 
+func userAvatarCacheKey(userID uint) string {
+	return fmt.Sprintf("user:%d:avatar", userID)
+}
+
 type UserProfileService struct {
 	userRepo        repository.IUserRepository
 	followRepo      repository.IFollowRepository
@@ -36,6 +40,10 @@ func NewUserProfileService(
 		cacheRepo:       cacheRepo,
 		storageUsecase:  storageUsecase,
 	}
+}
+
+func (s *UserProfileService) AvatarCacheRepository() repository.ICacheRepository {
+	return s.cacheRepo
 }
 
 func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, input service.UpsertProfileInput) error {
@@ -109,11 +117,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	if input.Avatar != nil {
 		invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	}
-	if s.cacheRepo != nil {
-		_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
-		_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
-		_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-	}
+	s.invalidateUserProfileCaches(ctx, userID)
 	return nil
 }
 
@@ -149,11 +153,7 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		if err := s.userRepo.UpdateInfo(userID, name, username); err != nil {
 			return err
 		}
-		if s.cacheRepo != nil {
-			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-		}
+		s.invalidateUserProfileCaches(ctx, userID)
 	}
 
 	if input.ClearAvatar || input.ClearBanner {
@@ -178,12 +178,8 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			}
 			if input.ClearAvatar {
 				invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
-				if s.cacheRepo != nil {
-					_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
-					_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
-					_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-				}
 			}
+			s.invalidateUserProfileCaches(ctx, userID)
 		}
 	}
 
@@ -196,6 +192,19 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		return s.UpsertProfile(ctx, userID, mediaInput)
 	}
 	return nil
+}
+
+func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, userID uint) {
+	if s.cacheRepo == nil {
+		return
+	}
+	_ = s.cacheRepo.Delete(ctx,
+		userAvatarCacheKey(userID),
+		fmt.Sprintf("user:id:%d", userID),
+		fmt.Sprintf("profile:user:%d", userID),
+		fmt.Sprintf("notification:sender:%d", userID),
+		fmt.Sprintf("userfaculty:user:%d", userID),
+	)
 }
 
 func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {

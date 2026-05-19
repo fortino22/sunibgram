@@ -1,11 +1,22 @@
 package utils
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/sunibgram/domain/model"
+	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
 )
+
+const avatarCacheTTL = time.Hour
+
+type avatarCacheProvider interface {
+	AvatarCacheRepository() repository.ICacheRepository
+}
 
 type FeedBuilder struct {
 	Media       service.IThreadMediaService
@@ -21,6 +32,10 @@ type FeedBuilder struct {
 	bookmarked  map[uint]bool
 	reposted    map[uint]bool
 	pinned      map[uint]bool
+}
+
+func avatarCacheKey(userID uint) string {
+	return fmt.Sprintf("user:%d:avatar", userID)
 }
 
 func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []dto.ThreadMediaResponse {
@@ -49,6 +64,14 @@ func EventFields(t *model.Thread) (*string, *string) {
 	return &event.ID, &event.Title
 }
 
+func (fb *FeedBuilder) avatarCacheRepo() repository.ICacheRepository {
+	provider, ok := fb.ProfileSvc.(avatarCacheProvider)
+	if !ok {
+		return nil
+	}
+	return provider.AvatarCacheRepository()
+}
+
 // LoadAvatarsForUserIDs batch-fetches and caches avatar URLs for the given user IDs.
 func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	if fb.ProfileSvc == nil || len(userIDs) == 0 {
@@ -72,15 +95,47 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	if len(needed) == 0 {
 		return
 	}
-	profiles, err := fb.ProfileSvc.GetProfiles(needed)
+	ctx := context.Background()
+	cacheRepo := fb.avatarCacheRepo()
+	misses := make([]uint, 0, len(needed))
+	for _, id := range needed {
+		if cacheRepo == nil {
+			misses = append(misses, id)
+			continue
+		}
+		var avatarURL string
+		if err := cacheRepo.Get(ctx, avatarCacheKey(id), &avatarURL); err == nil {
+			fb.avatarCache[id] = avatarURL
+			continue
+		}
+		misses = append(misses, id)
+	}
+	if len(misses) == 0 {
+		return
+	}
+	profiles, err := fb.ProfileSvc.GetProfiles(misses)
 	if err != nil {
 		return
 	}
+	missed := make(map[uint]struct{}, len(misses))
+	for _, id := range misses {
+		missed[id] = struct{}{}
+	}
 	for _, p := range profiles {
+		delete(missed, p.UserID)
+		avatarURL := ""
 		if p.AvatarBucket != "" && p.AvatarObjectName != "" {
-			fb.avatarCache[p.UserID] = fb.ProfileSvc.GetURL(p.AvatarBucket, p.AvatarObjectName)
-		} else {
-			fb.avatarCache[p.UserID] = ""
+			avatarURL = fb.ProfileSvc.GetURL(p.AvatarBucket, p.AvatarObjectName)
+		}
+		fb.avatarCache[p.UserID] = avatarURL
+		if cacheRepo != nil {
+			_ = cacheRepo.Set(ctx, avatarCacheKey(p.UserID), avatarURL, avatarCacheTTL)
+		}
+	}
+	for id := range missed {
+		fb.avatarCache[id] = ""
+		if cacheRepo != nil {
+			_ = cacheRepo.Set(ctx, avatarCacheKey(id), "", avatarCacheTTL)
 		}
 	}
 }
