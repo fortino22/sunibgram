@@ -1,0 +1,68 @@
+package usecase
+
+import (
+	"errors"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/sunibgram/domain/model"
+	"github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/domain/service"
+)
+
+type ViolationService struct {
+	violationRepo repository.IViolationRepository
+}
+
+func NewViolationService(violationRepo repository.IViolationRepository) service.IViolationService {
+	return &ViolationService{violationRepo: violationRepo}
+}
+
+func (s *ViolationService) Create(name, description string) error {
+	name = strings.TrimSpace(name)
+	description = strings.TrimSpace(description)
+	if name == "" {
+		return errors.New("violation name is required")
+	}
+	if description == "" {
+		return errors.New("violation description is required")
+	}
+	return s.violationRepo.Save(&model.Violation{Name: name, Description: description})
+}
+
+func (s *ViolationService) GetAll() ([]model.Violation, error) {
+	return s.violationRepo.FindAll()
+}
+
+func (s *ViolationService) GetByID(id uuid.UUID) (*model.Violation, error) {
+	violation, err := s.violationRepo.FindByID(id)
+	if err != nil {
+		return nil, errors.New("violation not found")
+	}
+	return violation, nil
+}
+
+func (s *ViolationService) Update(id uuid.UUID, name, description string) error {
+	name = strings.TrimSpace(name)
+	description = strings.TrimSpace(description)
+	if name == "" {
+		return errors.New("violation name is required")
+	}
+	if description == "" {
+		return errors.New("violation description is required")
+	}
+	violation, err := s.violationRepo.FindByID(id)
+	if err != nil {
+		return errors.New("violation not found")
+	}
+	violation.Name = name
+	violation.Description = description
+	return s.violationRepo.Update(violation)
+}
+
+func (s *ViolationService) Delete(id uuid.UUID) error {
+	if _, err := s.violationRepo.FindByID(id); err != nil {
+		return errors.New("violation not found")
+	}
+	return s.violationRepo.Delete(id)
+}

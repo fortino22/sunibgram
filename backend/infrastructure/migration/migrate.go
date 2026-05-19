@@ -17,8 +17,10 @@ func AutoMigrate(db *gorm.DB) {
 		&model.UserSettings{},
 		&model.UserProfile{},
 		&model.Category{},
+		&model.Violation{},
 		&model.Community{},
 		&model.Thread{},
+		&model.Report{},
 		&model.Event{},
 		&model.EventReview{},
 		&model.ThreadEvent{},
@@ -92,6 +94,8 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS view_count")
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS trending_score")
 	migratePremiumSubscriptions(db)
+	migrateViolations(db)
+	migrateReports(db)
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time)")
 	db.Exec(`
@@ -193,6 +197,7 @@ func AutoMigrate(db *gorm.DB) {
 
 	seedRoles(db)
 	seeder.SeedCategory(db)
+	seeder.SeedViolation(db)
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)
