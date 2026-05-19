@@ -97,6 +97,7 @@ func (r *facultyRepository) Update(faculty *model.Faculty) error {
 		return result.Error
 	}
 	r.invalidateFacultyUpdate(faculty.FacultyID)
+	r.invalidateFacultyAuthorResponses()
 	return nil
 }
 
@@ -109,6 +110,7 @@ func (r *facultyRepository) Delete(id uint) error {
 		return result.Error
 	}
 	r.invalidateFacultyUpdate(id)
+	r.invalidateFacultyAuthorResponses()
 	return nil
 }
 
@@ -148,4 +150,30 @@ func (r *facultyRepository) invalidateFacultyUpdate(id uint) {
 	_ = r.cache.DeleteByPattern(ctx, "userfaculty:user:*")
 	invalidateNotificationSenderCachePattern(ctx, r.cache)
 	invalidateExploreCache(ctx, r.cache)
+}
+
+func (r *facultyRepository) invalidateFacultyAuthorResponses() {
+	if r.cache == nil {
+		return
+	}
+	ctx := context.Background()
+	_ = r.cache.DeleteByPattern(ctx, "thread:id:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:chain:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
+	_ = r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
+	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
+	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
+	_ = r.cache.DeleteByPattern(ctx, "feed:foryou:*")
+	_ = r.cache.Delete(ctx, "feed:trending:global")
+	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "reposts:user:*")
+	_ = r.cache.Delete(ctx, "reports:all")
+	_ = r.cache.DeleteByPattern(ctx, "reports:id:*")
 }
