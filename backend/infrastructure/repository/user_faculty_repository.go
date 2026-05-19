@@ -49,6 +49,15 @@ func (r *userFacultyRepository) FindByUserID(userID uint) (*model.UserFaculty, e
 	return &uf, nil
 }
 
+func (r *userFacultyRepository) FindByUserIDs(ids []uint) ([]model.UserFaculty, error) {
+	if len(ids) == 0 {
+		return []model.UserFaculty{}, nil
+	}
+	var rows []model.UserFaculty
+	err := r.readDB.Preload("Faculty").Where("user_id IN ?", ids).Find(&rows).Error
+	return rows, err
+}
+
 func (r *userFacultyRepository) FindByFacultyID(facultyID uint, page, limit int) ([]model.UserFaculty, int64, error) {
 	var rows []model.UserFaculty
 	var total int64

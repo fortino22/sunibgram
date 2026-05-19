@@ -49,6 +49,15 @@ func (r *UserRepository) FindByID(id uint) (*model.User, error) {
 	return &user, nil
 }
 
+func (r *UserRepository) FindByIDs(ids []uint) ([]model.User, error) {
+	if len(ids) == 0 {
+		return []model.User{}, nil
+	}
+	var users []model.User
+	err := r.readDB.Preload("Role").Where("user_id IN ?", ids).Find(&users).Error
+	return users, err
+}
+
 func (r *UserRepository) Save(user *model.User) error {
 	if err := r.writeDB.Create(user).Error; err != nil {
 		return err
