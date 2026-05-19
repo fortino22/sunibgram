@@ -30,6 +30,25 @@ type Report struct {
 	UpdatedAt      time.Time `gorm:"type:timestamptz"`
 }
 
+type ReportUserInfo struct {
+	UserID     uint
+	Username   string
+	UserAvatar string
+	IsPremium  bool
+	Faculty    *ReportUserFaculty
+}
+
+type ReportUserFaculty struct {
+	FacultyID   uint
+	FacultyName string
+}
+
+type ReportDetail struct {
+	Report       Report
+	ReporterUser *ReportUserInfo
+	ReportedUser *ReportUserInfo
+}
+
 func (r *Report) BeforeCreate(tx *gorm.DB) error {
 	if r.ID == uuid.Nil {
 		r.ID = uuid.New()

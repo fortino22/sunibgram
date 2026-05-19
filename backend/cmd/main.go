@@ -100,7 +100,7 @@ func main() {
 	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
 	categoryService := usecase.NewCategoryService(categoryRepo)
 	violationService := usecase.NewViolationService(violationRepo)
-	reportService := usecase.NewReportService(reportRepo, violationRepo, userRepo, threadRepo)
+	reportService := usecase.NewReportService(reportRepo, violationRepo, userRepo, threadRepo, profileService, cacheRepo)
 	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, cacheRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)

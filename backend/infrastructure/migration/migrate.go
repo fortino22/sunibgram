@@ -95,6 +95,7 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS trending_score")
 	migratePremiumSubscriptions(db)
 	migrateViolations(db)
+	migrateReportReporter(db)
 	migrateReports(db)
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_start_time ON events(start_time)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_end_time ON events(end_time)")

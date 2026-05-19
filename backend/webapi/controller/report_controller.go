@@ -84,7 +84,8 @@ func (c *ReportController) Delete(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "report deleted successfully"})
 }
 
-func toReportResponse(report *model.Report) dto.ReportResponse {
+func toReportResponse(detail *model.ReportDetail) dto.ReportResponse {
+	report := &detail.Report
 	response := dto.ReportResponse{
 		ID:             report.ID.String(),
 		ReporterID:     report.ReporterID,
@@ -100,13 +101,34 @@ func toReportResponse(report *model.Report) dto.ReportResponse {
 		violation := toViolationResponse(&report.Violation)
 		response.Violation = &violation
 	}
+	response.ReporterUser = toReportUserResponse(detail.ReporterUser)
+	response.ReportedUser = toReportUserResponse(detail.ReportedUser)
 	return response
 }
 
-func toReportResponses(reports []model.Report) []dto.ReportResponse {
+func toReportResponses(reports []model.ReportDetail) []dto.ReportResponse {
 	responses := make([]dto.ReportResponse, len(reports))
 	for i := range reports {
 		responses[i] = toReportResponse(&reports[i])
 	}
 	return responses
+}
+
+func toReportUserResponse(user *model.ReportUserInfo) *dto.ReportUserResponse {
+	if user == nil {
+		return nil
+	}
+	response := &dto.ReportUserResponse{
+		UserID:     user.UserID,
+		Username:   user.Username,
+		UserAvatar: user.UserAvatar,
+		IsPremium:  user.IsPremium,
+	}
+	if user.Faculty != nil {
+		response.Faculty = &dto.ReportFacultyResponse{
+			FacultyID:   user.Faculty.FacultyID,
+			FacultyName: user.Faculty.FacultyName,
+		}
+	}
+	return response
 }

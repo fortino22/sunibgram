@@ -205,6 +205,8 @@ func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, us
 		fmt.Sprintf("notification:sender:%d", userID),
 		fmt.Sprintf("userfaculty:user:%d", userID),
 	)
+	_ = s.cacheRepo.Delete(ctx, "reports:all")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "reports:id:*")
 	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
 	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
 	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
