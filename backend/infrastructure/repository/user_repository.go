@@ -134,8 +134,21 @@ func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
 	r.invalidateUser(userID)
 	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	invalidateExploreCache(context.Background(), r.cache)
+	r.invalidateUserPremiumCaches()
 	r.invalidateUserThreadCaches(userID)
 	return nil
+}
+
+func (r *UserRepository) invalidateUserPremiumCaches() {
+	if r.cache == nil {
+		return
+	}
+	ctx := context.Background()
+	_ = r.cache.Delete(ctx, "reports:all")
+	_ = r.cache.DeleteByPattern(ctx, "reports:id:*")
+	_ = r.cache.DeleteByPattern(ctx, "follows:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
+	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
 }
 
 func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
