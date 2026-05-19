@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -71,7 +72,8 @@ func main() {
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
-	emailService := usecase.NewEmailService(infraemail.NewSMTPClient())
+	emailService := usecase.NewEmailService(infraemail.NewSMTPClient(), redisCache)
+	go emailService.StartWorker(context.Background())
 	ollamaClient := ollama.NewClient()
 	socketHub := infrasocket.NewHub()
 

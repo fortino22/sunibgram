@@ -83,6 +83,12 @@ func (r *threadCached) FindChain(anchorID uint) (model.Thread, []model.Thread, e
 }
 
 func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error) {
+	const maxFindByRootIDRows = 50
+
+	if limit > maxFindByRootIDRows {
+		limit = maxFindByRootIDRows
+	}
+
 	type cached struct {
 		Threads []model.Thread
 		Total   int64
@@ -103,7 +109,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-			Order("threads.created_at ASC").
+			Order("threads.like_count DESC, threads.created_at DESC").
 			Offset(offset).Limit(limit).
 			Find(&threads).Error; err != nil {
 			return nil, 0, err

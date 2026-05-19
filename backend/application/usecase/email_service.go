@@ -1,22 +1,63 @@
 package usecase
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/sunibgram/domain/service"
+	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/email"
 )
 
-type EmailService struct {
-	client *email.SMTPClient
+const emailQueueKey = "email:queue"
+
+type emailJob struct {
+	To      string `json:"to"`
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
 }
 
-func NewEmailService(client *email.SMTPClient) service.IEmailService {
-	return &EmailService{client: client}
+type EmailService struct {
+	client *email.SMTPClient
+	cache  *cache.Cache
+}
+
+func NewEmailService(client *email.SMTPClient, redisCache *cache.Cache) service.IEmailService {
+	return &EmailService{client: client, cache: redisCache}
 }
 
 func (s *EmailService) SendMail(to, subject, body string) error {
 	return s.client.SendMail(to, subject, body)
+}
+
+func (s *EmailService) QueueMail(ctx context.Context, to, subject, body string) error {
+	return s.cache.RPush(ctx, emailQueueKey, emailJob{To: to, Subject: subject, Body: body})
+}
+
+func (s *EmailService) StartWorker(ctx context.Context) {
+	for {
+		payload, err := s.cache.BLPop(ctx, emailQueueKey, 0)
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			log.Printf("email worker dequeue error: %v", err)
+			time.Sleep(time.Second)
+			continue
+		}
+
+		var job emailJob
+		if err := json.Unmarshal([]byte(payload), &job); err != nil {
+			log.Printf("email worker decode error: %v", err)
+			continue
+		}
+		if err := s.SendMail(job.To, job.Subject, job.Body); err != nil {
+			log.Printf("email worker send error to=%s: %v", job.To, err)
+		}
+	}
 }
 
 func (s *EmailService) SendWelcomeOTP(to, code string) error {

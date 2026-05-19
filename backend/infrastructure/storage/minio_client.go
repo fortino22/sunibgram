@@ -76,7 +76,9 @@ func (s *MinioStorage) ensureBucket(ctx context.Context, bucket string) error {
 	}
 
 	if err := s.client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{}); err != nil {
-		return fmt.Errorf("failed to create bucket: %w", err)
+		if minio.ToErrorResponse(err).Code != "BucketAlreadyOwnedByYou" {
+			return fmt.Errorf("failed to create bucket: %w", err)
+		}
 	}
 
 	policy := strings.ToLower(strings.TrimSpace(os.Getenv(bucketPolicyEnvKey(bucket))))

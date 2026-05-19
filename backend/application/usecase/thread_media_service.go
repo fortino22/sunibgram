@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"mime/multipart"
+	"sync"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
@@ -42,28 +43,9 @@ func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, 
 		return nil, err
 	}
 
-	var media []model.ThreadMedia
-	for _, header := range files {
-		if err := model.ValidateThreadMediaExt(header.Filename); err != nil {
-			return nil, err
-		}
-
-		file, err := header.Open()
-		if err != nil {
-			return nil, err
-		}
-
-		objectName, uploadErr := s.storage.Upload(ctx, bucket, file, header)
-		file.Close()
-		if uploadErr != nil {
-			return nil, uploadErr
-		}
-
-		media = append(media, model.ThreadMedia{
-			ThreadID:   threadID,
-			ObjectName: objectName,
-			Bucket:     bucket,
-		})
+	media, err := s.uploadFiles(ctx, threadID, bucket, files)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := s.mediaRepo.SaveAll(media); err != nil {
@@ -97,28 +79,9 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 		return err
 	}
 
-	var media []model.ThreadMedia
-	for _, header := range files {
-		if err := model.ValidateThreadMediaExt(header.Filename); err != nil {
-			return err
-		}
-
-		file, err := header.Open()
-		if err != nil {
-			return err
-		}
-
-		objectName, uploadErr := s.storage.Upload(ctx, bucket, file, header)
-		file.Close()
-		if uploadErr != nil {
-			return uploadErr
-		}
-
-		media = append(media, model.ThreadMedia{
-			ThreadID:   threadID,
-			ObjectName: objectName,
-			Bucket:     bucket,
-		})
+	media, err := s.uploadFiles(ctx, threadID, bucket, files)
+	if err != nil {
+		return err
 	}
 
 	return s.mediaRepo.SaveAll(media)
@@ -183,31 +146,60 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 		return err
 	}
 
-	media := make([]model.ThreadMedia, 0, len(files))
-	for _, header := range files {
-		if err := model.ValidateThreadMediaExt(header.Filename); err != nil {
-			return err
-		}
-
-		file, err := header.Open()
-		if err != nil {
-			return err
-		}
-
-		objectName, uploadErr := s.storage.Upload(ctx, bucket, file, header)
-		file.Close()
-		if uploadErr != nil {
-			return uploadErr
-		}
-
-		media = append(media, model.ThreadMedia{
-			ThreadID:   threadID,
-			ObjectName: objectName,
-			Bucket:     bucket,
-		})
+	media, err := s.uploadFiles(ctx, threadID, bucket, files)
+	if err != nil {
+		return err
 	}
 
 	return s.mediaRepo.SaveAll(media)
+}
+
+func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, bucket string, files []*multipart.FileHeader) ([]model.ThreadMedia, error) {
+	for _, header := range files {
+		if err := model.ValidateThreadMediaExt(header.Filename); err != nil {
+			return nil, err
+		}
+	}
+
+	media := make([]model.ThreadMedia, len(files))
+	errCh := make(chan error, len(files))
+	var wg sync.WaitGroup
+
+	for i, header := range files {
+		i, header := i, header
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			file, err := header.Open()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			defer file.Close()
+
+			objectName, err := s.storage.Upload(ctx, bucket, file, header)
+			if err != nil {
+				errCh <- err
+				return
+			}
+
+			media[i] = model.ThreadMedia{
+				ThreadID:   threadID,
+				ObjectName: objectName,
+				Bucket:     bucket,
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err != nil {
+			return nil, err
+		}
+	}
+	return media, nil
 }
 
 func (s *ThreadMediaService) DeleteByThread(ctx context.Context, threadID uint) error {

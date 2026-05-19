@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -407,14 +408,31 @@ func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.File
 		return nil, err
 	}
 
-	pdfs := make(model.EventPDFs, 0, len(headers))
-	for _, header := range headers {
-		objName, bucket, err := s.uploadFile(ctx, header, uploadType)
+	pdfs := make(model.EventPDFs, len(headers))
+	errCh := make(chan error, len(headers))
+	var wg sync.WaitGroup
+
+	for i, header := range headers {
+		i, header := i, header
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			objName, bucket, err := s.uploadFile(ctx, header, uploadType)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			pdfs[i] = model.EventPDF{ObjectName: objName, Bucket: bucket}
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
 		if err != nil {
 			s.deletePDFs(ctx, pdfs)
 			return nil, err
 		}
-		pdfs = append(pdfs, model.EventPDF{ObjectName: objName, Bucket: bucket})
 	}
 	return pdfs, nil
 }
@@ -436,6 +454,9 @@ func validateEventPDFHeaders(headers []*multipart.FileHeader) error {
 
 func (s *EventService) deletePDFs(ctx context.Context, pdfs model.EventPDFs) {
 	for _, pdf := range pdfs {
+		if pdf.ObjectName == "" {
+			continue
+		}
 		_ = s.storageUsecase.Delete(ctx, pdf.Bucket, pdf.ObjectName)
 	}
 }

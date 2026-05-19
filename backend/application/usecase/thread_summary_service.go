@@ -2,9 +2,10 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"sort"
+	"log"
 	"strings"
 	"time"
 
@@ -12,14 +13,18 @@ import (
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/ollama"
+	"golang.org/x/sync/singleflight"
 )
 
-const threadSummaryTTL = 600 * time.Second
+const threadSummaryTTL = time.Hour
+
+var ErrThreadSummaryNotReady = errors.New("thread summary is being generated")
 
 type ThreadSummaryService struct {
 	threadRepo   repository.IThreadRepository
 	cacheRepo    repository.ICacheRepository
 	ollamaClient *ollama.Client
+	group        singleflight.Group
 }
 
 func NewThreadSummaryService(
@@ -35,12 +40,46 @@ func NewThreadSummaryService(
 }
 
 func (s *ThreadSummaryService) Summarize(ctx context.Context, threadID uint) (string, error) {
+	key := threadSummaryKey(threadID)
+
 	var cached string
-	if err := s.cacheRepo.Get(ctx, threadSummaryKey(threadID), &cached); err == nil {
+	if err := s.cacheRepo.Get(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
 
-	replies, err := s.topReplies(threadID, 30)
+	s.queueSummaryGeneration(threadID, key)
+	return "", ErrThreadSummaryNotReady
+}
+
+func (s *ThreadSummaryService) queueSummaryGeneration(threadID uint, key string) {
+	go func() {
+		_, err, _ := s.group.Do(key, func() (any, error) {
+			ctx := context.Background()
+
+			var cached string
+			if err := s.cacheRepo.Get(ctx, key, &cached); err == nil {
+				return cached, nil
+			}
+
+			summary, err := s.generateSummary(ctx, threadID)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := s.cacheRepo.Set(ctx, key, summary, threadSummaryTTL); err != nil {
+				return nil, err
+			}
+
+			return summary, nil
+		})
+		if err != nil {
+			log.Printf("thread summary generation failed for thread %d: %v", threadID, err)
+		}
+	}()
+}
+
+func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uint) (string, error) {
+	replies, err := s.topReplies(threadID, 50)
 	if err != nil {
 		return "", err
 	}
@@ -64,7 +103,6 @@ func (s *ThreadSummaryService) Summarize(ctx context.Context, threadID uint) (st
 	}
 
 	summary := strings.TrimSpace(buf.String())
-	_ = s.cacheRepo.Set(ctx, threadSummaryKey(threadID), summary, threadSummaryTTL)
 	return summary, nil
 }
 
@@ -73,7 +111,7 @@ func (s *ThreadSummaryService) InvalidateCache(ctx context.Context, threadID uin
 }
 
 func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]model.Thread, error) {
-	threads, _, err := s.threadRepo.FindByRootID(threadID, 1, 10000)
+	threads, _, err := s.threadRepo.FindByRootID(threadID, 1, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -83,17 +121,6 @@ func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]model.Thr
 		if thread.ParentID != nil && *thread.ParentID == threadID {
 			replies = append(replies, thread)
 		}
-	}
-
-	sort.SliceStable(replies, func(i, j int) bool {
-		if replies[i].LikeCount == replies[j].LikeCount {
-			return replies[i].CreatedAt.After(replies[j].CreatedAt)
-		}
-		return replies[i].LikeCount > replies[j].LikeCount
-	})
-
-	if len(replies) > limit {
-		replies = replies[:limit]
 	}
 	return replies, nil
 }
