@@ -10,7 +10,7 @@ import (
 	"github.com/sunibgram/domain/model"
 )
 
-func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, isPrivate bool) (*model.Thread, error) {
+func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error) {
 	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
 	}
@@ -71,7 +71,6 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		RootID:      rootID,
 		CommunityID: communityID,
 		EventID:     eventID,
-		IsPrivate:   isPrivate,
 	}
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err

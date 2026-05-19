@@ -22,7 +22,6 @@ type Thread struct {
 	RootID           *uint      `gorm:"index"`
 	OriginalThreadID *uint      `gorm:"index"`
 	OriginalThread   *Thread    `gorm:"foreignKey:OriginalThreadID;references:ThreadID"`
-	IsPrivate        bool       `gorm:"not null;default:false;index"`
 	LikeCount        int        `gorm:"not null;default:0"`
 	RepostCount      int        `gorm:"not null;default:0"`
 	BookmarkCount    int        `gorm:"not null;default:0"`

@@ -11,7 +11,6 @@ func (r *threadCached) FindByFacultyID(facultyID uint, page, limit int) ([]model
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Where("user_faculties.faculty_id = ?", facultyID).
 		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-		Where("threads.is_private = ?", false).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
 
 	if err := base.Count(&total).Error; err != nil {
@@ -25,7 +24,6 @@ func (r *threadCached) FindByFacultyID(facultyID uint, page, limit int) ([]model
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Where("user_faculties.faculty_id = ?", facultyID).
 		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-		Where("threads.is_private = ?", false).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 		Order("threads.created_at DESC").
 		Offset(offset).Limit(limit).
