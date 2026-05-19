@@ -90,6 +90,8 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 	type communityRow struct {
 		CommunityID       uint
 		Name              string
+		BannerObjectName  string
+		BannerBucket      string
 		CategoryID        *uuid.UUID
 		CategoryName      string
 		CategoryCreatedAt *time.Time
@@ -102,6 +104,8 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 		Select(`
 			communities.community_id,
 			communities.name,
+			COALESCE(communities.banner_object_name, '') AS banner_object_name,
+			COALESCE(communities.banner_bucket, '') AS banner_bucket,
 			categories.id AS category_id,
 			COALESCE(categories.name, '') AS category_name,
 			categories.created_at AS category_created_at,
@@ -109,7 +113,7 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 		`).
 		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id").
-		Group("communities.community_id, communities.name, categories.id, categories.name, categories.created_at").
+		Group("communities.community_id, communities.name, communities.banner_object_name, communities.banner_bucket, categories.id, categories.name, categories.created_at").
 		Order("member_count DESC, communities.name ASC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
@@ -128,11 +132,13 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 			}
 		}
 		communities[i] = model.DiscoverCommunity{
-			CommunityID: row.CommunityID,
-			Name:        row.Name,
-			Category:    category,
-			MemberCount: row.MemberCount,
-			TopMembers:  []model.DiscoverCommunityMember{},
+			CommunityID:      row.CommunityID,
+			Name:             row.Name,
+			BannerObjectName: row.BannerObjectName,
+			BannerBucket:     row.BannerBucket,
+			Category:         category,
+			MemberCount:      row.MemberCount,
+			TopMembers:       []model.DiscoverCommunityMember{},
 		}
 		communityIDs = append(communityIDs, row.CommunityID)
 		byID[row.CommunityID] = i
@@ -143,19 +149,19 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 
 	type memberRow struct {
 		CommunityID      uint
-		BannerObjectName string
-		BannerBucket     string
+		AvatarObjectName string
+		AvatarBucket     string
 	}
 
 	var memberRows []memberRow
 	if err := r.readDB.
 		Raw(`
-			SELECT community_id, banner_object_name, banner_bucket
+			SELECT community_id, avatar_object_name, avatar_bucket
 			FROM (
 				SELECT
 					community_members.community_id,
-					COALESCE(communities.banner_object_name, '') AS banner_object_name,
-					COALESCE(communities.banner_bucket, '') AS banner_bucket,
+					COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+					COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 					ROW_NUMBER() OVER (
 						PARTITION BY community_members.community_id
 						ORDER BY COALESCE(user_stats.follower_count, 0) DESC,
@@ -164,7 +170,7 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 					) AS member_rank
 				FROM community_members
 				JOIN users ON users.user_id = community_members.user_id
-				JOIN communities ON communities.community_id = community_members.community_id
+				LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id
 				LEFT JOIN user_stats ON user_stats.user_id = users.user_id
 				WHERE community_members.community_id IN ?
 			) ranked_members
@@ -181,8 +187,8 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 			continue
 		}
 		communities[idx].TopMembers = append(communities[idx].TopMembers, model.DiscoverCommunityMember{
-			BannerObjectName: row.BannerObjectName,
-			BannerBucket:     row.BannerBucket,
+			AvatarObjectName: row.AvatarObjectName,
+			AvatarBucket:     row.AvatarBucket,
 		})
 	}
 
@@ -198,6 +204,8 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 	type communityRow struct {
 		CommunityID       uint
 		Name              string
+		BannerObjectName  string
+		BannerBucket      string
 		CategoryID        *uuid.UUID
 		CategoryName      string
 		CategoryCreatedAt *time.Time
@@ -210,6 +218,8 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 		Select(`
 			communities.community_id,
 			communities.name,
+			COALESCE(communities.banner_object_name, '') AS banner_object_name,
+			COALESCE(communities.banner_bucket, '') AS banner_bucket,
 			categories.id AS category_id,
 			COALESCE(categories.name, '') AS category_name,
 			categories.created_at AS category_created_at,
@@ -218,7 +228,7 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id").
 		Where("LOWER(communities.name) LIKE LOWER(?)", "%"+name+"%").
-		Group("communities.community_id, communities.name, categories.id, categories.name, categories.created_at").
+		Group("communities.community_id, communities.name, communities.banner_object_name, communities.banner_bucket, categories.id, categories.name, categories.created_at").
 		Order("member_count DESC, communities.name ASC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
@@ -237,11 +247,13 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 			}
 		}
 		communities[i] = model.DiscoverCommunity{
-			CommunityID: row.CommunityID,
-			Name:        row.Name,
-			Category:    category,
-			MemberCount: row.MemberCount,
-			TopMembers:  []model.DiscoverCommunityMember{},
+			CommunityID:      row.CommunityID,
+			Name:             row.Name,
+			BannerObjectName: row.BannerObjectName,
+			BannerBucket:     row.BannerBucket,
+			Category:         category,
+			MemberCount:      row.MemberCount,
+			TopMembers:       []model.DiscoverCommunityMember{},
 		}
 		communityIDs = append(communityIDs, row.CommunityID)
 		byID[row.CommunityID] = i
@@ -252,19 +264,19 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 
 	type memberRow struct {
 		CommunityID      uint
-		BannerObjectName string
-		BannerBucket     string
+		AvatarObjectName string
+		AvatarBucket     string
 	}
 
 	var memberRows []memberRow
 	if err := r.readDB.
 		Raw(`
-			SELECT community_id, banner_object_name, banner_bucket
+			SELECT community_id, avatar_object_name, avatar_bucket
 			FROM (
 				SELECT
 					community_members.community_id,
-					COALESCE(communities.banner_object_name, '') AS banner_object_name,
-					COALESCE(communities.banner_bucket, '') AS banner_bucket,
+					COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+					COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 					ROW_NUMBER() OVER (
 						PARTITION BY community_members.community_id
 						ORDER BY COALESCE(user_stats.follower_count, 0) DESC,
@@ -273,7 +285,7 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 					) AS member_rank
 				FROM community_members
 				JOIN users ON users.user_id = community_members.user_id
-				JOIN communities ON communities.community_id = community_members.community_id
+				LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id
 				LEFT JOIN user_stats ON user_stats.user_id = users.user_id
 				WHERE community_members.community_id IN ?
 			) ranked_members
@@ -290,8 +302,8 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 			continue
 		}
 		communities[idx].TopMembers = append(communities[idx].TopMembers, model.DiscoverCommunityMember{
-			BannerObjectName: row.BannerObjectName,
-			BannerBucket:     row.BannerBucket,
+			AvatarObjectName: row.AvatarObjectName,
+			AvatarBucket:     row.AvatarBucket,
 		})
 	}
 

@@ -243,9 +243,9 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 	members := make([]dto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
 	for i := range comm.TopMembers {
 		members[i] = dto.DiscoverCommunityMemberResponse{
-			BannerURL: BuildMediaURL(
-				comm.TopMembers[i].BannerObjectName,
-				comm.TopMembers[i].BannerBucket,
+			AvatarURL: BuildMediaURL(
+				comm.TopMembers[i].AvatarObjectName,
+				comm.TopMembers[i].AvatarBucket,
 				c.communityService.GetURL,
 			),
 		}
@@ -258,6 +258,7 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 	return dto.DiscoverCommunityResponse{
 		CommunityID:  comm.CommunityID,
 		Name:         comm.Name,
+		BannerURL:    BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL),
 		MemberCount:  comm.MemberCount,
 		CategoryName: categoryName,
 		TopMembers:   members,
