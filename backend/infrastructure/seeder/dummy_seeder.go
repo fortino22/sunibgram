@@ -3,6 +3,7 @@ package seeder
 import (
 	"log"
 	"strings"
+	"time"
 
 	"github.com/sunibgram/domain/model"
 	"golang.org/x/crypto/bcrypt"
@@ -10,22 +11,26 @@ import (
 )
 
 type dummyAccount struct {
-	Name     string
-	Username string
-	Email    string
-	Password string
-	RoleName string
+	Name         string
+	Username     string
+	Email        string
+	Password     string
+	RoleName     string
+	Gender       model.Gender
+	BirthdayDate time.Time
+	FacultyName  string
 }
 
 var dummyAccounts = []dummyAccount{
-	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "admin"},
-	{Name: "Devin", Username: "devin.hi", Email: "devin@binus.ac.id", Password: "dummy123", RoleName: "user"},
-	// {Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin"},
-	{Name: "chermiese", Username: "chermiese", Email: "chermiese@binus.ac.id", Password: "dummy123", RoleName: "user"},
+	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: model.GenderFemale, BirthdayDate: time.Date(2003, 4, 12, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
+	{Name: "Devin", Username: "devin.hi", Email: "devin@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: model.GenderMale, BirthdayDate: time.Date(2002, 8, 25, 0, 0, 0, 0, time.UTC), FacultyName: "School of Information Systems"},
+	{Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: model.GenderMale, BirthdayDate: time.Date(2003, 11, 7, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
+	{Name: "chermiese", Username: "chermiese", Email: "chermiese@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: model.GenderFemale, BirthdayDate: time.Date(2003, 2, 19, 0, 0, 0, 0, time.UTC), FacultyName: "School of Design"},
 }
 
 func SeedDummy(db *gorm.DB) {
 	roleCache := make(map[string]model.Role)
+	facultyCache := make(map[string]model.Faculty)
 
 	for _, acc := range dummyAccounts {
 		acc.Username = strings.TrimSpace(acc.Username)
@@ -37,13 +42,20 @@ func SeedDummy(db *gorm.DB) {
 			if err := db.Where("user_id = ?", existing.UserID).First(&existingProfile).Error; err != nil {
 				db.Create(&model.UserProfile{
 					UserID:       existing.UserID,
-					Gender:       model.GenderPreferNotToSay,
-					BirthdayDate: defaultSeedBirthdayDate(),
+					Gender:       acc.Gender,
+					BirthdayDate: acc.BirthdayDate,
 				})
 			}
 			var existingSettings model.UserSettings
 			if err := db.Where("user_id = ?", existing.UserID).First(&existingSettings).Error; err != nil {
 				db.Create(&model.UserSettings{UserID: existing.UserID})
+			}
+			var existingFaculty model.UserFaculty
+			if err := db.Where("user_id = ?", existing.UserID).First(&existingFaculty).Error; err != nil {
+				faculty, err := resolveFaculty(db, facultyCache, acc.FacultyName, acc.Email)
+				if err == nil {
+					db.Create(&model.UserFaculty{UserID: existing.UserID, FacultyID: faculty.FacultyID})
+				}
 			}
 			continue
 		}
@@ -55,6 +67,11 @@ func SeedDummy(db *gorm.DB) {
 				continue
 			}
 			roleCache[acc.RoleName] = role
+		}
+
+		faculty, err := resolveFaculty(db, facultyCache, acc.FacultyName, acc.Email)
+		if err != nil {
+			continue
 		}
 
 		hashed, err := bcrypt.GenerateFromPassword([]byte(acc.Password), bcrypt.DefaultCost)
@@ -78,8 +95,8 @@ func SeedDummy(db *gorm.DB) {
 
 		if err := db.Create(&model.UserProfile{
 			UserID:       user.UserID,
-			Gender:       model.GenderPreferNotToSay,
-			BirthdayDate: defaultSeedBirthdayDate(),
+			Gender:       acc.Gender,
+			BirthdayDate: acc.BirthdayDate,
 		}).Error; err != nil {
 			log.Printf("dummy seeder: failed to create profile for %s: %v", acc.Email, err)
 			continue
@@ -90,6 +107,24 @@ func SeedDummy(db *gorm.DB) {
 			continue
 		}
 
+		if err := db.Create(&model.UserFaculty{UserID: user.UserID, FacultyID: faculty.FacultyID}).Error; err != nil {
+			log.Printf("dummy seeder: failed to create faculty for %s: %v", acc.Email, err)
+			continue
+		}
+
 		log.Printf("dummy seeder: created user %s (%s)", acc.Username, acc.Email)
 	}
+}
+
+func resolveFaculty(db *gorm.DB, cache map[string]model.Faculty, name, email string) (model.Faculty, error) {
+	if f, ok := cache[name]; ok {
+		return f, nil
+	}
+	var faculty model.Faculty
+	if err := db.Where("faculty_name = ?", name).First(&faculty).Error; err != nil {
+		log.Printf("dummy seeder: faculty '%s' not found, skipping %s", name, email)
+		return faculty, err
+	}
+	cache[name] = faculty
+	return faculty, nil
 }
