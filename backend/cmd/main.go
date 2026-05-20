@@ -108,7 +108,7 @@ func main() {
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
-	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo)
+	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
 	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
 	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo, storageUsecase)
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo, notificationService)
@@ -138,8 +138,8 @@ func main() {
 	violationCtrl := controller.NewViolationController(violationService)
 	reportCtrl := controller.NewReportController(reportService)
 	communityCtrl := controller.NewCommunityController(communityService)
-	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService, profileService)
-	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService)
+	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
+	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService, profileService)
 	communityThreadCtrl := controller.NewCommunityThreadController(
 		threadService,
 		threadMediaService,

@@ -283,6 +283,6 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
         onClose={() => setPendingCrop(null)}
       />
     )}
-  </>
+    </>
   );
 }

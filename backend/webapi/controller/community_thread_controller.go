@@ -149,7 +149,7 @@ func (c *CommunityThreadController) getCommunityThreads(
 
 func (c *CommunityThreadController) getCommunityThreadsByQuery(
 	ctx *fiber.Ctx,
-	load func(context.Context, uint, string, int, int) ([]model.Thread, int64, error),
+	load func(context.Context, uint, string, int, int) ([]model.Thread, []*model.Thread, int64, error),
 ) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {
@@ -159,7 +159,7 @@ func (c *CommunityThreadController) getCommunityThreadsByQuery(
 	query := ctx.Query("query")
 	page, limit := ParsePagination(ctx)
 
-	threads, total, err := load(ctx.Context(), claims.UserID, query, page, limit)
+	threads, parents, total, err := load(ctx.Context(), claims.UserID, query, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -172,7 +172,7 @@ func (c *CommunityThreadController) getCommunityThreadsByQuery(
 		threadPinService: c.threadPinService,
 		profileService:   c.profileService,
 	}
-	data := tc.buildFeedItemsWithPin(threads, &claims.UserID)
+	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
 	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
 		response[i] = dto.CommunityThreadFeedItemResponse{
@@ -236,7 +236,7 @@ func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error
 
 	page, limit := ParsePagination(ctx)
 
-	threads, total, err := c.threadService.GetAllCommunityThreads(ctx.Context(), claims.UserID, categoryID, page, limit)
+	threads, parents, total, err := c.threadService.GetAllCommunityThreads(ctx.Context(), claims.UserID, categoryID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
@@ -249,7 +249,7 @@ func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error
 		threadPinService: c.threadPinService,
 		profileService:   c.profileService,
 	}
-	data := tc.buildFeedItemsWithPin(threads, &claims.UserID)
+	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
 	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
 		response[i] = dto.CommunityThreadFeedItemResponse{

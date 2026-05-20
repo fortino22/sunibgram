@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -22,10 +23,11 @@ type OrderService struct {
 	userRepo                repository.IUserRepository
 	premiumSubscriptionRepo repository.IPremiumSubscriptionRepository
 	communityRepo           repository.ICommunityRepository
+	cacheRepo               repository.ICacheRepository
 	snapClient              snap.Client
 }
 
-func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository, communityRepo repository.ICommunityRepository) service.IOrderService {
+func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository, communityRepo repository.ICommunityRepository, cacheRepo repository.ICacheRepository) service.IOrderService {
 	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
 	envStr := os.Getenv("MIDTRANS_ENV")
 
@@ -42,6 +44,7 @@ func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.
 		userRepo:                userRepo,
 		premiumSubscriptionRepo: premiumSubscriptionRepo,
 		communityRepo:           communityRepo,
+		cacheRepo:               cacheRepo,
 		snapClient:              client,
 	}
 }
@@ -173,6 +176,13 @@ func (s *OrderService) HandleNotification(payload map[string]interface{}) error 
 		}
 		if err := s.communityRepo.ReactivateByOwnerID(order.UserID); err != nil {
 			return fmt.Errorf("failed to reactivate communities: %w", err)
+		}
+		if s.cacheRepo != nil {
+			ctx := context.Background()
+			_ = s.cacheRepo.DeleteByPattern(ctx, "community:requests:*")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
+			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
 		}
 	}
 

@@ -100,4 +100,5 @@ func (s *PremiumSubscriptionService) invalidateCommunityThreadQueryCaches() {
 	_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
 	_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
 	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "community:requests:*")
 }

@@ -246,6 +246,7 @@ func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, us
 	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
 	_ = s.cacheRepo.DeleteByPattern(ctx, "event:threads:*")
 	_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
+	_ = s.cacheRepo.DeleteByPattern(ctx, "community:requests:*")
 }
 
 func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {

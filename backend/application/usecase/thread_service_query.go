@@ -204,20 +204,20 @@ func (s *ThreadService) GetMyCommunityThreads(ctx context.Context, userID uint, 
 	return threads, total, nil
 }
 
-func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := s.threadRepo.FindAllCommunityThreads(userID, categoryID, page, limit)
+	threads, parents, total, err := s.threadRepo.FindAllCommunityThreads(userID, categoryID, page, limit)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
-	return threads, total, nil
+	return threads, parents, total, nil
 }
 
-func (s *ThreadService) GetAllCommunityThreadsByQueryTop(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetAllCommunityThreadsByQueryTop(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	return s.getAllCommunityThreadsByQuery(ctx, userID, query, page, limit, s.threadRepo.FindAllCommunityThreadsByQueryTop)
 }
 
-func (s *ThreadService) GetAllCommunityThreadsByQueryLatest(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetAllCommunityThreadsByQueryLatest(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	return s.getAllCommunityThreadsByQuery(ctx, userID, query, page, limit, s.threadRepo.FindAllCommunityThreadsByQueryLatest)
 }
 
@@ -226,16 +226,16 @@ func (s *ThreadService) getAllCommunityThreadsByQuery(
 	userID uint,
 	query string,
 	page, limit int,
-	load func(userID uint, query string, page, limit int) ([]model.Thread, int64, error),
-) ([]model.Thread, int64, error) {
+	load func(userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error),
+) ([]model.Thread, []*model.Thread, int64, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return nil, 0, errors.New("query is required")
+		return nil, nil, 0, errors.New("query is required")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := load(userID, query, page, limit)
+	threads, parents, total, err := load(userID, query, page, limit)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
-	return threads, total, nil
+	return threads, parents, total, nil
 }
