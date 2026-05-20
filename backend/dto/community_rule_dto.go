@@ -19,3 +19,8 @@ type CommunityRuleResponse struct {
 type CommunityRuleListResponse struct {
 	Data []CommunityRuleResponse `json:"data"`
 }
+
+type CommunityRuleMiniResponse struct {
+	ID   uint   `json:"id"`
+	Text string `json:"text"`
+}

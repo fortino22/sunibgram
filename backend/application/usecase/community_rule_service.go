@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"unicode/utf8"
@@ -18,16 +17,14 @@ const (
 
 type CommunityRuleService struct {
 	communityRepo repository.ICommunityRepository
-	memberRepo    repository.ICommunityMemberRepository
 	ruleRepo      repository.ICommunityRuleRepository
 }
 
 func NewCommunityRuleService(
 	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
 	ruleRepo repository.ICommunityRuleRepository,
 ) service.ICommunityRuleService {
-	return &CommunityRuleService{communityRepo: communityRepo, memberRepo: memberRepo, ruleRepo: ruleRepo}
+	return &CommunityRuleService{communityRepo: communityRepo, ruleRepo: ruleRepo}
 }
 
 func (s *CommunityRuleService) ListByCommunity(communityID uint) ([]model.CommunityRule, error) {
@@ -37,80 +34,48 @@ func (s *CommunityRuleService) ListByCommunity(communityID uint) ([]model.Commun
 	return s.ruleRepo.ListByCommunity(communityID)
 }
 
-func (s *CommunityRuleService) Create(_ context.Context, communityID, actorUserID uint, orderNum int, text string) (*model.CommunityRule, error) {
-	if err := s.ensureCanMutate(communityID, actorUserID); err != nil {
-		return nil, err
+func dedupeRuleIDs(ids []uint) []uint {
+	seen := make(map[uint]struct{}, len(ids))
+	out := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
 	}
-	if err := validateCommunityRule(orderNum, text); err != nil {
-		return nil, err
+	return out
+}
+
+func buildCommunityRules(communityID uint, texts []string) []model.CommunityRule {
+	rules := make([]model.CommunityRule, len(texts))
+	for i, t := range texts {
+		rules[i] = model.CommunityRule{
+			CommunityID: communityID,
+			OrderNum:    i + 1,
+			Text:        t,
+		}
 	}
-	count, err := s.ruleRepo.CountByCommunity(communityID)
-	if err != nil {
-		return nil, err
+	return rules
+}
+
+func sanitizeCommunityRules(raw []string) ([]string, error) {
+	cleaned := make([]string, 0, len(raw))
+	for _, r := range raw {
+		t := strings.TrimSpace(r)
+		if t == "" {
+			continue
+		}
+		if utf8.RuneCountInString(t) > maxCommunityRuleLength {
+			return nil, errors.New("each rule must be 500 characters or less")
+		}
+		cleaned = append(cleaned, t)
 	}
-	if count >= maxCommunityRules {
+	if len(cleaned) > maxCommunityRules {
 		return nil, errors.New("maximum 10 rules allowed")
 	}
-	rule := model.CommunityRule{
-		CommunityID: communityID,
-		OrderNum:    orderNum,
-		Text:        strings.TrimSpace(text),
-	}
-	return s.ruleRepo.Create(rule)
-}
-
-func (s *CommunityRuleService) Update(_ context.Context, communityID, actorUserID, ruleID uint, orderNum int, text string) (*model.CommunityRule, error) {
-	if err := s.ensureCanMutate(communityID, actorUserID); err != nil {
-		return nil, err
-	}
-	if err := validateCommunityRule(orderNum, text); err != nil {
-		return nil, err
-	}
-	existing, err := s.ruleRepo.FindByID(ruleID)
-	if err != nil || existing.CommunityID != communityID {
-		return nil, errors.New("rule not found")
-	}
-	existing.OrderNum = orderNum
-	existing.Text = strings.TrimSpace(text)
-	return s.ruleRepo.Update(*existing)
-}
-
-func (s *CommunityRuleService) Delete(_ context.Context, communityID, actorUserID, ruleID uint) error {
-	if err := s.ensureCanMutate(communityID, actorUserID); err != nil {
-		return err
-	}
-	existing, err := s.ruleRepo.FindByID(ruleID)
-	if err != nil || existing.CommunityID != communityID {
-		return errors.New("rule not found")
-	}
-	return s.ruleRepo.Delete(ruleID)
-}
-
-func (s *CommunityRuleService) ensureCanMutate(communityID, actorUserID uint) error {
-	community, err := s.communityRepo.FindByID(communityID)
-	if err != nil {
-		return errors.New("community not found")
-	}
-	if !community.IsWritable() {
-		return errors.New("community is inactive")
-	}
-	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
-	if err != nil || !isModeratorOrAbove(actor.Role) {
-		return errors.New("forbidden")
-	}
-	return nil
-}
-
-func validateCommunityRule(orderNum int, text string) error {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return errors.New("text is required")
-	}
-	if utf8.RuneCountInString(text) > maxCommunityRuleLength {
-		return errors.New("text must be 500 characters or less")
-	}
-	if orderNum < 1 {
-		return errors.New("order_num must be at least 1")
-	}
-	return nil
+	return cleaned, nil
 }

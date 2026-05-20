@@ -38,9 +38,8 @@ type PaginatedExploreMediaResponse struct {
 }
 
 type ExploreCommunityResponse struct {
-	CommunityID      uint   `json:"community_id"`
-	CommunityProfile string `json:"community_profile"`
-	CommunityName    string `json:"community_name"`
-	MemberCount      int    `json:"member_count"`
-	IsJoin           bool   `json:"is_join"`
+	CommunityID   uint   `json:"community_id"`
+	CommunityName string `json:"community_name"`
+	MemberCount   int    `json:"member_count"`
+	IsJoin        bool   `json:"is_join"`
 }

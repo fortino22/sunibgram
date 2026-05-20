@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"errors"
-
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"gorm.io/gorm"
@@ -25,53 +23,36 @@ func (r *communityRuleRepository) ListByCommunity(communityID uint) ([]model.Com
 	return rules, nil
 }
 
-func (r *communityRuleRepository) FindByID(id uint) (*model.CommunityRule, error) {
-	var rule model.CommunityRule
-	if err := r.readDB.First(&rule, id).Error; err != nil {
+func (r *communityRuleRepository) ListByIDsAndCommunity(communityID uint, ids []uint) ([]model.CommunityRule, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var rules []model.CommunityRule
+	if err := r.readDB.Where("community_id = ? AND id IN ?", communityID, ids).Find(&rules).Error; err != nil {
 		return nil, err
 	}
-	return &rule, nil
+	return rules, nil
 }
 
-func (r *communityRuleRepository) Create(rule model.CommunityRule) (*model.CommunityRule, error) {
-	if err := r.writeDB.Create(&rule).Error; err != nil {
-		return nil, err
+func (r *communityRuleRepository) BulkCreateWithTx(tx *gorm.DB, rules []model.CommunityRule) error {
+	if len(rules) == 0 {
+		return nil
 	}
-	return &rule, nil
+	return tx.Create(&rules).Error
 }
 
-func (r *communityRuleRepository) Update(rule model.CommunityRule) (*model.CommunityRule, error) {
-	result := r.writeDB.Model(&model.CommunityRule{}).
-		Where("id = ? AND community_id = ?", rule.ID, rule.CommunityID).
-		UpdateColumns(map[string]any{
-			"order_num":  rule.OrderNum,
-			"text":       rule.Text,
-			"updated_at": gorm.Expr("NOW()"),
-		})
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	if result.RowsAffected == 0 {
-		return nil, errors.New("rule not found")
-	}
-	return r.FindByID(rule.ID)
+func (r *communityRuleRepository) DeleteByCommunityWithTx(tx *gorm.DB, communityID uint) error {
+	return tx.Where("community_id = ?", communityID).Delete(&model.CommunityRule{}).Error
 }
 
-func (r *communityRuleRepository) Delete(id uint) error {
-	result := r.writeDB.Delete(&model.CommunityRule{}, id)
-	if result.Error != nil {
-		return result.Error
+func (r *communityRuleRepository) DeleteByCommunityNotInWithTx(tx *gorm.DB, communityID uint, keepIDs []uint) error {
+	q := tx.Where("community_id = ?", communityID)
+	if len(keepIDs) > 0 {
+		q = q.Where("id NOT IN ?", keepIDs)
 	}
-	if result.RowsAffected == 0 {
-		return errors.New("rule not found")
-	}
-	return nil
+	return q.Delete(&model.CommunityRule{}).Error
 }
 
-func (r *communityRuleRepository) CountByCommunity(communityID uint) (int, error) {
-	var count int64
-	if err := r.readDB.Model(&model.CommunityRule{}).Where("community_id = ?", communityID).Count(&count).Error; err != nil {
-		return 0, err
-	}
-	return int(count), nil
+func (r *communityRuleRepository) UpdateOrderWithTx(tx *gorm.DB, ruleID uint, orderNum int) error {
+	return tx.Model(&model.CommunityRule{}).Where("id = ?", ruleID).Update("order_num", orderNum).Error
 }

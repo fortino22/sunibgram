@@ -152,21 +152,17 @@ func (c *ExploreController) toCommunityResponses(communities []model.Community) 
 func (c *ExploreController) toExploreCommunityResponses(communities []model.ExploreCommunityResult) []dto.ExploreCommunityResponse {
 	responses := make([]dto.ExploreCommunityResponse, len(communities))
 	for i, comm := range communities {
-		avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
-
 		responses[i] = dto.ExploreCommunityResponse{
-			CommunityID:      comm.CommunityID,
-			CommunityProfile: avatarURL,
-			CommunityName:    comm.Name,
-			MemberCount:      comm.MemberCount,
-			IsJoin:           comm.IsJoin,
+			CommunityID:   comm.CommunityID,
+			CommunityName: comm.Name,
+			MemberCount:   comm.MemberCount,
+			IsJoin:        comm.IsJoin,
 		}
 	}
 	return responses
 }
 
 func (c *ExploreController) toCommunityResponse(comm *model.Community) dto.CommunityResponse {
-	avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 	var categoryName string
 	if comm.Category != nil {
@@ -178,10 +174,9 @@ func (c *ExploreController) toCommunityResponse(comm *model.Community) dto.Commu
 		Username:     comm.User.UserName,
 		Name:         comm.Name,
 		Description:  comm.Description,
-		Rules:        comm.Rules,
+		Rules:        nil,
 		CategoryName: categoryName,
 		Visibility:   string(comm.Visibility),
-		AvatarURL:    avatarURL,
 		BannerURL:    bannerURL,
 		MemberCount:  comm.MemberCount,
 		CreatedAt:    dtoutils.Wrap(comm.CreatedAt),

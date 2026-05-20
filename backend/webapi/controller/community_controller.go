@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"errors"
 	"mime/multipart"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -14,10 +16,11 @@ import (
 
 type CommunityController struct {
 	communityService service.ICommunityService
+	ruleService      service.ICommunityRuleService
 }
 
-func NewCommunityController(communityService service.ICommunityService) *CommunityController {
-	return &CommunityController{communityService: communityService}
+func NewCommunityController(communityService service.ICommunityService, ruleService service.ICommunityRuleService) *CommunityController {
+	return &CommunityController{communityService: communityService, ruleService: ruleService}
 }
 
 func (c *CommunityController) Create(ctx *fiber.Ctx) error {
@@ -28,31 +31,27 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 
 	name := ctx.FormValue("name")
 	description := ctx.FormValue("description")
-	rules := ctx.FormValue("rules")
+	rules := readRulesFromForm(ctx)
 	categoryID, ok := parseRequiredFormUUID(ctx, "category_id", "category")
 	if !ok {
 		return nil
 	}
 	visibility := model.CommunityVisibility(ctx.FormValue("visibility"))
 
-	var avatar, banner *multipart.FileHeader
-	if f, err := ctx.FormFile("avatar"); err == nil {
-		avatar = f
-	}
+	var banner *multipart.FileHeader
 	if f, err := ctx.FormFile("banner"); err == nil {
 		banner = f
 	}
 
-	community, err := c.communityService.Create(
+	if _, _, err := c.communityService.Create(
 		ctx.Context(), claims.UserID,
 		name, description, rules, categoryID, visibility,
-		avatar, banner,
-	)
-	if err != nil {
+		banner,
+	); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(c.toResponse(community))
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "community created successfully"})
 }
 
 func (c *CommunityController) Update(ctx *fiber.Ctx) error {
@@ -68,27 +67,27 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 
 	name := ctx.FormValue("name")
 	description := ctx.FormValue("description")
-	rules := ctx.FormValue("rules")
+	keepRuleIDs, err := parseKeepRuleIDs(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	newRules := readNewRulesFromForm(ctx)
 	categoryID, ok := parseRequiredFormUUID(ctx, "category_id", "category")
 	if !ok {
 		return nil
 	}
 	visibility := model.CommunityVisibility(ctx.FormValue("visibility"))
-	clearAvatar := ctx.FormValue("clear_avatar") == "true"
 	clearBanner := ctx.FormValue("clear_banner") == "true"
 
-	var avatar, banner *multipart.FileHeader
-	if f, err := ctx.FormFile("avatar"); err == nil {
-		avatar = f
-	}
+	var banner *multipart.FileHeader
 	if f, err := ctx.FormFile("banner"); err == nil {
 		banner = f
 	}
 
-	if _, err := c.communityService.Update(
+	if _, _, err := c.communityService.Update(
 		ctx.Context(), id, claims.UserID,
-		name, description, rules, categoryID, visibility,
-		avatar, banner, clearAvatar, clearBanner,
+		name, description, keepRuleIDs, newRules, categoryID, visibility,
+		banner, clearBanner,
 	); err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
@@ -131,7 +130,8 @@ func (c *CommunityController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "community not found"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(community))
+	rules, _ := c.ruleService.ListByCommunity(id)
+	return ctx.Status(fiber.StatusOK).JSON(c.toResponseWithRules(community, rules))
 }
 
 func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
@@ -209,7 +209,25 @@ func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityResponse {
-	avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
+	return c.buildResponse(comm, nil)
+}
+
+func (c *CommunityController) toResponseWithRules(comm *model.Community, rules []model.CommunityRule) dto.CommunityResponse {
+	return c.buildResponse(comm, toRuleMiniResponses(rules))
+}
+
+func toRuleMiniResponses(rules []model.CommunityRule) []dto.CommunityRuleMiniResponse {
+	out := make([]dto.CommunityRuleMiniResponse, len(rules))
+	for i := range rules {
+		out[i] = dto.CommunityRuleMiniResponse{
+			ID:   rules[i].ID,
+			Text: rules[i].Text,
+		}
+	}
+	return out
+}
+
+func (c *CommunityController) buildResponse(comm *model.Community, rules []dto.CommunityRuleMiniResponse) dto.CommunityResponse {
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 	topMembers := c.toTopMemberResponses(comm.TopMembers)
 	var categoryName string
@@ -222,10 +240,9 @@ func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityRes
 		Username:     comm.User.UserName,
 		Name:         comm.Name,
 		Description:  comm.Description,
-		Rules:        comm.Rules,
+		Rules:        rules,
 		CategoryName: categoryName,
 		Visibility:   string(comm.Visibility),
-		AvatarURL:    avatarURL,
 		BannerURL:    bannerURL,
 		MemberCount:  comm.MemberCount,
 		TopMembers:   topMembers,
@@ -240,6 +257,53 @@ func (c *CommunityController) toResponses(communities []model.Community) []dto.C
 		out[i] = c.toResponse(&communities[i])
 	}
 	return out
+}
+
+func readRulesFromForm(ctx *fiber.Ctx) []string {
+	form, err := ctx.MultipartForm()
+	if err != nil || form == nil {
+		return nil
+	}
+	return form.Value["rules"]
+}
+
+func readNewRulesFromForm(ctx *fiber.Ctx) []string {
+	form, err := ctx.MultipartForm()
+	if err != nil || form == nil {
+		return nil
+	}
+	return form.Value["new_rules"]
+}
+
+func parseKeepRuleIDs(ctx *fiber.Ctx) ([]uint, error) {
+	var values []string
+	form, err := ctx.MultipartForm()
+	if err == nil && form != nil {
+		values = append(values, form.Value["keep_rule_ids"]...)
+	}
+	if len(values) == 0 {
+		if raw := ctx.FormValue("keep_rule_ids"); raw != "" {
+			values = append(values, raw)
+		}
+	}
+	if len(values) == 0 {
+		return nil, nil
+	}
+	ids := make([]uint, 0, len(values))
+	for _, v := range values {
+		for _, part := range strings.Split(v, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			id, err := strconv.ParseUint(part, 10, 64)
+			if err != nil || id == 0 {
+				return nil, errors.New("invalid keep_rule_ids")
+			}
+			ids = append(ids, uint(id))
+		}
+	}
+	return ids, nil
 }
 
 func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) dto.DiscoverCommunityResponse {

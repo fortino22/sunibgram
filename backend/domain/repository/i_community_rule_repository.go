@@ -1,12 +1,15 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import (
+	"github.com/sunibgram/domain/model"
+	"gorm.io/gorm"
+)
 
 type ICommunityRuleRepository interface {
 	ListByCommunity(communityID uint) ([]model.CommunityRule, error)
-	FindByID(id uint) (*model.CommunityRule, error)
-	Create(rule model.CommunityRule) (*model.CommunityRule, error)
-	Update(rule model.CommunityRule) (*model.CommunityRule, error)
-	Delete(id uint) error
-	CountByCommunity(communityID uint) (int, error)
+	ListByIDsAndCommunity(communityID uint, ids []uint) ([]model.CommunityRule, error)
+	BulkCreateWithTx(tx *gorm.DB, rules []model.CommunityRule) error
+	DeleteByCommunityWithTx(tx *gorm.DB, communityID uint) error
+	DeleteByCommunityNotInWithTx(tx *gorm.DB, communityID uint, keepIDs []uint) error
+	UpdateOrderWithTx(tx *gorm.DB, ruleID uint, orderNum int) error
 }

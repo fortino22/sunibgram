@@ -42,11 +42,6 @@ func registerCommunityRoutes(
 	communities.Delete("/:id/members/:userId", memberCtrl.RemoveMember)
 	communities.Patch("/:id/members/:userId/role", memberCtrl.UpdateRole)
 
-	//community rules
-	communities.Post("/:id/rules", ruleCtrl.Create)
-	communities.Put("/:id/rules/:ruleID", ruleCtrl.Update)
-	communities.Delete("/:id/rules/:ruleID", ruleCtrl.Delete)
-
 	//community join requests
 	communities.Post("/:id/requests", requestCtrl.Send)
 	communities.Delete("/:id/requests", requestCtrl.Cancel)

@@ -20,6 +20,7 @@ type CommunityService struct {
 	memberRepo     repository.ICommunityMemberRepository
 	userRepo       repository.IUserRepository
 	categoryRepo   repository.ICategoryRepository
+	ruleRepo       repository.ICommunityRuleRepository
 	cacheRepo      repository.ICacheRepository
 	storageUsecase *StorageUsecase
 }
@@ -29,6 +30,7 @@ func NewCommunityService(
 	memberRepo repository.ICommunityMemberRepository,
 	userRepo repository.IUserRepository,
 	categoryRepo repository.ICategoryRepository,
+	ruleRepo repository.ICommunityRuleRepository,
 	cacheRepo repository.ICacheRepository,
 	storageUsecase *StorageUsecase,
 ) service.ICommunityService {
@@ -37,54 +39,50 @@ func NewCommunityService(
 		memberRepo:     memberRepo,
 		userRepo:       userRepo,
 		categoryRepo:   categoryRepo,
+		ruleRepo:       ruleRepo,
 		cacheRepo:      cacheRepo,
 		storageUsecase: storageUsecase,
 	}
 }
 
-func (s *CommunityService) Create(ctx context.Context, userID uint, name, description, rules string, categoryID *uuid.UUID, visibility model.CommunityVisibility, avatar, banner *multipart.FileHeader) (*model.Community, error) {
+func (s *CommunityService) Create(ctx context.Context, userID uint, name, description string, rules []string, categoryID *uuid.UUID, visibility model.CommunityVisibility, banner *multipart.FileHeader) (*model.Community, []model.CommunityRule, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, errors.New("name is required")
+		return nil, nil, errors.New("name is required")
 	}
 	if err := s.ensureCommunityNameAvailable(name, nil); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if visibility != model.CommunityVisibilityPublic && visibility != model.CommunityVisibilityPrivate {
 		visibility = model.CommunityVisibilityPublic
 	}
 	if err := s.validateCategoryID(categoryID); err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	cleanedRules, err := sanitizeCommunityRules(rules)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	community := &model.Community{
 		UserID:      userID,
 		Name:        name,
 		Description: description,
-		Rules:       rules,
 		CategoryID:  categoryID,
 		Visibility:  visibility,
 		MemberCount: 1,
 	}
 
-	if avatar != nil {
-		objName, bucket, err := s.uploadImage(ctx, avatar, "community_avatar")
-		if err != nil {
-			return nil, fmt.Errorf("avatar upload failed: %w", err)
-		}
-		community.AvatarObjectName = objName
-		community.AvatarBucket = bucket
-	}
-
 	if banner != nil {
 		objName, bucket, err := s.uploadImage(ctx, banner, "community_banner")
 		if err != nil {
-			return nil, fmt.Errorf("banner upload failed: %w", err)
+			return nil, nil, fmt.Errorf("banner upload failed: %w", err)
 		}
 		community.BannerObjectName = objName
 		community.BannerBucket = bucket
 	}
 
+	var savedRules []model.CommunityRule
 	if err := s.communityRepo.Transaction(func(tx *gorm.DB) error {
 		if err := s.communityRepo.SaveWithTx(tx, community); err != nil {
 			return err
@@ -95,63 +93,68 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 			UserID:      userID,
 			Role:        model.CommunityMemberRoleOwner,
 		}
-		return s.memberRepo.SaveWithTx(tx, member)
+		if err := s.memberRepo.SaveWithTx(tx, member); err != nil {
+			return err
+		}
+
+		savedRules = buildCommunityRules(community.CommunityID, cleanedRules)
+		return s.ruleRepo.BulkCreateWithTx(tx, savedRules)
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	s.hydrateCommunityCategory(community)
-	return community, nil
+	return community, savedRules, nil
 }
 
-func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, description, rules string, categoryID *uuid.UUID, visibility model.CommunityVisibility, avatar, banner *multipart.FileHeader, clearAvatar, clearBanner bool) (*model.Community, error) {
+func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, description string, keepRuleIDs []uint, newRules []string, categoryID *uuid.UUID, visibility model.CommunityVisibility, banner *multipart.FileHeader, clearBanner bool) (*model.Community, []model.CommunityRule, error) {
 	community, err := s.communityRepo.FindByID(id)
 	if err != nil {
-		return nil, errors.New("community not found")
+		return nil, nil, errors.New("community not found")
 	}
 	if !community.IsWritable() {
-		return nil, errors.New("community is inactive")
+		return nil, nil, errors.New("community is inactive")
 	}
 	actor, err := s.memberRepo.FindMember(id, userID)
 	if err != nil || !isAdminOrAbove(actor.Role) {
-		return nil, errors.New("forbidden")
+		return nil, nil, errors.New("forbidden")
 	}
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, errors.New("name is required")
+		return nil, nil, errors.New("name is required")
 	}
 	if err := s.ensureCommunityNameAvailable(name, &id); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if visibility != model.CommunityVisibilityPublic && visibility != model.CommunityVisibilityPrivate {
 		visibility = model.CommunityVisibilityPublic
 	}
 	if err := s.validateCategoryID(categoryID); err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+	dedupedKeepIDs := dedupeRuleIDs(keepRuleIDs)
+	cleanedNewRules, err := sanitizeCommunityRules(newRules)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(dedupedKeepIDs)+len(cleanedNewRules) > maxCommunityRules {
+		return nil, nil, errors.New("maximum 10 rules allowed")
+	}
+	if len(dedupedKeepIDs) > 0 {
+		existing, err := s.ruleRepo.ListByIDsAndCommunity(community.CommunityID, dedupedKeepIDs)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(existing) != len(dedupedKeepIDs) {
+			return nil, nil, errors.New("one or more keep_rule_ids do not belong to community")
+		}
 	}
 
 	community.Name = name
 	community.Description = description
-	community.Rules = rules
 	community.CategoryID = categoryID
 	community.Visibility = visibility
-
-	if clearAvatar && community.AvatarObjectName != "" {
-		_ = s.storageUsecase.Delete(ctx, community.AvatarBucket, community.AvatarObjectName)
-		community.AvatarObjectName = ""
-		community.AvatarBucket = ""
-	} else if avatar != nil {
-		if community.AvatarObjectName != "" {
-			_ = s.storageUsecase.Delete(ctx, community.AvatarBucket, community.AvatarObjectName)
-		}
-		objName, bucket, err := s.uploadImage(ctx, avatar, "community_avatar")
-		if err != nil {
-			return nil, fmt.Errorf("avatar upload failed: %w", err)
-		}
-		community.AvatarObjectName = objName
-		community.AvatarBucket = bucket
-	}
 
 	if clearBanner && community.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, community.BannerBucket, community.BannerObjectName)
@@ -163,18 +166,52 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 		}
 		objName, bucket, err := s.uploadImage(ctx, banner, "community_banner")
 		if err != nil {
-			return nil, fmt.Errorf("banner upload failed: %w", err)
+			return nil, nil, fmt.Errorf("banner upload failed: %w", err)
 		}
 		community.BannerObjectName = objName
 		community.BannerBucket = bucket
 	}
 
-	if err := s.communityRepo.Update(community); err != nil {
-		return nil, err
+	var savedRules []model.CommunityRule
+	if err := s.communityRepo.Transaction(func(tx *gorm.DB) error {
+		if err := s.communityRepo.UpdateWithTx(tx, community); err != nil {
+			return err
+		}
+		if err := s.ruleRepo.DeleteByCommunityNotInWithTx(tx, community.CommunityID, dedupedKeepIDs); err != nil {
+			return err
+		}
+		// Two-phase reorder: shift kept rules to negative temp order to avoid unique idx conflict.
+		for i, ruleID := range dedupedKeepIDs {
+			if err := s.ruleRepo.UpdateOrderWithTx(tx, ruleID, -(i + 1)); err != nil {
+				return err
+			}
+		}
+		for i, ruleID := range dedupedKeepIDs {
+			if err := s.ruleRepo.UpdateOrderWithTx(tx, ruleID, i+1); err != nil {
+				return err
+			}
+		}
+		newRuleRecords := make([]model.CommunityRule, len(cleanedNewRules))
+		for i, text := range cleanedNewRules {
+			newRuleRecords[i] = model.CommunityRule{
+				CommunityID: community.CommunityID,
+				OrderNum:    len(dedupedKeepIDs) + i + 1,
+				Text:        text,
+			}
+		}
+		return s.ruleRepo.BulkCreateWithTx(tx, newRuleRecords)
+	}); err != nil {
+		return nil, nil, err
 	}
+	final, err := s.ruleRepo.ListByCommunity(community.CommunityID)
+	if err != nil {
+		return nil, nil, err
+	}
+	savedRules = final
+
 	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	s.hydrateCommunityCategory(community)
-	return community, nil
+	return community, savedRules, nil
 }
 
 func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
@@ -185,9 +222,6 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	actor, err := s.memberRepo.FindMember(id, userID)
 	if err != nil || !isAdminOrAbove(actor.Role) {
 		return errors.New("forbidden")
-	}
-	if community.AvatarObjectName != "" {
-		_ = s.storageUsecase.Delete(ctx, community.AvatarBucket, community.AvatarObjectName)
 	}
 	if community.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, community.BannerBucket, community.BannerObjectName)

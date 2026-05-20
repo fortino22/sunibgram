@@ -148,8 +148,6 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 		Select(`
 			communities.community_id,
 			communities.name,
-			COALESCE(communities.avatar_object_name, '') AS avatar_object_name,
-			COALESCE(communities.avatar_bucket, '') AS avatar_bucket,
 			communities.member_count,
 			(community_members.user_id IS NOT NULL) AS is_join
 		`).

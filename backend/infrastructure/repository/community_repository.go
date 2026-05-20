@@ -301,18 +301,19 @@ func (r *communityRepository) findTopMembers(communityIDs []uint) (map[uint][]mo
 }
 
 func (r *communityRepository) Update(community *model.Community) error {
+	return r.UpdateWithTx(r.writeDB, community)
+}
+
+func (r *communityRepository) UpdateWithTx(tx *gorm.DB, community *model.Community) error {
 	var categoryID any
 	if community.CategoryID != nil {
 		categoryID = *community.CategoryID
 	}
-	if err := r.writeDB.Model(&model.Community{}).Where("community_id = ?", community.CommunityID).UpdateColumns(map[string]any{
+	if err := tx.Model(&model.Community{}).Where("community_id = ?", community.CommunityID).UpdateColumns(map[string]any{
 		"name":               community.Name,
 		"description":        community.Description,
-		"rules":              community.Rules,
 		"category_id":        categoryID,
 		"visibility":         community.Visibility,
-		"avatar_object_name": community.AvatarObjectName,
-		"avatar_bucket":      community.AvatarBucket,
 		"banner_object_name": community.BannerObjectName,
 		"banner_bucket":      community.BannerBucket,
 		"updated_at":         gorm.Expr("NOW()"),
