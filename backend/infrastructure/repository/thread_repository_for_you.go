@@ -109,7 +109,7 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 		if candidate.thread.Type == model.ThreadTypeRepost && candidate.thread.OriginalThread != nil {
 			authorID = candidate.thread.OriginalThread.UserID
 		}
-		if authorCounts[authorID] >= 2 {
+		if authorCounts[authorID] >= 20 {
 			continue
 		}
 		authorCounts[authorID]++

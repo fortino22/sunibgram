@@ -12,29 +12,32 @@ import (
 )
 
 type BookmarkService struct {
-	bookmarkRepo repository.IBookmarkRepository
-	threadRepo   repository.IThreadRepository
-	memberRepo   repository.ICommunityMemberRepository
-	settingsRepo repository.IUserSettingsRepository
-	followRepo   repository.IFollowRepository
-	notification service.INotificationService
+	bookmarkRepo  repository.IBookmarkRepository
+	threadRepo    repository.IThreadRepository
+	communityRepo repository.ICommunityRepository
+	memberRepo    repository.ICommunityMemberRepository
+	settingsRepo  repository.IUserSettingsRepository
+	followRepo    repository.IFollowRepository
+	notification  service.INotificationService
 }
 
 func NewBookmarkService(
 	bookmarkRepo repository.IBookmarkRepository,
 	threadRepo repository.IThreadRepository,
+	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
 	settingsRepo repository.IUserSettingsRepository,
 	followRepo repository.IFollowRepository,
 	notification service.INotificationService,
 ) service.IBookmarkService {
 	return &BookmarkService{
-		bookmarkRepo: bookmarkRepo,
-		threadRepo:   threadRepo,
-		memberRepo:   memberRepo,
-		settingsRepo: settingsRepo,
-		followRepo:   followRepo,
-		notification: notification,
+		bookmarkRepo:  bookmarkRepo,
+		threadRepo:    threadRepo,
+		communityRepo: communityRepo,
+		memberRepo:    memberRepo,
+		settingsRepo:  settingsRepo,
+		followRepo:    followRepo,
+		notification:  notification,
 	}
 }
 
@@ -47,8 +50,14 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 		return err
 	}
 	if thread.CommunityID != nil {
-		if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
-			return errors.New("you must be a member of the community to bookmark this thread")
+		community, err := s.communityRepo.FindByID(*thread.CommunityID)
+		if err != nil {
+			return errors.New("community not found")
+		}
+		if community.Visibility == model.CommunityVisibilityPrivate {
+			if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
+				return errors.New("you must be a member of the community to bookmark this thread")
+			}
 		}
 	}
 	exists, err := s.bookmarkRepo.Exists(userID, threadID)

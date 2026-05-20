@@ -22,7 +22,7 @@ func NewFeedScoreScheduler(db *gorm.DB, c *cache.Cache) *FeedScoreScheduler {
 func (s *FeedScoreScheduler) Start() {
 	go func() {
 		s.run()
-		ticker := time.NewTicker(5 * time.Minute)
+		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {
 			s.run()
