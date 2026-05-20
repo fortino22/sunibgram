@@ -16,7 +16,7 @@ func NewCacheController(cacheService service.ICacheService) *CacheController {
 
 func (c *CacheController) Clear(ctx *fiber.Ctx) error {
 	if err := c.cacheService.ClearAll(); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "cache cleared successfully"})

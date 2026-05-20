@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
@@ -49,6 +50,13 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil, errors.New("name is required")
+	}
+	if utf8.RuneCountInString(name) > 100 {
+		return nil, nil, errors.New("name must be 100 characters or less")
+	}
+	description = strings.TrimSpace(description)
+	if utf8.RuneCountInString(description) > 2000 {
+		return nil, nil, errors.New("description must be 2000 characters or less")
 	}
 	if err := s.ensureCommunityNameAvailable(name, nil); err != nil {
 		return nil, nil, err
@@ -123,6 +131,13 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil, errors.New("name is required")
+	}
+	if utf8.RuneCountInString(name) > 100 {
+		return nil, nil, errors.New("name must be 100 characters or less")
+	}
+	description = strings.TrimSpace(description)
+	if utf8.RuneCountInString(description) > 2000 {
+		return nil, nil, errors.New("description must be 2000 characters or less")
 	}
 	if err := s.ensureCommunityNameAvailable(name, &id); err != nil {
 		return nil, nil, err
@@ -259,6 +274,9 @@ func (s *CommunityService) Discover(ctx context.Context, categoryID *uuid.UUID) 
 
 func (s *CommunityService) SearchByName(ctx context.Context, name string) ([]model.DiscoverCommunity, error) {
 	name = strings.TrimSpace(name)
+	if utf8.RuneCountInString(name) > 100 {
+		name = string([]rune(name)[:100])
+	}
 	var cached []model.DiscoverCommunity
 	if s.cacheRepo != nil {
 		if err := s.cacheRepo.Get(ctx, communitySearchCacheKey(name), &cached); err == nil {

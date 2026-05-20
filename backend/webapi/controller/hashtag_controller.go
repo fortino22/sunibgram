@@ -22,7 +22,7 @@ func NewHashtagController(hashtagService service.IHashtagService) *HashtagContro
 func (c *HashtagController) GetTrending(ctx *fiber.Ctx) error {
 	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), trendingHashtagLimit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toTrendingHashtagResponses(hashtags)})
 }

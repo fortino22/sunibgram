@@ -95,14 +95,24 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	if username := ctx.FormValue("username"); username != "" {
 		input.Username = &username
 	}
-	if avatar, err := ctx.FormFile("avatar"); err == nil {
-		input.Avatar = avatar
-	} else if ctx.FormValue("clear_avatar") == "true" {
+	avatarFile, _ := ctx.FormFile("avatar")
+	bannerFile, _ := ctx.FormFile("banner")
+	clearAvatar := ctx.FormValue("clear_avatar") == "true"
+	clearBanner := ctx.FormValue("clear_banner") == "true"
+	if avatarFile != nil && clearAvatar {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "cannot upload avatar and clear_avatar simultaneously"})
+	}
+	if bannerFile != nil && clearBanner {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "cannot upload banner and clear_banner simultaneously"})
+	}
+	if avatarFile != nil {
+		input.Avatar = avatarFile
+	} else if clearAvatar {
 		input.ClearAvatar = true
 	}
-	if banner, err := ctx.FormFile("banner"); err == nil {
-		input.Banner = banner
-	} else if ctx.FormValue("clear_banner") == "true" {
+	if bannerFile != nil {
+		input.Banner = bannerFile
+	} else if clearBanner {
 		input.ClearBanner = true
 	}
 	if bio := ctx.FormValue("bio"); bio != "" {

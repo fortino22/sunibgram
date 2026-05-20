@@ -3,6 +3,7 @@ package usecase
 import (
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
@@ -24,8 +25,14 @@ func (s *ViolationService) Create(name, description string) error {
 	if name == "" {
 		return errors.New("violation name is required")
 	}
+	if utf8.RuneCountInString(name) > 100 {
+		return errors.New("name must be 100 characters or less")
+	}
 	if description == "" {
 		return errors.New("violation description is required")
+	}
+	if utf8.RuneCountInString(description) > 2000 {
+		return errors.New("description must be 2000 characters or less")
 	}
 	return s.violationRepo.Save(&model.Violation{Name: name, Description: description})
 }
@@ -48,8 +55,14 @@ func (s *ViolationService) Update(id uuid.UUID, name, description string) error 
 	if name == "" {
 		return errors.New("violation name is required")
 	}
+	if utf8.RuneCountInString(name) > 100 {
+		return errors.New("name must be 100 characters or less")
+	}
 	if description == "" {
 		return errors.New("violation description is required")
+	}
+	if utf8.RuneCountInString(description) > 2000 {
+		return errors.New("description must be 2000 characters or less")
 	}
 	violation, err := s.violationRepo.FindByID(id)
 	if err != nil {

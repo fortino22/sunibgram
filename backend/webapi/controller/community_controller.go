@@ -83,6 +83,9 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 	if f, err := ctx.FormFile("banner"); err == nil {
 		banner = f
 	}
+	if banner != nil && clearBanner {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "cannot upload banner and clear_banner simultaneously"})
+	}
 
 	if _, _, err := c.communityService.Update(
 		ctx.Context(), id, claims.UserID,
@@ -155,7 +158,7 @@ func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
 func (c *CommunityController) SearchByName(ctx *fiber.Ctx) error {
 	communities, err := c.communityService.SearchByName(ctx.Context(), ctx.Query("community_name"))
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})
@@ -171,7 +174,7 @@ func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 
 	communities, total, err := c.communityService.GetMyCreated(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	slim := make([]dto.MyCommunityResponse, len(communities))
@@ -199,7 +202,7 @@ func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
 
 	communities, total, err := c.communityService.GetMyJoined(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityResponse{

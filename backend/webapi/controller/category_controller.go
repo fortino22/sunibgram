@@ -31,7 +31,7 @@ func (c *CategoryController) Create(ctx *fiber.Ctx) error {
 func (c *CategoryController) GetAll(ctx *fiber.Ctx) error {
 	categories, err := c.categoryService.GetAll()
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toCategoryResponses(categories)})
 }

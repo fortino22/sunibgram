@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
@@ -47,6 +48,9 @@ func (s *ReportService) Create(reporterID uint, reportedUserID, reportedPostID *
 	var reportedOwnerID *uint
 	if explanation == "" {
 		return errors.New("explanation is required")
+	}
+	if utf8.RuneCountInString(explanation) > 2000 {
+		return errors.New("explanation must be 2000 characters or less")
 	}
 	if (reportedUserID == nil && reportedPostID == nil) || (reportedUserID != nil && reportedPostID != nil) {
 		return errors.New("exactly one reported_user_id or reported_post_id is required")

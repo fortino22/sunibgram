@@ -74,7 +74,7 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 
 	threads, parents, total, err := c.threadService.GetForYouFeed(ctx.Context(), claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
@@ -108,7 +108,7 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	media, _ := c.mediaService.GetByThreadID(id)
@@ -224,7 +224,7 @@ func (c *ThreadController) GetFollowingFeed(ctx *fiber.Ctx) error {
 
 	threads, parents, total, err := c.threadService.GetFollowingFeed(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
@@ -247,13 +247,13 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetMyPosts(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
@@ -276,13 +276,13 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetMyReplies(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
@@ -305,13 +305,13 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ParsePagination(ctx)
 
 	threads, _, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)

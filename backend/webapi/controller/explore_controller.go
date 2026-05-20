@@ -49,7 +49,7 @@ func (c *ExploreController) ExploreSearch(ctx *fiber.Ctx) error {
 		if err.Error() == "query is required" {
 			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(result))
 }

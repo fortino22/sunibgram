@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
@@ -92,7 +93,12 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	}
 
 	if input.Bio != nil {
-		existing.Bio = *input.Bio
+		trimmed := strings.TrimSpace(*input.Bio)
+		if utf8.RuneCountInString(trimmed) > 500 {
+			return errors.New("bio must be 500 characters or less")
+		}
+		*input.Bio = trimmed
+		existing.Bio = trimmed
 	}
 
 	if err := s.profileRepo.Upsert(existing); err != nil {
@@ -118,11 +124,17 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			if name == "" {
 				return errors.New("name cannot be empty")
 			}
+			if utf8.RuneCountInString(name) > 100 {
+				return errors.New("name must be 100 characters or less")
+			}
 		}
 		if input.Username != nil {
 			username = strings.TrimSpace(*input.Username)
 			if username == "" {
 				return errors.New("username cannot be empty")
+			}
+			if utf8.RuneCountInString(username) > 50 {
+				return errors.New("username must be 50 characters or less")
 			}
 			if username != user.UserName {
 				taken, err := s.userRepo.ExistsByUserName(username)

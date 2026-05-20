@@ -21,7 +21,7 @@ func (c *ThreadController) Mention(ctx *fiber.Ctx) error {
 	_, limit := ParsePagination(ctx)
 	users, err := c.threadService.GetMentionUsers(ctx.Context(), claims.UserID, query, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toMentionUserResponses(users)})

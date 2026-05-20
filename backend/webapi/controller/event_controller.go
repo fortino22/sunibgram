@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"log"
 	"mime/multipart"
 	"strconv"
@@ -51,7 +52,7 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 	_, limit := ParsePagination(ctx)
 	trending, running, future, err := c.eventService.GetAll(limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(dto.EventGroupsResponse{
 		Trending: c.toListResponses(trending),
@@ -406,7 +407,11 @@ func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart
 		if err := validateEventPDFHeaders(attachments); err != nil {
 			return req, nil, false, nil, err
 		}
-		return req, banner, ctx.FormValue("clear_banner") == "true", attachments, nil
+		clearBanner := ctx.FormValue("clear_banner") == "true"
+		if banner != nil && clearBanner {
+			return req, nil, false, nil, errors.New("cannot upload banner and clear_banner simultaneously")
+		}
+		return req, banner, clearBanner, attachments, nil
 	}
 	if err := ctx.BodyParser(&req); err != nil {
 		return req, nil, false, nil, err

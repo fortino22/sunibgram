@@ -43,7 +43,7 @@ func (c *ThreadController) GetFacultyThreads(ctx *fiber.Ctx) error {
 
 	threads, total, err := c.threadService.GetFacultyThreads(facultyID, claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{

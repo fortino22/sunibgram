@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
@@ -57,6 +58,16 @@ func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name 
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("name is required")
+	}
+	if utf8.RuneCountInString(name) > 100 {
+		return nil, errors.New("name must be 100 characters or less")
+	}
+	if description != nil {
+		trimmed := strings.TrimSpace(*description)
+		if utf8.RuneCountInString(trimmed) > 500 {
+			return nil, errors.New("description must be 500 characters or less")
+		}
+		*description = trimmed
 	}
 
 	room := &model.ChatRoom{Name: &name, Description: description, Type: model.ChatRoomTypeGroup}
@@ -140,6 +151,16 @@ func (s *ChatRoomService) UpdateGroup(ctx context.Context, roomID, requesterID u
 	trimmedName := strings.TrimSpace(name)
 	if trimmedName == "" {
 		return errors.New("name is required")
+	}
+	if utf8.RuneCountInString(trimmedName) > 100 {
+		return errors.New("name must be 100 characters or less")
+	}
+	if description != nil {
+		trimmed := strings.TrimSpace(*description)
+		if utf8.RuneCountInString(trimmed) > 500 {
+			return errors.New("description must be 500 characters or less")
+		}
+		*description = trimmed
 	}
 
 	var avatarURL *string

@@ -23,7 +23,7 @@ func (c *UserController) GetAll(ctx *fiber.Ctx) error {
 
 	users, total, err := c.userService.GetAllPaginated(page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	data := make([]dto.UserResponse, len(users))

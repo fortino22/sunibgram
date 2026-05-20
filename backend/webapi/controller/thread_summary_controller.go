@@ -28,7 +28,7 @@ func (c *ThreadSummaryController) GetSummary(ctx *fiber.Ctx) error {
 		if errors.Is(err, usecase.ErrThreadSummaryNotReady) {
 			return ctx.Status(fiber.StatusAccepted).JSON(fiber.Map{"status": "processing"})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.JSON(fiber.Map{"summary": summary})

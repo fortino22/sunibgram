@@ -79,7 +79,7 @@ func (c *BookmarkController) GetMyBookmarks(ctx *fiber.Ctx) error {
 
 	threads, timestamps, total, err := c.bookmarkService.GetMyBookmarks(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	ids := make([]uint, len(threads))
