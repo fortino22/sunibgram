@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Repeat2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
 import { useThreadActions } from '@/hooks/useThreadActions';
@@ -15,7 +15,7 @@ import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
 import { ImageDetailModal } from './ImageDetailModal';
-import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from './threadUtils';
+import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
 
 interface ThreadDetailViewProps {
   root: ThreadItem;
@@ -34,6 +34,7 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const author = getThreadAuthor(root);
   const canManage = isOwnThread(root, currentUserId);
+  const repostLabel = getRepostLabel(root, currentUserId);
 
   async function handleSave(params: ThreadMutationParams) {
     await updateMutation.mutateAsync(params);
@@ -92,6 +93,15 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
           padding: '16px 20px',
         }}
       >
+        {repostLabel && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 12 }}>
+            <Repeat2 size={13} strokeWidth={2.5} color="var(--text-tertiary)" />
+            <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+              {repostLabel}
+            </span>
+          </div>
+        )}
+
         {/* Author row */}
         <div className="flex items-center" style={{ gap: 12 }}>
           <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />

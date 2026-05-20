@@ -138,7 +138,7 @@ func main() {
 	violationCtrl := controller.NewViolationController(violationService)
 	reportCtrl := controller.NewReportController(reportService)
 	communityCtrl := controller.NewCommunityController(communityService)
-	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService)
+	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService, profileService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService, profileService)
 	communityThreadCtrl := controller.NewCommunityThreadController(
 		threadService,

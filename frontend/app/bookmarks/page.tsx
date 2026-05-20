@@ -20,7 +20,7 @@ export default function BookmarksPage() {
           background: 'oklch(10.5% 0.005 260 / 0.92)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border)',
-          padding: '14px 20px',
+          padding: '20px 20px',
         }}
       >
         <div style={{ fontWeight: 500, fontSize: 20, color: 'var(--text)', letterSpacing: '-0.02em' }}>

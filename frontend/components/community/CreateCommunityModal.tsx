@@ -4,6 +4,9 @@ import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { useCategories } from '@/hooks/useCommunities';
 import { useCreateCommunity } from '@/hooks/useCommunityMutations';
+import { IMAGE_MAX_BYTES } from '@/lib/compressImage';
+
+import { ImageCropModal } from '@/components/profile/ImageCropModal';
 import type { CommunityVisibility } from '@/lib/services/communities';
 
 interface CreateCommunityModalProps {
@@ -23,17 +26,20 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
   const [visibility, setVisibility] = useState<CommunityVisibility>('PUBLIC');
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [pendingCrop, setPendingCrop] = useState<{ src: string; filename: string } | null>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
 
-  function handleImageChange(
-    file: File | null,
-    setFile: (f: File | null) => void,
-    setPreview: (s: string | null) => void
-  ) {
+  function handleBannerPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
     if (!file) return;
-    setFile(file);
-    const url = URL.createObjectURL(file);
-    setPreview(url);
+    setPendingCrop({ src: URL.createObjectURL(file), filename: file.name });
+    e.target.value = '';
+  }
+
+  function onCropComplete(file: File, preview: string) {
+    setBannerFile(file);
+    setBannerPreview(preview);
+    setPendingCrop(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -77,6 +83,7 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
   };
 
   return (
+    <>
     <div
       style={{
         position: 'fixed',
@@ -151,7 +158,7 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
             <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Click to add banner</span>
           )}
           <input ref={bannerRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={(e) => handleImageChange(e.target.files?.[0] ?? null, setBannerFile, setBannerPreview)} />
+            onChange={handleBannerPick} />
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -265,5 +272,17 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
         </form>
       </div>
     </div>
+
+    {pendingCrop && (
+      <ImageCropModal
+        imageSrc={pendingCrop.src}
+        filename={pendingCrop.filename}
+        aspect={3}
+        maxSizeBytes={IMAGE_MAX_BYTES.banner}
+        onComplete={onCropComplete}
+        onClose={() => setPendingCrop(null)}
+      />
+    )}
+    </>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Camera, Users, UserPlus, LogOut, Search, ChevronLeft } from 'lucide-react';
+import { toast } from 'sonner';
+import { compressImage, IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import { Avatar } from '@/components/shared/Avatar';
 import { useUpdateGroupRoom, useAddGroupMembers, useLeaveGroup } from '@/hooks/chat/useCreateChatRoom';
 import { useGroupMembers } from '@/hooks/chat/useGroupMembers';
@@ -74,11 +76,19 @@ export function GroupSettingsModal({ room, onClose, onLeave }: GroupSettingsModa
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setAvatarFile(file);
-    setAvatarPreview(URL.createObjectURL(file));
+    const compressed = await compressImage(file, {
+      maxDimension: 1200,
+      maxSizeBytes: IMAGE_MAX_BYTES.avatar,
+    });
+    if (compressed.size > IMAGE_MAX_BYTES.avatar) {
+      toast.error('Avatar image is too large even after compression. Try a smaller image.');
+      return;
+    }
+    setAvatarFile(compressed);
+    setAvatarPreview(URL.createObjectURL(compressed));
   };
 
   const handleSave = () => {

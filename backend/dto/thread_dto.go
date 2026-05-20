@@ -112,6 +112,7 @@ type FeedItemResponse struct {
 	RepostedByID       *uint                 `json:"reposted_by_id,omitempty"`
 	RepostedByUsername string                `json:"reposted_by_username,omitempty"`
 	RepostedByName     string                `json:"reposted_by_name,omitempty"`
+	OriginalThreadID   *uint                 `json:"original_thread_id,omitempty"`
 	Author             FeedAuthor            `json:"author"`
 	Stats              FeedStats             `json:"stats"`
 	Media              []ThreadMediaResponse `json:"media"`

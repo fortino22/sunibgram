@@ -46,16 +46,16 @@ export function CommunityDiscoverCard({ community, onClick }: CommunityDiscoverC
       {/* Thumbnail */}
       <div
         style={{
-          width: 72,
-          height: 72,
-          borderRadius: 14,
+          width: 108,
+          height: 108,
+          borderRadius: 20,
           flexShrink: 0,
           overflow: 'hidden',
           background: thumbUrl ? `url(${thumbUrl}) center/cover no-repeat` : color,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 28,
+          fontSize: 40,
           fontWeight: 800,
           color: '#fff',
           letterSpacing: '-0.02em',
@@ -69,7 +69,7 @@ export function CommunityDiscoverCard({ community, onClick }: CommunityDiscoverC
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: 15,
+            fontSize: 17,
             fontWeight: 700,
             color: 'var(--text)',
             overflow: 'hidden',
@@ -81,17 +81,18 @@ export function CommunityDiscoverCard({ community, onClick }: CommunityDiscoverC
           {community.name}
         </div>
 
-        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 6 }}>
+        <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 2 }}>
           <span style={{ fontWeight: 600, color: 'var(--text)' }}>
             {formatCount(community.member_count)}
           </span>
           {' Members'}
-          {community.category_name && (
-            <span style={{ color: 'var(--text-tertiary)' }}>
-              {' · '}{community.category_name}
-            </span>
-          )}
         </div>
+
+        {community.category_name && (
+          <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+            {community.category_name}
+          </div>
+        )}
 
         {community.top_members.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -99,16 +100,16 @@ export function CommunityDiscoverCard({ community, onClick }: CommunityDiscoverC
               <div
                 key={i}
                 style={{
-                  width: 22,
-                  height: 22,
+                  width: 29,
+                  height: 29,
                   borderRadius: '50%',
                   border: '2px solid var(--bg-card)',
                   overflow: 'hidden',
-                  marginLeft: i > 0 ? -6 : 0,
+                  marginLeft: i > 0 ? -9 : 0,
                   flexShrink: 0,
                   background: m.avatar_url
                     ? `url(${m.avatar_url}) center/cover no-repeat`
-                    : 'var(--bg-subtle)',
+                    : MONOGRAM_COLORS[i % MONOGRAM_COLORS.length],
                   zIndex: 5 - i,
                   position: 'relative',
                 }}

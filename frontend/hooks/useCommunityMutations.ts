@@ -131,6 +131,7 @@ export function useUpdateCommunity(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['community', communityId] });
       void qc.invalidateQueries({ queryKey: ['communities', 'mine'] });
       void qc.invalidateQueries({ queryKey: ['communities', 'discover'] });
+      void qc.invalidateQueries({ queryKey: ['communities', 'joined'] });
     },
   });
 }

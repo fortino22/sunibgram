@@ -137,7 +137,7 @@ export default function HomePage() {
           borderBottom: '1px solid var(--border)',
         }}
       >
-        <div style={{ padding: '16px 20px 0' }}>
+        <div style={{ padding: '20px 20px 0' }}>
           <div
             style={{
               fontWeight: 600,

@@ -81,7 +81,7 @@ export function CommunityMemberCard({
           textAlign: 'left',
         }}
       >
-        <Avatar username={member.username} avatarUrl={null} size="md" />
+        <Avatar username={member.username} avatarUrl={member.avatar_url || null} size="md" />
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
             @{member.username}

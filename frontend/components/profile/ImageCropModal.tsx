@@ -5,21 +5,23 @@ import Cropper from 'react-easy-crop';
 import type { Area, Point } from 'react-easy-crop';
 import { X, Check } from 'lucide-react';
 import { getCroppedFile } from '@/lib/cropImage';
-import { compressImage } from '@/lib/compressImage';
+import { compressImage, IMAGE_MAX_BYTES } from '@/lib/compressImage';
 
 interface ImageCropModalProps {
   imageSrc: string;
   filename: string;
   aspect: number;
+  maxSizeBytes?: number;
   onComplete: (file: File, preview: string) => void;
   onClose: () => void;
 }
 
-export function ImageCropModal({ imageSrc, filename, aspect, onComplete, onClose }: ImageCropModalProps) {
+export function ImageCropModal({ imageSrc, filename, aspect, maxSizeBytes = IMAGE_MAX_BYTES.avatar, onComplete, onClose }: ImageCropModalProps) {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [applying, setApplying] = useState(false);
+  const [sizeError, setSizeError] = useState<string | null>(null);
 
   const onCropComplete = useCallback((_: Area, croppedPixels: Area) => {
     setCroppedAreaPixels(croppedPixels);
@@ -28,12 +30,17 @@ export function ImageCropModal({ imageSrc, filename, aspect, onComplete, onClose
   async function handleConfirm() {
     if (!croppedAreaPixels) return;
     setApplying(true);
+    setSizeError(null);
     try {
       const cropped = await getCroppedFile(imageSrc, croppedAreaPixels, filename);
       const compressed = await compressImage(cropped, {
         maxDimension: 1200,
-        maxSizeBytes: 500 * 1024, // 500 KB
+        maxSizeBytes,
       });
+      if (compressed.size > maxSizeBytes) {
+        setSizeError('Image is still too large after compression. Try a smaller or less detailed image.');
+        return;
+      }
       const preview = URL.createObjectURL(compressed);
       onComplete(compressed, preview);
     } finally {
@@ -43,7 +50,7 @@ export function ImageCropModal({ imageSrc, filename, aspect, onComplete, onClose
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div style={{ background: '#1a1a1a', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
@@ -87,18 +94,23 @@ export function ImageCropModal({ imageSrc, filename, aspect, onComplete, onClose
         </div>
 
         {/* Zoom slider */}
-        <div style={{ padding: '14px 24px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', lineHeight: 1, userSelect: 'none' }}>−</span>
-          <input
-            type="range"
-            min={1}
-            max={3}
-            step={0.01}
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
-            style={{ flex: 1, accentColor: 'var(--accent)', cursor: 'pointer' }}
-          />
-          <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', lineHeight: 1, userSelect: 'none' }}>+</span>
+        <div style={{ padding: '14px 24px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', lineHeight: 1, userSelect: 'none' }}>−</span>
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={0.01}
+              value={zoom}
+              onChange={(e) => { setZoom(Number(e.target.value)); setSizeError(null); }}
+              style={{ flex: 1, accentColor: 'var(--accent)', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', lineHeight: 1, userSelect: 'none' }}>+</span>
+          </div>
+          {sizeError && (
+            <p style={{ margin: 0, fontSize: 12, color: '#f87171', textAlign: 'center' }}>{sizeError}</p>
+          )}
         </div>
       </div>
     </div>

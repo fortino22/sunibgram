@@ -66,7 +66,7 @@ func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, li
 	var total int64
 	r.readDB.Model(&model.CommunityMember{}).Where("community_id = ?", communityID).Count(&total)
 	offset := (page - 1) * limit
-	if err := r.readDB.Preload("User").
+	if err := r.readDB.Preload("User").Preload("Profile").
 		Where("community_id = ?", communityID).
 		Order("joined_at ASC").
 		Offset(offset).Limit(limit).

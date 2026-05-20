@@ -9,11 +9,12 @@ import (
 )
 
 type CommunityMemberController struct {
-	memberService service.ICommunityMemberService
+	memberService  service.ICommunityMemberService
+	profileService service.IUserProfileService
 }
 
-func NewCommunityMemberController(memberService service.ICommunityMemberService) *CommunityMemberController {
-	return &CommunityMemberController{memberService: memberService}
+func NewCommunityMemberController(memberService service.ICommunityMemberService, profileService service.IUserProfileService) *CommunityMemberController {
+	return &CommunityMemberController{memberService: memberService, profileService: profileService}
 }
 
 func (c *CommunityMemberController) Join(ctx *fiber.Ctx) error {
@@ -66,7 +67,7 @@ func (c *CommunityMemberController) GetMembers(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityMemberResponse{
-		Data: toCommunityMemberResponses(members),
+		Data: c.toMemberResponses(members),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -135,20 +136,25 @@ func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "role updated successfully"})
 }
 
-func toCommunityMemberResponse(m *model.CommunityMember) dto.CommunityMemberResponse {
+func (c *CommunityMemberController) toMemberResponse(m *model.CommunityMember) dto.CommunityMemberResponse {
+	avatarURL := ""
+	if m.Profile != nil {
+		avatarURL = BuildMediaURL(m.Profile.AvatarObjectName, m.Profile.AvatarBucket, c.profileService.GetURL)
+	}
 	return dto.CommunityMemberResponse{
 		CommunityID: m.CommunityID,
 		UserID:      m.UserID,
 		Username:    m.User.UserName,
+		AvatarURL:   avatarURL,
 		Role:        string(m.Role),
 		JoinedAt:    utils.Wrap(m.JoinedAt),
 	}
 }
 
-func toCommunityMemberResponses(members []model.CommunityMember) []dto.CommunityMemberResponse {
+func (c *CommunityMemberController) toMemberResponses(members []model.CommunityMember) []dto.CommunityMemberResponse {
 	out := make([]dto.CommunityMemberResponse, len(members))
 	for i := range members {
-		out[i] = toCommunityMemberResponse(&members[i])
+		out[i] = c.toMemberResponse(&members[i])
 	}
 	return out
 }

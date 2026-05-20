@@ -20,7 +20,7 @@ export function ProfilePageHeader({ name, threadCount }: ProfilePageHeaderProps)
         background: 'oklch(10.5% 0.005 260 / 0.92)',
         backdropFilter: 'blur(12px)',
         borderBottom: '1px solid var(--border)',
-        padding: '10px 16px',
+        padding: '20px 16px',
         display: 'flex',
         alignItems: 'center',
         gap: 14,

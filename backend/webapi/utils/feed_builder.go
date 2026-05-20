@@ -321,6 +321,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 			RepostedByID:       &t.UserID,
 			RepostedByUsername: t.User.UserName,
 			RepostedByName:     t.User.Name,
+			OriginalThreadID:   &orig.ThreadID,
 			Author:             fb.AuthorField(orig.User),
 			Stats:              dto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount, Comments: orig.CommentCount},
 			Media:              fb.ToMediaResponses(media),

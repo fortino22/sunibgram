@@ -4,9 +4,16 @@ export interface CompressOptions {
   quality?: number;
 }
 
+export const IMAGE_MAX_BYTES = {
+  avatar: 500 * 1024,
+  banner: 500 * 1024,
+  media:  800 * 1024,
+  raw:    5 * 1024 * 1024,
+} as const;
+
 const DEFAULTS = {
   maxDimension: 1920,
-  maxSizeBytes: 800 * 1024, // 800 KB
+  maxSizeBytes: IMAGE_MAX_BYTES.media,
   quality: 0.85,
 };
 

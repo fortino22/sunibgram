@@ -103,6 +103,7 @@ export interface FeedItemResponse {
   reposted_by_id?: number;
   reposted_by_username?: string;
   reposted_by_name?: string;
+  original_thread_id?: number;
   author: FeedAuthor;
   stats: FeedStats;
   media: ThreadMediaResponse[];
@@ -219,6 +220,10 @@ export function getMyMediaThreads(userId: number | string, params: PaginationPar
 
 export function getThread(id: number | string, token: string): Promise<ThreadResponse> {
   return api.get<ThreadResponse>(`/api/threads/${id}`, token);
+}
+
+export function getThreadFeed(id: number | string, token: string): Promise<FeedItemResponse> {
+  return api.get<FeedItemResponse>(`/api/threads/${id}`, token);
 }
 
 export function getThreadChain(

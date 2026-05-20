@@ -26,7 +26,8 @@ import {
 } from '@/lib/services/communities';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
 import type { ThreadDetailData } from '@/hooks/useThread';
-import { compressImages } from '@/lib/compressImage';
+import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
+import { toast } from 'sonner';
 import { GifPicker } from '@/components/chat/GifPicker';
 import type { EmojiClickData } from 'emoji-picker-react';
 
@@ -246,9 +247,18 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     setCompressing(true);
     try {
       const ready = await compressImages(incoming);
+      const oversized = ready.filter(
+        (f) => f.type.startsWith('image/') && f.size > IMAGE_MAX_BYTES.media,
+      );
+      if (oversized.length > 0) {
+        toast.error(
+          `${oversized.length} image${oversized.length > 1 ? 's' : ''} could not be compressed to the size limit and ${oversized.length > 1 ? 'were' : 'was'} removed.`,
+        );
+      }
+      const accepted = ready.filter((f) => !oversized.includes(f));
       setPreviews((cur) => [
         ...cur,
-        ...ready.map((file) => ({
+        ...accepted.map((file) => ({
           file,
           kind: getPreviewKind(file),
           url: URL.createObjectURL(file),

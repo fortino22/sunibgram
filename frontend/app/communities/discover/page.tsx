@@ -81,7 +81,7 @@ export default function DiscoverCommunitiesPage() {
           zIndex: 10,
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border)',
-          padding: '10px 14px',
+          padding: '20px 14px',
           display: 'flex',
           gap: 10,
           alignItems: 'center',
