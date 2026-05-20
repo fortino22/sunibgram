@@ -31,7 +31,7 @@ type IThreadRepository interface {
 	FindAllCommunityThreadsByQueryLatest(userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	FindFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
-	FindByFacultyID(facultyID uint, page, limit int) ([]model.Thread, int64, error)
+	FindByFacultyID(facultyID uint, requesterID *uint, page, limit int) ([]model.Thread, int64, error)
 	AttachReplyParents(threads []model.Thread, requesterID *uint) ([]model.Thread, []*model.Thread, error)
 	InvalidateUserFeedCaches(ctx context.Context, userID uint)
 }

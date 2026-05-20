@@ -180,14 +180,12 @@ func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, p
 
 func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]model.CommunityThreadMedia, error) {
 	var rows []model.ThreadMedia
-	if err := r.db.readDB.
+	requesterID := &requesterUserID
+	if err := applyThreadVisibility(r.db.readDB.
 		Table("thread_media").
 		Select("thread_media.media_id, thread_media.thread_id, thread_media.object_name, thread_media.bucket, thread_media.created_at").
-		Joins("JOIN threads ON threads.thread_id = thread_media.thread_id").
-		Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
-		Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", requesterUserID).
+		Joins("JOIN threads ON threads.thread_id = thread_media.thread_id"), requesterID).
 		Where("threads.community_id = ? AND threads.type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-		Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", requesterUserID).
 		Order("threads.created_at DESC, thread_media.created_at ASC").
 		Find(&rows).Error; err != nil {
 		return nil, err

@@ -41,7 +41,7 @@ func (c *ThreadController) GetFacultyThreads(ctx *fiber.Ctx) error {
 
 	page, limit := ParsePagination(ctx)
 
-	threads, total, err := c.threadService.GetFacultyThreads(facultyID, page, limit)
+	threads, total, err := c.threadService.GetFacultyThreads(facultyID, claims.UserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
