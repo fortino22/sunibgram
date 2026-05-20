@@ -23,7 +23,7 @@ func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, l
 	return threads, total, nil
 }
 
-func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.threadRepo.FindForYouFeed(ctx, userID, page, limit)
 }

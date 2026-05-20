@@ -4,6 +4,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
+	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 const defaultExploreResponseLimit = 20
@@ -57,11 +58,59 @@ func (c *ExploreController) toThreadResponses(threads []model.ExploreThreadResul
 	return responses
 }
 
-func (c *ExploreController) toFeedResponse(threads []model.Thread, total int64, viewerID *uint) dto.PaginatedFeedResponse {
-	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
+func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*model.Thread, total int64, viewerID *uint) dto.PaginatedFeedResponse {
+	allIDs := make([]uint, 0, len(threads)*2)
+	for _, t := range threads {
+		allIDs = append(allIDs, t.ThreadID)
+		if t.OriginalThread != nil {
+			allIDs = append(allIDs, t.OriginalThread.ThreadID)
+		}
+	}
+	for _, p := range parents {
+		if p != nil {
+			allIDs = append(allIDs, p.ThreadID)
+		}
+	}
+	mediaByThread := loadThreadMediaByID(c.mediaService, allIDs)
+
+	authorIDs := threadUserIDs(threads)
+	for _, p := range parents {
+		if p != nil {
+			authorIDs = append(authorIDs, p.User.UserID)
+		}
+	}
+
 	fb := newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, viewerID)
-	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
-	data := buildFeedItemsFromThreads(threads, mediaByThread, fb)
+	fb.LoadAvatarsForUserIDs(authorIDs)
+	fb.LoadViewerFlagsForThreads(threads)
+
+	data := make([]dto.FeedItemResponse, len(threads))
+	for i, t := range threads {
+		mediaID := t.ThreadID
+		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+			mediaID = t.OriginalThread.ThreadID
+		}
+		item := fb.ToFeedItem(&t, mediaByThread[mediaID])
+		if i < len(parents) && parents[i] != nil {
+			p := parents[i]
+			eventID, eventName := webapiutils.EventFields(p)
+			item.ParentContext = &dto.FeedParentContext{
+				ID:        p.ThreadID,
+				ParentID:  p.ParentID,
+				RootID:    p.RootID,
+				EventID:   eventID,
+				EventName: eventName,
+				Community: webapiutils.CommunityField(p),
+				Author:    fb.AuthorField(p.User),
+				Content:   p.Content,
+				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),
+				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
+				CreatedAt: dtoutils.Wrap(p.CreatedAt),
+				UpdatedAt: dtoutils.Wrap(p.UpdatedAt),
+			}
+		}
+		data[i] = item
+	}
 	ensureFalseFeedViewerFlags(data)
 	return dto.PaginatedFeedResponse{
 		Data: data,

@@ -110,8 +110,8 @@ type FeedItemResponse struct {
 	ActionAt           *utils.FormattedTime  `json:"action_at,omitempty"`
 	RepostedAt         *utils.FormattedTime  `json:"reposted_at,omitempty"`
 	RepostedByID       *uint                 `json:"reposted_by_id,omitempty"`
-	RepostedByUsername string                `json:"reposted_by_username"`
-	RepostedByName     string                `json:"reposted_by_name"`
+	RepostedByUsername string                `json:"reposted_by_username,omitempty"`
+	RepostedByName     string                `json:"reposted_by_name,omitempty"`
 	Author             FeedAuthor            `json:"author"`
 	Stats              FeedStats             `json:"stats"`
 	Media              []ThreadMediaResponse `json:"media"`

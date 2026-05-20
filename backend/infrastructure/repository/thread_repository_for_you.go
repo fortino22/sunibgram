@@ -15,6 +15,7 @@ const mainFeedReplyInteractionSQL = "(threads.like_count + threads.repost_count 
 
 type cachedForYouFeed struct {
 	Threads []model.Thread
+	Parents []*model.Thread
 	Total   int64
 }
 
@@ -41,11 +42,11 @@ func applyMainFeedReplyInteractionFilter(db *gorm.DB) *gorm.DB {
 	return db.Where("threads.parent_id IS NULL OR " + mainFeedReplyInteractionSQL + " > 0")
 }
 
-func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	key := fmt.Sprintf("feed:foryou:%d:%d:%d", userID, page, limit)
 	var cached cachedForYouFeed
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
-		return cached.Threads, cached.Total, nil
+		return cached.Threads, cached.Parents, cached.Total, nil
 	}
 
 	merged := make(map[uint]forYouCandidate)
@@ -64,25 +65,25 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 
 	own, err := r.findForYouOwn(userID)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	addCandidates(own, 1.0, true)
 
 	global, err := r.findForYouGlobal(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	addCandidates(global, 1.0, false)
 
 	following, err := r.findForYouFollowing(userID)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	addCandidates(following, 0.8, true)
 
 	community, err := r.findForYouCommunity(userID)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	addCandidates(community, 0.7, false)
 
@@ -114,22 +115,27 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 	total := int64(len(capped))
 	offset := (page - 1) * limit
 	if offset >= len(capped) {
-		result := cachedForYouFeed{Threads: []model.Thread{}, Total: total}
+		result := cachedForYouFeed{Threads: []model.Thread{}, Parents: []*model.Thread{}, Total: total}
 		_ = r.cache.Set(ctx, key, result, forYouFeedTTL)
-		return result.Threads, result.Total, nil
+		return result.Threads, result.Parents, result.Total, nil
 	}
 	end := offset + limit
 	if end > len(capped) {
 		end = len(capped)
 	}
 
-	result := cachedForYouFeed{Threads: capped[offset:end], Total: total}
+	pagedThreads := capped[offset:end]
+	pagedThreads, parents, err := r.attachVisibleParents(pagedThreads, &userID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	result := cachedForYouFeed{Threads: pagedThreads, Parents: parents, Total: total}
 	if err := r.cache.Set(ctx, key, result, forYouFeedTTL); err == nil {
 		for _, thread := range result.Threads {
 			r.trackFeedCacheKey(ctx, thread.ThreadID, key)
 		}
 	}
-	return result.Threads, result.Total, nil
+	return result.Threads, result.Parents, result.Total, nil
 }
 
 func (r *threadCached) findForYouOwn(userID uint) ([]model.Thread, error) {

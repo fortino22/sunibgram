@@ -60,11 +60,11 @@ func (c *ExploreController) GetTop(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	threads, total, err := c.exploreService.GetTopPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	threads, parents, total, err := c.exploreService.GetTopPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
 	if err != nil {
 		return HandleServiceError(ctx, err)
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, total, &claims.UserID))
+	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, parents, total, &claims.UserID))
 }
 
 func (c *ExploreController) GetLatest(ctx *fiber.Ctx) error {
@@ -73,11 +73,11 @@ func (c *ExploreController) GetLatest(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	threads, total, err := c.exploreService.GetLatestPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	threads, parents, total, err := c.exploreService.GetLatestPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
 	if err != nil {
 		return HandleServiceError(ctx, err)
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, total, &claims.UserID))
+	return ctx.Status(fiber.StatusOK).JSON(c.toFeedResponse(threads, parents, total, &claims.UserID))
 }
 
 func (c *ExploreController) GetPeople(ctx *fiber.Ctx) error {

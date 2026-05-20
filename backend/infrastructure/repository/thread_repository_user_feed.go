@@ -200,6 +200,10 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 	return threads, parents, total, nil
 }
 
+func (r *threadCached) AttachReplyParents(threads []model.Thread, requesterID *uint) ([]model.Thread, []*model.Thread, error) {
+	return r.attachVisibleParents(threads, requesterID)
+}
+
 func (r *threadCached) attachVisibleParents(threads []model.Thread, requesterID *uint) ([]model.Thread, []*model.Thread, error) {
 	parentIDSet := make(map[uint]struct{})
 	for _, t := range threads {
