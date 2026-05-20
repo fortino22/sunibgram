@@ -13,7 +13,7 @@ import (
 const (
 	megabyte = 1024 * 1024
 
-	MaxAvatarUploadSize    int64 = 2 * megabyte
+	MaxAvatarUploadSize    int64 = 5 * megabyte
 	MaxBannerUploadSize    int64 = 5 * megabyte
 	MaxPostUploadSize      int64 = 5 * megabyte
 	MaxChatMediaUploadSize int64 = 20 * megabyte
