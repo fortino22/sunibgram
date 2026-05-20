@@ -95,27 +95,30 @@ type FeedCommunity struct {
 }
 
 type FeedItemResponse struct {
-	Type          string                `json:"type"`
-	ParentContext *FeedParentContext    `json:"parent_context,omitempty"`
-	ID            uint                  `json:"id"`
-	ParentID      *uint                 `json:"parent_id,omitempty"`
-	RootID        *uint                 `json:"root_id,omitempty"`
-	EventID       *string               `json:"event_id,omitempty"`
-	EventName     *string               `json:"event_name,omitempty"`
-	Community     *FeedCommunity        `json:"community,omitempty"`
-	Content       string                `json:"content"`
-	CreatedAt     utils.FormattedTime   `json:"created_at"`
-	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
-	TimeAgo       string                `json:"time_ago"`
-	ActionAt      *utils.FormattedTime  `json:"action_at,omitempty"`
-	RepostedAt    *utils.FormattedTime  `json:"reposted_at,omitempty"`
-	Author        FeedAuthor            `json:"author"`
-	Stats         FeedStats             `json:"stats"`
-	Media         []ThreadMediaResponse `json:"media"`
-	IsLiked       *bool                 `json:"is_liked,omitempty"`
-	IsBookmarked  *bool                 `json:"is_bookmarked,omitempty"`
-	IsReposted    *bool                 `json:"is_reposted,omitempty"`
-	IsPinned      *bool                 `json:"is_pin,omitempty"`
+	Type               string                `json:"type"`
+	ParentContext      *FeedParentContext    `json:"parent_context,omitempty"`
+	ID                 uint                  `json:"id"`
+	ParentID           *uint                 `json:"parent_id,omitempty"`
+	RootID             *uint                 `json:"root_id,omitempty"`
+	EventID            *string               `json:"event_id,omitempty"`
+	EventName          *string               `json:"event_name,omitempty"`
+	Community          *FeedCommunity        `json:"community,omitempty"`
+	Content            string                `json:"content"`
+	CreatedAt          utils.FormattedTime   `json:"created_at"`
+	UpdatedAt          utils.FormattedTime   `json:"updated_at"`
+	TimeAgo            string                `json:"time_ago"`
+	ActionAt           *utils.FormattedTime  `json:"action_at,omitempty"`
+	RepostedAt         *utils.FormattedTime  `json:"reposted_at,omitempty"`
+	RepostedByID       *uint                 `json:"reposted_by_id,omitempty"`
+	RepostedByUsername string                `json:"reposted_by_username"`
+	RepostedByName     string                `json:"reposted_by_name"`
+	Author             FeedAuthor            `json:"author"`
+	Stats              FeedStats             `json:"stats"`
+	Media              []ThreadMediaResponse `json:"media"`
+	IsLiked            *bool                 `json:"is_liked,omitempty"`
+	IsBookmarked       *bool                 `json:"is_bookmarked,omitempty"`
+	IsReposted         *bool                 `json:"is_reposted,omitempty"`
+	IsPinned           *bool                 `json:"is_pin,omitempty"`
 }
 
 type FeedMeta struct {

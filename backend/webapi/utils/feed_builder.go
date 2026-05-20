@@ -19,21 +19,21 @@ type avatarCacheProvider interface {
 }
 
 type FeedBuilder struct {
-	Media       service.IThreadMediaService
-	LikeSvc     service.ILikeService
-	BookmarkSvc service.IBookmarkService
-	ThreadSvc   service.IThreadService
-	PinSvc      service.IThreadPinService
-	ProfileSvc  service.IUserProfileService
-	ViewerID    *uint
+	Media          service.IThreadMediaService
+	LikeSvc        service.ILikeService
+	BookmarkSvc    service.IBookmarkService
+	ThreadSvc      service.IThreadService
+	PinSvc         service.IThreadPinService
+	ProfileSvc     service.IUserProfileService
+	ViewerID       *uint
 	avatarCache    map[uint]string
 	isPremiumCache map[uint]bool
 	facultyCache   map[uint]*dto.FeedAuthorFaculty
-	flagsLoaded bool
-	liked       map[uint]bool
-	bookmarked  map[uint]bool
-	reposted    map[uint]bool
-	pinned      map[uint]bool
+	flagsLoaded    bool
+	liked          map[uint]bool
+	bookmarked     map[uint]bool
+	reposted       map[uint]bool
+	pinned         map[uint]bool
 }
 
 func avatarCacheKey(userID uint) string {
@@ -306,25 +306,28 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(orig.ThreadID)
 		eventID, eventName := EventFields(orig)
 		return dto.FeedItemResponse{
-			Type:         string(model.ThreadTypeRepost),
-			ID:           orig.ThreadID,
-			ParentID:     orig.ParentID,
-			RootID:       orig.RootID,
-			EventID:      eventID,
-			EventName:    eventName,
-			Community:    CommunityField(orig),
-			Content:      orig.Content,
-			CreatedAt:    dtoutils.Wrap(orig.CreatedAt),
-			UpdatedAt:    dtoutils.Wrap(orig.UpdatedAt),
-			TimeAgo:      TimeAgo(orig.CreatedAt),
-			RepostedAt:   &repostedAt,
-			Author:       fb.AuthorField(orig.User),
-			Stats:        dto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount, Comments: orig.CommentCount},
-			Media:        fb.ToMediaResponses(media),
-			IsLiked:      isLiked,
-			IsBookmarked: isBookmarked,
-			IsReposted:   isReposted,
-			IsPinned:     isPinned,
+			Type:               string(model.ThreadTypeRepost),
+			ID:                 t.ThreadID,
+			ParentID:           orig.ParentID,
+			RootID:             orig.RootID,
+			EventID:            eventID,
+			EventName:          eventName,
+			Community:          CommunityField(orig),
+			Content:            orig.Content,
+			CreatedAt:          dtoutils.Wrap(orig.CreatedAt),
+			UpdatedAt:          dtoutils.Wrap(orig.UpdatedAt),
+			TimeAgo:            TimeAgo(orig.CreatedAt),
+			RepostedAt:         &repostedAt,
+			RepostedByID:       &t.UserID,
+			RepostedByUsername: t.User.UserName,
+			RepostedByName:     t.User.Name,
+			Author:             fb.AuthorField(orig.User),
+			Stats:              dto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount, Comments: orig.CommentCount},
+			Media:              fb.ToMediaResponses(media),
+			IsLiked:            isLiked,
+			IsBookmarked:       isBookmarked,
+			IsReposted:         isReposted,
+			IsPinned:           isPinned,
 		}
 	}
 	isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(t.ThreadID)

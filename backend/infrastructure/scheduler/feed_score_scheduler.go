@@ -71,6 +71,11 @@ func (s *FeedScoreScheduler) run() {
 		log.Printf("global trending feed cache set failed: %v", err)
 		return
 	}
+
+	if err := s.cache.DeleteByPattern(context.Background(), "feed:foryou:*"); err != nil {
+		log.Printf("feed cache invalidation failed: %v", err)
+	}
+
 	log.Println("feed scores recomputed")
 }
 

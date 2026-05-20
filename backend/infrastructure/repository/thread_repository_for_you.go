@@ -11,8 +11,7 @@ import (
 )
 
 const forYouFeedTTL = 120 * time.Second
-const popularReplyInteractionThreshold = 1
-const popularReplyInteractionSQL = "(threads.like_count + threads.repost_count + threads.bookmark_count + threads.comment_count)"
+const mainFeedReplyInteractionSQL = "(threads.like_count + threads.repost_count + threads.comment_count)"
 
 type cachedForYouFeed struct {
 	Threads []model.Thread
@@ -38,12 +37,8 @@ func forYouFeedTypes(includeReposts bool) []string {
 	}
 }
 
-func applyPopularReplyFilter(db *gorm.DB) *gorm.DB {
-	return db.Where(
-		"threads.type <> ? OR (threads.parent_id IS NOT NULL AND "+popularReplyInteractionSQL+" >= ?)",
-		model.ThreadTypeReply,
-		popularReplyInteractionThreshold,
-	)
+func applyMainFeedReplyInteractionFilter(db *gorm.DB) *gorm.DB {
+	return db.Where("threads.parent_id IS NULL OR " + mainFeedReplyInteractionSQL + " > 0")
 }
 
 func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
@@ -143,6 +138,7 @@ func (r *threadCached) findForYouOwn(userID uint) ([]model.Thread, error) {
 		Where("threads.user_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
 		Where("threads.type IN ?", forYouFeedTypes(true))
+	query = applyMainFeedReplyInteractionFilter(query)
 	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).
@@ -160,6 +156,7 @@ func (r *threadCached) findForYouFollowing(userID uint) ([]model.Thread, error) 
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
 		Where("threads.type IN ?", forYouFeedTypes(true)).
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", model.CommunityVisibilityPublic, userID)
+	query = applyMainFeedReplyInteractionFilter(query)
 	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).
@@ -174,6 +171,7 @@ func (r *threadCached) findForYouCommunity(userID uint) ([]model.Thread, error) 
 		Where("community_members.user_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
 		Where("threads.type IN ?", forYouFeedTypes(true))
+	query = applyMainFeedReplyInteractionFilter(query)
 	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).
@@ -193,6 +191,7 @@ func (r *threadCached) findForYouGlobal(ctx context.Context) ([]model.Thread, er
 		Where("threads.type IN ?", forYouFeedTypes(false)).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false)
+	query = applyMainFeedReplyInteractionFilter(query)
 	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).

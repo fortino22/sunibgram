@@ -38,6 +38,7 @@ func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]model.Th
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.type IN ?", rootTypes).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+		countQuery = applyMainFeedReplyInteractionFilter(countQuery)
 		if err := countQuery.Count(&total).Error; err != nil {
 			return nil, 0, err
 		}
@@ -46,6 +47,7 @@ func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]model.Th
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.type IN ?", rootTypes).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+		query = applyMainFeedReplyInteractionFilter(query)
 		if err := query.
 			Order("threads.created_at DESC").
 			Offset(offset).Limit(limit).

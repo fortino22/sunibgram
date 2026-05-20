@@ -340,7 +340,7 @@ func threadUserIDs(threads []model.Thread) []uint {
 	ids := make([]uint, 0, len(threads))
 	for _, t := range threads {
 		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
-			ids = append(ids, t.OriginalThread.User.UserID)
+			ids = append(ids, t.OriginalThread.User.UserID, t.UserID)
 		} else {
 			ids = append(ids, t.User.UserID)
 		}
