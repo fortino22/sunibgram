@@ -56,8 +56,10 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 			if !community.IsWritable() {
 				return nil, errors.New("community is inactive")
 			}
-			if _, err := s.memberRepo.FindMember(*parent.CommunityID, userID); err != nil {
-				return nil, errors.New("you must be a member of the community to reply")
+			if community.Visibility == model.CommunityVisibilityPrivate {
+				if _, err := s.memberRepo.FindMember(*parent.CommunityID, userID); err != nil {
+					return nil, errors.New("you must be a member of the community to reply")
+				}
 			}
 			communityID = parent.CommunityID
 		}
@@ -227,8 +229,14 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 		return err
 	}
 	if original.CommunityID != nil {
-		if _, err := s.memberRepo.FindMember(*original.CommunityID, userID); err != nil {
-			return errors.New("you must be a member of the community to repost this thread")
+		community, err := s.communityRepo.FindByID(*original.CommunityID)
+		if err != nil {
+			return errors.New("community not found")
+		}
+		if community.Visibility == model.CommunityVisibilityPrivate {
+			if _, err := s.memberRepo.FindMember(*original.CommunityID, userID); err != nil {
+				return errors.New("you must be a member of the community to repost this thread")
+			}
 		}
 	}
 	exists, err := s.threadRepo.ExistsRepost(userID, threadID)

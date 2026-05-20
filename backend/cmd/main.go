@@ -35,6 +35,9 @@ func main() {
 
 	// --- Cache ---
 	redisCache := cache.New()
+	if err := redisCache.DeleteByPattern(context.Background(), "community:members:*"); err != nil {
+		log.Printf("community members cache startup flush error: %v", err)
+	}
 	middleware.Init(redisCache)
 	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 
@@ -93,10 +96,10 @@ func main() {
 	summaryService := usecase.NewThreadSummaryService(threadRepo, cacheRepo, ollamaClient)
 	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService, summaryService)
 	eventService := usecase.NewEventService(eventRepo, eventReviewRepo, storageUsecase, userSettingsRepo, followRepo)
-	exploreService := usecase.NewExploreService(exploreRepo, userSettingsRepo, followRepo)
+	exploreService := usecase.NewExploreService(exploreRepo, threadRepo, userSettingsRepo, followRepo)
 	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
-	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
-	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
 	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
 	categoryService := usecase.NewCategoryService(categoryRepo)
 	violationService := usecase.NewViolationService(violationRepo)

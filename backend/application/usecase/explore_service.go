@@ -15,12 +15,13 @@ const defaultExploreLimit = 20
 
 type ExploreService struct {
 	exploreRepo  repository.IExploreRepository
+	threadRepo   repository.IThreadRepository
 	settingsRepo repository.IUserSettingsRepository
 	followRepo   repository.IFollowRepository
 }
 
-func NewExploreService(exploreRepo repository.IExploreRepository, settingsRepo repository.IUserSettingsRepository, followRepo repository.IFollowRepository) service.IExploreService {
-	return &ExploreService{exploreRepo: exploreRepo, settingsRepo: settingsRepo, followRepo: followRepo}
+func NewExploreService(exploreRepo repository.IExploreRepository, threadRepo repository.IThreadRepository, settingsRepo repository.IUserSettingsRepository, followRepo repository.IFollowRepository) service.IExploreService {
+	return &ExploreService{exploreRepo: exploreRepo, threadRepo: threadRepo, settingsRepo: settingsRepo, followRepo: followRepo}
 }
 
 func (s *ExploreService) ExploreSearch(ctx context.Context, query string, requesterID *uint) (*model.ExploreResult, error) {
@@ -67,28 +68,36 @@ func (s *ExploreService) filterPublicThreads(ctx context.Context, threads []mode
 	return filtered, nil
 }
 
-func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, int64, error) {
+func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, []*model.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	threads, total, err := s.exploreRepo.FindTopPosts(ctx, query, requesterID, defaultExploreLimit)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
-	return threads, total, nil
+	threads, parents, err := s.threadRepo.AttachReplyParents(threads, &requesterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return threads, parents, total, nil
 }
 
-func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, int64, error) {
+func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, []*model.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	threads, total, err := s.exploreRepo.FindLatestPosts(ctx, query, requesterID, defaultExploreLimit)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
-	return threads, total, nil
+	threads, parents, err := s.threadRepo.AttachReplyParents(threads, &requesterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return threads, parents, total, nil
 }
 
 func (s *ExploreService) GetPeople(ctx context.Context, query string, requesterID uint) ([]model.ExploreUserResult, error) {

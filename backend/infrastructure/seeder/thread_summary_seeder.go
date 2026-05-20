@@ -165,4 +165,19 @@ func SeedThreadWithReplies(db *gorm.DB) {
 		"[summary-seed-id]",
 		sampleRepliesID,
 	)
+
+	if err := db.Exec(`
+		UPDATE threads
+		SET feed_score = (
+			like_count::float +
+			3.0 * comment_count::float +
+			5.0 * repost_count::float +
+			4.0 * bookmark_count::float
+		) / (
+			1.0 + POWER(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0, 1.5)
+		)
+		WHERE created_at > NOW() - INTERVAL '7 days'
+	`).Error; err != nil {
+		log.Printf("thread summary seeder: feed score recalc failed: %v", err)
+	}
 }

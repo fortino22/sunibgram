@@ -32,6 +32,6 @@ type IThreadService interface {
 	GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, int64, error)
 	GetCommunityThreadMedia(communityID, userID uint) ([]model.CommunityThreadMedia, error)
 	GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
-	GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error)
+	GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	GetFacultyThreads(facultyID uint, page, limit int) ([]model.Thread, int64, error)
 }

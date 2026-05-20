@@ -22,7 +22,7 @@ func NewFeedScoreScheduler(db *gorm.DB, c *cache.Cache) *FeedScoreScheduler {
 func (s *FeedScoreScheduler) Start() {
 	go func() {
 		s.run()
-		ticker := time.NewTicker(5 * time.Minute)
+		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
 		for range ticker.C {
 			s.run()
@@ -60,6 +60,7 @@ func (s *FeedScoreScheduler) run() {
 		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false).
+		Where("threads.parent_id IS NULL OR (threads.like_count + threads.repost_count + threads.comment_count) > 0").
 		Order("threads.feed_score DESC").
 		Limit(100).
 		Find(&threads).Error; err != nil {
@@ -71,6 +72,11 @@ func (s *FeedScoreScheduler) run() {
 		log.Printf("global trending feed cache set failed: %v", err)
 		return
 	}
+
+	if err := s.cache.DeleteByPattern(context.Background(), "feed:foryou:*"); err != nil {
+		log.Printf("feed cache invalidation failed: %v", err)
+	}
+
 	log.Println("feed scores recomputed")
 }
 

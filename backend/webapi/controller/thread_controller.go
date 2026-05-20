@@ -72,13 +72,13 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 
 	page, limit := ParsePagination(ctx)
 
-	threads, total, err := c.threadService.GetForYouFeed(ctx.Context(), claims.UserID, page, limit)
+	threads, parents, total, err := c.threadService.GetForYouFeed(ctx.Context(), claims.UserID, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildFeedItemsNoPin(threads, &claims.UserID),
+		Data: c.buildUserFeedItemsNoPin(threads, parents, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -340,7 +340,7 @@ func threadUserIDs(threads []model.Thread) []uint {
 	ids := make([]uint, 0, len(threads))
 	for _, t := range threads {
 		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
-			ids = append(ids, t.OriginalThread.User.UserID)
+			ids = append(ids, t.OriginalThread.User.UserID, t.UserID)
 		} else {
 			ids = append(ids, t.User.UserID)
 		}
