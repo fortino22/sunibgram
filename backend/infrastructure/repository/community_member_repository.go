@@ -134,6 +134,11 @@ func (r *communityMemberRepository) invalidateCommunityMemberChange(communityID,
 	_ = r.cache.Delete(ctx, communityIDKey(communityID))
 }
 
+// Flush community:members:* manually after a backend deploy that changes what
+// FindByCommunityID preloads or serializes. Use:
+// redis-cli --scan --pattern "community:members:*" | xargs redis-cli del
+// or, from the app cache layer:
+// cache.DeleteByPattern(ctx, "community:members:*")
 func (r *communityMemberRepository) invalidateCommunityMemberRole(communityID uint) {
 	if r.cache == nil {
 		return

@@ -35,6 +35,9 @@ func main() {
 
 	// --- Cache ---
 	redisCache := cache.New()
+	if err := redisCache.DeleteByPattern(context.Background(), "community:members:*"); err != nil {
+		log.Printf("community members cache startup flush error: %v", err)
+	}
 	middleware.Init(redisCache)
 	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 

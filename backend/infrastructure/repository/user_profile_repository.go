@@ -43,8 +43,13 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 			return err
 		}
 		r.invalidateUser(profile.UserID)
-		invalidateNotificationSenderCache(context.Background(), r.cache, profile.UserID)
-		invalidateExploreCache(context.Background(), r.cache)
+		ctx := context.Background()
+		invalidateNotificationSenderCache(ctx, r.cache, profile.UserID)
+		invalidateExploreCache(ctx, r.cache)
+		if r.cache != nil {
+			_ = r.cache.DeleteByPattern(ctx, "community:members:*")
+			_ = r.cache.DeleteByPattern(ctx, "community:id:*")
+		}
 		return nil
 	}
 	if err := r.writeDB.Clauses(clause.OnConflict{
@@ -54,8 +59,13 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 		return err
 	}
 	r.invalidateUser(profile.UserID)
-	invalidateNotificationSenderCache(context.Background(), r.cache, profile.UserID)
-	invalidateExploreCache(context.Background(), r.cache)
+	ctx := context.Background()
+	invalidateNotificationSenderCache(ctx, r.cache, profile.UserID)
+	invalidateExploreCache(ctx, r.cache)
+	if r.cache != nil {
+		_ = r.cache.DeleteByPattern(ctx, "community:members:*")
+		_ = r.cache.DeleteByPattern(ctx, "community:id:*")
+	}
 	return nil
 }
 
