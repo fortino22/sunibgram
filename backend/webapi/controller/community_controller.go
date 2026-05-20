@@ -146,7 +146,7 @@ func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
 
 	communities, err := c.communityService.Discover(ctx.Context(), categoryID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})

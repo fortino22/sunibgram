@@ -234,6 +234,12 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 }
 
 func (s *CommunityService) Discover(ctx context.Context, categoryID *uuid.UUID) ([]model.DiscoverCommunity, error) {
+	if categoryID != nil && *categoryID != uuid.Nil {
+		if _, err := s.categoryRepo.FindByID(*categoryID); err != nil {
+			return nil, errors.New("categoryId doesn't exist")
+		}
+	}
+
 	var cached []model.DiscoverCommunity
 	if s.cacheRepo != nil {
 		if err := s.cacheRepo.Get(ctx, discoverCommunitiesCacheKey, &cached); err == nil {

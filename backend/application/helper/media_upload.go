@@ -13,6 +13,9 @@ type StorageUploader interface {
 }
 
 func UploadImage(ctx context.Context, storage StorageUploader, header *multipart.FileHeader, uploadType string) (string, string, error) {
+	if err := model.ValidateUploadSize(header, model.MaxImageUploadSize(uploadType)); err != nil {
+		return "", "", err
+	}
 	if err := model.ValidateImageExt(header.Filename); err != nil {
 		return "", "", err
 	}
@@ -25,6 +28,9 @@ func UploadImage(ctx context.Context, storage StorageUploader, header *multipart
 		return "", "", err
 	}
 	defer f.Close()
+	if err := model.ValidateImageFile(f); err != nil {
+		return "", "", err
+	}
 	objName, err := storage.Upload(ctx, bucket, f, header)
 	if err != nil {
 		return "", "", err

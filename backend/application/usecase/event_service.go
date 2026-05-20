@@ -381,10 +381,10 @@ func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHe
 }
 
 func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
-	if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+	if err := model.ValidateUploadSize(header, model.MaxDocumentUploadSize); err != nil {
 		return "", "", err
 	}
-	if err := model.ValidateEventAttachmentContentType(header.Header.Get("Content-Type")); err != nil {
+	if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
 		return "", "", err
 	}
 	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
@@ -396,6 +396,9 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 		return "", "", err
 	}
 	defer f.Close()
+	if err := model.ValidateEventAttachmentFile(f); err != nil {
+		return "", "", err
+	}
 	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
 	if err != nil {
 		return "", "", err
@@ -442,10 +445,10 @@ func validateEventPDFHeaders(headers []*multipart.FileHeader) error {
 		return err
 	}
 	for _, header := range headers {
-		if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+		if err := model.ValidateUploadSize(header, model.MaxDocumentUploadSize); err != nil {
 			return err
 		}
-		if err := model.ValidateEventAttachmentContentType(header.Header.Get("Content-Type")); err != nil {
+		if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
 			return err
 		}
 	}

@@ -385,10 +385,10 @@ func validateEventPDFHeaders(files []*multipart.FileHeader) error {
 		return err
 	}
 	for _, file := range files {
-		if err := model.ValidateEventAttachmentExt(file.Filename); err != nil {
+		if err := model.ValidateUploadSize(file, model.MaxDocumentUploadSize); err != nil {
 			return err
 		}
-		if err := model.ValidateEventAttachmentContentType(file.Header.Get("Content-Type")); err != nil {
+		if err := model.ValidateEventAttachmentExt(file.Filename); err != nil {
 			return err
 		}
 	}

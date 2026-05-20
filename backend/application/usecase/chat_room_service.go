@@ -144,16 +144,7 @@ func (s *ChatRoomService) UpdateGroup(ctx context.Context, roomID, requesterID u
 
 	var avatarURL *string
 	if avatarFile != nil && s.storageUsecase != nil {
-		bucket, err := s.storageUsecase.ResolveBucket("group_avatar")
-		if err != nil {
-			return fmt.Errorf("avatar upload failed: %w", err)
-		}
-		f, err := avatarFile.Open()
-		if err != nil {
-			return fmt.Errorf("avatar open failed: %w", err)
-		}
-		defer f.Close()
-		objName, err := s.storageUsecase.Upload(ctx, bucket, f, avatarFile)
+		objName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, avatarFile, "group_avatar")
 		if err != nil {
 			return fmt.Errorf("avatar upload failed: %w", err)
 		}

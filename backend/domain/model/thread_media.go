@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,12 +17,34 @@ var allowedThreadMediaExts = map[string]bool{
 	".mp4": true, ".mov": true, ".avi": true,
 }
 
+var allowedThreadMediaContentTypes = map[string]bool{
+	"image/jpeg":      true,
+	"image/png":       true,
+	"image/webp":      true,
+	"image/gif":       true,
+	"video/avi":       true,
+	"video/mp4":       true,
+	"video/quicktime": true,
+	"video/x-msvideo": true,
+}
+
 func ValidateThreadMediaExt(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if !allowedThreadMediaExts[ext] {
 		return errors.New("unsupported file type: " + filename)
 	}
 	return nil
+}
+
+func ValidateThreadMediaFile(file multipart.File) (string, error) {
+	contentType, err := DetectMultipartContentType(file)
+	if err != nil {
+		return "", err
+	}
+	if !allowedThreadMediaContentTypes[contentType] {
+		return "", fmt.Errorf("media content type %s is not allowed", contentType)
+	}
+	return contentType, nil
 }
 
 func ValidateThreadMediaCount(count int) error {

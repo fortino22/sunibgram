@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"strings"
 
+	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
@@ -56,11 +58,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	}
 
 	if input.Avatar != nil {
-		if err := model.ValidateImageExt(input.Avatar.Filename); err != nil {
-			return err
-		}
-		bucket, err := s.storageUsecase.ResolveBucket("avatar")
-		if err != nil {
+		if err := validateProfileImage(input.Avatar, "avatar"); err != nil {
 			return err
 		}
 		if existing.AvatarObjectName != "" && existing.AvatarBucket != "" {
@@ -68,12 +66,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 				return fmt.Errorf("failed to delete old avatar: %w", err)
 			}
 		}
-		f, err := input.Avatar.Open()
-		if err != nil {
-			return err
-		}
-		objectName, err := s.storageUsecase.Upload(ctx, bucket, f, input.Avatar)
-		f.Close()
+		objectName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, input.Avatar, "avatar")
 		if err != nil {
 			return err
 		}
@@ -82,11 +75,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	}
 
 	if input.Banner != nil {
-		if err := model.ValidateImageExt(input.Banner.Filename); err != nil {
-			return err
-		}
-		bucket, err := s.storageUsecase.ResolveBucket("banner")
-		if err != nil {
+		if err := validateProfileImage(input.Banner, "banner"); err != nil {
 			return err
 		}
 		if existing.BannerObjectName != "" && existing.BannerBucket != "" {
@@ -94,12 +83,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 				return fmt.Errorf("failed to delete old banner: %w", err)
 			}
 		}
-		f, err := input.Banner.Open()
-		if err != nil {
-			return err
-		}
-		objectName, err := s.storageUsecase.Upload(ctx, bucket, f, input.Banner)
-		f.Close()
+		objectName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, input.Banner, "banner")
 		if err != nil {
 			return err
 		}
@@ -219,6 +203,21 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		return s.UpsertProfile(ctx, userID, mediaInput)
 	}
 	return nil
+}
+
+func validateProfileImage(header *multipart.FileHeader, uploadType string) error {
+	if err := model.ValidateUploadSize(header, model.MaxImageUploadSize(uploadType)); err != nil {
+		return err
+	}
+	if err := model.ValidateImageExt(header.Filename); err != nil {
+		return err
+	}
+	f, err := header.Open()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return model.ValidateImageFile(f)
 }
 
 func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, userID uint) {

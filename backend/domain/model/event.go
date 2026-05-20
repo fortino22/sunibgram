@@ -4,6 +4,8 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"mime/multipart"
 	"path/filepath"
 	"strings"
 	"time"
@@ -107,6 +109,17 @@ func ValidateEventAttachmentExt(filename string) error {
 func ValidateEventAttachmentContentType(contentType string) error {
 	if strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0])) != "application/pdf" {
 		return errors.New("attachment must be an application/pdf file")
+	}
+	return nil
+}
+
+func ValidateEventAttachmentFile(file multipart.File) error {
+	contentType, err := DetectMultipartContentType(file)
+	if err != nil {
+		return err
+	}
+	if contentType != "application/pdf" {
+		return fmt.Errorf("attachment content type %s is not allowed", contentType)
 	}
 	return nil
 }
