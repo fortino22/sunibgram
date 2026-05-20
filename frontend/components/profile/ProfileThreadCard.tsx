@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Users } from 'lucide-react';
+import { Users, Repeat2 } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
@@ -56,10 +56,26 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
         cursor: 'pointer',
       }}
     >
+      {thread.reposted_by_username && (
+        <div
+          style={{
+            padding: '8px 20px 0 52px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <Repeat2 size={13} strokeWidth={2.5} color="var(--text-tertiary)" />
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+            {thread.reposted_by_name || thread.reposted_by_username} reposting
+          </span>
+        </div>
+      )}
+
       {thread.community && (
         <div
           style={{
-            padding: '10px 20px 0 55px',
+            padding: `${thread.reposted_by_username ? '4px' : '10px'} 20px 0 55px`,
             display: 'flex',
             alignItems: 'center',
             gap: 5,
@@ -100,7 +116,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
         </div>
       )}
 
-      <div style={{ padding: thread.community ? '2px 20px 14px' : '14px 20px', display: 'flex', gap: 12 }}>
+      <div style={{ padding: (thread.reposted_by_username || thread.community) ? '2px 20px 14px' : '14px 20px', display: 'flex', gap: 12 }}>
         <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
 
         <div style={{ flex: 1, minWidth: 0 }}>

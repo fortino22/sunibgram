@@ -150,7 +150,7 @@ export default function CommunityDetailPage() {
           zIndex: 10,
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border)',
-          padding: '12px 20px',
+          padding: '20px 20px',
           display: 'flex',
           alignItems: 'center',
           gap: 16,
@@ -187,7 +187,6 @@ export default function CommunityDetailPage() {
         style={{
           display: 'flex',
           borderBottom: '1px solid var(--border)',
-          overflowX: 'auto',
         }}
       >
         {threadTabs.map((tab) => (
@@ -195,7 +194,8 @@ export default function CommunityDetailPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             style={{
-              padding: '12px 16px',
+              flex: 1,
+              padding: '12px 0',
               background: 'none',
               border: 'none',
               borderBottom: activeTab === tab.id ? '2px solid var(--text)' : '2px solid transparent',
@@ -204,6 +204,7 @@ export default function CommunityDetailPage() {
               fontWeight: activeTab === tab.id ? 700 : 400,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              textAlign: 'center',
             }}
           >
             {tab.label}

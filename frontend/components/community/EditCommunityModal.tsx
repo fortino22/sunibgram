@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useCategories } from '@/hooks/useCommunities';
 import { useUpdateCommunity } from '@/hooks/useCommunityMutations';
+import { ImageCropModal } from '@/components/profile/ImageCropModal';
 import type { CommunityData, CommunityVisibility } from '@/lib/services/communities';
+
+type PendingCrop = { src: string; filename: string };
 
 interface EditCommunityModalProps {
   community: CommunityData;
@@ -14,6 +17,10 @@ interface EditCommunityModalProps {
 export function EditCommunityModal({ community, onClose, onSuccess }: EditCommunityModalProps) {
   const { data: categoriesData } = useCategories();
   const categories = categoriesData?.data ?? [];
+  const categoryId = useMemo(
+    () => categories.find((c) => c.name === community.category_name)?.id,
+    [categories, community.category_name]
+  );
   const { mutateAsync, isPending, error } = useUpdateCommunity(community.community_id);
 
   const [name, setName] = useState(community.name);
@@ -22,16 +29,19 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
   const [visibility, setVisibility] = useState<CommunityVisibility>(community.visibility);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(community.banner_url || null);
+  const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
 
-  function handleImageChange(
-    file: File | null,
-    setFile: (f: File | null) => void,
-    setPreview: (s: string | null) => void
-  ) {
+  function handleBannerPick(file: File | null) {
     if (!file) return;
-    setFile(file);
-    setPreview(URL.createObjectURL(file));
+    setPendingCrop({ src: URL.createObjectURL(file), filename: file.name });
+    if (bannerRef.current) bannerRef.current.value = '';
+  }
+
+  function onCropComplete(file: File, preview: string) {
+    setBannerFile(file);
+    setBannerPreview(preview);
+    setPendingCrop(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,6 +54,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
         rules: rules.trim(),
         visibility,
         banner: bannerFile,
+        categoryId,
       });
       onSuccess();
     } catch {
@@ -63,6 +74,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
   };
 
   return (
+    <>
     <div
       style={{
         position: 'fixed',
@@ -123,7 +135,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
         >
           {!bannerPreview && <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Click to change banner</span>}
           <input ref={bannerRef} type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={(e) => handleImageChange(e.target.files?.[0] ?? null, setBannerFile, setBannerPreview)} />
+            onChange={(e) => handleBannerPick(e.target.files?.[0] ?? null)} />
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -154,7 +166,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
                     fontSize: 13, fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  {v === 'PUBLIC' ? '🌐 Public' : '🔒 Private'}
+                  {v === 'PUBLIC' ? 'Public' : 'Private'}
                 </button>
               ))}
             </div>
@@ -191,5 +203,16 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
         </form>
       </div>
     </div>
+
+    {pendingCrop && (
+      <ImageCropModal
+        imageSrc={pendingCrop.src}
+        filename={pendingCrop.filename}
+        aspect={3}
+        onComplete={onCropComplete}
+        onClose={() => setPendingCrop(null)}
+      />
+    )}
+    </>
   );
 }

@@ -6,7 +6,7 @@ import { Send, X, ImageIcon, Smile, Mic, Sticker, Video, Square, Check } from 'l
 import { toast } from 'sonner';
 import { useSendMessage } from '@/hooks/chat/useSendMessage';
 import { useEditMessage } from '@/hooks/chat/useEditMessage';
-import { compressImages } from '@/lib/compressImage';
+import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import { GifPicker } from '@/components/chat/GifPicker';
 import type { EmojiClickData } from 'emoji-picker-react';
 import type { ChatMessage } from '@/lib/services/chat';
@@ -171,11 +171,15 @@ export function ChatInput({
     setCompressing(true);
     try {
       const ready = await compressImages(picked);
-      const oversized = ready.filter((f) => f.size > 3.8 * 1024 * 1024);
+      const oversized = ready.filter((f) =>
+        f.type.startsWith('image/')
+          ? f.size > IMAGE_MAX_BYTES.media
+          : f.size > 3.8 * 1024 * 1024,
+      );
       if (oversized.length > 0) {
         toast.error(`${oversized.length} file(s) are still too large after compression and were removed.`);
       }
-      const accepted = ready.filter((f) => f.size <= 3.8 * 1024 * 1024);
+      const accepted = ready.filter((f) => !oversized.includes(f));
       if (accepted.length > 0) setFiles((prev) => [...prev, ...accepted]);
     } finally {
       setCompressing(false);

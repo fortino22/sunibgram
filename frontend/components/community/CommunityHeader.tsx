@@ -175,40 +175,55 @@ export function CommunityHeader({
 
       {/* Content */}
       <div style={{ padding: '14px 20px 16px' }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 8 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 6 }}>
           {community.name}
         </div>
 
-        {community.category_name && (
-          <div style={{ marginBottom: 10 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                padding: '3px 10px',
-                borderRadius: 999,
-                border: '1px solid var(--border)',
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {community.category_name}
-            </span>
-          </div>
-        )}
-
         {community.description && (
-          <p style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, margin: '0 0 14px' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' }}>
             {community.description}
           </p>
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-              {community.member_count.toLocaleString()}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Stacked member avatars */}
+            {community.top_members.length > 0 && (
+              <div style={{ display: 'flex' }}>
+                {community.top_members.slice(0, 3).map((m, i) => (
+                  <div
+                    key={m.user_id}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      background: m.avatar_url ? 'transparent' : 'var(--bg-subtle)',
+                      border: '2px solid var(--bg)',
+                      marginLeft: i === 0 ? 0 : -8,
+                      zIndex: community.top_members.length - i,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {m.avatar_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={m.avatar_url}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--text)' }}>
+                {community.member_count.toLocaleString()}
+              </span>
+              {' Members'}
             </span>
-            <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Members</span>
             {community.visibility === 'PRIVATE' && (
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· 🔒</span>
             )}
@@ -218,7 +233,6 @@ export function CommunityHeader({
                   fontSize: 12,
                   fontWeight: 600,
                   color: myRole === 'OWNER' || myRole === 'ADMIN' ? 'var(--accent)' : 'var(--text-secondary)',
-                  marginLeft: 4,
                 }}
               >
                 · {myRole.charAt(0) + myRole.slice(1).toLowerCase()}

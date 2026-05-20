@@ -26,7 +26,7 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
         overflowX: 'auto',
         borderBottom: '1px solid var(--border)',
         position: 'sticky',
-        top: 57,
+        top: 77,
         zIndex: 10,
         background: 'oklch(10.5% 0.005 260 / 0.92)',
         backdropFilter: 'blur(12px)',

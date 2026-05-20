@@ -17,8 +17,14 @@ export interface CommunityData {
   avatar_url: string;
   banner_url: string;
   member_count: number;
+  top_members: CommunityTopMemberData[];
   created_at: string;
   updated_at: string;
+}
+
+export interface CommunityTopMemberData {
+  user_id: string;
+  avatar_url: string;
 }
 
 export interface CommunityMeta {
@@ -36,6 +42,7 @@ export interface CommunityMemberData {
   community_id: number;
   user_id: number;
   username: string;
+  avatar_url: string;
   role: CommunityRole;
   joined_at: string;
 }
@@ -59,6 +66,7 @@ export interface PaginatedCommunityRequestData {
 }
 
 export interface DiscoverCommunityMemberData {
+  user_id: string;
   avatar_url: string;
 }
 
@@ -348,15 +356,23 @@ export function getCommunityThreadsTop(
   );
 }
 
-export function getCommunityThreadsMedia(
+interface CommunityMediaRaw {
+  thread_id: number;
+  media: { media_id: number; url: string }[];
+}
+
+export async function getCommunityThreadsMedia(
   id: number | string,
   token: string,
   params?: { page?: number; limit?: number }
-): Promise<ThreadListResponse> {
-  return api.get<ThreadListResponse>(
+): Promise<{ data: { id: number; media: { url: string }[] }[] }> {
+  const raw = await api.get<{ data: CommunityMediaRaw[] }>(
     `/api/communities/${id}/threads/media${paginationQuery(params)}`,
     token
   );
+  return {
+    data: raw.data.map((item) => ({ id: item.thread_id, media: item.media })),
+  };
 }
 
 export function createCommunityThread(

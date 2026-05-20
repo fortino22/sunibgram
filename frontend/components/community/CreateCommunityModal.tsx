@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { useCategories } from '@/hooks/useCommunities';
 import { useCreateCommunity } from '@/hooks/useCommunityMutations';
+import { compressImage, IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import type { CommunityVisibility } from '@/lib/services/communities';
 
 interface CreateCommunityModalProps {
@@ -25,15 +26,22 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
 
-  function handleImageChange(
+  async function handleImageChange(
     file: File | null,
     setFile: (f: File | null) => void,
     setPreview: (s: string | null) => void
   ) {
     if (!file) return;
-    setFile(file);
-    const url = URL.createObjectURL(file);
-    setPreview(url);
+    const compressed = await compressImage(file, {
+      maxDimension: 1200,
+      maxSizeBytes: IMAGE_MAX_BYTES.banner,
+    });
+    if (compressed.size > IMAGE_MAX_BYTES.banner) {
+      toast.error('Image is too large even after compression. Try a smaller image.');
+      return;
+    }
+    setFile(compressed);
+    setPreview(URL.createObjectURL(compressed));
   }
 
   async function handleSubmit(e: React.FormEvent) {

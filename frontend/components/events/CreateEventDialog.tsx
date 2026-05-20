@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useCreateEvent } from '@/hooks/useCreateEvent';
+import { toast } from 'sonner';
+import { IMAGE_MAX_BYTES } from '@/lib/compressImage';
 
 const schema = z
   .object({
@@ -97,6 +99,11 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
   function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > IMAGE_MAX_BYTES.raw) {
+      toast.error('Banner image exceeds the 5 MB limit. Please use a smaller image.');
+      e.target.value = '';
+      return;
+    }
     if (bannerPreview) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(URL.createObjectURL(file));
     form.setValue('banner', file, { shouldValidate: true });

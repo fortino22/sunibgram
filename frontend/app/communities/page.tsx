@@ -102,7 +102,7 @@ export default function CommunitiesPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '14px 20px 0',
+            padding: '20px 20px 0',
           }}
         >
           <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)', letterSpacing: '-0.02em' }}>

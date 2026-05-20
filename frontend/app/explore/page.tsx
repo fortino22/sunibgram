@@ -244,7 +244,7 @@ function ExploreInner() {
           borderBottom: hasQuery ? 'none' : '1px solid var(--border)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 16px' }}>
           <SearchBar value={inputValue} onChange={setInputValue} />
         </div>
         {hasQuery && <TabBar active={activeTab} onChange={setActiveTab} />}

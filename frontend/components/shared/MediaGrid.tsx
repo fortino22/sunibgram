@@ -1,7 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { ThreadItem } from '@/lib/services/threads';
+
+export interface MediaThreadItem {
+  id: number;
+  media: { url: string }[];
+}
 
 function isVideo(url: string): boolean {
   const ext = url.toLowerCase().split('?')[0];
@@ -34,7 +38,7 @@ function MultipleMediaIcon() {
 }
 
 interface MediaGridProps {
-  threads: ThreadItem[];
+  threads: MediaThreadItem[];
 }
 
 export function MediaGrid({ threads }: MediaGridProps) {
