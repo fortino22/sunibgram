@@ -297,10 +297,11 @@ func (r *exploreRepository) exploreThreadBase(ctx context.Context, query string,
 	pattern := likePattern(query)
 	db := r.readDB.WithContext(ctx).
 		Model(&model.Thread{}).
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+		Joins("LEFT JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
 		Where("threads.type IN ?", types).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-		Where("threads.content ILIKE ? ESCAPE '\\'", pattern)
+		Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("COALESCE(NULLIF(threads.content, ''), original.content) ILIKE ? ESCAPE '\\'", pattern)
 	return applyThreadVisibility(db, requesterID)
 }
 
