@@ -163,9 +163,11 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 	requester := &userID
 	if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requester).
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
+		Joins("LEFT JOIN threads parent_threads ON parent_threads.thread_id = threads.parent_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
 		Where("user_relationships.follower_id = ? AND threads.type IN ?", userID, types).
+		Where("threads.type <> ? OR parent_threads.user_id <> threads.user_id", model.ThreadTypeReply).
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
 			model.CommunityVisibilityPublic, userID).
 		Count(&total).Error; err != nil {
@@ -176,9 +178,11 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 	var threads []model.Thread
 	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requester).
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
+		Joins("LEFT JOIN threads parent_threads ON parent_threads.thread_id = threads.parent_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
 		Where("user_relationships.follower_id = ? AND threads.type IN ?", userID, types).
+		Where("threads.type <> ? OR parent_threads.user_id <> threads.user_id", model.ThreadTypeReply).
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
 			model.CommunityVisibilityPublic, userID).
 		Order("threads.created_at DESC").
