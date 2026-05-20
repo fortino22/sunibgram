@@ -64,6 +64,7 @@ func main() {
 	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
+	communityRuleRepo := infrarepo.NewCommunityRuleRepository(writeDB, readDB)
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB, redisCache)
 	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
@@ -107,6 +108,7 @@ func main() {
 	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, cacheRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
+	communityRuleService := usecase.NewCommunityRuleService(communityRepo, communityMemberRepo, communityRuleRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
 	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
@@ -140,6 +142,7 @@ func main() {
 	communityCtrl := controller.NewCommunityController(communityService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService, profileService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService, profileService)
+	communityRuleCtrl := controller.NewCommunityRuleController(communityRuleService)
 	communityThreadCtrl := controller.NewCommunityThreadController(
 		threadService,
 		threadMediaService,
@@ -191,6 +194,7 @@ func main() {
 		communityMemberCtrl,
 		communityRequestCtrl,
 		communityThreadCtrl,
+		communityRuleCtrl,
 		categoryCtrl,
 		violationCtrl,
 		reportCtrl,

@@ -11,8 +11,11 @@ func registerCommunityRoutes(
 	memberCtrl *controller.CommunityMemberController,
 	requestCtrl *controller.CommunityRequestController,
 	communityThreadCtrl *controller.CommunityThreadController,
+	ruleCtrl *controller.CommunityRuleController,
 	auth fiber.Handler,
 ) {
+	api.Get("/communities/:id/rules", ruleCtrl.List)
+
 	communities := api.Group("/communities", auth)
 
 	//communities
@@ -21,7 +24,7 @@ func registerCommunityRoutes(
 	communities.Get("/search", communityCtrl.SearchByName)
 	communities.Get("/me", communityCtrl.GetMyCreated)
 	communities.Get("/joined", communityCtrl.GetMyJoined)
-	
+
 	//community threads (static paths before /:id wildcard)
 	communities.Get("/me/threads", communityThreadCtrl.GetMyCommunityThreads)
 	communities.Get("/threads", communityThreadCtrl.GetAllCommunityThreads)
@@ -38,6 +41,11 @@ func registerCommunityRoutes(
 	communities.Get("/:id/members", memberCtrl.GetMembers)
 	communities.Delete("/:id/members/:userId", memberCtrl.RemoveMember)
 	communities.Patch("/:id/members/:userId/role", memberCtrl.UpdateRole)
+
+	//community rules
+	communities.Post("/:id/rules", ruleCtrl.Create)
+	communities.Put("/:id/rules/:ruleID", ruleCtrl.Update)
+	communities.Delete("/:id/rules/:ruleID", ruleCtrl.Delete)
 
 	//community join requests
 	communities.Post("/:id/requests", requestCtrl.Send)

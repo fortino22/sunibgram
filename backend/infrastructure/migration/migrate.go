@@ -33,6 +33,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.UserStat{},
 		&model.CommunityMember{},
 		&model.CommunityRequest{},
+		&model.CommunityRule{},
 		&model.Faculty{},
 		&model.UserFaculty{},
 		&model.Order{},
@@ -60,6 +61,16 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_thread_media_thread_id ON thread_media(thread_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_hashtags_name ON hashtags(name)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_thread_hashtags_hashtag_id ON thread_hashtags(hashtag_id)")
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_community_rules_community'
+			) THEN
+				ALTER TABLE community_rules ADD CONSTRAINT fk_community_rules_community FOREIGN KEY (community_id) REFERENCES communities(community_id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
 	db.Exec("ALTER TABLE communities DROP CONSTRAINT IF EXISTS fk_communities_" + "gen" + "re")
 	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS " + "gen" + "re_id")
 	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS category")
