@@ -2,6 +2,17 @@
 
 import type { CommunityData, CommunityRole } from '@/lib/services/communities';
 
+const AVATAR_COLORS = [
+  '#e57373', '#f06292', '#ba68c8', '#7986cb',
+  '#4fc3f7', '#4db6ac', '#81c784', '#ffb74d',
+];
+
+function memberColor(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 interface CommunityHeaderProps {
   community: CommunityData;
   myRole: CommunityRole | null;
@@ -188,33 +199,26 @@ export function CommunityHeader({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Stacked member avatars */}
-            {community.top_members.length > 0 && (
+            {(community.top_members ?? []).length > 0 && (
               <div style={{ display: 'flex' }}>
-                {community.top_members.slice(0, 3).map((m, i) => (
+                {(community.top_members ?? []).slice(0, 3).map((m, i) => (
                   <div
                     key={m.user_id}
                     style={{
                       width: 24,
                       height: 24,
                       borderRadius: '50%',
-                      background: m.avatar_url ? 'transparent' : 'var(--bg-subtle)',
                       border: '2px solid var(--bg)',
                       marginLeft: i === 0 ? 0 : -8,
-                      zIndex: community.top_members.length - i,
+                      zIndex: (community.top_members ?? []).length - i,
                       position: 'relative',
                       overflow: 'hidden',
                       flexShrink: 0,
+                      background: m.avatar_url
+                        ? `url(${m.avatar_url}) center/cover no-repeat`
+                        : memberColor(m.user_id),
                     }}
-                  >
-                    {m.avatar_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.avatar_url}
-                        alt=""
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                      />
-                    )}
-                  </div>
+                  />
                 ))}
               </div>
             )}

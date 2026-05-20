@@ -72,7 +72,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
         </div>
       )}
 
-      {thread.community && (
+      {thread.community && !thread.reposted_by_username && (
         <div
           style={{
             padding: `${thread.reposted_by_username ? '4px' : '10px'} 20px 0 55px`,

@@ -6,6 +6,7 @@ import {
   type ThreadItem,
   type ThreadResponse,
   getThread,
+  getThreadFeed,
   getThreadChain,
 } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
@@ -125,11 +126,29 @@ export function useThreadChain(id: number | string) {
       }
 
       const [thread, chain] = await Promise.all([
-        getThread(id, token),
+        getThreadFeed(id, token),
         getThreadChain(id, { page, limit }, token),
       ]);
-      const selectedThread = chain.data.find((item) => item.id === numericId);
-      const root = selectedThread ?? mapThreadResponseToThreadItem(thread);
+
+      const isRepost = thread.type === 'REPOST' && thread.original_thread_id != null;
+      const effectiveId = isRepost ? thread.original_thread_id! : numericId;
+
+      const selectedThread = chain.data.find((item) => item.id === effectiveId);
+
+      let root: ThreadItem;
+      if (isRepost) {
+        const base = selectedThread ?? thread;
+        root = {
+          ...base,
+          reposted_by_id: thread.reposted_by_id,
+          reposted_by_username: thread.reposted_by_username,
+          reposted_by_name: thread.reposted_by_name,
+          reposted_at: thread.reposted_at,
+        };
+      } else {
+        root = selectedThread ?? thread;
+      }
+
       const rootThreadId =
         thread.parent_id !== null && thread.parent_id !== undefined
           ? (thread.root_id ?? thread.parent_id)
@@ -137,7 +156,7 @@ export function useThreadChain(id: number | string) {
 
       return {
         root,
-        replies: chain.data.filter((item) => item.parent_id === root.id),
+        replies: chain.data.filter((item) => item.parent_id === effectiveId),
         rootThreadId: rootThreadId === root.id ? null : rootThreadId,
       };
     },

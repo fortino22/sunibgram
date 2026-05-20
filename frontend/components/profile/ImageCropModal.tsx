@@ -11,11 +11,12 @@ interface ImageCropModalProps {
   imageSrc: string;
   filename: string;
   aspect: number;
+  maxSizeBytes?: number;
   onComplete: (file: File, preview: string) => void;
   onClose: () => void;
 }
 
-export function ImageCropModal({ imageSrc, filename, aspect, onComplete, onClose }: ImageCropModalProps) {
+export function ImageCropModal({ imageSrc, filename, aspect, maxSizeBytes = IMAGE_MAX_BYTES.avatar, onComplete, onClose }: ImageCropModalProps) {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
@@ -34,9 +35,9 @@ export function ImageCropModal({ imageSrc, filename, aspect, onComplete, onClose
       const cropped = await getCroppedFile(imageSrc, croppedAreaPixels, filename);
       const compressed = await compressImage(cropped, {
         maxDimension: 1200,
-        maxSizeBytes: IMAGE_MAX_BYTES.avatar,
+        maxSizeBytes,
       });
-      if (compressed.size > IMAGE_MAX_BYTES.avatar) {
+      if (compressed.size > maxSizeBytes) {
         setSizeError('Image is still too large after compression. Try a smaller or less detailed image.');
         return;
       }

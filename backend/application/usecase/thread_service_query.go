@@ -33,6 +33,15 @@ func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint
 	if err != nil {
 		return nil, 0, errors.New("thread not found")
 	}
+
+	// For repost threads, redirect the chain to the original thread so replies are visible.
+	if anchor.Type == model.ThreadTypeRepost && anchor.OriginalThreadID != nil {
+		anchor, children, err = s.threadRepo.FindChain(*anchor.OriginalThreadID)
+		if err != nil {
+			return nil, 0, errors.New("thread not found")
+		}
+	}
+
 	if err := canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, anchor.UserID); err != nil {
 		return nil, 0, err
 	}
