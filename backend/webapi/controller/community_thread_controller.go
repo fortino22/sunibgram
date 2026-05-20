@@ -226,7 +226,7 @@ func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error
 	}
 
 	var categoryID *uuid.UUID
-	if raw := ctx.Query("categoryId"); raw != "" {
+	if raw := ctx.Query("category"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
 			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid category id"})
