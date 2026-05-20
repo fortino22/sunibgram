@@ -2,6 +2,7 @@ package controller
 
 import (
 	"mime/multipart"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -210,6 +211,7 @@ func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
 func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityResponse {
 	avatarURL := BuildMediaURL(comm.AvatarObjectName, comm.AvatarBucket, c.communityService.GetURL)
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
+	topMembers := c.toTopMemberResponses(comm.TopMembers)
 	var categoryName string
 	if comm.Category != nil {
 		categoryName = comm.Category.Name
@@ -226,6 +228,7 @@ func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityRes
 		AvatarURL:    avatarURL,
 		BannerURL:    bannerURL,
 		MemberCount:  comm.MemberCount,
+		TopMembers:   topMembers,
 		CreatedAt:    utils.Wrap(comm.CreatedAt),
 		UpdatedAt:    utils.Wrap(comm.UpdatedAt),
 	}
@@ -243,6 +246,7 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 	members := make([]dto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
 	for i := range comm.TopMembers {
 		members[i] = dto.DiscoverCommunityMemberResponse{
+			UserID: strconv.FormatUint(uint64(comm.TopMembers[i].UserID), 10),
 			AvatarURL: BuildMediaURL(
 				comm.TopMembers[i].AvatarObjectName,
 				comm.TopMembers[i].AvatarBucket,
@@ -263,6 +267,21 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 		CategoryName: categoryName,
 		TopMembers:   members,
 	}
+}
+
+func (c *CommunityController) toTopMemberResponses(members []model.DiscoverCommunityMember) []dto.CommunityTopMemberResponse {
+	out := make([]dto.CommunityTopMemberResponse, len(members))
+	for i := range members {
+		out[i] = dto.CommunityTopMemberResponse{
+			UserID: strconv.FormatUint(uint64(members[i].UserID), 10),
+			AvatarURL: BuildMediaURL(
+				members[i].AvatarObjectName,
+				members[i].AvatarBucket,
+				c.communityService.GetURL,
+			),
+		}
+	}
+	return out
 }
 
 func (c *CommunityController) toDiscoverResponses(communities []model.DiscoverCommunity) []dto.DiscoverCommunityResponse {

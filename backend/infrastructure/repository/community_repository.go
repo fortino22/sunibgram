@@ -24,7 +24,7 @@ func NewCommunityRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo
 }
 
 func communityIDKey(id uint) string {
-	return fmt.Sprintf("community:id:%d", id)
+	return fmt.Sprintf("community:id:v2:%d", id)
 }
 
 func communityCreatedKey(userID uint, page, limit int) string {
@@ -68,6 +68,11 @@ func (r *communityRepository) FindByID(id uint) (*model.Community, error) {
 	if err := r.readDB.Preload("User").Preload("Category").First(&community, id).Error; err != nil {
 		return nil, err
 	}
+	topMembers, err := r.findTopMembers([]uint{id})
+	if err != nil {
+		return nil, err
+	}
+	community.TopMembers = topMembers[id]
 	if r.cache != nil {
 		_ = r.cache.Set(ctx, key, community, cache.DefaultTTL)
 	}
@@ -147,49 +152,15 @@ func (r *communityRepository) FindDiscover() ([]model.DiscoverCommunity, error) 
 		return communities, nil
 	}
 
-	type memberRow struct {
-		CommunityID      uint
-		AvatarObjectName string
-		AvatarBucket     string
-	}
-
-	var memberRows []memberRow
-	if err := r.readDB.
-		Raw(`
-			SELECT community_id, avatar_object_name, avatar_bucket
-			FROM (
-				SELECT
-					community_members.community_id,
-					COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-					COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
-					ROW_NUMBER() OVER (
-						PARTITION BY community_members.community_id
-						ORDER BY COALESCE(user_stats.follower_count, 0) DESC,
-							community_members.joined_at ASC,
-							community_members.user_id ASC
-					) AS member_rank
-				FROM community_members
-				JOIN users ON users.user_id = community_members.user_id
-				LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id
-				LEFT JOIN user_stats ON user_stats.user_id = users.user_id
-				WHERE community_members.community_id IN ?
-			) ranked_members
-			WHERE member_rank <= 5
-			ORDER BY community_id ASC, member_rank ASC
-		`, communityIDs).
-		Scan(&memberRows).Error; err != nil {
+	topMembers, err := r.findTopMembers(communityIDs)
+	if err != nil {
 		return nil, err
 	}
 
-	for _, row := range memberRows {
-		idx, ok := byID[row.CommunityID]
-		if !ok {
-			continue
+	for communityID, members := range topMembers {
+		if idx, ok := byID[communityID]; ok {
+			communities[idx].TopMembers = members
 		}
-		communities[idx].TopMembers = append(communities[idx].TopMembers, model.DiscoverCommunityMember{
-			AvatarObjectName: row.AvatarObjectName,
-			AvatarBucket:     row.AvatarBucket,
-		})
 	}
 
 	return communities, nil
@@ -262,8 +233,29 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 		return communities, nil
 	}
 
+	topMembers, err := r.findTopMembers(communityIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	for communityID, members := range topMembers {
+		if idx, ok := byID[communityID]; ok {
+			communities[idx].TopMembers = members
+		}
+	}
+
+	return communities, nil
+}
+
+func (r *communityRepository) findTopMembers(communityIDs []uint) (map[uint][]model.DiscoverCommunityMember, error) {
+	topMembers := make(map[uint][]model.DiscoverCommunityMember, len(communityIDs))
+	if len(communityIDs) == 0 {
+		return topMembers, nil
+	}
+
 	type memberRow struct {
 		CommunityID      uint
+		UserID           uint
 		AvatarObjectName string
 		AvatarBucket     string
 	}
@@ -271,10 +263,11 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 	var memberRows []memberRow
 	if err := r.readDB.
 		Raw(`
-			SELECT community_id, avatar_object_name, avatar_bucket
+			SELECT community_id, user_id, avatar_object_name, avatar_bucket
 			FROM (
 				SELECT
 					community_members.community_id,
+					community_members.user_id,
 					COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
 					COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 					ROW_NUMBER() OVER (
@@ -297,17 +290,14 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]model.DiscoverC
 	}
 
 	for _, row := range memberRows {
-		idx, ok := byID[row.CommunityID]
-		if !ok {
-			continue
-		}
-		communities[idx].TopMembers = append(communities[idx].TopMembers, model.DiscoverCommunityMember{
+		topMembers[row.CommunityID] = append(topMembers[row.CommunityID], model.DiscoverCommunityMember{
+			UserID:           row.UserID,
 			AvatarObjectName: row.AvatarObjectName,
 			AvatarBucket:     row.AvatarBucket,
 		})
 	}
 
-	return communities, nil
+	return topMembers, nil
 }
 
 func (r *communityRepository) Update(community *model.Community) error {

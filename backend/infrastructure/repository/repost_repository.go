@@ -35,6 +35,7 @@ func (r *RepostRepository) Save(repost *model.Repost) error {
 	r.patchCount(repost.ThreadID, "repost_count", 1)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	r.base.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }

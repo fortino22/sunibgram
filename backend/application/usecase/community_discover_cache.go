@@ -23,4 +23,5 @@ func invalidateDiscoverCommunitiesCache(ctx context.Context, cacheRepo repositor
 	}
 	_ = cacheRepo.Delete(ctx, discoverCommunitiesCacheKey)
 	_ = cacheRepo.DeleteByPattern(ctx, "communities:search:*")
+	_ = cacheRepo.DeleteByPattern(ctx, "community:id:*")
 }

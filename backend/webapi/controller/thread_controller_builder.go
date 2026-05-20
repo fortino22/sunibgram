@@ -62,6 +62,9 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 	allIDs := make([]uint, 0, len(threads)*2)
 	for _, t := range threads {
 		allIDs = append(allIDs, t.ThreadID)
+		if t.OriginalThread != nil {
+			allIDs = append(allIDs, t.OriginalThread.ThreadID)
+		}
 	}
 	for _, p := range parents {
 		if p != nil {
@@ -82,7 +85,11 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
-		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
+		mediaID := t.ThreadID
+		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+			mediaID = t.OriginalThread.ThreadID
+		}
+		item := fb.ToFeedItem(&t, mediaByThread[mediaID])
 		if parents[i] != nil {
 			p := parents[i]
 			eventID, eventName := webapiutils.EventFields(p)

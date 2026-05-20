@@ -7,9 +7,12 @@ import (
 	"time"
 
 	"github.com/sunibgram/domain/model"
+	"gorm.io/gorm"
 )
 
 const forYouFeedTTL = 120 * time.Second
+const popularReplyInteractionThreshold = 1
+const popularReplyInteractionSQL = "(threads.like_count + threads.repost_count + threads.bookmark_count + threads.comment_count)"
 
 type cachedForYouFeed struct {
 	Threads []model.Thread
@@ -19,6 +22,28 @@ type cachedForYouFeed struct {
 type forYouCandidate struct {
 	thread model.Thread
 	score  float64
+}
+
+func forYouFeedTypes(includeReposts bool) []string {
+	if includeReposts {
+		return []string{
+			string(model.ThreadTypePost),
+			string(model.ThreadTypeRepost),
+			string(model.ThreadTypeReply),
+		}
+	}
+	return []string{
+		string(model.ThreadTypePost),
+		string(model.ThreadTypeReply),
+	}
+}
+
+func applyPopularReplyFilter(db *gorm.DB) *gorm.DB {
+	return db.Where(
+		"threads.type <> ? OR (threads.parent_id IS NOT NULL AND "+popularReplyInteractionSQL+" >= ?)",
+		model.ThreadTypeReply,
+		popularReplyInteractionThreshold,
+	)
 }
 
 func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
@@ -114,10 +139,11 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 
 func (r *threadCached) findForYouOwn(userID uint) ([]model.Thread, error) {
 	var threads []model.Thread
-	err := preloadThreadDetails(r.db.readDB).
+	query := preloadThreadDetails(r.db.readDB).
 		Where("threads.user_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+		Where("threads.type IN ?", forYouFeedTypes(true))
+	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).
 		Find(&threads).Error
@@ -126,14 +152,15 @@ func (r *threadCached) findForYouOwn(userID uint) ([]model.Thread, error) {
 
 func (r *threadCached) findForYouFollowing(userID uint) ([]model.Thread, error) {
 	var threads []model.Thread
-	err := preloadThreadDetails(r.db.readDB).
+	query := preloadThreadDetails(r.db.readDB).
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
 		Where("user_relationships.follower_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", model.CommunityVisibilityPublic, userID).
+		Where("threads.type IN ?", forYouFeedTypes(true)).
+		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", model.CommunityVisibilityPublic, userID)
+	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).
 		Find(&threads).Error
@@ -142,11 +169,12 @@ func (r *threadCached) findForYouFollowing(userID uint) ([]model.Thread, error) 
 
 func (r *threadCached) findForYouCommunity(userID uint) ([]model.Thread, error) {
 	var threads []model.Thread
-	err := preloadThreadDetails(r.db.readDB).
+	query := preloadThreadDetails(r.db.readDB).
 		Joins("JOIN community_members ON community_members.community_id = threads.community_id").
 		Where("community_members.user_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+		Where("threads.type IN ?", forYouFeedTypes(true))
+	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).
 		Find(&threads).Error
@@ -158,13 +186,14 @@ func (r *threadCached) findForYouGlobal(ctx context.Context) ([]model.Thread, er
 	if err := r.cache.Get(ctx, "feed:trending:global", &threads); err == nil {
 		return threads, nil
 	}
-	err := preloadThreadDetails(r.db.readDB).
+	query := preloadThreadDetails(r.db.readDB).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type = ?", string(model.ThreadTypePost)).
+		Where("threads.type IN ?", forYouFeedTypes(false)).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-		Where("COALESCE(user_settings.is_private, false) = ?", false).
+		Where("COALESCE(user_settings.is_private, false) = ?", false)
+	err := query.
 		Order("threads.feed_score DESC").
 		Limit(100).
 		Find(&threads).Error

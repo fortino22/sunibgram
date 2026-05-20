@@ -28,9 +28,12 @@ func newFeedBuilder(
 }
 
 func loadThreadMediaByThread(mediaService service.IThreadMediaService, threads []model.Thread) map[uint][]model.ThreadMedia {
-	ids := make([]uint, len(threads))
-	for i, thread := range threads {
-		ids[i] = thread.ThreadID
+	ids := make([]uint, 0, len(threads))
+	for _, thread := range threads {
+		ids = append(ids, thread.ThreadID)
+		if thread.OriginalThread != nil {
+			ids = append(ids, thread.OriginalThread.ThreadID)
+		}
 	}
 	return loadThreadMediaByID(mediaService, ids)
 }
@@ -48,7 +51,11 @@ func buildFeedItemsFromThreads(threads []model.Thread, mediaByThread map[uint][]
 	fb.LoadViewerFlagsForThreads(threads)
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, thread := range threads {
-		data[i] = fb.ToFeedItem(&thread, mediaByThread[thread.ThreadID])
+		mediaID := thread.ThreadID
+		if thread.Type == model.ThreadTypeRepost && thread.OriginalThread != nil {
+			mediaID = thread.OriginalThread.ThreadID
+		}
+		data[i] = fb.ToFeedItem(&thread, mediaByThread[mediaID])
 	}
 	return data
 }

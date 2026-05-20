@@ -171,6 +171,14 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 	}
 	r.cache.Set(ctx, key, thread, r.ttl)
 	r.invalidateFeedCachesByThreadID(ctx, threadID)
+	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
+	r.invalidateForYouFeedCachesForFollowers(ctx, thread.UserID)
+	if thread.CommunityID != nil {
+		r.invalidateForYouFeedCachesForCommunity(ctx, *thread.CommunityID)
+	}
+	r.invalidateFollowingFeedCache(ctx)
+	r.invalidateTrendingFeed(ctx)
+	r.cache.Delete(ctx, "feed:trending:global")
 }
 
 func (r *threadCached) Delete(id uint) error {

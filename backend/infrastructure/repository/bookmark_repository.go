@@ -33,6 +33,7 @@ func (r *BookmarkRepository) Save(bookmark *model.Bookmark) error {
 	r.patchCount(bookmark.ThreadID, "bookmark_count", 1)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	r.base.cache.DeleteByPattern(ctx, "thread:roots:*")
 	invalidateExploreCache(ctx, r.base.cache)
 	return nil
 }

@@ -57,7 +57,7 @@ func (s *FeedScoreScheduler) run() {
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type = ?", string(model.ThreadTypePost)).
+		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false).
 		Order("threads.feed_score DESC").

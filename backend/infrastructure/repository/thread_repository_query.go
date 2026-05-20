@@ -33,18 +33,20 @@ func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]model.Th
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var threads []model.Thread
 		var total int64
+		rootTypes := forYouFeedTypes(true)
 		countQuery := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+			Where("threads.type IN ?", rootTypes).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
 		if err := countQuery.Count(&total).Error; err != nil {
 			return nil, 0, err
 		}
 		offset := (page - 1) * limit
-		if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
+		query := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+			Where("threads.type IN ?", rootTypes).
+			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+		if err := query.
 			Order("threads.created_at DESC").
 			Offset(offset).Limit(limit).
 			Find(&threads).Error; err != nil {

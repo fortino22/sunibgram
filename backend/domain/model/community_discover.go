@@ -1,6 +1,7 @@
 package model
 
 type DiscoverCommunityMember struct {
+	UserID           uint
 	AvatarObjectName string
 	AvatarBucket     string
 }
