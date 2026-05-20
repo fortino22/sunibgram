@@ -85,11 +85,11 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 }
 
 func (r *exploreRepository) FindTopPosts(ctx context.Context, query string, requesterID uint, limit int) ([]model.Thread, int64, error) {
-	return r.findExploreThreads(ctx, "top", query, requesterID, []string{string(model.ThreadTypePost)}, limit, false, "(threads.like_count + threads.comment_count + threads.repost_count) DESC, threads.created_at DESC")
+	return r.findExploreThreads(ctx, "top", query, requesterID, []string{string(model.ThreadTypePost), string(model.ThreadTypeReply), string(model.ThreadTypeRepost)}, limit, false, "(threads.like_count + threads.comment_count + threads.repost_count) DESC, threads.created_at DESC")
 }
 
 func (r *exploreRepository) FindLatestPosts(ctx context.Context, query string, requesterID uint, limit int) ([]model.Thread, int64, error) {
-	return r.findExploreThreads(ctx, "latest", query, requesterID, []string{string(model.ThreadTypePost)}, limit, false, "threads.created_at DESC")
+	return r.findExploreThreads(ctx, "latest", query, requesterID, []string{string(model.ThreadTypePost), string(model.ThreadTypeReply), string(model.ThreadTypeRepost)}, limit, false, "threads.created_at DESC")
 }
 
 func (r *exploreRepository) FindPeople(ctx context.Context, query string, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
