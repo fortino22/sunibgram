@@ -10,10 +10,11 @@ import (
 
 type CommunityRequestController struct {
 	requestService service.ICommunityRequestService
+	profileService service.IUserProfileService
 }
 
-func NewCommunityRequestController(requestService service.ICommunityRequestService) *CommunityRequestController {
-	return &CommunityRequestController{requestService: requestService}
+func NewCommunityRequestController(requestService service.ICommunityRequestService, profileService service.IUserProfileService) *CommunityRequestController {
+	return &CommunityRequestController{requestService: requestService, profileService: profileService}
 }
 
 func (c *CommunityRequestController) Send(ctx *fiber.Ctx) error {
@@ -125,26 +126,52 @@ func (c *CommunityRequestController) GetPending(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
+	avatarMap, err := c.requestAvatarMap(requests)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityRequestResponse{
-		Data: toCommunityRequestResponses(requests),
+		Data: c.toCommunityRequestResponses(requests, avatarMap),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
-func toCommunityRequestResponse(r *model.CommunityRequest) dto.CommunityRequestResponse {
+func (c *CommunityRequestController) toCommunityRequestResponse(r *model.CommunityRequest, avatarMap map[uint]string) dto.CommunityRequestResponse {
 	return dto.CommunityRequestResponse{
 		CommunityID: r.CommunityID,
 		UserID:      r.UserID,
 		Username:    r.User.UserName,
+		UserAvatar:  avatarMap[r.UserID],
+		IsPremium:   r.User.IsPremium,
 		Status:      string(r.Status),
 		CreatedAt:   utils.Wrap(r.CreatedAt),
 	}
 }
 
-func toCommunityRequestResponses(requests []model.CommunityRequest) []dto.CommunityRequestResponse {
+func (c *CommunityRequestController) toCommunityRequestResponses(requests []model.CommunityRequest, avatarMap map[uint]string) []dto.CommunityRequestResponse {
 	out := make([]dto.CommunityRequestResponse, len(requests))
 	for i := range requests {
-		out[i] = toCommunityRequestResponse(&requests[i])
+		out[i] = c.toCommunityRequestResponse(&requests[i], avatarMap)
 	}
 	return out
+}
+
+func (c *CommunityRequestController) requestAvatarMap(requests []model.CommunityRequest) (map[uint]string, error) {
+	if len(requests) == 0 {
+		return map[uint]string{}, nil
+	}
+	userIDs := make([]uint, 0, len(requests))
+	for _, r := range requests {
+		userIDs = append(userIDs, r.UserID)
+	}
+	profiles, err := c.profileService.GetProfiles(userIDs)
+	if err != nil {
+		return nil, err
+	}
+	avatarMap := make(map[uint]string, len(profiles))
+	for _, p := range profiles {
+		avatarMap[p.UserID] = BuildMediaURL(p.AvatarObjectName, p.AvatarBucket, c.profileService.GetURL)
+	}
+	return avatarMap, nil
 }
