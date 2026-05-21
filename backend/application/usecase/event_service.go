@@ -26,6 +26,7 @@ type EventService struct {
 	storageUsecase  *StorageUsecase
 	settingsRepo    repository.IUserSettingsRepository
 	followRepo      repository.IFollowRepository
+	threadRepo      repository.IThreadRepository
 }
 
 func NewEventService(
@@ -36,6 +37,7 @@ func NewEventService(
 	storageUsecase *StorageUsecase,
 	settingsRepo repository.IUserSettingsRepository,
 	followRepo repository.IFollowRepository,
+	threadRepo repository.IThreadRepository,
 ) service.IEventService {
 	return &EventService{
 		eventRepo:       eventRepo,
@@ -45,6 +47,7 @@ func NewEventService(
 		storageUsecase:  storageUsecase,
 		settingsRepo:    settingsRepo,
 		followRepo:      followRepo,
+		threadRepo:      threadRepo,
 	}
 }
 
@@ -360,26 +363,30 @@ func (s *EventService) createEventReview(eventID, adminID, action, note string) 
 	return s.eventReviewRepo.Create(review)
 }
 
-func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, filter, sort string, page, limit int) ([]model.Thread, int64, error) {
+func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, filter, sort string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	if err := validateEventID(id); err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	if err := validateEventThreadFilter(filter); err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	if err := validateEventThreadSort(sort); err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	event, err := s.eventRepo.FindByID(id)
 	if err != nil {
-		return nil, 0, errors.New("event not found")
+		return nil, nil, 0, errors.New("event not found")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, total, err := s.eventRepo.FindThreads(id, event.UserID, requesterID, filter, sort, page, limit)
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
-	return threads, total, nil
+	threads, parents, err := s.threadRepo.AttachReplyParents(threads, requesterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return threads, parents, total, nil
 }
 
 func validateEventThreadFilter(filter string) error {

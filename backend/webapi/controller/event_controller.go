@@ -213,7 +213,7 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	filter := ctx.Query("filter")
 	sort := ctx.Query("sort", "latest")
 	eventID := ctx.Params("id")
-	threads, total, err := c.eventService.GetThreads(ctx.Context(), &claims.UserID, eventID, filter, sort, page, limit)
+	threads, parents, total, err := c.eventService.GetThreads(ctx.Context(), &claims.UserID, eventID, filter, sort, page, limit)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -228,11 +228,13 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 			for i, t := range threads {
 				if t.ThreadID == pin.ThreadID {
 					threads = append(threads[:i], threads[i+1:]...)
+					parents = append(parents[:i], parents[i+1:]...)
 					break
 				}
 			}
 			if pinned, ferr := c.threadService.GetByID(pin.ThreadID); ferr == nil && pinned != nil {
 				threads = append([]model.Thread{*pinned}, threads...)
+				parents = append([]*model.Thread{nil}, parents...)
 			} else {
 				pinnedThreadID = 0
 			}
@@ -240,7 +242,7 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	}
 
 	tc := &ThreadController{threadService: c.threadService, mediaService: c.mediaService, likeService: c.likeService, bookmarkService: c.bookmarkService, threadPinService: c.threadPinService, profileService: c.profileService, pollService: c.pollService}
-	data := tc.buildFeedItemsNoPin(threads, &claims.UserID)
+	data := tc.buildUserFeedItemsNoPin(threads, parents, &claims.UserID)
 	if pinnedThreadID != 0 {
 		for i := range data {
 			if data[i].ID == pinnedThreadID {

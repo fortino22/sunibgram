@@ -309,12 +309,22 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 	threadInEvent := `EXISTS (
 		SELECT 1 FROM thread_events te
 		WHERE te.event_id = ?
-		AND te.thread_id IN (threads.thread_id, COALESCE(threads.original_thread_id, 0), COALESCE(threads.root_id, 0), COALESCE(threads.parent_id, 0))
+		AND te.thread_id IN (
+			threads.thread_id,
+			COALESCE(threads.original_thread_id, 0),
+			COALESCE(threads.root_id, 0),
+			COALESCE(threads.parent_id, 0),
+			COALESCE(original.thread_id, 0),
+			COALESCE(original.root_id, 0),
+			COALESCE(original.parent_id, 0)
+		)
 	)`
+	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
 	q := applyThreadVisibility(r.readDB.Model(&model.Thread{}), requesterID).
 		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
 		Joins("LEFT JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
-		Where(threadInEvent, eventID)
+		Where(threadInEvent, eventID).
+		Where("threads.type IN ?", threadTypes)
 	if requesterID == nil {
 		q = q.Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
 	} else {
