@@ -181,18 +181,13 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 }
 
 func (r *threadCached) FindCommunityTop(communityID, requesterUserID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
-	return r.findCommunityThreads(
-		communityID,
-		requesterUserID,
-		page,
-		limit,
-		"top",
-		"(threads.like_count + threads.repost_count + threads.bookmark_count) DESC, threads.created_at DESC",
-	)
+	clause, _ := communitySortClause("top")
+	return r.findCommunityThreads(communityID, requesterUserID, page, limit, "top", clause)
 }
 
 func (r *threadCached) FindCommunityLatest(communityID, requesterUserID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
-	return r.findCommunityThreads(communityID, requesterUserID, page, limit, "latest", "threads.created_at DESC")
+	clause, _ := communitySortClause("latest")
+	return r.findCommunityThreads(communityID, requesterUserID, page, limit, "latest", clause)
 }
 
 func (r *threadCached) FindCommunityThreadsBySort(communityID, requesterUserID uint, sort string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
@@ -203,9 +198,9 @@ func (r *threadCached) FindCommunityThreadsBySort(communityID, requesterUserID u
 func communitySortClause(sort string) (string, string) {
 	switch sort {
 	case "top":
-		return "(threads.like_count + threads.repost_count + threads.bookmark_count) DESC, threads.created_at DESC", "top"
+		return "(COALESCE(original.like_count, threads.like_count) + COALESCE(original.repost_count, threads.repost_count) + COALESCE(original.bookmark_count, threads.bookmark_count)) DESC, threads.created_at DESC", "top"
 	case "likes":
-		return "threads.like_count DESC, threads.created_at DESC", "likes"
+		return "COALESCE(original.like_count, threads.like_count) DESC, threads.created_at DESC", "likes"
 	default:
 		return "threads.created_at DESC", "latest"
 	}
@@ -229,13 +224,17 @@ func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, p
 	requesterID := &requesterUserID
 	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
 	if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
-		Where("community_id = ? AND type IN ?", communityID, threadTypes).
+		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+		Where("COALESCE(threads.community_id, original.community_id) = ?", communityID).
+		Where("threads.type IN ?", threadTypes).
 		Count(&total).Error; err != nil {
 		return nil, nil, 0, err
 	}
 	offset := (page - 1) * limit
 	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
-		Where("community_id = ? AND type IN ?", communityID, threadTypes).
+		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+		Where("COALESCE(threads.community_id, original.community_id) = ?", communityID).
+		Where("threads.type IN ?", threadTypes).
 		Order(orderClause).
 		Offset(offset).Limit(limit).
 		Find(&threads).Error; err != nil {
@@ -263,7 +262,9 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 		Table("thread_media").
 		Select("thread_media.media_id, thread_media.thread_id, thread_media.object_name, thread_media.bucket, thread_media.created_at").
 		Joins("JOIN threads ON threads.thread_id = thread_media.thread_id"), requesterID).
-		Where("threads.community_id = ? AND threads.type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}).
+		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+		Where("COALESCE(threads.community_id, original.community_id) = ?", communityID).
+		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}).
 		Order("threads.created_at DESC, thread_media.created_at ASC").
 		Find(&rows).Error; err != nil {
 		return nil, err
@@ -302,9 +303,10 @@ func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]m
 	requesterID := &userID
 	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
 	base := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
-		Joins("JOIN communities ON communities.community_id = threads.community_id").
-		Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
-		Where("threads.community_id IS NOT NULL").
+		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+		Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
+		Joins("JOIN community_members cm ON cm.community_id = COALESCE(threads.community_id, original.community_id) AND cm.user_id = ?", userID).
+		Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
 		Where("threads.type IN ?", threadTypes).
 		Where("communities.is_active = ?", true)
 
@@ -314,9 +316,10 @@ func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]m
 
 	offset := (page - 1) * limit
 	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
-		Joins("JOIN communities ON communities.community_id = threads.community_id").
-		Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
-		Where("threads.community_id IS NOT NULL").
+		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+		Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
+		Joins("JOIN community_members cm ON cm.community_id = COALESCE(threads.community_id, original.community_id) AND cm.user_id = ?", userID).
+		Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
 		Where("threads.type IN ?", threadTypes).
 		Where("communities.is_active = ?", true).
 		Order("threads.created_at DESC").
