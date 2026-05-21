@@ -24,6 +24,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.Event{},
 		&model.EventReview{},
 		&model.ThreadEvent{},
+		&model.EventThreadPin{},
 		&model.ThreadMedia{},
 		&model.ThreadPoll{},
 		&model.ThreadPollOption{},
