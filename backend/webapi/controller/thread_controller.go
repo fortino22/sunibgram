@@ -19,10 +19,11 @@ type ThreadController struct {
 	bookmarkService  service.IBookmarkService
 	threadPinService service.IThreadPinService
 	profileService   service.IUserProfileService
+	pollService      service.IThreadPollService
 }
 
-func NewThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, memberService service.ICommunityMemberService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService) *ThreadController {
-	return &ThreadController{threadService: threadService, mediaService: mediaService, memberService: memberService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService}
+func NewThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, memberService service.ICommunityMemberService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService, pollService service.IThreadPollService) *ThreadController {
+	return &ThreadController{threadService: threadService, mediaService: mediaService, memberService: memberService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService, pollService: pollService}
 }
 
 func (c *ThreadController) Create(ctx *fiber.Ctx) error {
@@ -50,6 +51,14 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
+	pollInput, _, hasPoll, err := ParseCreatePollFromMultipart(ctx)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+	if hasPoll && parentID != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "polls are only allowed on post-type threads"})
+	}
+
 	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -57,6 +66,15 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 
 	if len(files) > 0 {
 		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
+			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+	}
+
+	if hasPoll {
+		if _, err := c.pollService.Create(ctx.Context(), thread.ThreadID, claims.UserID, pollInput); err != nil {
+			_ = c.mediaService.DeleteByThread(ctx.Context(), thread.ThreadID)
+			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
 			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 	}
@@ -114,6 +132,7 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 	media, _ := c.mediaService.GetByThreadID(id)
 	fb := c.fbNoPin(&claims.UserID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs([]model.Thread{*thread}))
+	fb.LoadPollsForThreads([]model.Thread{*thread})
 	return ctx.Status(fiber.StatusOK).JSON(fb.ToFeedItem(thread, media))
 }
 
@@ -166,6 +185,10 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		return nil
 	}
 
+	if HasPollFieldsInForm(ctx) {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "poll cannot be edited"})
+	}
+
 	content := ctx.FormValue("content")
 
 	if _, err := c.threadService.Update(ctx.Context(), id, claims.UserID, content); err != nil {
@@ -211,6 +234,7 @@ func (c *ThreadController) Delete(ctx *fiber.Ctx) error {
 	}
 
 	_ = c.mediaService.DeleteByThread(ctx.Context(), id)
+	_ = c.pollService.DeleteByThread(ctx.Context(), id)
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread deleted successfully"})
 }
