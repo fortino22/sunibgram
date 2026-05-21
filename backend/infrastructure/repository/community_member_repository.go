@@ -80,6 +80,54 @@ func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, li
 	return members, total, nil
 }
 
+func (r *communityMemberRepository) FindAdmins(communityID uint) ([]model.CommunityMember, error) {
+	ctx := context.Background()
+	key := fmt.Sprintf("community:about:admins:%d", communityID)
+	var cached []model.CommunityMember
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &cached); err == nil {
+			return cached, nil
+		}
+	}
+	var admins []model.CommunityMember
+	if err := r.readDB.Preload("User").Preload("Profile").
+		Where("community_id = ? AND role = ?", communityID, model.CommunityMemberRoleAdmin).
+		Order("joined_at ASC").
+		Find(&admins).Error; err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, admins, cache.DefaultTTL)
+	}
+	return admins, nil
+}
+
+func (r *communityMemberRepository) FindTopMembers(communityID uint, limit int) ([]model.CommunityMember, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	ctx := context.Background()
+	key := fmt.Sprintf("community:about:topmembers:%d:limit:%d", communityID, limit)
+	var cached []model.CommunityMember
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &cached); err == nil {
+			return cached, nil
+		}
+	}
+	var members []model.CommunityMember
+	if err := r.readDB.Preload("User").Preload("Profile").
+		Where("community_id = ? AND role = ?", communityID, model.CommunityMemberRoleMember).
+		Order("joined_at ASC").
+		Limit(limit).
+		Find(&members).Error; err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, members, cache.DefaultTTL)
+	}
+	return members, nil
+}
+
 func (r *communityMemberRepository) Delete(communityID, userID uint) error {
 	result := r.writeDB.Delete(&model.CommunityMember{}, "community_id = ? AND user_id = ?", communityID, userID)
 	if result.RowsAffected == 0 {
@@ -132,6 +180,9 @@ func (r *communityMemberRepository) invalidateCommunityMemberChange(communityID,
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:members:%d:*", communityID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:joined:%d:*", userID))
 	_ = r.cache.Delete(ctx, communityIDKey(communityID))
+	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", communityID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", communityID))
 }
 
 // Flush community:members:* manually after a backend deploy that changes what
@@ -143,5 +194,9 @@ func (r *communityMemberRepository) invalidateCommunityMemberRole(communityID ui
 	if r.cache == nil {
 		return
 	}
-	_ = r.cache.DeleteByPattern(context.Background(), fmt.Sprintf("community:members:%d:*", communityID))
+	ctx := context.Background()
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:members:%d:*", communityID))
+	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", communityID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", communityID))
 }

@@ -16,14 +16,8 @@ type CommunityMemberService struct {
 	cacheRepo     repository.ICacheRepository
 }
 
-func isModeratorOrAbove(role model.CommunityMemberRole) bool {
-	return role == model.CommunityMemberRoleModerator ||
-		role == model.CommunityMemberRoleAdmin ||
-		role == model.CommunityMemberRoleOwner
-}
-
-func isAdminOrAbove(role model.CommunityMemberRole) bool {
-	return role == model.CommunityMemberRoleAdmin || role == model.CommunityMemberRoleOwner
+func isCommunityAdmin(role model.CommunityMemberRole) bool {
+	return role == model.CommunityMemberRoleAdmin
 }
 
 func NewCommunityMemberService(
@@ -69,7 +63,7 @@ func (s *CommunityMemberService) Leave(ctx context.Context, communityID, userID 
 		return errors.New("community not found")
 	}
 	if community.UserID == userID {
-		return errors.New("owner cannot leave the community")
+		return errors.New("creator cannot leave the community")
 	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
 		return errors.New("not a member")
@@ -93,20 +87,19 @@ func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) (
 }
 
 func (s *CommunityMemberService) RemoveMember(ctx context.Context, communityID, actorUserID, targetUserID uint) error {
-	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
-	if err != nil || !isModeratorOrAbove(actor.Role) {
-		return errors.New("forbidden")
-	}
-	target, err := s.memberRepo.FindMember(communityID, targetUserID)
+	community, err := s.communityRepo.FindByID(communityID)
 	if err != nil {
-		return errors.New("member not found")
+		return errors.New("community not found")
 	}
-	if target.Role == model.CommunityMemberRoleOwner {
-		return errors.New("cannot remove the owner")
-	}
-	// moderator can only remove members, not admins/other moderators
-	if actor.Role == model.CommunityMemberRoleModerator && target.Role != model.CommunityMemberRoleMember {
+	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
+	if err != nil || !isCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
+	}
+	if community.UserID == targetUserID {
+		return errors.New("cannot remove the community creator")
+	}
+	if _, err := s.memberRepo.FindMember(communityID, targetUserID); err != nil {
+		return errors.New("member not found")
 	}
 	if err := s.memberRepo.Delete(communityID, targetUserID); err != nil {
 		return err
@@ -124,23 +117,22 @@ func (s *CommunityMemberService) IsMember(communityID, userID uint) bool {
 }
 
 func (s *CommunityMemberService) UpdateRole(ctx context.Context, communityID, actorUserID, targetUserID uint, role model.CommunityMemberRole) error {
-	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
-	if err != nil || !isAdminOrAbove(actor.Role) {
-		return errors.New("forbidden")
+	if role != model.CommunityMemberRoleMember && role != model.CommunityMemberRoleAdmin {
+		return errors.New("invalid role")
 	}
-	target, err := s.memberRepo.FindMember(communityID, targetUserID)
+	community, err := s.communityRepo.FindByID(communityID)
 	if err != nil {
-		return errors.New("member not found")
+		return errors.New("community not found")
 	}
-	if target.Role == model.CommunityMemberRoleOwner {
-		return errors.New("cannot change owner role")
-	}
-	// admin can only assign up to moderator; owner can assign up to admin
-	if actor.Role == model.CommunityMemberRoleAdmin && role == model.CommunityMemberRoleAdmin {
+	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
+	if err != nil || !isCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
 	}
-	if role == model.CommunityMemberRoleOwner {
-		return errors.New("cannot assign owner role")
+	if community.UserID == targetUserID {
+		return errors.New("cannot change the community creator role")
+	}
+	if _, err := s.memberRepo.FindMember(communityID, targetUserID); err != nil {
+		return errors.New("member not found")
 	}
 	return s.memberRepo.UpdateRole(communityID, targetUserID, role)
 }

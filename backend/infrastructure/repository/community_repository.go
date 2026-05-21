@@ -448,6 +448,9 @@ func (r *communityRepository) invalidateCommunityUpdate(id, creatorID uint) {
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, communityIDKey(id))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:created:%d:*", creatorID))
+	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", id))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", id))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", id))
 	r.invalidateCommunityThreadCaches(ctx, id)
 	invalidateExploreCache(ctx, r.cache)
 }
