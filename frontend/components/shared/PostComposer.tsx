@@ -45,6 +45,7 @@ export interface PostComposerProps {
   placeholder?: string;
   parentId?: number;
   formId?: string;
+  onSuccess?: () => void;
 }
 
 interface MutateContext {
@@ -66,7 +67,7 @@ function isSameFile(left: File, right: File): boolean {
   );
 }
 
-export function PostComposer({ placeholder = 'What is happening?!', parentId, formId }: PostComposerProps) {
+export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess }: PostComposerProps) {
   const isReply = parentId !== undefined;
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -333,6 +334,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       previews.forEach((p) => URL.revokeObjectURL(p.url));
       setPreviews([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      onSuccess?.();
     } catch {
       // Mutation state already exposes the error.
     }
@@ -629,8 +631,9 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
           {/* GIF picker popover */}
           {showGifPicker && (
-            <div style={{ position: 'relative', marginBottom: 8 }}>
+            <div style={{ marginBottom: 8 }}>
               <GifPicker
+                placement="inline"
                 onSelect={(url) => void handleGifSelect(url)}
                 onClose={() => setShowGifPicker(false)}
               />

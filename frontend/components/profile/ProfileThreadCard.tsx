@@ -22,9 +22,10 @@ interface ProfileThreadCardProps {
   onLike?: () => void;
   onRepost?: () => void;
   onBookmark?: () => void;
+  onReply?: () => void;
 }
 
-export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, onRepost, onBookmark }: ProfileThreadCardProps) {
+export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, onRepost, onBookmark, onReply }: ProfileThreadCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
@@ -32,6 +33,8 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
+  const replyUsername = replyingTo ?? thread.parent_context?.author.username;
+  const replyUserId = replyingToId ?? thread.parent_context?.author.id;
 
   async function handleSave(params: ThreadMutationParams) {
     await updateMutation.mutateAsync(params);
@@ -92,35 +95,11 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
         </div>
       )}
 
-      {replyingTo && (
-        <div
-          style={{
-            padding: '10px 20px 0 72px',
-            fontSize: 13,
-            color: 'var(--text-tertiary)',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Replying to{' '}
-          {replyingToId ? (
-            <Link
-              href={`/profile/${replyingToId}`}
-              onClick={(e) => e.stopPropagation()}
-              style={{ color: 'var(--accent)', textDecoration: 'none' }}
-            >
-              @{replyingTo}
-            </Link>
-          ) : (
-            <span style={{ color: 'var(--accent)' }}>@{replyingTo}</span>
-          )}
-        </div>
-      )}
-
       <div style={{ padding: (thread.reposted_by_username || thread.community) ? '2px 20px 14px' : '14px 20px', display: 'flex', gap: 12 }}>
         <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: replyUsername ? 2 : 4 }}>
             <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em' }}>
               {thread.author.name || thread.author.username}
             </span>
@@ -163,6 +142,23 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
               </div>
             )}
           </div>
+
+          {replyUsername && (
+            <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 4, letterSpacing: '-0.01em' }}>
+              Replying to{' '}
+              {replyUserId ? (
+                <Link
+                  href={`/profile/${replyUserId}`}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ color: 'var(--accent)', textDecoration: 'none' }}
+                >
+                  @{replyUsername}
+                </Link>
+              ) : (
+                <span style={{ color: 'var(--accent)' }}>@{replyUsername}</span>
+              )}
+            </div>
+          )}
 
           {isEditing ? (
             <div onClick={(e) => e.stopPropagation()}>
@@ -221,6 +217,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
               onLike={onLike}
               onRepost={onRepost}
               onBookmark={onBookmark}
+              onReply={onReply}
               size="sm"
             />
           </div>

@@ -141,8 +141,9 @@ func (c *CommunityRequestController) toCommunityRequestResponse(r *model.Communi
 	return dto.CommunityRequestResponse{
 		CommunityID: r.CommunityID,
 		UserID:      r.UserID,
+		Name:        r.User.Name,
 		Username:    r.User.UserName,
-		UserAvatar:  avatarMap[r.UserID],
+		AvatarURL:   avatarMap[r.UserID],
 		IsPremium:   r.User.IsPremium,
 		Status:      string(r.Status),
 		CreatedAt:   utils.Wrap(r.CreatedAt),

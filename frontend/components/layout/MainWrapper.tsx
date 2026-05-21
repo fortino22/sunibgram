@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightPanel } from './RightPanel';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { NewPostModal } from '@/components/shared/NewPostModal';
+import { ReplyModal } from '@/components/shared/ReplyModal';
 
 const AUTH_PATHS = ['/login', '/signup', '/forgot-password'];
 
@@ -22,6 +24,8 @@ export function MainWrapper({ children }: MainWrapperProps) {
 
   return (
     <AuthGuard>
+      <NewPostModal />
+      <ReplyModal />
       <div
         style={{
           display: 'flex',

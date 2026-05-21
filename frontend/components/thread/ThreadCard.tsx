@@ -3,6 +3,7 @@
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
 import type { ThreadItem } from '@/lib/services/threads';
+import { useComposeStore } from '@/stores/composeStore';
 
 interface ThreadCardProps {
   thread: ThreadItem;
@@ -10,6 +11,7 @@ interface ThreadCardProps {
 
 export function ThreadCard({ thread }: ThreadCardProps) {
   const { like, repost, bookmark } = useThreadActions(thread);
+  const openReply = useComposeStore((s) => s.openReply);
 
   return (
     <ProfileThreadCard
@@ -17,6 +19,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
       onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
       onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
       onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
+      onReply={() => openReply(thread)}
     />
   );
 }

@@ -12,9 +12,10 @@ const gf = API_KEY ? new GiphyFetch(API_KEY) : null;
 interface GifPickerProps {
   onSelect: (gifUrl: string) => void;
   onClose: () => void;
+  placement?: 'above' | 'inline';
 }
 
-export function GifPicker({ onSelect, onClose }: GifPickerProps) {
+export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerProps) {
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,10 +46,9 @@ export function GifPicker({ onSelect, onClose }: GifPickerProps) {
   return (
     <div
       style={{
-        position: 'absolute',
-        bottom: 'calc(100% + 8px)',
-        left: 0,
-        right: 0,
+        ...(placement === 'above'
+          ? { position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, right: 0 }
+          : { position: 'relative' }),
         maxHeight: 380,
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',

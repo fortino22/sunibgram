@@ -10,6 +10,7 @@ import { Avatar } from '@/components/shared/Avatar';
 import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
 import { useMyProfile } from '@/hooks/useMyProfile';
+import { useComposeStore } from '@/stores/composeStore';
 
 interface NavItem {
   id: string;
@@ -129,6 +130,7 @@ export function Sidebar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const avatarSrc = profile?.avatar ?? null;
   const isCollapsed = pathname.startsWith('/messages');
+  const openCompose = useComposeStore((s) => s.openCompose);
 
   const handleLogout = async () => {
     await fetch('/api/auth/clear-session', { method: 'POST' });
@@ -137,17 +139,7 @@ export function Sidebar() {
     router.replace('/login');
   };
 
-  const handleNewPostClick = () => {
-    if (pathname === '/') {
-      const composer = document.getElementById('create-post-box');
-      composer?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const textarea = composer?.querySelector<HTMLTextAreaElement>('textarea');
-      textarea?.focus();
-      return;
-    }
-
-    router.push('/#create-post-box');
-  };
+  const handleNewPostClick = () => openCompose();
 
   const isActive = (item: NavItem): boolean => {
     if (item.href === '/') return pathname === '/';

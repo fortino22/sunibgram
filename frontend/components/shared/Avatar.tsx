@@ -2,8 +2,6 @@ import type { CSSProperties } from 'react';
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_AVATAR_SRC = '/assets/sunibgram/default-profile.jpg';
-
 const SIZE_MAP = {
   sm: 32,
   md: 40,
@@ -22,22 +20,29 @@ function resolveSize(size: AvatarProps['size']): number {
   return typeof size === 'number' ? size : SIZE_MAP[size ?? 'md'];
 }
 
+function SilhouetteFallback() {
+  return (
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+      <circle cx="50" cy="50" r="50" fill="#2e3135" />
+      <circle cx="50" cy="38" r="18" fill="#c8cdd4" />
+      <ellipse cx="50" cy="95" rx="32" ry="26" fill="#c8cdd4" />
+    </svg>
+  );
+}
+
 export function Avatar({ username, avatarUrl, size = 'md', className, style }: AvatarProps) {
   const resolvedSize = resolveSize(size);
-  const resolvedAvatarSrc = avatarUrl?.trim() ? avatarUrl : DEFAULT_AVATAR_SRC;
 
   return (
     <AvatarRoot
-      className={cn('shrink-0', className)}
+      className={cn('shrink-0 overflow-hidden rounded-full', className)}
       style={{ width: resolvedSize, height: resolvedSize, ...style }}
     >
-      <AvatarImage src={resolvedAvatarSrc} alt={`${username} profile image`} />
-      <AvatarFallback>
-        <img
-          src={DEFAULT_AVATAR_SRC}
-          alt={`${username} profile image`}
-          className="h-full w-full object-cover"
-        />
+      {avatarUrl?.trim() && (
+        <AvatarImage src={avatarUrl} alt={`${username} profile image`} />
+      )}
+      <AvatarFallback className="p-0">
+        <SilhouetteFallback />
       </AvatarFallback>
     </AvatarRoot>
   );

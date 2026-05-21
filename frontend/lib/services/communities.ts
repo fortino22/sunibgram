@@ -55,7 +55,10 @@ export interface PaginatedCommunityMemberData {
 export interface CommunityRequestData {
   community_id: number;
   user_id: number;
+  name: string;
   username: string;
+  avatar_url: string;
+  is_premium: boolean;
   status: string;
   created_at: string;
 }

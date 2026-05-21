@@ -190,6 +190,23 @@ export function CommunityHeader({
           {community.name}
         </div>
 
+        {community.visibility === 'PRIVATE' && (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#ef4444',
+            border: '1.5px solid #ef4444',
+            borderRadius: 999,
+            padding: '2px 10px',
+            marginBottom: 8,
+          }}>
+            Private
+          </span>
+        )}
+
         {community.description && (
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' }}>
             {community.description}
@@ -228,9 +245,6 @@ export function CommunityHeader({
               </span>
               {' Members'}
             </span>
-            {community.visibility === 'PRIVATE' && (
-              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· 🔒</span>
-            )}
             {myRole && myRole !== 'MEMBER' && (
               <span
                 style={{

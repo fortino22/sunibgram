@@ -1,5 +1,6 @@
 import { Avatar } from '@/components/shared/Avatar';
 import type { CommunityRequestData } from '@/lib/services/communities';
+import { timeAgo } from '@/lib/utils';
 
 interface CommunityRequestCardProps {
   request: CommunityRequestData;
@@ -37,14 +38,14 @@ export function CommunityRequestCard({
         borderBottom: showDivider ? '1px solid var(--border)' : 'none',
       }}
     >
-      <Avatar username={request.username} avatarUrl={null} size="md" />
+      <Avatar username={request.username} avatarUrl={request.avatar_url || null} size="md" />
 
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
           @{request.username}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>
-          Requested {request.created_at}
+          Requested {timeAgo(request.created_at) || request.created_at}
         </div>
       </div>
 
