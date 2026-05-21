@@ -24,6 +24,8 @@ func registerThreadRoutes(
 
 	threadsAuth := api.Group("/threads", auth)
 	threadsAuth.Post("/", threadCtrl.Create)
+	threadsAuth.Post("/feed/refresh", threadCtrl.RefreshFeed)
+	threadsAuth.Get("/feed/new-count", threadCtrl.GetNewFeedCount)
 	threadsAuth.Get("/following", threadCtrl.GetFollowingFeed)
 	threadsAuth.Get("/faculty", threadCtrl.GetFacultyThreads)
 	threadsAuth.Get("/user/:userId/media", threadCtrl.GetMyMediaThread)

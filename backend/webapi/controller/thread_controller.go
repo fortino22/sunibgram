@@ -101,6 +101,33 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 	})
 }
 
+// RefreshFeed drops the caller's For You feed ordering seed so the next
+// GET /threads/ returns a reshuffled feed. Intended to be called from the
+// frontend pull-to-refresh gesture before re-fetching page 1.
+func (c *ThreadController) RefreshFeed(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	c.threadService.RefreshForYouFeed(ctx.Context(), claims.UserID)
+	return ctx.SendStatus(fiber.StatusNoContent)
+}
+
+// GetNewFeedCount returns the count of feed-eligible threads created after
+// the supplied since_id, capped at 1000. Powers the "Show N new posts" banner.
+func (c *ThreadController) GetNewFeedCount(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	sinceID, _ := strconv.ParseUint(ctx.Query("since_id", "0"), 10, 64)
+	count, err := c.threadService.CountNewForYouSinceID(ctx.Context(), claims.UserID, uint(sinceID))
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+	}
+	return ctx.JSON(fiber.Map{"count": count})
+}
+
 func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {

@@ -28,6 +28,14 @@ func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, li
 	return s.threadRepo.FindForYouFeed(ctx, userID, page, limit)
 }
 
+func (s *ThreadService) RefreshForYouFeed(ctx context.Context, userID uint) {
+	s.threadRepo.InvalidateForYouSeed(ctx, userID)
+}
+
+func (s *ThreadService) CountNewForYouSinceID(ctx context.Context, userID, sinceID uint) (int64, error) {
+	return s.threadRepo.CountNewSinceID(ctx, userID, sinceID)
+}
+
 func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
 	anchor, ancestors, children, err := s.threadRepo.FindChain(anchorID)
 	if err != nil {

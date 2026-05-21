@@ -37,7 +37,7 @@ func threadFollowingFeedKey(userID uint, page, limit int) string {
 }
 
 func threadForYouFeedPattern(userID uint) string {
-	return fmt.Sprintf("feed:foryou:%d:*", userID)
+	return fmt.Sprintf("feed:foryou:user:%d:*", userID)
 }
 
 func communityThreadsQueryKey(sort, query string, userID uint, page, limit int) string {
@@ -102,8 +102,15 @@ func (r *threadCached) invalidateFollowingFeedCache(ctx context.Context) {
 	r.cache.DeleteByPattern(ctx, "thread:following:*")
 }
 
+// invalidateForYouFeedCacheForUser drops the per-user candidate caches and the
+// "new posts" counter cache so the next feed read fetches fresh content from
+// the DB. The session seed is intentionally preserved here so a user scrolling
+// the feed does not see the page order shuffle when a like/comment fires.
+// Seed invalidation only happens via InvalidateForYouSeed, called from the
+// explicit refresh endpoint.
 func (r *threadCached) invalidateForYouFeedCacheForUser(ctx context.Context, userID uint) {
-	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(userID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:user:%d:src:*", userID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:user:%d:newcount:*", userID))
 }
 
 func (r *threadCached) invalidateForYouFeedCachesForFollowers(ctx context.Context, userID uint) {
