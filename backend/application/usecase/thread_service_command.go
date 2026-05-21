@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
@@ -11,6 +13,10 @@ import (
 )
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error) {
+	content = strings.TrimSpace(content)
+	if utf8.RuneCountInString(content) > 5000 {
+		return nil, errors.New("content must be 5000 characters or less")
+	}
 	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
 	}
@@ -115,6 +121,10 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 }
 
 func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*model.Thread, error) {
+	content = strings.TrimSpace(content)
+	if utf8.RuneCountInString(content) > 5000 {
+		return nil, errors.New("content must be 5000 characters or less")
+	}
 	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
 	}
@@ -148,6 +158,10 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 }
 
 func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string) (*model.Thread, error) {
+	content = strings.TrimSpace(content)
+	if utf8.RuneCountInString(content) > 5000 {
+		return nil, errors.New("content must be 5000 characters or less")
+	}
 	thread, err := s.threadRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("thread not found")

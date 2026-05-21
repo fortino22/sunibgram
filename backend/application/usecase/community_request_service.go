@@ -45,8 +45,15 @@ func (s *CommunityRequestService) Send(ctx context.Context, communityID, userID 
 	if _, err := s.memberRepo.FindMember(communityID, userID); err == nil {
 		return errors.New("already a member")
 	}
-	if req, err := s.requestRepo.FindRequest(communityID, userID); err == nil && req.Status == model.CommunityRequestStatusPending {
-		return errors.New("request already pending")
+	if existing, err := s.requestRepo.FindRequest(communityID, userID); err == nil {
+		switch existing.Status {
+		case model.CommunityRequestStatusPending:
+			return errors.New("request already pending")
+		case model.CommunityRequestStatusApproved:
+			return errors.New("already a member")
+		case model.CommunityRequestStatusDeclined:
+			return s.requestRepo.UpdateStatus(communityID, userID, model.CommunityRequestStatusPending)
+		}
 	}
 	req := &model.CommunityRequest{
 		CommunityID: communityID,

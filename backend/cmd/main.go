@@ -39,6 +39,7 @@ func main() {
 		log.Printf("community members cache startup flush error: %v", err)
 	}
 	middleware.Init(redisCache)
+	controller.SetFeedBuilderCache(redisCache)
 	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 
 	// --- Repositories ---
@@ -57,13 +58,14 @@ func main() {
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
-	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
+	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB, redisCache)
 	categoryRepo := infrarepo.NewCategoryRepository(writeDB, readDB, redisCache)
 	violationRepo := infrarepo.NewViolationRepository(writeDB, readDB)
 	reportRepo := infrarepo.NewReportRepository(writeDB, readDB)
 	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
 	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
+	communityRuleRepo := infrarepo.NewCommunityRuleRepository(writeDB, readDB)
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB, redisCache)
 	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
@@ -74,6 +76,7 @@ func main() {
 	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)
 	chatReactionRepo := infrarepo.NewChatReactionRepository(writeDB, readDB)
 	notificationRepo := infrarepo.NewNotificationRepository(writeDB, readDB, redisCache)
+	threadPollRepo := infrarepo.NewThreadPollRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -104,9 +107,10 @@ func main() {
 	categoryService := usecase.NewCategoryService(categoryRepo)
 	violationService := usecase.NewViolationService(violationRepo)
 	reportService := usecase.NewReportService(reportRepo, violationRepo, userRepo, threadRepo, profileService, cacheRepo)
-	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, cacheRepo, storageUsecase)
+	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, categoryRepo, communityRuleRepo, cacheRepo, storageUsecase)
 	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, cacheRepo)
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
+	communityRuleService := usecase.NewCommunityRuleService(communityRepo, communityRuleRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
 	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
@@ -114,6 +118,7 @@ func main() {
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo, notificationService)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
 	chatReactionService := usecase.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
+	threadPollService := usecase.NewThreadPollService(threadRepo, threadPollRepo, storageUsecase)
 
 	// --- Controllers ---
 	cacheCtrl := controller.NewCacheController(cacheService)
@@ -125,21 +130,22 @@ func main() {
 	emailCtrl := controller.NewEmailController(emailService)
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
-	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService)
-	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService)
+	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
+	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
 	hashtagCtrl := controller.NewHashtagController(hashtagService)
-	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService)
-	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
-	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
+	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService, threadPollService)
+	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService, threadPollService)
+	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService, threadPollService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
 	summaryCtrl := controller.NewThreadSummaryController(summaryService)
 	categoryCtrl := controller.NewCategoryController(categoryService)
 	violationCtrl := controller.NewViolationController(violationService)
 	reportCtrl := controller.NewReportController(reportService)
-	communityCtrl := controller.NewCommunityController(communityService)
+	communityCtrl := controller.NewCommunityController(communityService, communityRuleService)
 	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService, profileService)
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService, profileService)
+	communityRuleCtrl := controller.NewCommunityRuleController(communityRuleService)
 	communityThreadCtrl := controller.NewCommunityThreadController(
 		threadService,
 		threadMediaService,
@@ -147,6 +153,7 @@ func main() {
 		bookmarkService,
 		threadPinService,
 		profileService,
+		threadPollService,
 	)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
@@ -155,6 +162,7 @@ func main() {
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
 	chatCtrl := controller.NewChatController(chatService, chatMediaService, chatReactionService, socketHub)
 	notificationCtrl := controller.NewNotificationController(notificationService)
+	threadPollCtrl := controller.NewThreadPollController(threadPollService)
 	notificationHandler := webapisocket.NewNotificationHandler(socketHub, notificationService)
 
 	// --- Server ---
@@ -191,6 +199,7 @@ func main() {
 		communityMemberCtrl,
 		communityRequestCtrl,
 		communityThreadCtrl,
+		communityRuleCtrl,
 		categoryCtrl,
 		violationCtrl,
 		reportCtrl,
@@ -201,6 +210,7 @@ func main() {
 		chatRoomCtrl,
 		chatCtrl,
 		notificationCtrl,
+		threadPollCtrl,
 	)
 
 	go func() {

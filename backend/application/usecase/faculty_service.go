@@ -3,6 +3,7 @@ package usecase
 import (
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
@@ -24,6 +25,9 @@ func (s *FacultyService) Create(name string) error {
 	if name == "" {
 		return errors.New("faculty name is required")
 	}
+	if utf8.RuneCountInString(name) > 100 {
+		return errors.New("facultyName must be 100 characters or less")
+	}
 	return s.facultyRepo.Save(&model.Faculty{FacultyName: name})
 }
 
@@ -44,6 +48,9 @@ func (s *FacultyService) Update(id uint, name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("faculty name is required")
+	}
+	if utf8.RuneCountInString(name) > 100 {
+		return errors.New("facultyName must be 100 characters or less")
 	}
 	f, err := s.facultyRepo.FindByID(id)
 	if err != nil {

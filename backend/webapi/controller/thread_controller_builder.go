@@ -14,15 +14,15 @@ func (c *ThreadController) loadMediaByThread(threads []model.Thread) map[uint][]
 }
 
 func (c *ThreadController) fb(viewerID *uint) webapiutils.FeedBuilder {
-	return newFeedBuilder(c.mediaService, nil, nil, nil, nil, c.profileService, viewerID)
+	return newFeedBuilder(c.mediaService, nil, nil, nil, nil, c.profileService, c.pollService, viewerID)
 }
 
 func (c *ThreadController) fbWithPin(viewerID *uint) webapiutils.FeedBuilder {
-	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, c.threadPinService, c.profileService, viewerID)
+	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, c.threadPinService, c.profileService, c.pollService, viewerID)
 }
 
 func (c *ThreadController) fbNoPin(viewerID *uint) webapiutils.FeedBuilder {
-	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, viewerID)
+	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, c.pollService, viewerID)
 }
 
 func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
@@ -83,6 +83,22 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 	fb.LoadAvatarsForUserIDs(authorIDs)
 	fb.LoadViewerFlagsForThreads(threads)
 
+	pollIDs := make([]uint, 0, len(threads)+len(parents))
+	for i := range threads {
+		t := &threads[i]
+		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+			pollIDs = append(pollIDs, t.OriginalThread.ThreadID)
+		} else {
+			pollIDs = append(pollIDs, t.ThreadID)
+		}
+	}
+	for _, p := range parents {
+		if p != nil {
+			pollIDs = append(pollIDs, p.ThreadID)
+		}
+	}
+	fb.LoadPollsForThreadIDs(pollIDs)
+
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
 		mediaID := t.ThreadID
@@ -103,6 +119,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 				Author:    fb.AuthorField(p.User),
 				Content:   p.Content,
 				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),
+				Poll:      fb.PollForParent(p),
 				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
 				CreatedAt: dtoutils.Wrap(p.CreatedAt),
 				UpdatedAt: dtoutils.Wrap(p.UpdatedAt),

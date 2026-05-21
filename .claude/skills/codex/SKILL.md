@@ -61,7 +61,7 @@ Do NOT paraphrase, shorten, or annotate the user's message. Pass it exactly as t
 
 ### Step 4 — Return output verbatim
 
-Take the Agent result and return it to the user **exactly as-is**. No summary, no commentary, no extra text before or after.
+Output exactly: `**Codex done ✓**` on its own line, then the Agent result exactly as-is. No other commentary before or after.
 
 ---
 

@@ -93,6 +93,17 @@ func (r *interactionRepo) areThreadsInteracted(userID uint, threadIDs []uint) (m
 	return result, nil
 }
 
+// allUserThreadIDs returns every thread_id the user has interacted with for this table.
+// Used to hydrate Redis viewer-flag sets.
+func (r *interactionRepo) allUserThreadIDs(userID uint) ([]uint, error) {
+	var ids []uint
+	err := r.readDB.Table(r.table).
+		Select("thread_id").
+		Where("user_id = ?", userID).
+		Scan(&ids).Error
+	return ids, err
+}
+
 func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
 	type cachedResult struct {
 		Threads    []model.Thread

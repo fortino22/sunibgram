@@ -40,7 +40,7 @@ func (c *ReportController) Create(ctx *fiber.Ctx) error {
 func (c *ReportController) GetAll(ctx *fiber.Ctx) error {
 	reports, err := c.reportService.GetAll()
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toReportResponses(reports)})
 }

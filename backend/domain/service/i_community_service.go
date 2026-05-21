@@ -9,8 +9,8 @@ import (
 )
 
 type ICommunityService interface {
-	Create(ctx context.Context, userID uint, name, description, rules string, categoryID *uuid.UUID, visibility model.CommunityVisibility, avatar, banner *multipart.FileHeader) (*model.Community, error)
-	Update(ctx context.Context, id, userID uint, name, description, rules string, categoryID *uuid.UUID, visibility model.CommunityVisibility, avatar, banner *multipart.FileHeader, clearAvatar, clearBanner bool) (*model.Community, error)
+	Create(ctx context.Context, userID uint, name, description string, rules []string, categoryID *uuid.UUID, visibility model.CommunityVisibility, banner *multipart.FileHeader) (*model.Community, []model.CommunityRule, error)
+	Update(ctx context.Context, id, userID uint, name, description string, keepRuleIDs []uint, newRules []string, categoryID *uuid.UUID, visibility model.CommunityVisibility, banner *multipart.FileHeader, clearBanner bool) (*model.Community, []model.CommunityRule, error)
 	Delete(ctx context.Context, id, userID uint) error
 	Discover(ctx context.Context, categoryID *uuid.UUID) ([]model.DiscoverCommunity, error)
 	SearchByName(ctx context.Context, name string) ([]model.DiscoverCommunity, error)

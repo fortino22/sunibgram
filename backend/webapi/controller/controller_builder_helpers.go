@@ -4,8 +4,18 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/infrastructure/cache"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
+
+// feedBuilderCache holds the Redis cache shared across controllers via package-level init.
+// Set from cmd/main.go via SetFeedBuilderCache.
+var feedBuilderCache *cache.Cache
+
+// SetFeedBuilderCache injects the Redis cache used by the FeedBuilder for viewer-flag sets.
+func SetFeedBuilderCache(c *cache.Cache) {
+	feedBuilderCache = c
+}
 
 func newFeedBuilder(
 	media service.IThreadMediaService,
@@ -14,6 +24,7 @@ func newFeedBuilder(
 	thread service.IThreadService,
 	pin service.IThreadPinService,
 	profile service.IUserProfileService,
+	poll service.IThreadPollService,
 	viewerID *uint,
 ) webapiutils.FeedBuilder {
 	return webapiutils.FeedBuilder{
@@ -22,7 +33,9 @@ func newFeedBuilder(
 		BookmarkSvc: bookmark,
 		ThreadSvc:   thread,
 		PinSvc:      pin,
+		PollSvc:     poll,
 		ProfileSvc:  profile,
+		Cache:       feedBuilderCache,
 		ViewerID:    viewerID,
 	}
 }
@@ -49,6 +62,7 @@ func loadThreadMediaByID(mediaService service.IThreadMediaService, threadIDs []u
 
 func buildFeedItemsFromThreads(threads []model.Thread, mediaByThread map[uint][]model.ThreadMedia, fb webapiutils.FeedBuilder) []dto.FeedItemResponse {
 	fb.LoadViewerFlagsForThreads(threads)
+	fb.LoadPollsForThreads(threads)
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, thread := range threads {
 		mediaID := thread.ThreadID

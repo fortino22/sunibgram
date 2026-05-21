@@ -297,7 +297,16 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 	var total int64
 	q := applyThreadVisibility(r.readDB.Model(&model.Thread{}), requesterID).
 		Joins("JOIN thread_events ON thread_events.thread_id = threads.thread_id").
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Where("thread_events.event_id = ?", eventID)
+	if requesterID == nil {
+		q = q.Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+	} else {
+		q = q.
+			Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", *requesterID).
+			Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
+				model.CommunityVisibilityPublic, *requesterID)
+	}
 	switch filter {
 	case "official":
 		q = q.Where("threads.user_id = ?", ownerUserID)

@@ -30,7 +30,7 @@ func (c *ViolationController) Create(ctx *fiber.Ctx) error {
 func (c *ViolationController) GetAll(ctx *fiber.Ctx) error {
 	violations, err := c.violationService.GetAll()
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toViolationResponses(violations)})
 }

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/application/helper"
@@ -45,6 +46,15 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	if err := validateEventInput(title, startTime, endTime); err != nil {
 		return nil, err
 	}
+	title = strings.TrimSpace(title)
+	description = strings.TrimSpace(description)
+	if utf8.RuneCountInString(description) > 2000 {
+		return nil, errors.New("description must be 2000 characters or less")
+	}
+	location = strings.TrimSpace(location)
+	if utf8.RuneCountInString(location) > 255 {
+		return nil, errors.New("location must be 255 characters or less")
+	}
 	if err := model.ValidateEventPDFCount(len(attachments)); err != nil {
 		return nil, err
 	}
@@ -63,7 +73,7 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	}
 	event := &model.Event{
 		UserID:      userID,
-		Title:       strings.TrimSpace(title),
+		Title:       title,
 		Description: description,
 		Location:    location,
 		Type:        eventType,
@@ -169,6 +179,15 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 	if err := validateEventInput(title, startTime, endTime); err != nil {
 		return nil, err
 	}
+	title = strings.TrimSpace(title)
+	description = strings.TrimSpace(description)
+	if utf8.RuneCountInString(description) > 2000 {
+		return nil, errors.New("description must be 2000 characters or less")
+	}
+	location = strings.TrimSpace(location)
+	if utf8.RuneCountInString(location) > 255 {
+		return nil, errors.New("location must be 255 characters or less")
+	}
 	event, err := s.eventRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("event not found")
@@ -186,7 +205,7 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 		}
 		event.Type = eventType
 	}
-	event.Title = strings.TrimSpace(title)
+	event.Title = title
 	event.Description = description
 	event.Location = location
 	if event.Status == "revision" {
@@ -292,6 +311,9 @@ func (s *EventService) RequestRevision(id, adminID, note string) error {
 	if note == "" {
 		return errors.New("note is required")
 	}
+	if utf8.RuneCountInString(note) > 1000 {
+		return errors.New("note must be 1000 characters or less")
+	}
 	event, err := s.eventRepo.FindByID(id)
 	if err != nil {
 		return errors.New("event not found")
@@ -381,10 +403,10 @@ func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHe
 }
 
 func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
-	if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+	if err := model.ValidateUploadSize(header, model.MaxDocumentUploadSize); err != nil {
 		return "", "", err
 	}
-	if err := model.ValidateEventAttachmentContentType(header.Header.Get("Content-Type")); err != nil {
+	if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
 		return "", "", err
 	}
 	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
@@ -396,6 +418,9 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 		return "", "", err
 	}
 	defer f.Close()
+	if err := model.ValidateEventAttachmentFile(f); err != nil {
+		return "", "", err
+	}
 	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
 	if err != nil {
 		return "", "", err
@@ -442,10 +467,10 @@ func validateEventPDFHeaders(headers []*multipart.FileHeader) error {
 		return err
 	}
 	for _, header := range headers {
-		if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+		if err := model.ValidateUploadSize(header, model.MaxDocumentUploadSize); err != nil {
 			return err
 		}
-		if err := model.ValidateEventAttachmentContentType(header.Header.Get("Content-Type")); err != nil {
+		if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
 			return err
 		}
 	}
@@ -462,8 +487,12 @@ func (s *EventService) deletePDFs(ctx context.Context, pdfs model.EventPDFs) {
 }
 
 func validateEventInput(title string, startTime, endTime time.Time) error {
-	if strings.TrimSpace(title) == "" {
+	title = strings.TrimSpace(title)
+	if title == "" {
 		return errors.New("title is required")
+	}
+	if utf8.RuneCountInString(title) > 255 {
+		return errors.New("title must be 255 characters or less")
 	}
 	if startTime.IsZero() {
 		return errors.New("start_time is required")

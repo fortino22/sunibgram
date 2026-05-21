@@ -14,6 +14,7 @@ type ICommunityRepository interface {
 	FindDiscover() ([]model.DiscoverCommunity, error)
 	FindDiscoverByName(name string) ([]model.DiscoverCommunity, error)
 	Update(community *model.Community) error
+	UpdateWithTx(tx *gorm.DB, community *model.Community) error
 	Delete(id uint) error
 	DeactivateByOwnerIDs(ownerIDs []uint) error
 	ReactivateByOwnerID(ownerID uint) error

@@ -16,12 +16,10 @@ type ExploreThreadResult struct {
 }
 
 type ExploreCommunityResult struct {
-	CommunityID      uint
-	Name             string
-	AvatarObjectName string
-	AvatarBucket     string
-	MemberCount      int
-	IsJoin           bool
+	CommunityID uint
+	Name        string
+	MemberCount int
+	IsJoin      bool
 }
 
 type ExploreResult struct {

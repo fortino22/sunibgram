@@ -156,6 +156,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             time_ago: 'now',
             author: {
               id: user?.id ?? 0,
+              name: profile?.name ?? '',
               username: user?.username ?? '',
               is_premium: false,
               avatar_url: profile?.avatar ?? null,

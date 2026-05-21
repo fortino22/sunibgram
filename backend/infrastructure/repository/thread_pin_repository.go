@@ -5,27 +5,42 @@ import (
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
+	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 )
 
 type ThreadPinRepository struct {
 	writeDB *gorm.DB
 	readDB  *gorm.DB
+	cache   *cache.Cache
 }
 
-func NewThreadPinRepository(writeDB, readDB *gorm.DB) domainrepo.IThreadPinRepository {
+func NewThreadPinRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IThreadPinRepository {
+	var redisCache *cache.Cache
+	if len(c) > 0 {
+		redisCache = c[0]
+	}
 	return &ThreadPinRepository{
 		writeDB: writeDB,
 		readDB:  readDB,
+		cache:   redisCache,
 	}
 }
 
 func (r *ThreadPinRepository) Pin(pin *model.ThreadPin) error {
-	return r.writeDB.Create(pin).Error
+	if err := r.writeDB.Create(pin).Error; err != nil {
+		return err
+	}
+	ViewerFlagAdd(r.cache, pin.UserID, "pinned", pin.ThreadID)
+	return nil
 }
 
 func (r *ThreadPinRepository) Unpin(userID, threadID uint) error {
-	return r.writeDB.Where("user_id = ? AND thread_id = ?", userID, threadID).Delete(&model.ThreadPin{}).Error
+	if err := r.writeDB.Where("user_id = ? AND thread_id = ?", userID, threadID).Delete(&model.ThreadPin{}).Error; err != nil {
+		return err
+	}
+	ViewerFlagRemove(r.cache, userID, "pinned", threadID)
+	return nil
 }
 
 func (r *ThreadPinRepository) ExistsPin(userID, threadID uint) (bool, error) {
@@ -54,6 +69,15 @@ func (r *ThreadPinRepository) ArePinnedFor(userID uint, threadIDs []uint) (map[u
 		result[id] = true
 	}
 	return result, nil
+}
+
+func (r *ThreadPinRepository) AllPinnedThreadIDs(userID uint) ([]uint, error) {
+	var ids []uint
+	err := r.readDB.Model(&model.ThreadPin{}).
+		Select("thread_id").
+		Where("user_id = ?", userID).
+		Scan(&ids).Error
+	return ids, err
 }
 
 func (r *ThreadPinRepository) FindPinnedByUserID(userID uint) (*model.ThreadPin, error) {

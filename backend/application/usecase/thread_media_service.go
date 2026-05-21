@@ -156,6 +156,9 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 
 func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, bucket string, files []*multipart.FileHeader) ([]model.ThreadMedia, error) {
 	for _, header := range files {
+		if err := model.ValidateUploadSize(header, model.MaxPostUploadSize); err != nil {
+			return nil, err
+		}
 		if err := model.ValidateThreadMediaExt(header.Filename); err != nil {
 			return nil, err
 		}
@@ -177,6 +180,11 @@ func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, buc
 				return
 			}
 			defer file.Close()
+
+			if _, err := model.ValidateThreadMediaFile(file); err != nil {
+				errCh <- err
+				return
+			}
 
 			objectName, err := s.storage.Upload(ctx, bucket, file, header)
 			if err != nil {

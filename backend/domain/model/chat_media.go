@@ -2,6 +2,8 @@ package model
 
 import (
 	"errors"
+	"fmt"
+	"mime/multipart"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,15 +23,19 @@ var allowedChatMediaContentTypes = map[string]bool{
 
 	"video/mp4":        true,
 	"video/quicktime":  true,
+	"video/avi":        true,
 	"video/x-msvideo":  true,
 	"video/x-matroska": true,
 	"video/webm":       true,
 
-	"audio/ogg":  true,
-	"audio/webm": true,
-	"audio/mpeg": true,
-	"audio/mp4":  true,
-	"audio/wav":  true,
+	"application/ogg": true,
+	"audio/ogg":       true,
+	"audio/webm":      true,
+	"audio/mpeg":      true,
+	"audio/mp4":       true,
+	"audio/wave":      true,
+	"audio/wav":       true,
+	"audio/x-wav":     true,
 }
 
 func ValidateChatMediaExt(filename string) error {
@@ -46,6 +52,17 @@ func ValidateChatMediaContentType(contentType string) error {
 		return errors.New("only image, video, and audio files are allowed")
 	}
 	return nil
+}
+
+func ValidateChatMediaFile(file multipart.File) (string, error) {
+	contentType, err := DetectMultipartContentType(file)
+	if err != nil {
+		return "", err
+	}
+	if !allowedChatMediaContentTypes[contentType] {
+		return "", fmt.Errorf("media content type %s is not allowed", contentType)
+	}
+	return contentType, nil
 }
 
 func IsAudioMediaType(contentType string) bool {

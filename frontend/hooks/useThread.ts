@@ -76,6 +76,7 @@ function mapThreadResponseToThreadItem(thread: ThreadResponse): ThreadItem {
     reposted_by_name: thread.reposted_by_name,
     author: {
       id: thread.user_id,
+      name: thread.username,
       username: thread.username,
       is_premium: false,
       avatar_url: null,

@@ -32,7 +32,7 @@ func (c *RoleController) Create(ctx *fiber.Ctx) error {
 func (c *RoleController) GetAll(ctx *fiber.Ctx) error {
 	roles, err := c.roleService.GetAll()
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	result := make([]dto.RoleResponse, len(roles))
@@ -83,7 +83,7 @@ func (c *RoleController) Delete(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.roleService.Delete(id); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "role deleted successfully"})

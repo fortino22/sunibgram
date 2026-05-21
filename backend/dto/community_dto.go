@@ -8,10 +8,9 @@ type CommunityResponse struct {
 	Username     string                       `json:"username"`
 	Name         string                       `json:"name"`
 	Description  string                       `json:"description"`
-	Rules        string                       `json:"rules"`
+	Rules        []CommunityRuleMiniResponse  `json:"rules,omitempty"`
 	CategoryName string                       `json:"category_name"`
 	Visibility   string                       `json:"visibility"`
-	AvatarURL    string                       `json:"avatar_url"`
 	BannerURL    string                       `json:"banner_url"`
 	MemberCount  int                          `json:"member_count"`
 	TopMembers   []CommunityTopMemberResponse `json:"top_members"`

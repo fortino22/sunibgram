@@ -97,6 +97,7 @@ else            → fiber.StatusBadRequest
 | `avatar` | `MINIO_BUCKET_AVATAR` | `sunibgram-avatar` | public |
 | `banner` | `MINIO_BUCKET_BANNER` | `sunibgram-banner` | public |
 | `post` | `MINIO_BUCKET_POST` | `sunibgram-post` | public |
+| `poll` | `MINIO_BUCKET_POLL` | `sunibgram-poll` | public |
 | `document` | `MINIO_BUCKET_DOCUMENT` | `sunibgram-document` | private |
 | `assignment` | `MINIO_BUCKET_ASSIGNMENT` | `sunibgram-assignment` | private |
 | `community_avatar` | `MINIO_BUCKET_COMMUNITY_AVATAR` | `sunibgram-community-avatar` | public |

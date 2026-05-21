@@ -4,9 +4,9 @@ import (
 	"github.com/sunibgram/domain/model"
 )
 
-func (r *threadCached) FindByFacultyID(facultyID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindByFacultyID(facultyID uint, requesterID *uint, page, limit int) ([]model.Thread, int64, error) {
 	var total int64
-	base := r.db.readDB.Model(&model.Thread{}).
+	base := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
 		Joins("JOIN user_faculties ON user_faculties.user_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Where("user_faculties.faculty_id = ?", facultyID).
@@ -19,7 +19,7 @@ func (r *threadCached) FindByFacultyID(facultyID uint, page, limit int) ([]model
 
 	var threads []model.Thread
 	offset := (page - 1) * limit
-	if err := preloadThreadDetails(r.db.readDB).
+	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
 		Joins("JOIN user_faculties ON user_faculties.user_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Where("user_faculties.faculty_id = ?", facultyID).

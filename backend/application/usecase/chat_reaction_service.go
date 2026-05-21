@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
@@ -21,8 +22,12 @@ func NewChatReactionService(chatRepo repository.IChatRepository, reactionRepo re
 }
 
 func (s *ChatReactionService) Add(ctx context.Context, chatID, userID uint, emoji string) (*model.Chat, error) {
-	if strings.TrimSpace(emoji) == "" {
+	emoji = strings.TrimSpace(emoji)
+	if emoji == "" {
 		return nil, errors.New("emoji is required")
+	}
+	if utf8.RuneCountInString(emoji) > 32 {
+		return nil, errors.New("emoji must be 32 characters or less")
 	}
 	chat, err := s.chatRepo.FindByID(chatID)
 	if err != nil {

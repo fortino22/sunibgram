@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -10,6 +11,7 @@ import (
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/dto/utils"
+	"github.com/sunibgram/infrastructure/cache"
 )
 
 const avatarCacheTTL = time.Hour
@@ -24,7 +26,9 @@ type FeedBuilder struct {
 	BookmarkSvc    service.IBookmarkService
 	ThreadSvc      service.IThreadService
 	PinSvc         service.IThreadPinService
+	PollSvc        service.IThreadPollService
 	ProfileSvc     service.IUserProfileService
+	Cache          *cache.Cache
 	ViewerID       *uint
 	avatarCache    map[uint]string
 	isPremiumCache map[uint]bool
@@ -34,6 +38,9 @@ type FeedBuilder struct {
 	bookmarked     map[uint]bool
 	reposted       map[uint]bool
 	pinned         map[uint]bool
+	pollsLoaded    bool
+	pollsByThread  map[uint]*model.ThreadPoll
+	pollUserVotes  map[uint]uint
 }
 
 func avatarCacheKey(userID uint) string {
@@ -147,27 +154,86 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 		}
 	}
 
-	// Batch-load is_premium fresh from DB (not from stale thread cache).
-	users, err := fb.ProfileSvc.GetUsers(misses)
-	if err == nil {
-		for _, u := range users {
-			fb.isPremiumCache[u.UserID] = u.IsPremium
-		}
-	}
+	// Try Redis profile_meta first for is_premium + faculty. Fall back to DB on miss.
+	metaMisses := fb.loadProfileMetaFromCache(misses)
 
-	// Batch-load faculty fresh from DB.
-	faculties, err := fb.ProfileSvc.GetUserFaculties(misses)
-	if err == nil {
-		// mark all misses as looked up (nil = no faculty)
-		for _, id := range misses {
-			fb.facultyCache[id] = nil
-		}
-		for _, uf := range faculties {
-			fb.facultyCache[uf.UserID] = &dto.FeedAuthorFaculty{
-				FacultyID:   uf.FacultyID,
-				FacultyName: uf.Faculty.FacultyName,
+	if len(metaMisses) > 0 {
+		users, err := fb.ProfileSvc.GetUsers(metaMisses)
+		if err == nil {
+			for _, u := range users {
+				fb.isPremiumCache[u.UserID] = u.IsPremium
 			}
 		}
+		faculties, err := fb.ProfileSvc.GetUserFaculties(metaMisses)
+		if err == nil {
+			for _, id := range metaMisses {
+				if _, ok := fb.facultyCache[id]; !ok {
+					fb.facultyCache[id] = nil
+				}
+			}
+			for _, uf := range faculties {
+				fb.facultyCache[uf.UserID] = &dto.FeedAuthorFaculty{
+					FacultyID:   uf.FacultyID,
+					FacultyName: uf.Faculty.FacultyName,
+				}
+			}
+		}
+		fb.writeProfileMetaToCache(metaMisses)
+	}
+}
+
+const profileMetaTTL = 24 * time.Hour
+
+type profileMetaCacheEntry struct {
+	IsPremium   bool   `json:"is_premium"`
+	FacultyID   uint   `json:"faculty_id,omitempty"`
+	FacultyName string `json:"faculty_name,omitempty"`
+	HasFaculty  bool   `json:"has_faculty"`
+}
+
+// ProfileMetaCacheKey is the Redis key for cached is_premium + faculty per user.
+// Exported so repository invalidation paths can target it.
+func ProfileMetaCacheKey(userID uint) string {
+	return fmt.Sprintf("user:meta:%d", userID)
+}
+
+func (fb *FeedBuilder) loadProfileMetaFromCache(userIDs []uint) (missing []uint) {
+	if fb.Cache == nil {
+		return userIDs
+	}
+	ctx := context.Background()
+	for _, id := range userIDs {
+		var entry profileMetaCacheEntry
+		if err := fb.Cache.Get(ctx, ProfileMetaCacheKey(id), &entry); err != nil {
+			missing = append(missing, id)
+			continue
+		}
+		fb.isPremiumCache[id] = entry.IsPremium
+		if entry.HasFaculty {
+			fb.facultyCache[id] = &dto.FeedAuthorFaculty{
+				FacultyID:   entry.FacultyID,
+				FacultyName: entry.FacultyName,
+			}
+		} else {
+			fb.facultyCache[id] = nil
+		}
+	}
+	return missing
+}
+
+func (fb *FeedBuilder) writeProfileMetaToCache(userIDs []uint) {
+	if fb.Cache == nil {
+		return
+	}
+	ctx := context.Background()
+	for _, id := range userIDs {
+		entry := profileMetaCacheEntry{IsPremium: fb.isPremiumCache[id]}
+		if f, ok := fb.facultyCache[id]; ok && f != nil {
+			entry.HasFaculty = true
+			entry.FacultyID = f.FacultyID
+			entry.FacultyName = f.FacultyName
+		}
+		_ = fb.Cache.Set(ctx, ProfileMetaCacheKey(id), entry, profileMetaTTL)
 	}
 }
 
@@ -205,7 +271,102 @@ func feedFlagThreadID(t *model.Thread) uint {
 	return t.ThreadID
 }
 
+// LoadPollsForThreads batch-fetches polls and the viewer's votes for the given threads.
+// Uses the effective thread id (resolves repost -> original).
+func (fb *FeedBuilder) LoadPollsForThreads(threads []model.Thread) {
+	if fb.PollSvc == nil {
+		return
+	}
+	seen := make(map[uint]struct{}, len(threads))
+	threadIDs := make([]uint, 0, len(threads))
+	for i := range threads {
+		id := feedFlagThreadID(&threads[i])
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		threadIDs = append(threadIDs, id)
+	}
+	fb.pollsLoaded = true
+	if len(threadIDs) == 0 {
+		return
+	}
+	var viewerID uint
+	if fb.ViewerID != nil {
+		viewerID = *fb.ViewerID
+	}
+	polls, votes, err := fb.PollSvc.GetForThreads(threadIDs, viewerID)
+	if err != nil {
+		return
+	}
+	fb.pollsByThread = polls
+	fb.pollUserVotes = votes
+}
+
+func (fb FeedBuilder) pollFor(t *model.Thread) *dto.PollResponse {
+	if !fb.pollsLoaded || fb.PollSvc == nil || len(fb.pollsByThread) == 0 {
+		return nil
+	}
+	id := feedFlagThreadID(t)
+	poll, ok := fb.pollsByThread[id]
+	if !ok || poll == nil {
+		return nil
+	}
+	var voted *uint
+	if v, ok := fb.pollUserVotes[poll.PollID]; ok {
+		voted = &v
+	}
+	return dto.BuildPollResponse(poll, voted, fb.PollSvc.GetImageURL)
+}
+
+// PollForParent returns the poll response for a parent thread, used in parent_context.
+// Parent threads are not reposts, so direct ThreadID lookup is sufficient.
+func (fb FeedBuilder) PollForParent(parent *model.Thread) *dto.PollResponse {
+	if parent == nil {
+		return nil
+	}
+	return fb.pollFor(parent)
+}
+
+// LoadPollsForThreadIDs is an explicit-id variant of LoadPollsForThreads, used when the
+// caller needs to merge thread + parent ids in a single batch.
+func (fb *FeedBuilder) LoadPollsForThreadIDs(threadIDs []uint) {
+	if fb.PollSvc == nil {
+		return
+	}
+	seen := make(map[uint]struct{}, len(threadIDs))
+	deduped := make([]uint, 0, len(threadIDs))
+	for _, id := range threadIDs {
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		deduped = append(deduped, id)
+	}
+	fb.pollsLoaded = true
+	if len(deduped) == 0 {
+		return
+	}
+	var viewerID uint
+	if fb.ViewerID != nil {
+		viewerID = *fb.ViewerID
+	}
+	polls, votes, err := fb.PollSvc.GetForThreads(deduped, viewerID)
+	if err != nil {
+		return
+	}
+	fb.pollsByThread = polls
+	fb.pollUserVotes = votes
+}
+
 // LoadViewerFlagsForThreads batch-fetches viewer flags for the feed's effective thread IDs.
+// Uses Redis viewer-flag sets when available; falls back to DB and hydrates the set on miss.
 func (fb *FeedBuilder) LoadViewerFlagsForThreads(threads []model.Thread) {
 	if fb.ViewerID == nil {
 		return
@@ -231,29 +392,133 @@ func (fb *FeedBuilder) LoadViewerFlagsForThreads(threads []model.Thread) {
 
 	uid := *fb.ViewerID
 	if fb.LikeSvc != nil {
-		fb.liked, _ = fb.LikeSvc.AreThreadsLiked(uid, threadIDs)
-		if fb.liked == nil {
-			fb.liked = make(map[uint]bool)
-		}
+		fb.liked = fb.loadFlagSet(uid, "liked", threadIDs, fb.LikeSvc.AllLikedThreadIDs, func() (map[uint]bool, error) {
+			return fb.LikeSvc.AreThreadsLiked(uid, threadIDs)
+		})
 	}
 	if fb.BookmarkSvc != nil {
-		fb.bookmarked, _ = fb.BookmarkSvc.AreThreadsBookmarked(uid, threadIDs)
-		if fb.bookmarked == nil {
-			fb.bookmarked = make(map[uint]bool)
-		}
+		fb.bookmarked = fb.loadFlagSet(uid, "bookmarked", threadIDs, fb.BookmarkSvc.AllBookmarkedThreadIDs, func() (map[uint]bool, error) {
+			return fb.BookmarkSvc.AreThreadsBookmarked(uid, threadIDs)
+		})
 	}
 	if fb.ThreadSvc != nil {
-		fb.reposted, _ = fb.ThreadSvc.AreThreadsReposted(uid, threadIDs)
-		if fb.reposted == nil {
-			fb.reposted = make(map[uint]bool)
+		// reposted uses original_thread_id as member
+		var allLoader func(uint) ([]uint, error)
+		if fb.ThreadSvc != nil {
+			allLoader = func(u uint) ([]uint, error) {
+				return fb.threadRepostedIDs(u)
+			}
 		}
+		fb.reposted = fb.loadFlagSet(uid, "reposted", threadIDs, allLoader, func() (map[uint]bool, error) {
+			return fb.ThreadSvc.AreThreadsReposted(uid, threadIDs)
+		})
 	}
 	if fb.PinSvc != nil {
-		fb.pinned, _ = fb.PinSvc.ArePinnedFor(uid, threadIDs)
-		if fb.pinned == nil {
-			fb.pinned = make(map[uint]bool)
+		fb.pinned = fb.loadFlagSet(uid, "pinned", threadIDs, fb.PinSvc.AllPinnedThreadIDs, func() (map[uint]bool, error) {
+			return fb.PinSvc.ArePinnedFor(uid, threadIDs)
+		})
+	}
+}
+
+func (fb FeedBuilder) threadRepostedIDs(uid uint) ([]uint, error) {
+	type ar interface {
+		AllRepostedOriginalIDs(userID uint) ([]uint, error)
+	}
+	if r, ok := fb.ThreadSvc.(ar); ok {
+		return r.AllRepostedOriginalIDs(uid)
+	}
+	return nil, nil
+}
+
+// loadFlagSet attempts Redis SMISMEMBER first. On hydration miss (set not authoritative),
+// hydrates the set from DB and falls back to DB batch result for this request.
+func (fb FeedBuilder) loadFlagSet(
+	uid uint,
+	flag string,
+	threadIDs []uint,
+	allLoader func(uint) ([]uint, error),
+	dbBatch func() (map[uint]bool, error),
+) map[uint]bool {
+	if fb.Cache != nil && allLoader != nil {
+		if members, ok := viewerFlagMembership(fb.Cache, uid, flag, threadIDs); ok {
+			return members
+		}
+		// not hydrated — hydrate then check
+		_ = hydrateViewerFlag(fb.Cache, uid, flag, func() ([]uint, error) { return allLoader(uid) })
+		if members, ok := viewerFlagMembership(fb.Cache, uid, flag, threadIDs); ok {
+			return members
 		}
 	}
+	// fallback: DB batch
+	result, _ := dbBatch()
+	if result == nil {
+		result = make(map[uint]bool)
+	}
+	return result
+}
+
+const (
+	viewerFlagSetTTL = 24 * time.Hour
+)
+
+func viewerFlagSetKey(userID uint, flag string) string {
+	return fmt.Sprintf("user:%d:%s", userID, flag)
+}
+
+func viewerFlagHydratedKey(userID uint, flag string) string {
+	return fmt.Sprintf("user:%d:%s:hydrated", userID, flag)
+}
+
+func viewerFlagMembership(c *cache.Cache, userID uint, flag string, threadIDs []uint) (map[uint]bool, bool) {
+	if c == nil || userID == 0 || len(threadIDs) == 0 {
+		return nil, false
+	}
+	ctx := context.Background()
+	if hit, _ := c.Exists(ctx, viewerFlagHydratedKey(userID, flag)); !hit {
+		return nil, false
+	}
+	members := make([]string, len(threadIDs))
+	for i, id := range threadIDs {
+		members[i] = strconv.FormatUint(uint64(id), 10)
+	}
+	results, err := c.SMIsMember(ctx, viewerFlagSetKey(userID, flag), members)
+	if err != nil {
+		return nil, false
+	}
+	out := make(map[uint]bool, len(threadIDs))
+	for i, id := range threadIDs {
+		if i < len(results) && results[i] {
+			out[id] = true
+		}
+	}
+	return out, true
+}
+
+func hydrateViewerFlag(c *cache.Cache, userID uint, flag string, loader func() ([]uint, error)) error {
+	if c == nil || userID == 0 {
+		return nil
+	}
+	ctx := context.Background()
+	if hit, _ := c.Exists(ctx, viewerFlagHydratedKey(userID, flag)); hit {
+		return nil
+	}
+	ids, err := loader()
+	if err != nil {
+		return err
+	}
+	setKey := viewerFlagSetKey(userID, flag)
+	_ = c.Delete(ctx, setKey)
+	members := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		members = append(members, strconv.FormatUint(uint64(id), 10))
+	}
+	if err := c.SAddMany(ctx, setKey, members, viewerFlagSetTTL); err != nil {
+		return err
+	}
+	return c.Set(ctx, viewerFlagHydratedKey(userID, flag), true, viewerFlagSetTTL)
 }
 
 func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isReposted, isPinned *bool) {
@@ -325,6 +590,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 			Author:             fb.AuthorField(orig.User),
 			Stats:              dto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount, Comments: orig.CommentCount},
 			Media:              fb.ToMediaResponses(media),
+			Poll:               fb.pollFor(t),
 			IsLiked:            isLiked,
 			IsBookmarked:       isBookmarked,
 			IsReposted:         isReposted,
@@ -348,6 +614,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		Author:       fb.AuthorField(t.User),
 		Stats:        dto.FeedStats{Likes: t.LikeCount, Reposts: t.RepostCount, Bookmarks: t.BookmarkCount, Comments: t.CommentCount},
 		Media:        fb.ToMediaResponses(media),
+		Poll:         fb.pollFor(t),
 		IsLiked:      isLiked,
 		IsBookmarked: isBookmarked,
 		IsReposted:   isReposted,

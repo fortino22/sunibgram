@@ -7,5 +7,6 @@ type IThreadPinRepository interface {
 	Unpin(userID, threadID uint) error
 	ExistsPin(userID, threadID uint) (bool, error)
 	ArePinnedFor(userID uint, threadIDs []uint) (map[uint]bool, error)
+	AllPinnedThreadIDs(userID uint) ([]uint, error)
 	FindPinnedByUserID(userID uint) (*model.ThreadPin, error)
 }

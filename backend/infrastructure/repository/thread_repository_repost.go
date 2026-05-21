@@ -35,6 +35,15 @@ func (r *threadCached) AreThreadsReposted(userID uint, threadIDs []uint) (map[ui
 	return result, nil
 }
 
+func (r *threadCached) AllRepostedOriginalIDs(userID uint) ([]uint, error) {
+	var ids []uint
+	err := r.db.readDB.Model(&model.Thread{}).
+		Select("original_thread_id").
+		Where("user_id = ? AND type = ? AND original_thread_id IS NOT NULL", userID, model.ThreadTypeRepost).
+		Scan(&ids).Error
+	return ids, err
+}
+
 func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	var repost model.Thread
 	if err := r.db.readDB.
@@ -54,6 +63,7 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	patchEventCounterByThreadID(r.db.writeDB, r.cache, originalThreadID, "repost_count", -1)
 
 	ctx := context.Background()
+	ViewerFlagRemove(r.cache, userID, "reposted", originalThreadID)
 	r.invalidate(ctx, repost.ThreadID, nil, nil)
 	r.invalidateFeedCachesByThreadID(ctx, repost.ThreadID)
 	r.invalidateInteractions(ctx, originalThreadID)

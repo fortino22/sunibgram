@@ -30,6 +30,7 @@ func Register(
 	communityMemberCtrl *controller.CommunityMemberController,
 	communityRequestCtrl *controller.CommunityRequestController,
 	communityThreadCtrl *controller.CommunityThreadController,
+	communityRuleCtrl *controller.CommunityRuleController,
 	categoryCtrl *controller.CategoryController,
 	violationCtrl *controller.ViolationController,
 	reportCtrl *controller.ReportController,
@@ -40,6 +41,7 @@ func Register(
 	chatRoomCtrl *controller.ChatRoomController,
 	chatCtrl *controller.ChatController,
 	notificationCtrl *controller.NotificationController,
+	threadPollCtrl *controller.ThreadPollController,
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
@@ -55,7 +57,7 @@ func Register(
 	registerEmailRoutes(api, emailCtrl, auth)
 	registerUserRoutes(api, followCtrl, exploreCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
-	registerCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, auth)
+	registerCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, communityRuleCtrl, auth)
 	registerCategoryRoutes(api, categoryCtrl)
 	registerViolationRoutes(api, violationCtrl, auth)
 	registerReportRoutes(api, reportCtrl, auth)
@@ -65,4 +67,5 @@ func Register(
 	registerDevRoutes(api, devSubscriptionCtrl, auth)
 	registerChatRoutes(api, chatRoomCtrl, chatCtrl, auth)
 	registerNotificationRoutes(api, notificationCtrl, auth)
+	registerThreadPollRoutes(api, threadPollCtrl, auth)
 }

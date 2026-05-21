@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
@@ -49,8 +50,18 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 		if trimmed == "" {
 			message = nil
 		} else {
+			if utf8.RuneCountInString(trimmed) > 5000 {
+				return nil, errors.New("message must be 5000 characters or less")
+			}
 			message = &trimmed
 		}
+	}
+	if gifURL != nil {
+		trimmed := strings.TrimSpace(*gifURL)
+		if utf8.RuneCountInString(trimmed) > 2000 {
+			return nil, errors.New("gifURL must be 2000 characters or less")
+		}
+		*gifURL = trimmed
 	}
 	roomKey, err := s.roomKey(room)
 	if err != nil {
@@ -204,6 +215,9 @@ func (s *ChatService) UpdateMessage(ctx context.Context, chatID, senderID uint, 
 	trimmed := strings.TrimSpace(message)
 	if trimmed == "" {
 		return errors.New("message must not be empty")
+	}
+	if utf8.RuneCountInString(trimmed) > 5000 {
+		return errors.New("message must be 5000 characters or less")
 	}
 
 	chat, err := s.chatRepo.FindByID(chatID)

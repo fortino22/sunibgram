@@ -39,10 +39,10 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 	}
 
 	for _, header := range files {
-		if err := model.ValidateChatMediaExt(header.Filename); err != nil {
+		if err := model.ValidateUploadSize(header, model.MaxChatMediaUploadSize); err != nil {
 			return nil, err
 		}
-		if err := model.ValidateChatMediaContentType(header.Header.Get("Content-Type")); err != nil {
+		if err := model.ValidateChatMediaExt(header.Filename); err != nil {
 			return nil, err
 		}
 	}
@@ -82,16 +82,18 @@ func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket 
 			}
 			defer file.Close()
 
+			mediaType, err := model.ValidateChatMediaFile(file)
+			if err != nil {
+				errCh <- err
+				return
+			}
+
 			objectName, err := s.storage.Upload(ctx, bucket, file, header)
 			if err != nil {
 				errCh <- err
 				return
 			}
 
-			mediaType := header.Header.Get("Content-Type")
-			if mediaType == "" {
-				mediaType = "application/octet-stream"
-			}
 			media[i] = model.ChatMedia{
 				ChatID:     chatID,
 				ObjectName: objectName,

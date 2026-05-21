@@ -15,6 +15,7 @@ type ExploreController struct {
 	bookmarkService  service.IBookmarkService
 	threadService    service.IThreadService
 	communityService service.ICommunityService
+	pollService      service.IThreadPollService
 }
 
 func NewExploreController(
@@ -25,6 +26,7 @@ func NewExploreController(
 	bookmarkService service.IBookmarkService,
 	threadService service.IThreadService,
 	communityService service.ICommunityService,
+	pollService service.IThreadPollService,
 ) *ExploreController {
 	return &ExploreController{
 		exploreService:   exploreService,
@@ -34,6 +36,7 @@ func NewExploreController(
 		bookmarkService:  bookmarkService,
 		threadService:    threadService,
 		communityService: communityService,
+		pollService:      pollService,
 	}
 }
 
@@ -49,7 +52,7 @@ func (c *ExploreController) ExploreSearch(ctx *fiber.Ctx) error {
 		if err.Error() == "query is required" {
 			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(result))
 }

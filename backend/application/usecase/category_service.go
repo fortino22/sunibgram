@@ -3,6 +3,7 @@ package usecase
 import (
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/sunibgram/domain/model"
@@ -23,6 +24,9 @@ func (s *CategoryService) Create(name string) error {
 	if name == "" {
 		return errors.New("category name is required")
 	}
+	if utf8.RuneCountInString(name) > 100 {
+		return errors.New("name must be 100 characters or less")
+	}
 	return s.categoryRepo.Save(&model.Category{Name: name})
 }
 
@@ -34,6 +38,9 @@ func (s *CategoryService) Update(id uuid.UUID, name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("category name is required")
+	}
+	if utf8.RuneCountInString(name) > 100 {
+		return errors.New("name must be 100 characters or less")
 	}
 
 	category, err := s.categoryRepo.FindByID(id)

@@ -207,7 +207,7 @@ func (c *AuthController) Logout(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.Logout(ctx.Context(), claims.SID); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "logged out successfully"})
