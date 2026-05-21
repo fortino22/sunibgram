@@ -15,6 +15,7 @@ type ExploreController struct {
 	bookmarkService  service.IBookmarkService
 	threadService    service.IThreadService
 	communityService service.ICommunityService
+	pollService      service.IThreadPollService
 }
 
 func NewExploreController(
@@ -25,6 +26,7 @@ func NewExploreController(
 	bookmarkService service.IBookmarkService,
 	threadService service.IThreadService,
 	communityService service.ICommunityService,
+	pollService service.IThreadPollService,
 ) *ExploreController {
 	return &ExploreController{
 		exploreService:   exploreService,
@@ -34,6 +36,7 @@ func NewExploreController(
 		bookmarkService:  bookmarkService,
 		threadService:    threadService,
 		communityService: communityService,
+		pollService:      pollService,
 	}
 }
 

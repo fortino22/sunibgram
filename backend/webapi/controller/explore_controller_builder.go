@@ -80,9 +80,25 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 		}
 	}
 
-	fb := newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, viewerID)
+	fb := newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, c.pollService, viewerID)
 	fb.LoadAvatarsForUserIDs(authorIDs)
 	fb.LoadViewerFlagsForThreads(threads)
+
+	pollIDs := make([]uint, 0, len(threads)+len(parents))
+	for i := range threads {
+		t := &threads[i]
+		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+			pollIDs = append(pollIDs, t.OriginalThread.ThreadID)
+		} else {
+			pollIDs = append(pollIDs, t.ThreadID)
+		}
+	}
+	for _, p := range parents {
+		if p != nil {
+			pollIDs = append(pollIDs, p.ThreadID)
+		}
+	}
+	fb.LoadPollsForThreadIDs(pollIDs)
 
 	data := make([]dto.FeedItemResponse, len(threads))
 	for i, t := range threads {
@@ -104,6 +120,7 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 				Author:    fb.AuthorField(p.User),
 				Content:   p.Content,
 				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),
+				Poll:      fb.PollForParent(p),
 				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
 				CreatedAt: dtoutils.Wrap(p.CreatedAt),
 				UpdatedAt: dtoutils.Wrap(p.UpdatedAt),

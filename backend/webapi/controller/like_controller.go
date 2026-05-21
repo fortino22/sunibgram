@@ -14,6 +14,7 @@ type LikeController struct {
 	bookmarkService service.IBookmarkService
 	threadService   service.IThreadService
 	mediaService    service.IThreadMediaService
+	pollService     service.IThreadPollService
 }
 
 func NewLikeController(
@@ -21,12 +22,14 @@ func NewLikeController(
 	bookmarkService service.IBookmarkService,
 	threadService service.IThreadService,
 	mediaService service.IThreadMediaService,
+	pollService service.IThreadPollService,
 ) *LikeController {
 	return &LikeController{
 		likeService:     likeService,
 		bookmarkService: bookmarkService,
 		threadService:   threadService,
 		mediaService:    mediaService,
+		pollService:     pollService,
 	}
 }
 
@@ -98,9 +101,11 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 		LikeSvc:     c.likeService,
 		BookmarkSvc: c.bookmarkService,
 		ThreadSvc:   c.threadService,
+		PollSvc:     c.pollService,
 		ViewerID:    &claims.UserID,
 	}
 	fb.LoadViewerFlagsForThreads(threads)
+	fb.LoadPollsForThreads(threads)
 	for i, t := range threads {
 		item := fb.ToFeedItem(&t, mediaByThread[t.ThreadID])
 		wrapped := dtoutils.Wrap(timestamps[i])

@@ -23,10 +23,11 @@ type EventController struct {
 	bookmarkService  service.IBookmarkService
 	threadPinService service.IThreadPinService
 	profileService   service.IUserProfileService
+	pollService      service.IThreadPollService
 }
 
-func NewEventController(eventService service.IEventService, threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService) *EventController {
-	return &EventController{eventService: eventService, threadService: threadService, mediaService: mediaService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService}
+func NewEventController(eventService service.IEventService, threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService, pollService service.IThreadPollService) *EventController {
+	return &EventController{eventService: eventService, threadService: threadService, mediaService: mediaService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService, pollService: pollService}
 }
 
 func (c *EventController) Create(ctx *fiber.Ctx) error {
@@ -216,7 +217,7 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 		}
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
-	tc := &ThreadController{threadService: c.threadService, mediaService: c.mediaService, likeService: c.likeService, bookmarkService: c.bookmarkService, threadPinService: c.threadPinService, profileService: c.profileService}
+	tc := &ThreadController{threadService: c.threadService, mediaService: c.mediaService, likeService: c.likeService, bookmarkService: c.bookmarkService, threadPinService: c.threadPinService, profileService: c.profileService, pollService: c.pollService}
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
 		Data: tc.buildFeedItemsNoPin(threads, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},

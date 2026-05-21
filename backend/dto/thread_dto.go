@@ -32,6 +32,7 @@ type ThreadResponse struct {
 	EventID       *string               `json:"event_id,omitempty"`
 	EventName     *string               `json:"event_name,omitempty"`
 	Media         []ThreadMediaResponse `json:"media"`
+	Poll          *PollResponse         `json:"poll,omitempty"`
 	LikeCount     int                   `json:"like_count"`
 	RepostCount   int                   `json:"repost_count"`
 	BookmarkCount int                   `json:"bookmark_count"`
@@ -84,6 +85,7 @@ type FeedParentContext struct {
 	Author    FeedAuthor            `json:"author"`
 	Content   string                `json:"content"`
 	Media     []ThreadMediaResponse `json:"media"`
+	Poll      *PollResponse         `json:"poll,omitempty"`
 	Stats     FeedStats             `json:"stats"`
 	CreatedAt utils.FormattedTime   `json:"created_at"`
 	UpdatedAt utils.FormattedTime   `json:"updated_at"`
@@ -116,6 +118,7 @@ type FeedItemResponse struct {
 	Author             FeedAuthor            `json:"author"`
 	Stats              FeedStats             `json:"stats"`
 	Media              []ThreadMediaResponse `json:"media"`
+	Poll               *PollResponse         `json:"poll,omitempty"`
 	IsLiked            *bool                 `json:"is_liked,omitempty"`
 	IsBookmarked       *bool                 `json:"is_bookmarked,omitempty"`
 	IsReposted         *bool                 `json:"is_reposted,omitempty"`

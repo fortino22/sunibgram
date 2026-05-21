@@ -17,6 +17,7 @@ type CommunityThreadController struct {
 	bookmarkService  service.IBookmarkService
 	threadPinService service.IThreadPinService
 	profileService   service.IUserProfileService
+	pollService      service.IThreadPollService
 }
 
 func NewCommunityThreadController(
@@ -26,6 +27,7 @@ func NewCommunityThreadController(
 	bookmarkService service.IBookmarkService,
 	threadPinService service.IThreadPinService,
 	profileService service.IUserProfileService,
+	pollService service.IThreadPollService,
 ) *CommunityThreadController {
 	return &CommunityThreadController{
 		threadService:    threadService,
@@ -34,6 +36,7 @@ func NewCommunityThreadController(
 		bookmarkService:  bookmarkService,
 		threadPinService: threadPinService,
 		profileService:   profileService,
+		pollService:      pollService,
 	}
 }
 
@@ -132,6 +135,7 @@ func (c *CommunityThreadController) getCommunityThreads(
 		bookmarkService:  c.bookmarkService,
 		threadPinService: c.threadPinService,
 		profileService:   c.profileService,
+		pollService:      c.pollService,
 	}
 	data := tc.buildFeedItemsWithPin(threads, &claims.UserID)
 	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
@@ -171,6 +175,7 @@ func (c *CommunityThreadController) getCommunityThreadsByQuery(
 		bookmarkService:  c.bookmarkService,
 		threadPinService: c.threadPinService,
 		profileService:   c.profileService,
+		pollService:      c.pollService,
 	}
 	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
 	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
@@ -206,6 +211,7 @@ func (c *CommunityThreadController) GetMyCommunityThreads(ctx *fiber.Ctx) error 
 		bookmarkService:  c.bookmarkService,
 		threadPinService: c.threadPinService,
 		profileService:   c.profileService,
+		pollService:      c.pollService,
 	}
 	data := tc.buildFeedItemsWithPin(threads, &claims.UserID)
 	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
@@ -248,6 +254,7 @@ func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error
 		bookmarkService:  c.bookmarkService,
 		threadPinService: c.threadPinService,
 		profileService:   c.profileService,
+		pollService:      c.pollService,
 	}
 	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
 	response := make([]dto.CommunityThreadFeedItemResponse, len(data))

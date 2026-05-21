@@ -41,6 +41,7 @@ func Register(
 	chatRoomCtrl *controller.ChatRoomController,
 	chatCtrl *controller.ChatController,
 	notificationCtrl *controller.NotificationController,
+	threadPollCtrl *controller.ThreadPollController,
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
@@ -66,4 +67,5 @@ func Register(
 	registerDevRoutes(api, devSubscriptionCtrl, auth)
 	registerChatRoutes(api, chatRoomCtrl, chatCtrl, auth)
 	registerNotificationRoutes(api, notificationCtrl, auth)
+	registerThreadPollRoutes(api, threadPollCtrl, auth)
 }

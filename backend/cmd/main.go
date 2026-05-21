@@ -75,6 +75,7 @@ func main() {
 	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)
 	chatReactionRepo := infrarepo.NewChatReactionRepository(writeDB, readDB)
 	notificationRepo := infrarepo.NewNotificationRepository(writeDB, readDB, redisCache)
+	threadPollRepo := infrarepo.NewThreadPollRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -116,6 +117,7 @@ func main() {
 	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo, notificationService)
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
 	chatReactionService := usecase.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
+	threadPollService := usecase.NewThreadPollService(threadRepo, threadPollRepo, storageUsecase)
 
 	// --- Controllers ---
 	cacheCtrl := controller.NewCacheController(cacheService)
@@ -127,12 +129,12 @@ func main() {
 	emailCtrl := controller.NewEmailController(emailService)
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
-	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService)
-	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService)
+	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
+	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
 	hashtagCtrl := controller.NewHashtagController(hashtagService)
-	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService)
-	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService)
-	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService)
+	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService, threadPollService)
+	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService, threadPollService)
+	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService, threadPollService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
 	summaryCtrl := controller.NewThreadSummaryController(summaryService)
@@ -150,6 +152,7 @@ func main() {
 		bookmarkService,
 		threadPinService,
 		profileService,
+		threadPollService,
 	)
 	facultyCtrl := controller.NewFacultyController(facultyService)
 	orderCtrl := controller.NewOrderController(orderService)
@@ -158,6 +161,7 @@ func main() {
 	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
 	chatCtrl := controller.NewChatController(chatService, chatMediaService, chatReactionService, socketHub)
 	notificationCtrl := controller.NewNotificationController(notificationService)
+	threadPollCtrl := controller.NewThreadPollController(threadPollService)
 	notificationHandler := webapisocket.NewNotificationHandler(socketHub, notificationService)
 
 	// --- Server ---
@@ -205,6 +209,7 @@ func main() {
 		chatRoomCtrl,
 		chatCtrl,
 		notificationCtrl,
+		threadPollCtrl,
 	)
 
 	go func() {

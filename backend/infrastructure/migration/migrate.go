@@ -25,6 +25,9 @@ func AutoMigrate(db *gorm.DB) {
 		&model.EventReview{},
 		&model.ThreadEvent{},
 		&model.ThreadMedia{},
+		&model.ThreadPoll{},
+		&model.ThreadPollOption{},
+		&model.ThreadPollVote{},
 		&model.Like{},
 		&model.Bookmark{},
 		&model.ThreadPin{},
@@ -181,6 +184,57 @@ func AutoMigrate(db *gorm.DB) {
 				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_events_event'
 			) THEN
 				ALTER TABLE thread_events ADD CONSTRAINT fk_thread_events_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_polls_thread'
+			) THEN
+				ALTER TABLE thread_polls ADD CONSTRAINT fk_thread_polls_thread FOREIGN KEY (thread_id) REFERENCES threads(thread_id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_poll_options_poll'
+			) THEN
+				ALTER TABLE thread_poll_options ADD CONSTRAINT fk_thread_poll_options_poll FOREIGN KEY (poll_id) REFERENCES thread_polls(poll_id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_poll_votes_poll'
+			) THEN
+				ALTER TABLE thread_poll_votes ADD CONSTRAINT fk_thread_poll_votes_poll FOREIGN KEY (poll_id) REFERENCES thread_polls(poll_id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_poll_votes_option'
+			) THEN
+				ALTER TABLE thread_poll_votes ADD CONSTRAINT fk_thread_poll_votes_option FOREIGN KEY (option_id) REFERENCES thread_poll_options(option_id) ON DELETE CASCADE;
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'fk_thread_poll_votes_user'
+			) THEN
+				ALTER TABLE thread_poll_votes ADD CONSTRAINT fk_thread_poll_votes_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 			END IF;
 		END $$;
 	`)
