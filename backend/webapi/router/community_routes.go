@@ -13,6 +13,7 @@ func registerCommunityRoutes(
 	communityThreadCtrl *controller.CommunityThreadController,
 	ruleCtrl *controller.CommunityRuleController,
 	pinCtrl *controller.CommunityThreadPinController,
+	communityPinCtrl *controller.CommunityPinController,
 	auth fiber.Handler,
 ) {
 	api.Get("/communities/:id/rules", ruleCtrl.List)
@@ -25,6 +26,7 @@ func registerCommunityRoutes(
 	communities.Get("/search", communityCtrl.SearchByName)
 	communities.Get("/me", communityCtrl.GetMyCreated)
 	communities.Get("/joined", communityCtrl.GetMyJoined)
+	communities.Get("/pins/me", communityPinCtrl.GetMyPins)
 
 	//community threads (static paths before /:id wildcard)
 	communities.Get("/me/threads", communityThreadCtrl.GetMyCommunityThreads)
@@ -59,4 +61,8 @@ func registerCommunityRoutes(
 	//community thread pin
 	communities.Post("/:id/threads/:threadId/pin", pinCtrl.Pin)
 	communities.Delete("/:id/threads/:threadId/unpin", pinCtrl.Unpin)
+
+	//community pin (user-level favorites)
+	communities.Post("/:id/pin", communityPinCtrl.Pin)
+	communities.Delete("/:id/unpin", communityPinCtrl.Unpin)
 }

@@ -67,6 +67,9 @@ func main() {
 	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
 	communityRuleRepo := infrarepo.NewCommunityRuleRepository(writeDB, readDB)
 	communityThreadPinRepo := infrarepo.NewCommunityThreadPinRepository(writeDB, readDB)
+	communityPinRepo := infrarepo.NewCommunityPinRepository(writeDB, readDB, redisCache)
+	eventPinRepo := infrarepo.NewEventPinRepository(writeDB, readDB, redisCache)
+	eventParticipantRepo := infrarepo.NewEventParticipantRepository(writeDB, readDB, redisCache)
 	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB, redisCache)
 	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
 	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
@@ -113,6 +116,9 @@ func main() {
 	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
 	communityRuleService := usecase.NewCommunityRuleService(communityRepo, communityRuleRepo)
 	communityThreadPinService := usecase.NewCommunityThreadPinService(communityThreadPinRepo, communityRepo, communityMemberRepo, threadRepo)
+	communityPinService := usecase.NewCommunityPinService(communityPinRepo, communityRepo, communityMemberRepo)
+	eventPinService := usecase.NewEventPinService(eventPinRepo, eventRepo)
+	eventParticipantService := usecase.NewEventParticipantService(eventParticipantRepo, eventRepo)
 	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
 	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
 	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
@@ -149,6 +155,9 @@ func main() {
 	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService, profileService)
 	communityRuleCtrl := controller.NewCommunityRuleController(communityRuleService)
 	communityThreadPinCtrl := controller.NewCommunityThreadPinController(communityThreadPinService)
+	communityPinCtrl := controller.NewCommunityPinController(communityPinService, communityService)
+	eventPinCtrl := controller.NewEventPinController(eventPinService, eventService)
+	eventParticipantCtrl := controller.NewEventParticipantController(eventParticipantService, eventService)
 	communityThreadCtrl := controller.NewCommunityThreadController(
 		threadService,
 		threadMediaService,
@@ -205,6 +214,9 @@ func main() {
 		communityThreadCtrl,
 		communityRuleCtrl,
 		communityThreadPinCtrl,
+		communityPinCtrl,
+		eventPinCtrl,
+		eventParticipantCtrl,
 		categoryCtrl,
 		violationCtrl,
 		reportCtrl,

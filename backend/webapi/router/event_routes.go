@@ -8,6 +8,8 @@ import (
 func registerEventRoutes(
 	api fiber.Router,
 	eventCtrl *controller.EventController,
+	pinCtrl *controller.EventPinController,
+	participantCtrl *controller.EventParticipantController,
 	auth fiber.Handler,
 ) {
 	events := api.Group("/events", auth)
@@ -15,6 +17,8 @@ func registerEventRoutes(
 	events.Get("/", eventCtrl.GetAll)
 	events.Get("/admin", eventCtrl.GetPending)
 	events.Get("/me", eventCtrl.GetMyEvents)
+	events.Get("/pins/me", pinCtrl.GetMyPins)
+	events.Get("/joined/me", participantCtrl.GetMyJoined)
 	events.Get("/:id", eventCtrl.GetByID)
 	events.Put("/:id", eventCtrl.Update)
 	events.Patch("/:id/approve", eventCtrl.ApproveEvent)
@@ -22,4 +26,8 @@ func registerEventRoutes(
 	events.Patch("/:id/revision", eventCtrl.RequestRevision)
 	events.Delete("/:id", eventCtrl.Delete)
 	events.Get("/:id/threads", eventCtrl.GetThreads)
+	events.Post("/:id/pin", pinCtrl.Pin)
+	events.Delete("/:id/unpin", pinCtrl.Unpin)
+	events.Post("/:id/join", participantCtrl.Join)
+	events.Delete("/:id/leave", participantCtrl.Leave)
 }
