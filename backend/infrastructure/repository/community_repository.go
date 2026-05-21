@@ -354,7 +354,9 @@ func (r *communityRepository) DeactivateByOwnerIDs(ownerIDs []uint) error {
 		ctx := context.Background()
 		for _, c := range communities {
 			_ = r.cache.Delete(ctx, communityIDKey(c.CommunityID))
+			r.invalidateCommunityThreadCaches(ctx, c.CommunityID)
 		}
+		invalidateExploreCache(ctx, r.cache)
 	}
 	return nil
 }
@@ -371,7 +373,9 @@ func (r *communityRepository) ReactivateByOwnerID(ownerID uint) error {
 		ctx := context.Background()
 		for _, c := range communities {
 			_ = r.cache.Delete(ctx, communityIDKey(c.CommunityID))
+			r.invalidateCommunityThreadCaches(ctx, c.CommunityID)
 		}
+		invalidateExploreCache(ctx, r.cache)
 	}
 	return nil
 }
@@ -481,4 +485,5 @@ func (r *communityRepository) invalidateCommunityThreadCaches(ctx context.Contex
 	_ = r.cache.Delete(ctx, "feed:trending:global")
 	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
 	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
+	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
 }

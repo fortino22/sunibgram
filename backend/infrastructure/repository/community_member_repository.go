@@ -183,6 +183,15 @@ func (r *communityMemberRepository) invalidateCommunityMemberChange(communityID,
 	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", communityID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", communityID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:*:req:%d", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:*:req:%d", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:all-communities:user:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:threads:*:user:%d:*", userID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:*:viewer:%d:*", userID))
+	invalidateExploreCache(ctx, r.cache)
 }
 
 // Flush community:members:* manually after a backend deploy that changes what

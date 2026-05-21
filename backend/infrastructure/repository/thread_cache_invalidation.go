@@ -144,4 +144,9 @@ func (r *threadCached) InvalidateUserFeedCaches(ctx context.Context, userID uint
 	r.invalidateForYouFeedCachesForFollowers(ctx, userID)
 	r.invalidateFollowingFeedCache(ctx)
 	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
+	r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
+	r.cache.DeleteByPattern(ctx, "community:threads:*")
+	r.cache.DeleteByPattern(ctx, "event:threads:*")
+	invalidateExploreCache(ctx, r.cache)
 }

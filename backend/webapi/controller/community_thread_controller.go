@@ -11,13 +11,14 @@ import (
 )
 
 type CommunityThreadController struct {
-	threadService    service.IThreadService
-	mediaService     service.IThreadMediaService
-	likeService      service.ILikeService
-	bookmarkService  service.IBookmarkService
-	threadPinService service.IThreadPinService
-	profileService   service.IUserProfileService
-	pollService      service.IThreadPollService
+	threadService     service.IThreadService
+	mediaService      service.IThreadMediaService
+	likeService       service.ILikeService
+	bookmarkService   service.IBookmarkService
+	threadPinService  service.IThreadPinService
+	profileService    service.IUserProfileService
+	pollService       service.IThreadPollService
+	communityPinSvc   service.ICommunityThreadPinService
 }
 
 func NewCommunityThreadController(
@@ -28,6 +29,7 @@ func NewCommunityThreadController(
 	threadPinService service.IThreadPinService,
 	profileService service.IUserProfileService,
 	pollService service.IThreadPollService,
+	communityPinSvc service.ICommunityThreadPinService,
 ) *CommunityThreadController {
 	return &CommunityThreadController{
 		threadService:    threadService,
@@ -37,6 +39,7 @@ func NewCommunityThreadController(
 		threadPinService: threadPinService,
 		profileService:   profileService,
 		pollService:      pollService,
+		communityPinSvc:  communityPinSvc,
 	}
 }
 
@@ -128,6 +131,24 @@ func (c *CommunityThreadController) getCommunityThreads(
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
+	var pinnedThreadID uint
+	if page == 1 {
+		if pin, _ := c.communityPinSvc.GetPinned(communityID); pin != nil {
+			pinnedThreadID = pin.ThreadID
+			for i, t := range threads {
+				if t.ThreadID == pin.ThreadID {
+					threads = append(threads[:i], threads[i+1:]...)
+					break
+				}
+			}
+			if pinned, ferr := c.threadService.GetByID(pin.ThreadID); ferr == nil && pinned != nil {
+				threads = append([]model.Thread{*pinned}, threads...)
+			} else {
+				pinnedThreadID = 0
+			}
+		}
+	}
+
 	tc := &ThreadController{
 		threadService:    c.threadService,
 		mediaService:     c.mediaService,
@@ -140,6 +161,10 @@ func (c *CommunityThreadController) getCommunityThreads(
 	data := tc.buildFeedItemsWithPin(threads, &claims.UserID)
 	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
+		if pinnedThreadID != 0 && item.ID == pinnedThreadID {
+			t := true
+			item.PinnedByAdmin = &t
+		}
 		response[i] = dto.CommunityThreadFeedItemResponse{
 			FeedItemResponse: item,
 		}

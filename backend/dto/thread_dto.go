@@ -123,6 +123,7 @@ type FeedItemResponse struct {
 	IsBookmarked       *bool                 `json:"is_bookmarked,omitempty"`
 	IsReposted         *bool                 `json:"is_reposted,omitempty"`
 	IsPinned           *bool                 `json:"is_pin,omitempty"`
+	PinnedByAdmin      *bool                 `json:"pinned_by_admin,omitempty"`
 }
 
 type FeedMeta struct {

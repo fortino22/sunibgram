@@ -98,6 +98,32 @@ func (c *CommunityMemberController) RemoveMember(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "member removed successfully"})
 }
 
+func (c *CommunityMemberController) Kick(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
+	}
+
+	targetID, ok := ParseIDParam(ctx, "userId", "user")
+	if !ok {
+		return nil
+	}
+
+	if err := c.memberService.RemoveMember(ctx.Context(), id, claims.UserID, targetID); err != nil {
+		if err.Error() == "forbidden" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		}
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "member kicked successfully"})
+}
+
 func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {

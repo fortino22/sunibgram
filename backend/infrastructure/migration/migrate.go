@@ -37,6 +37,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.CommunityMember{},
 		&model.CommunityRequest{},
 		&model.CommunityRule{},
+		&model.CommunityThreadPin{},
 		&model.Faculty{},
 		&model.UserFaculty{},
 		&model.Order{},

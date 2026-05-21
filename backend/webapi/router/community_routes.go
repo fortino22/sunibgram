@@ -12,6 +12,7 @@ func registerCommunityRoutes(
 	requestCtrl *controller.CommunityRequestController,
 	communityThreadCtrl *controller.CommunityThreadController,
 	ruleCtrl *controller.CommunityRuleController,
+	pinCtrl *controller.CommunityThreadPinController,
 	auth fiber.Handler,
 ) {
 	api.Get("/communities/:id/rules", ruleCtrl.List)
@@ -41,6 +42,7 @@ func registerCommunityRoutes(
 	communities.Delete("/:id/leave", memberCtrl.Leave)
 	communities.Get("/:id/members", memberCtrl.GetMembers)
 	communities.Delete("/:id/members/:userId", memberCtrl.RemoveMember)
+	communities.Post("/:id/members/:userId/kick", memberCtrl.Kick)
 	communities.Patch("/:id/members/:userId/role", memberCtrl.UpdateRole)
 
 	//community join requests
@@ -53,4 +55,8 @@ func registerCommunityRoutes(
 	communities.Get("/:id/threads/top", communityThreadCtrl.GetCommunityThreadTop)
 	communities.Get("/:id/threads/latest", communityThreadCtrl.GetCommunityThreadLatest)
 	communities.Get("/:id/threads/media", communityThreadCtrl.GetCommunityThreadMedia)
+
+	//community thread pin
+	communities.Post("/:id/threads/:threadId/pin", pinCtrl.Pin)
+	communities.Delete("/:id/threads/:threadId/unpin", pinCtrl.Unpin)
 }

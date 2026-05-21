@@ -75,8 +75,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	ctx := context.Background()
 	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
 	r.cache.Delete(ctx, userFollowingKey(followerID))
-	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(followerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
+	r.invalidateVisibilityFeedsForViewer(ctx, followerID)
 	invalidateExploreCache(ctx, r.cache)
 	return nil
 }
@@ -100,10 +99,21 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 	ctx := context.Background()
 	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
 	r.cache.Delete(ctx, userFollowingKey(followerID))
-	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(followerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
+	r.invalidateVisibilityFeedsForViewer(ctx, followerID)
 	invalidateExploreCache(ctx, r.cache)
 	return nil
+}
+
+func (r *followRepository) invalidateVisibilityFeedsForViewer(ctx context.Context, viewerID uint) {
+	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:roots:*:viewer:%d", viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:*:req:%d", viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:*:req:%d", viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:all-communities:user:%d:*", viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:threads:*:user:%d:*", viewerID))
+	r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:*:viewer:%d:*", viewerID))
 }
 
 func (r *followRepository) Exists(followerID, followingID uint) (bool, error) {
