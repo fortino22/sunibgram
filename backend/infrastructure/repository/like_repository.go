@@ -33,6 +33,7 @@ func (r *LikeRepository) Save(like *model.Like) error {
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, like.UserID)
 	r.patchCount(like.ThreadID, "like_count", 1)
+	ViewerFlagAdd(r.base.cache, like.UserID, "liked", like.ThreadID)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
 	r.base.cache.DeleteByPattern(ctx, "thread:roots:*")
@@ -51,6 +52,7 @@ func (r *LikeRepository) Delete(userID, threadID uint) error {
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, userID)
 	r.patchCount(threadID, "like_count", -1)
+	ViewerFlagRemove(r.base.cache, userID, "liked", threadID)
 	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
 	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
 	invalidateExploreTopCache(ctx, r.base.cache)
@@ -63,6 +65,10 @@ func (r *LikeRepository) Exists(userID, threadID uint) (bool, error) {
 
 func (r *LikeRepository) AreThreadsLiked(userID uint, threadIDs []uint) (map[uint]bool, error) {
 	return r.base.areThreadsInteracted(userID, threadIDs)
+}
+
+func (r *LikeRepository) AllLikedThreadIDs(userID uint) ([]uint, error) {
+	return r.base.allUserThreadIDs(userID)
 }
 
 func (r *LikeRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {

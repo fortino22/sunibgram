@@ -26,6 +26,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
 		patchEventCounterByThreadID(r.db.writeDB, r.cache, *thread.OriginalThreadID, "repost_count", 1)
 		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
+		ViewerFlagAdd(r.cache, thread.UserID, "reposted", *thread.OriginalThreadID)
 		var orig model.Thread
 		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
 			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)

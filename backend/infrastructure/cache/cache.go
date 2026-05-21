@@ -102,12 +102,53 @@ func (c *Cache) SAdd(ctx context.Context, key string, member string, ttl time.Du
 	return c.client.Expire(ctx, key, ttl).Err()
 }
 
+// SAddMany adds multiple members atomically and refreshes the TTL.
+func (c *Cache) SAddMany(ctx context.Context, key string, members []string, ttl time.Duration) error {
+	if len(members) == 0 {
+		return c.client.Expire(ctx, key, ttl).Err()
+	}
+	args := make([]any, len(members))
+	for i, m := range members {
+		args[i] = m
+	}
+	if err := c.client.SAdd(ctx, key, args...).Err(); err != nil {
+		return err
+	}
+	return c.client.Expire(ctx, key, ttl).Err()
+}
+
 func (c *Cache) SMembers(ctx context.Context, key string) ([]string, error) {
 	return c.client.SMembers(ctx, key).Result()
 }
 
 func (c *Cache) SRem(ctx context.Context, key string, member string) error {
 	return c.client.SRem(ctx, key, member).Err()
+}
+
+// SIsMember reports whether a single member exists in the set.
+func (c *Cache) SIsMember(ctx context.Context, key, member string) (bool, error) {
+	return c.client.SIsMember(ctx, key, member).Result()
+}
+
+// SMIsMember reports membership for many members in a single call. Returns booleans in the same order.
+func (c *Cache) SMIsMember(ctx context.Context, key string, members []string) ([]bool, error) {
+	if len(members) == 0 {
+		return nil, nil
+	}
+	args := make([]any, len(members))
+	for i, m := range members {
+		args[i] = m
+	}
+	return c.client.SMIsMember(ctx, key, args...).Result()
+}
+
+// Exists reports whether the given key exists.
+func (c *Cache) Exists(ctx context.Context, key string) (bool, error) {
+	n, err := c.client.Exists(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
 }
 
 func (c *Cache) Miss(err error) bool {

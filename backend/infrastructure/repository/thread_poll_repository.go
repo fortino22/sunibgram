@@ -3,12 +3,21 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+)
+
+const (
+	pollBodyTTL = 30 * time.Second
+	pollVoteTTL = 5 * time.Minute
 )
 
 type ThreadPollRepository struct {
@@ -25,8 +34,20 @@ func NewThreadPollRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domain
 	return &ThreadPollRepository{writeDB: writeDB, readDB: readDB, cache: redisCache}
 }
 
+func pollThreadKey(threadID uint) string {
+	return fmt.Sprintf("poll:thread:%d", threadID)
+}
+
+func pollUserVoteKey(pollID, userID uint) string {
+	return fmt.Sprintf("poll:%d:user:%d", pollID, userID)
+}
+
+func pollUserVotePattern(pollID uint) string {
+	return fmt.Sprintf("poll:%d:user:*", pollID)
+}
+
 func (r *ThreadPollRepository) Create(poll *model.ThreadPoll, options []model.ThreadPollOption) error {
-	return r.writeDB.Transaction(func(tx *gorm.DB) error {
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(poll).Error; err != nil {
 			return err
 		}
@@ -38,17 +59,33 @@ func (r *ThreadPollRepository) Create(poll *model.ThreadPoll, options []model.Th
 		}
 		poll.Options = options
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	if r.cache != nil {
+		ctx := context.Background()
+		_ = r.cache.Delete(ctx, pollThreadKey(poll.ThreadID), threadKey(poll.ThreadID))
+	}
+	return nil
 }
 
 func (r *ThreadPollRepository) FindByThreadID(threadID uint) (*model.ThreadPoll, error) {
+	ctx := context.Background()
+	if r.cache != nil {
+		var cached model.ThreadPoll
+		if err := r.cache.Get(ctx, pollThreadKey(threadID), &cached); err == nil {
+			return &cached, nil
+		}
+	}
 	var poll model.ThreadPoll
-	err := r.readDB.
+	if err := r.readDB.
 		Preload("Options", func(db *gorm.DB) *gorm.DB { return db.Order("position ASC") }).
 		Where("thread_id = ?", threadID).
-		First(&poll).Error
-	if err != nil {
+		First(&poll).Error; err != nil {
 		return nil, err
+	}
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, pollThreadKey(threadID), poll, pollBodyTTL)
 	}
 	return &poll, nil
 }
@@ -58,8 +95,26 @@ func (r *ThreadPollRepository) FindByThreadIDs(threadIDs []uint) (map[uint]*mode
 	if len(threadIDs) == 0 {
 		return result, nil
 	}
+	ctx := context.Background()
+	missing := make([]uint, 0, len(threadIDs))
+	if r.cache != nil {
+		for _, id := range threadIDs {
+			var cached model.ThreadPoll
+			if err := r.cache.Get(ctx, pollThreadKey(id), &cached); err == nil {
+				result[id] = &cached
+				continue
+			}
+			missing = append(missing, id)
+		}
+	} else {
+		missing = threadIDs
+	}
+	if len(missing) == 0 {
+		return result, nil
+	}
+
 	var polls []model.ThreadPoll
-	if err := r.readDB.Where("thread_id IN ?", threadIDs).Find(&polls).Error; err != nil {
+	if err := r.readDB.Where("thread_id IN ?", missing).Find(&polls).Error; err != nil {
 		return nil, err
 	}
 	if len(polls) == 0 {
@@ -85,6 +140,9 @@ func (r *ThreadPollRepository) FindByThreadIDs(threadIDs []uint) (map[uint]*mode
 	}
 	for _, p := range pollByID {
 		result[p.ThreadID] = p
+		if r.cache != nil {
+			_ = r.cache.Set(ctx, pollThreadKey(p.ThreadID), *p, pollBodyTTL)
+		}
 	}
 	return result, nil
 }
@@ -94,14 +152,42 @@ func (r *ThreadPollRepository) FindUserVotes(userID uint, pollIDs []uint) (map[u
 	if len(pollIDs) == 0 || userID == 0 {
 		return result, nil
 	}
+	ctx := context.Background()
+	missing := make([]uint, 0, len(pollIDs))
+	if r.cache != nil {
+		for _, pid := range pollIDs {
+			var optID uint
+			if err := r.cache.Get(ctx, pollUserVoteKey(pid, userID), &optID); err == nil {
+				if optID != 0 {
+					result[pid] = optID
+				}
+				continue
+			}
+			missing = append(missing, pid)
+		}
+	} else {
+		missing = pollIDs
+	}
+	if len(missing) == 0 {
+		return result, nil
+	}
+
 	var votes []model.ThreadPollVote
 	if err := r.readDB.
-		Where("user_id = ? AND poll_id IN ?", userID, pollIDs).
+		Where("user_id = ? AND poll_id IN ?", userID, missing).
 		Find(&votes).Error; err != nil {
 		return nil, err
 	}
+	hit := make(map[uint]uint, len(votes))
 	for _, v := range votes {
+		hit[v.PollID] = v.OptionID
 		result[v.PollID] = v.OptionID
+	}
+	if r.cache != nil {
+		for _, pid := range missing {
+			optID := hit[pid] // 0 if no vote — cache miss-marker
+			_ = r.cache.Set(ctx, pollUserVoteKey(pid, userID), optID, pollVoteTTL)
+		}
 	}
 	return result, nil
 }
@@ -117,16 +203,15 @@ func (r *ThreadPollRepository) FindOptionByID(optionID uint) (*model.ThreadPollO
 // CastVote inserts a new vote or switches an existing vote to a different option.
 // Atomic: option vote_counts shift via gorm.Expr; poll total_votes only increments on first vote.
 func (r *ThreadPollRepository) CastVote(pollID, optionID, userID uint) error {
-	return r.writeDB.Transaction(func(tx *gorm.DB) error {
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
 		var existing model.ThreadPollVote
 		err := tx.Where("poll_id = ? AND user_id = ?", pollID, userID).First(&existing).Error
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		if err == nil {
-			// existing vote
 			if existing.OptionID == optionID {
-				return nil // no change
+				return nil
 			}
 			if err := tx.Model(&model.ThreadPollOption{}).
 				Where("option_id = ?", existing.OptionID).
@@ -138,14 +223,10 @@ func (r *ThreadPollRepository) CastVote(pollID, optionID, userID uint) error {
 				UpdateColumn("vote_count", gorm.Expr("vote_count + 1")).Error; err != nil {
 				return err
 			}
-			if err := tx.Model(&model.ThreadPollVote{}).
+			return tx.Model(&model.ThreadPollVote{}).
 				Where("vote_id = ?", existing.VoteID).
-				Updates(map[string]any{"option_id": optionID}).Error; err != nil {
-				return err
-			}
-			return nil
+				Updates(map[string]any{"option_id": optionID}).Error
 		}
-		// first vote — insert + bump counters
 		vote := model.ThreadPollVote{PollID: pollID, OptionID: optionID, UserID: userID}
 		res := tx.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "poll_id"}, {Name: "user_id"}},
@@ -155,7 +236,6 @@ func (r *ThreadPollRepository) CastVote(pollID, optionID, userID uint) error {
 			return res.Error
 		}
 		if res.RowsAffected == 0 {
-			// race: another tx inserted between First() and Create(). Retry as switch.
 			return r.switchVote(tx, pollID, optionID, userID)
 		}
 		if err := tx.Model(&model.ThreadPollOption{}).
@@ -163,13 +243,25 @@ func (r *ThreadPollRepository) CastVote(pollID, optionID, userID uint) error {
 			UpdateColumn("vote_count", gorm.Expr("vote_count + 1")).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&model.ThreadPoll{}).
+		return tx.Model(&model.ThreadPoll{}).
 			Where("poll_id = ?", pollID).
-			UpdateColumn("total_votes", gorm.Expr("total_votes + 1")).Error; err != nil {
-			return err
+			UpdateColumn("total_votes", gorm.Expr("total_votes + 1")).Error
+	}); err != nil {
+		return err
+	}
+	// invalidate caches: need threadID for poll body key
+	if r.cache != nil {
+		ctx := context.Background()
+		var threadID uint
+		if err := r.readDB.Model(&model.ThreadPoll{}).
+			Select("thread_id").
+			Where("poll_id = ?", pollID).
+			Scan(&threadID).Error; err == nil && threadID != 0 {
+			_ = r.cache.Delete(ctx, pollThreadKey(threadID))
 		}
-		return nil
-	})
+		_ = r.cache.Set(ctx, pollUserVoteKey(pollID, userID), optionID, pollVoteTTL)
+	}
+	return nil
 }
 
 func (r *ThreadPollRepository) switchVote(tx *gorm.DB, pollID, optionID, userID uint) error {
@@ -207,39 +299,31 @@ func (r *ThreadPollRepository) DeleteByThreadID(threadID uint) ([]model.ThreadPo
 	if err := r.readDB.Where("poll_id = ?", poll.PollID).Find(&options).Error; err != nil {
 		return nil, err
 	}
-	err := r.writeDB.Transaction(func(tx *gorm.DB) error {
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("poll_id = ?", poll.PollID).Delete(&model.ThreadPollVote{}).Error; err != nil {
 			return err
 		}
 		if err := tx.Where("poll_id = ?", poll.PollID).Delete(&model.ThreadPollOption{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("poll_id = ?", poll.PollID).Delete(&model.ThreadPoll{}).Error; err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
+		return tx.Where("poll_id = ?", poll.PollID).Delete(&model.ThreadPoll{}).Error
+	}); err != nil {
 		return nil, err
 	}
 	if r.cache != nil {
-		_ = r.cache.DeleteByPattern(context.Background(), pollCachePattern(poll.PollID))
+		ctx := context.Background()
+		_ = r.cache.Delete(ctx, pollThreadKey(threadID))
+		_ = r.cache.DeleteByPattern(ctx, pollUserVotePattern(poll.PollID))
 	}
 	return options, nil
 }
 
-func pollCachePattern(pollID uint) string {
-	return "poll:" + uintToStr(pollID) + ":*"
-}
-
-func uintToStr(v uint) string {
-	if v == 0 {
-		return "0"
+// parsePollIDFromKey unused helper kept for future debug; intentionally simple.
+func parsePollIDFromKey(key string) (uint, error) {
+	parts := strings.Split(key, ":")
+	if len(parts) < 2 {
+		return 0, errors.New("invalid key")
 	}
-	buf := make([]byte, 0, 10)
-	for v > 0 {
-		buf = append([]byte{byte('0' + v%10)}, buf...)
-		v /= 10
-	}
-	return string(buf)
+	v, err := strconv.ParseUint(parts[1], 10, 64)
+	return uint(v), err
 }

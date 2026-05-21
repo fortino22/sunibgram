@@ -132,11 +132,25 @@ func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
 		return err
 	}
 	r.invalidateUser(userID)
+	r.invalidateProfileMeta(userID)
 	invalidateNotificationSenderCache(context.Background(), r.cache, userID)
 	invalidateExploreCache(context.Background(), r.cache)
 	r.invalidateUserPremiumCaches()
 	r.invalidateUserThreadCaches(userID)
 	return nil
+}
+
+// profileMetaKey is the Redis key for the FeedBuilder-level profile meta cache.
+// Kept in sync with webapiutils.ProfileMetaCacheKey to avoid a cross-package import cycle.
+func profileMetaKey(userID uint) string {
+	return fmt.Sprintf("user:meta:%d", userID)
+}
+
+func (r *UserRepository) invalidateProfileMeta(userID uint) {
+	if r.cache == nil {
+		return
+	}
+	r.cache.Delete(context.Background(), profileMetaKey(userID))
 }
 
 func (r *UserRepository) invalidateUserPremiumCaches() {

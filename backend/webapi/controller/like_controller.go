@@ -102,6 +102,7 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 		BookmarkSvc: c.bookmarkService,
 		ThreadSvc:   c.threadService,
 		PollSvc:     c.pollService,
+		Cache:       feedBuilderCache,
 		ViewerID:    &claims.UserID,
 	}
 	fb.LoadViewerFlagsForThreads(threads)
