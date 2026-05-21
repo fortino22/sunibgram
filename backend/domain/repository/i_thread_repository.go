@@ -13,7 +13,7 @@ type IThreadRepository interface {
 	FindByID(id uint) (*model.Thread, error)
 	FindRoots(requesterID *uint, page, limit int) ([]model.Thread, int64, error)
 	FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error)
-	FindChain(anchorID uint) (model.Thread, []model.Thread, error)
+	FindChain(anchorID uint) (model.Thread, []model.Thread, []model.Thread, error)
 	Update(thread *model.Thread) error
 	Delete(id uint) error
 	FindPostsByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)

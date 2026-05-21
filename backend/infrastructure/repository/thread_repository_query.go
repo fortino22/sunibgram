@@ -64,14 +64,19 @@ func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]model.Th
 	return result.Threads, result.Total, nil
 }
 
-func (r *threadCached) FindChain(anchorID uint) (model.Thread, []model.Thread, error) {
+func (r *threadCached) FindChain(anchorID uint) (model.Thread, []model.Thread, []model.Thread, error) {
 	var anchor model.Thread
 	if err := preloadThreadParentDetails(r.db.readDB).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Where("threads.thread_id = ?", anchorID).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 		First(&anchor).Error; err != nil {
-		return model.Thread{}, nil, err
+		return model.Thread{}, nil, nil, err
+	}
+
+	ancestors, err := r.findAncestors(anchor)
+	if err != nil {
+		return model.Thread{}, nil, nil, err
 	}
 
 	var children []model.Thread
@@ -81,9 +86,56 @@ func (r *threadCached) FindChain(anchorID uint) (model.Thread, []model.Thread, e
 		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
 		Order("threads.created_at ASC").
 		Find(&children).Error; err != nil {
-		return model.Thread{}, nil, err
+		return model.Thread{}, nil, nil, err
 	}
-	return anchor, children, nil
+	return anchor, ancestors, children, nil
+}
+
+func (r *threadCached) findAncestors(anchor model.Thread) ([]model.Thread, error) {
+	if anchor.ParentID == nil {
+		return nil, nil
+	}
+
+	var ancestorIDs []uint
+	cteSQL := `
+		WITH RECURSIVE ancestors AS (
+			SELECT thread_id, parent_id, 0 AS depth
+			FROM threads
+			WHERE thread_id = ?
+			UNION ALL
+			SELECT t.thread_id, t.parent_id, a.depth + 1
+			FROM threads t
+			JOIN ancestors a ON t.thread_id = a.parent_id
+		)
+		SELECT thread_id FROM ancestors ORDER BY depth DESC
+	`
+	if err := r.db.readDB.Raw(cteSQL, *anchor.ParentID).Scan(&ancestorIDs).Error; err != nil {
+		return nil, err
+	}
+	if len(ancestorIDs) == 0 {
+		return nil, nil
+	}
+
+	var rows []model.Thread
+	if err := preloadThreadParentDetails(r.db.readDB).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.thread_id IN ?", ancestorIDs).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	byID := make(map[uint]model.Thread, len(rows))
+	for _, t := range rows {
+		byID[t.ThreadID] = t
+	}
+	ordered := make([]model.Thread, 0, len(ancestorIDs))
+	for _, id := range ancestorIDs {
+		if t, ok := byID[id]; ok {
+			ordered = append(ordered, t)
+		}
+	}
+	return ordered, nil
 }
 
 func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error) {

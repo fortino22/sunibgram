@@ -29,14 +29,14 @@ func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, li
 }
 
 func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
-	anchor, children, err := s.threadRepo.FindChain(anchorID)
+	anchor, ancestors, children, err := s.threadRepo.FindChain(anchorID)
 	if err != nil {
 		return nil, 0, errors.New("thread not found")
 	}
 
 	// For repost threads, redirect the chain to the original thread so replies are visible.
 	if anchor.Type == model.ThreadTypeRepost && anchor.OriginalThreadID != nil {
-		anchor, children, err = s.threadRepo.FindChain(*anchor.OriginalThreadID)
+		anchor, ancestors, children, err = s.threadRepo.FindChain(*anchor.OriginalThreadID)
 		if err != nil {
 			return nil, 0, errors.New("thread not found")
 		}
@@ -47,7 +47,8 @@ func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 
-	chain := make([]model.Thread, 0, 1+len(children))
+	chain := make([]model.Thread, 0, len(ancestors)+1+len(children))
+	chain = append(chain, ancestors...)
 	chain = append(chain, anchor)
 	chain = append(chain, children...)
 
