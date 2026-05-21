@@ -47,3 +47,41 @@ type MyCommunityResponse struct {
 	CommunityName string `json:"community_name"`
 	BannerURL     string `json:"community_banner"`
 }
+
+type CommunityAboutInfoResponse struct {
+	Description       string `json:"description"`
+	PostingPolicy     string `json:"posting_policy"`
+	VisibilityPolicy  string `json:"visibility_policy"`
+	JoinPolicy        string `json:"join_policy"`
+}
+
+type CommunityAboutCreatorResponse struct {
+	UserID      uint                `json:"user_id"`
+	Name        string              `json:"name"`
+	Username    string              `json:"username"`
+	AvatarURL   string              `json:"avatar_url"`
+	Bio         string              `json:"bio"`
+	IsPremium   bool                `json:"is_premium"`
+	IsFollowing bool                `json:"is_following"`
+	CreatedAt   utils.FormattedTime `json:"community_created_at"`
+}
+
+type CommunityAboutMemberResponse struct {
+	UserID      uint   `json:"user_id"`
+	Name        string `json:"name"`
+	Username    string `json:"username"`
+	AvatarURL   string `json:"avatar_url"`
+	Bio         string `json:"bio"`
+	IsPremium   bool   `json:"is_premium"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+type CommunityAboutResponse struct {
+	CommunityID uint                           `json:"community_id"`
+	Name        string                         `json:"name"`
+	Info        CommunityAboutInfoResponse     `json:"info"`
+	Creator     CommunityAboutCreatorResponse  `json:"creator"`
+	Rules       []CommunityRuleMiniResponse    `json:"rules"`
+	Admins      []CommunityAboutMemberResponse `json:"admins"`
+	TopMembers  []CommunityAboutMemberResponse `json:"top_members"`
+}

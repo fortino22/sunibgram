@@ -15,7 +15,22 @@ type ICommunityService interface {
 	Discover(ctx context.Context, categoryID *uuid.UUID) ([]model.DiscoverCommunity, error)
 	SearchByName(ctx context.Context, name string) ([]model.DiscoverCommunity, error)
 	GetByID(id uint) (*model.Community, error)
+	GetAbout(ctx context.Context, communityID uint, viewerID *uint) (*CommunityAbout, error)
 	GetMyCreated(userID uint, page, limit int) ([]model.Community, int64, error)
 	GetMyJoined(userID uint, page, limit int) ([]model.Community, int64, error)
 	GetURL(bucket, objectName string) string
+}
+
+type CommunityAboutUser struct {
+	User        *model.User
+	Profile     *model.UserProfile
+	IsFollowing bool
+}
+
+type CommunityAbout struct {
+	Community  *model.Community
+	Creator    CommunityAboutUser
+	Rules      []model.CommunityRule
+	Admins     []CommunityAboutUser
+	TopMembers []CommunityAboutUser
 }

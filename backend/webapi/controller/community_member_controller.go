@@ -122,7 +122,7 @@ func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 	}
 
 	role := model.CommunityMemberRole(body.Role)
-	if role != model.CommunityMemberRoleMember && role != model.CommunityMemberRoleModerator && role != model.CommunityMemberRoleAdmin {
+	if role != model.CommunityMemberRoleMember && role != model.CommunityMemberRoleAdmin {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid role"})
 	}
 

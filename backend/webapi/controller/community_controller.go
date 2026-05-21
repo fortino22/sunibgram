@@ -12,15 +12,17 @@ import (
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
 	"github.com/sunibgram/dto/utils"
+	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type CommunityController struct {
 	communityService service.ICommunityService
 	ruleService      service.ICommunityRuleService
+	profileService   service.IUserProfileService
 }
 
-func NewCommunityController(communityService service.ICommunityService, ruleService service.ICommunityRuleService) *CommunityController {
-	return &CommunityController{communityService: communityService, ruleService: ruleService}
+func NewCommunityController(communityService service.ICommunityService, ruleService service.ICommunityRuleService, profileService service.IUserProfileService) *CommunityController {
+	return &CommunityController{communityService: communityService, ruleService: ruleService, profileService: profileService}
 }
 
 func (c *CommunityController) Create(ctx *fiber.Ctx) error {
@@ -209,6 +211,99 @@ func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
 		Data: c.toResponses(communities),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
+}
+
+func (c *CommunityController) GetAbout(ctx *fiber.Ctx) error {
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
+	}
+
+	var viewerID *uint
+	if claims, ok := webapiutils.Get(ctx); ok {
+		uid := claims.UserID
+		viewerID = &uid
+	}
+
+	about, err := c.communityService.GetAbout(ctx.Context(), id, viewerID)
+	if err != nil {
+		if err.Error() == "community not found" {
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(c.buildAboutResponse(about))
+}
+
+func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) dto.CommunityAboutResponse {
+	comm := about.Community
+	postingPolicy := "Only members can post."
+	visibilityPolicy := "All Communities are publicly visible."
+	joinPolicy := "Anyone can join this Community."
+	if comm.Visibility == model.CommunityVisibilityPrivate {
+		visibilityPolicy = "This Community is private."
+		joinPolicy = "Membership requires an approved join request."
+	}
+
+	creatorAvatar := ""
+	creatorBio := ""
+	if about.Creator.Profile != nil {
+		creatorAvatar = BuildMediaURL(about.Creator.Profile.AvatarObjectName, about.Creator.Profile.AvatarBucket, c.profileService.GetURL)
+		creatorBio = about.Creator.Profile.Bio
+	}
+
+	creator := dto.CommunityAboutCreatorResponse{
+		Name:        about.Creator.User.Name,
+		UserID:      about.Creator.User.UserID,
+		Username:    about.Creator.User.UserName,
+		AvatarURL:   creatorAvatar,
+		Bio:         creatorBio,
+		IsPremium:   about.Creator.User.IsPremium,
+		IsFollowing: about.Creator.IsFollowing,
+		CreatedAt:   utils.Wrap(comm.CreatedAt),
+	}
+
+	return dto.CommunityAboutResponse{
+		CommunityID: comm.CommunityID,
+		Name:        comm.Name,
+		Info: dto.CommunityAboutInfoResponse{
+			Description:      comm.Description,
+			PostingPolicy:    postingPolicy,
+			VisibilityPolicy: visibilityPolicy,
+			JoinPolicy:       joinPolicy,
+		},
+		Creator:    creator,
+		Rules:      toRuleMiniResponses(about.Rules),
+		Admins:     c.toAboutMemberResponses(about.Admins),
+		TopMembers: c.toAboutMemberResponses(about.TopMembers),
+	}
+}
+
+func (c *CommunityController) toAboutMemberResponses(users []service.CommunityAboutUser) []dto.CommunityAboutMemberResponse {
+	out := make([]dto.CommunityAboutMemberResponse, 0, len(users))
+	for i := range users {
+		u := users[i]
+		if u.User == nil {
+			continue
+		}
+		avatarURL := ""
+		bio := ""
+		if u.Profile != nil {
+			avatarURL = BuildMediaURL(u.Profile.AvatarObjectName, u.Profile.AvatarBucket, c.profileService.GetURL)
+			bio = u.Profile.Bio
+		}
+		out = append(out, dto.CommunityAboutMemberResponse{
+			UserID:      u.User.UserID,
+			Name:        u.User.Name,
+			Username:    u.User.UserName,
+			AvatarURL:   avatarURL,
+			Bio:         bio,
+			IsPremium:   u.User.IsPremium,
+			IsFollowing: u.IsFollowing,
+		})
+	}
+	return out
 }
 
 func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityResponse {

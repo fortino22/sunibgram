@@ -32,6 +32,7 @@ func registerCommunityRoutes(
 	communities.Get("/threads/latest", communityThreadCtrl.GetCommunityThreadLatestByName)
 
 	communities.Get("/:id", communityCtrl.GetByID)
+	communities.Get("/:id/about", communityCtrl.GetAbout)
 	communities.Put("/:id", communityCtrl.Update)
 	communities.Delete("/:id", communityCtrl.Delete)
 

@@ -20,6 +20,8 @@ type CommunityService struct {
 	communityRepo  repository.ICommunityRepository
 	memberRepo     repository.ICommunityMemberRepository
 	userRepo       repository.IUserRepository
+	profileRepo    repository.IUserProfileRepository
+	followRepo     repository.IFollowRepository
 	categoryRepo   repository.ICategoryRepository
 	ruleRepo       repository.ICommunityRuleRepository
 	cacheRepo      repository.ICacheRepository
@@ -30,6 +32,8 @@ func NewCommunityService(
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
 	userRepo repository.IUserRepository,
+	profileRepo repository.IUserProfileRepository,
+	followRepo repository.IFollowRepository,
 	categoryRepo repository.ICategoryRepository,
 	ruleRepo repository.ICommunityRuleRepository,
 	cacheRepo repository.ICacheRepository,
@@ -39,6 +43,8 @@ func NewCommunityService(
 		communityRepo:  communityRepo,
 		memberRepo:     memberRepo,
 		userRepo:       userRepo,
+		profileRepo:    profileRepo,
+		followRepo:     followRepo,
 		categoryRepo:   categoryRepo,
 		ruleRepo:       ruleRepo,
 		cacheRepo:      cacheRepo,
@@ -99,7 +105,7 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 		member := &model.CommunityMember{
 			CommunityID: community.CommunityID,
 			UserID:      userID,
-			Role:        model.CommunityMemberRoleOwner,
+			Role:        model.CommunityMemberRoleAdmin,
 		}
 		if err := s.memberRepo.SaveWithTx(tx, member); err != nil {
 			return err
@@ -125,7 +131,7 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 		return nil, nil, errors.New("community is inactive")
 	}
 	actor, err := s.memberRepo.FindMember(id, userID)
-	if err != nil || !isAdminOrAbove(actor.Role) {
+	if err != nil || !isCommunityAdmin(actor.Role) {
 		return nil, nil, errors.New("forbidden")
 	}
 	name = strings.TrimSpace(name)
@@ -235,7 +241,7 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 		return errors.New("community not found")
 	}
 	actor, err := s.memberRepo.FindMember(id, userID)
-	if err != nil || !isAdminOrAbove(actor.Role) {
+	if err != nil || !isCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
 	}
 	if community.BannerObjectName != "" {
@@ -314,6 +320,93 @@ func (s *CommunityService) GetByID(id uint) (*model.Community, error) {
 	}
 	s.hydrateCommunityCategory(community)
 	return community, nil
+}
+
+func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewerID *uint) (*service.CommunityAbout, error) {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
+		return nil, errors.New("community not found")
+	}
+	s.hydrateCommunityCategory(community)
+
+	rules, err := s.ruleRepo.ListByCommunity(communityID)
+	if err != nil {
+		return nil, err
+	}
+
+	admins, err := s.memberRepo.FindAdmins(communityID)
+	if err != nil {
+		return nil, err
+	}
+	topMembers, err := s.memberRepo.FindTopMembers(communityID, 10)
+	if err != nil {
+		return nil, err
+	}
+
+	creatorUser, err := s.userRepo.FindByID(community.UserID)
+	if err != nil {
+		return nil, errors.New("community creator not found")
+	}
+	creatorProfile, _ := s.profileRepo.FindByUserID(community.UserID)
+
+	targetIDs := make([]uint, 0, 1+len(admins)+len(topMembers))
+	targetIDs = append(targetIDs, community.UserID)
+	for i := range admins {
+		targetIDs = append(targetIDs, admins[i].UserID)
+	}
+	for i := range topMembers {
+		targetIDs = append(targetIDs, topMembers[i].UserID)
+	}
+
+	followSet := map[uint]bool{}
+	if viewerID != nil && *viewerID != 0 && len(targetIDs) > 0 {
+		fs, ferr := s.followRepo.GetFollowingSet(ctx, *viewerID, targetIDs)
+		if ferr == nil {
+			followSet = fs
+		}
+	}
+
+	creatorAbout := service.CommunityAboutUser{
+		User:        creatorUser,
+		Profile:     creatorProfile,
+		IsFollowing: followSet[community.UserID],
+	}
+	if viewerID != nil && *viewerID == community.UserID {
+		creatorAbout.IsFollowing = false
+	}
+
+	adminAbout := s.buildAboutUsers(admins, viewerID, followSet)
+	memberAbout := s.buildAboutUsers(topMembers, viewerID, followSet)
+
+	return &service.CommunityAbout{
+		Community:  community,
+		Creator:    creatorAbout,
+		Rules:      rules,
+		Admins:     adminAbout,
+		TopMembers: memberAbout,
+	}, nil
+}
+
+func (s *CommunityService) buildAboutUsers(members []model.CommunityMember, viewerID *uint, followSet map[uint]bool) []service.CommunityAboutUser {
+	out := make([]service.CommunityAboutUser, 0, len(members))
+	for i := range members {
+		m := &members[i]
+		user := m.User
+		var profile *model.UserProfile
+		if m.Profile != nil {
+			profile = m.Profile
+		}
+		isFollowing := followSet[m.UserID]
+		if viewerID != nil && *viewerID == m.UserID {
+			isFollowing = false
+		}
+		out = append(out, service.CommunityAboutUser{
+			User:        &user,
+			Profile:     profile,
+			IsFollowing: isFollowing,
+		})
+	}
+	return out
 }
 
 func (s *CommunityService) GetMyCreated(userID uint, page, limit int) ([]model.Community, int64, error) {

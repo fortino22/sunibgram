@@ -5,10 +5,8 @@ import "time"
 type CommunityMemberRole string
 
 const (
-	CommunityMemberRoleMember    CommunityMemberRole = "MEMBER"
-	CommunityMemberRoleModerator CommunityMemberRole = "MODERATOR"
-	CommunityMemberRoleAdmin     CommunityMemberRole = "ADMIN"
-	CommunityMemberRoleOwner     CommunityMemberRole = "OWNER"
+	CommunityMemberRoleMember CommunityMemberRole = "MEMBER"
+	CommunityMemberRoleAdmin  CommunityMemberRole = "ADMIN"
 )
 
 type CommunityMember struct {
