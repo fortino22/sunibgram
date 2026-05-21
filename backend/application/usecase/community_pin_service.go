@@ -40,8 +40,17 @@ func (s *CommunityPinService) Pin(userID, communityID uint) error {
 	if exists {
 		return errors.New("already pinned")
 	}
+	count, err := s.pinRepo.CountByUser(userID)
+	if err != nil {
+		return err
+	}
+	if count >= maxCommunityPinsPerUser {
+		return errors.New("maximum of 3 pinned communities reached")
+	}
 	return s.pinRepo.Pin(&model.UserCommunityPin{UserID: userID, CommunityID: communityID})
 }
+
+const maxCommunityPinsPerUser = 3
 
 func (s *CommunityPinService) Unpin(userID, communityID uint) error {
 	exists, err := s.pinRepo.Exists(userID, communityID)

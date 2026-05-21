@@ -43,6 +43,7 @@ func registerCommunityRoutes(
 	communities.Post("/:id/join", memberCtrl.Join)
 	communities.Delete("/:id/leave", memberCtrl.Leave)
 	communities.Get("/:id/members", memberCtrl.GetMembers)
+	communities.Get("/:id/users", memberCtrl.GetCommunityUsers)
 	communities.Delete("/:id/members/:userId", memberCtrl.RemoveMember)
 	communities.Post("/:id/members/:userId/kick", memberCtrl.Kick)
 	communities.Patch("/:id/members/:userId/role", memberCtrl.UpdateRole)

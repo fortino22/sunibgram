@@ -28,6 +28,9 @@ func (s *EventParticipantService) Join(userID uint, eventID string) error {
 	if err != nil {
 		return errors.New("event not found")
 	}
+	if event.Status != "approved" {
+		return errors.New("event is not open for participation")
+	}
 	if !event.EndTime.IsZero() && event.EndTime.Before(time.Now().UTC()) {
 		return errors.New("event has already ended")
 	}

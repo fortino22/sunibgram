@@ -15,3 +15,17 @@ type PaginatedCommunityMemberResponse struct {
 	Data []CommunityMemberResponse `json:"data"`
 	Meta FeedMeta                  `json:"meta"`
 }
+
+type CommunityUserResponse struct {
+	UserID      uint   `json:"user_id"`
+	Username    string `json:"username"`
+	Name        string `json:"name"`
+	IsPremium   bool   `json:"is_premium"`
+	Role        string `json:"role"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+type PaginatedCommunityUserResponse struct {
+	Data []CommunityUserResponse `json:"data"`
+	Meta FeedMeta                `json:"meta"`
+}

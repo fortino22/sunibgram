@@ -33,7 +33,11 @@ func (s *FollowService) Follow(followerID, followingID uint) error {
 	if err := s.followRepo.Follow(followerID, followingID); err != nil {
 		return err
 	}
-	invalidateDiscoverCommunitiesCache(context.Background(), s.cacheRepo)
+	ctx := context.Background()
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	if s.cacheRepo != nil {
+		_ = s.cacheRepo.DeleteByPattern(ctx, "community:users:*")
+	}
 	helper.SendInteractionNotification(s.notification, "follow", "started following you", followerID, followingID, followingID)
 	return nil
 }
@@ -42,7 +46,11 @@ func (s *FollowService) Unfollow(followerID, followingID uint) error {
 	if err := s.followRepo.Unfollow(followerID, followingID); err != nil {
 		return err
 	}
-	invalidateDiscoverCommunitiesCache(context.Background(), s.cacheRepo)
+	ctx := context.Background()
+	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	if s.cacheRepo != nil {
+		_ = s.cacheRepo.DeleteByPattern(ctx, "community:users:*")
+	}
 	return nil
 }
 

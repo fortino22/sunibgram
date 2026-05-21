@@ -33,8 +33,17 @@ func (s *EventPinService) Pin(userID uint, eventID string) error {
 	if exists {
 		return errors.New("already pinned")
 	}
+	count, err := s.pinRepo.CountByUser(userID)
+	if err != nil {
+		return err
+	}
+	if count >= maxEventPinsPerUser {
+		return errors.New("maximum of 3 pinned events reached")
+	}
 	return s.pinRepo.Pin(&model.UserEventPin{UserID: userID, EventID: eventID})
 }
+
+const maxEventPinsPerUser = 3
 
 func (s *EventPinService) Unpin(userID uint, eventID string) error {
 	if _, err := uuid.Parse(eventID); err != nil {

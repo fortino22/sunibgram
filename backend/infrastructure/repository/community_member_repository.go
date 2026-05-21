@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -75,6 +76,71 @@ func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, li
 	}
 	if r.cache != nil {
 		result = cachedCommunityMembers{Members: members, Total: total}
+		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+	}
+	return members, total, nil
+}
+
+func communityUsersKey(communityID uint, role *model.CommunityMemberRole, query string, page, limit int) string {
+	r := "ALL"
+	if role != nil {
+		r = string(*role)
+	}
+	return fmt.Sprintf("community:users:%d:role:%s:q:%s:p:%d:l:%d", communityID, r, strings.ToLower(query), page, limit)
+}
+
+type cachedCommunityUsers struct {
+	Members []model.CommunityMember
+	Total   int64
+}
+
+func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *model.CommunityMemberRole, query string, page, limit int) ([]model.CommunityMember, int64, error) {
+	ctx := context.Background()
+	query = strings.TrimSpace(query)
+	key := communityUsersKey(communityID, role, query, page, limit)
+	var result cachedCommunityUsers
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &result); err == nil {
+			return result.Members, result.Total, nil
+		}
+	}
+
+	base := r.readDB.Model(&model.CommunityMember{}).
+		Joins("JOIN users ON users.user_id = community_members.user_id").
+		Where("community_members.community_id = ?", communityID)
+	if role != nil {
+		base = base.Where("community_members.role = ?", *role)
+	}
+	if query != "" {
+		like := "%" + query + "%"
+		base = base.Where("users.user_name ILIKE ? OR users.name ILIKE ?", like, like)
+	}
+
+	var total int64
+	if err := base.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var members []model.CommunityMember
+	offset := (page - 1) * limit
+	q := r.readDB.Preload("User").
+		Joins("JOIN users ON users.user_id = community_members.user_id").
+		Where("community_members.community_id = ?", communityID)
+	if role != nil {
+		q = q.Where("community_members.role = ?", *role)
+	}
+	if query != "" {
+		like := "%" + query + "%"
+		q = q.Where("users.user_name ILIKE ? OR users.name ILIKE ?", like, like)
+	}
+	if err := q.Order("community_members.joined_at ASC").
+		Offset(offset).Limit(limit).
+		Find(&members).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if r.cache != nil {
+		result = cachedCommunityUsers{Members: members, Total: total}
 		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
 	}
 	return members, total, nil
@@ -178,6 +244,7 @@ func (r *communityMemberRepository) invalidateCommunityMemberChange(communityID,
 	}
 	ctx := context.Background()
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:members:%d:*", communityID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:users:%d:*", communityID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:joined:%d:*", userID))
 	_ = r.cache.Delete(ctx, communityIDKey(communityID))
 	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
@@ -205,6 +272,7 @@ func (r *communityMemberRepository) invalidateCommunityMemberRole(communityID ui
 	}
 	ctx := context.Background()
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:members:%d:*", communityID))
+	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:users:%d:*", communityID))
 	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", communityID))
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", communityID))

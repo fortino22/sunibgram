@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
@@ -96,6 +98,51 @@ func (c *CommunityMemberController) RemoveMember(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "member removed successfully"})
+}
+
+func (c *CommunityMemberController) GetCommunityUsers(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	id, ok := ParseIDParam(ctx, "id", "community")
+	if !ok {
+		return nil
+	}
+
+	var rolePtr *model.CommunityMemberRole
+	if raw := strings.TrimSpace(ctx.Query("role")); raw != "" {
+		role := model.CommunityMemberRole(strings.ToUpper(raw))
+		if role != model.CommunityMemberRoleAdmin && role != model.CommunityMemberRoleMember {
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid role"})
+		}
+		rolePtr = &role
+	}
+	query := strings.TrimSpace(ctx.Query("query"))
+	page, limit := ParsePagination(ctx)
+
+	items, total, err := c.memberService.GetCommunityUsers(ctx.Context(), id, claims.UserID, rolePtr, query, page, limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+	}
+
+	data := make([]dto.CommunityUserResponse, len(items))
+	for i, item := range items {
+		data[i] = dto.CommunityUserResponse{
+			UserID:      item.UserID,
+			Username:    item.Username,
+			Name:        item.Name,
+			IsPremium:   item.IsPremium,
+			Role:        string(item.Role),
+			IsFollowing: item.IsFollowing,
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityUserResponse{
+		Data: data,
+		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
 }
 
 func (c *CommunityMemberController) Kick(ctx *fiber.Ctx) error {

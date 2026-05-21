@@ -21,6 +21,8 @@ import (
 type EventService struct {
 	eventRepo       repository.IEventRepository
 	eventReviewRepo repository.IEventReviewRepository
+	pinRepo         repository.IEventPinRepository
+	partRepo        repository.IEventParticipantRepository
 	storageUsecase  *StorageUsecase
 	settingsRepo    repository.IUserSettingsRepository
 	followRepo      repository.IFollowRepository
@@ -29,6 +31,8 @@ type EventService struct {
 func NewEventService(
 	eventRepo repository.IEventRepository,
 	eventReviewRepo repository.IEventReviewRepository,
+	pinRepo repository.IEventPinRepository,
+	partRepo repository.IEventParticipantRepository,
 	storageUsecase *StorageUsecase,
 	settingsRepo repository.IUserSettingsRepository,
 	followRepo repository.IFollowRepository,
@@ -36,9 +40,20 @@ func NewEventService(
 	return &EventService{
 		eventRepo:       eventRepo,
 		eventReviewRepo: eventReviewRepo,
+		pinRepo:         pinRepo,
+		partRepo:        partRepo,
 		storageUsecase:  storageUsecase,
 		settingsRepo:    settingsRepo,
 		followRepo:      followRepo,
+	}
+}
+
+func (s *EventService) invalidateUserScopedCaches(eventID string) {
+	if s.pinRepo != nil {
+		s.pinRepo.InvalidateByEvent(eventID)
+	}
+	if s.partRepo != nil {
+		s.partRepo.InvalidateByEvent(eventID)
 	}
 }
 
@@ -244,6 +259,7 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 	if err := s.eventRepo.Update(event); err != nil {
 		return nil, err
 	}
+	s.invalidateUserScopedCaches(event.ID)
 	return event, nil
 }
 
@@ -262,6 +278,7 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 	if event.AttachmentObjectName != "" && len(event.PDFs) == 0 {
 		_ = s.storageUsecase.Delete(ctx, event.AttachmentBucket, event.AttachmentObjectName)
 	}
+	s.invalidateUserScopedCaches(id)
 	return s.eventRepo.Delete(id)
 }
 

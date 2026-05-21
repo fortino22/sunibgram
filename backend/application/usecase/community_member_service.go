@@ -13,6 +13,7 @@ import (
 type CommunityMemberService struct {
 	communityRepo repository.ICommunityRepository
 	memberRepo    repository.ICommunityMemberRepository
+	followRepo    repository.IFollowRepository
 	cacheRepo     repository.ICacheRepository
 }
 
@@ -23,9 +24,15 @@ func isCommunityAdmin(role model.CommunityMemberRole) bool {
 func NewCommunityMemberService(
 	communityRepo repository.ICommunityRepository,
 	memberRepo repository.ICommunityMemberRepository,
+	followRepo repository.IFollowRepository,
 	cacheRepo repository.ICacheRepository,
 ) service.ICommunityMemberService {
-	return &CommunityMemberService{communityRepo: communityRepo, memberRepo: memberRepo, cacheRepo: cacheRepo}
+	return &CommunityMemberService{
+		communityRepo: communityRepo,
+		memberRepo:    memberRepo,
+		followRepo:    followRepo,
+		cacheRepo:     cacheRepo,
+	}
 }
 
 func (s *CommunityMemberService) Join(ctx context.Context, communityID, userID uint) error {
@@ -84,6 +91,40 @@ func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) (
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.memberRepo.FindByCommunityID(communityID, page, limit)
+}
+
+func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *model.CommunityMemberRole, query string, page, limit int) ([]service.CommunityUserItem, int64, error) {
+	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+		return nil, 0, errors.New("community not found")
+	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+
+	members, total, err := s.memberRepo.FindCommunityUsers(communityID, role, query, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	userIDs := make([]uint, 0, len(members))
+	for _, m := range members {
+		userIDs = append(userIDs, m.UserID)
+	}
+	followSet, err := s.followRepo.GetFollowingSet(ctx, viewerID, userIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]service.CommunityUserItem, len(members))
+	for i, m := range members {
+		items[i] = service.CommunityUserItem{
+			UserID:      m.UserID,
+			Username:    m.User.UserName,
+			Name:        m.User.Name,
+			IsPremium:   m.User.IsPremium,
+			Role:        m.Role,
+			IsFollowing: followSet[m.UserID],
+		}
+	}
+	return items, total, nil
 }
 
 func (s *CommunityMemberService) RemoveMember(ctx context.Context, communityID, actorUserID, targetUserID uint) error {

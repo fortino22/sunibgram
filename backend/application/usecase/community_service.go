@@ -24,6 +24,7 @@ type CommunityService struct {
 	followRepo     repository.IFollowRepository
 	categoryRepo   repository.ICategoryRepository
 	ruleRepo       repository.ICommunityRuleRepository
+	pinRepo        repository.ICommunityPinRepository
 	cacheRepo      repository.ICacheRepository
 	storageUsecase *StorageUsecase
 }
@@ -36,6 +37,7 @@ func NewCommunityService(
 	followRepo repository.IFollowRepository,
 	categoryRepo repository.ICategoryRepository,
 	ruleRepo repository.ICommunityRuleRepository,
+	pinRepo repository.ICommunityPinRepository,
 	cacheRepo repository.ICacheRepository,
 	storageUsecase *StorageUsecase,
 ) service.ICommunityService {
@@ -47,6 +49,7 @@ func NewCommunityService(
 		followRepo:     followRepo,
 		categoryRepo:   categoryRepo,
 		ruleRepo:       ruleRepo,
+		pinRepo:        pinRepo,
 		cacheRepo:      cacheRepo,
 		storageUsecase: storageUsecase,
 	}
@@ -231,6 +234,9 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	savedRules = final
 
 	invalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	if s.pinRepo != nil {
+		s.pinRepo.InvalidateByCommunity(community.CommunityID)
+	}
 	s.hydrateCommunityCategory(community)
 	return community, savedRules, nil
 }
@@ -246,6 +252,9 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	}
 	if community.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, community.BannerBucket, community.BannerObjectName)
+	}
+	if s.pinRepo != nil {
+		s.pinRepo.InvalidateByCommunity(id)
 	}
 	if err := s.communityRepo.Delete(id); err != nil {
 		return err

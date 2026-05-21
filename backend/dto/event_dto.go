@@ -123,3 +123,9 @@ type PaginatedMyEventResponse struct {
 	Data []EventWithReviewHistoryResponse `json:"data"`
 	Meta FeedMeta                         `json:"meta"`
 }
+
+type EventMiniResponse struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	BannerURL string `json:"banner_url,omitempty"`
+}

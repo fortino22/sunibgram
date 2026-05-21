@@ -55,6 +55,14 @@ func (r *EventPinRepository) Exists(userID uint, eventID string) (bool, error) {
 	return count > 0, err
 }
 
+func (r *EventPinRepository) CountByUser(userID uint) (int64, error) {
+	var count int64
+	err := r.readDB.Model(&model.UserEventPin{}).
+		Where("user_id = ?", userID).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *EventPinRepository) FindMyPins(userID uint, page, limit int) ([]model.Event, int64, error) {
 	ctx := context.Background()
 	key := eventPinListKey(userID, page, limit)
@@ -95,4 +103,21 @@ func (r *EventPinRepository) InvalidateUser(userID uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:pins:user:%d:*", userID))
+}
+
+func (r *EventPinRepository) InvalidateByEvent(eventID string) {
+	if r.cache == nil {
+		return
+	}
+	ctx := context.Background()
+	var userIDs []uint
+	if err := r.readDB.Model(&model.UserEventPin{}).
+		Where("event_id = ?", eventID).
+		Distinct("user_id").
+		Pluck("user_id", &userIDs).Error; err != nil {
+		return
+	}
+	for _, uid := range userIDs {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:pins:user:%d:*", uid))
+	}
 }

@@ -55,6 +55,14 @@ func (r *CommunityPinRepository) Exists(userID, communityID uint) (bool, error) 
 	return count > 0, err
 }
 
+func (r *CommunityPinRepository) CountByUser(userID uint) (int64, error) {
+	var count int64
+	err := r.readDB.Model(&model.UserCommunityPin{}).
+		Where("user_id = ?", userID).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *CommunityPinRepository) FindMyPins(userID uint, page, limit int) ([]model.Community, int64, error) {
 	ctx := context.Background()
 	key := communityPinListKey(userID, page, limit)
@@ -96,4 +104,21 @@ func (r *CommunityPinRepository) InvalidateUser(userID uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:pins:user:%d:*", userID))
+}
+
+func (r *CommunityPinRepository) InvalidateByCommunity(communityID uint) {
+	if r.cache == nil {
+		return
+	}
+	ctx := context.Background()
+	var userIDs []uint
+	if err := r.readDB.Model(&model.UserCommunityPin{}).
+		Where("community_id = ?", communityID).
+		Distinct("user_id").
+		Pluck("user_id", &userIDs).Error; err != nil {
+		return
+	}
+	for _, uid := range userIDs {
+		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:pins:user:%d:*", uid))
+	}
 }

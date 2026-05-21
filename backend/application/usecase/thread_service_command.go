@@ -20,6 +20,9 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
 	}
+	if err := s.requireEventJoined(userID, eventID); err != nil {
+		return nil, err
+	}
 
 	threadType := model.ThreadTypePost
 	var rootID *uint
@@ -126,6 +129,9 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 		return nil, errors.New("content must be 5000 characters or less")
 	}
 	if err := s.requireEventApproved(eventID); err != nil {
+		return nil, err
+	}
+	if err := s.requireEventJoined(userID, eventID); err != nil {
 		return nil, err
 	}
 	community, err := s.communityRepo.FindByID(communityID)
@@ -349,6 +355,20 @@ func (s *ThreadService) requireEventApproved(eventID *string) error {
 	}
 	if event.Status != "approved" {
 		return errors.New("event is not approved")
+	}
+	return nil
+}
+
+func (s *ThreadService) requireEventJoined(userID uint, eventID *string) error {
+	if eventID == nil || s.eventPartRepo == nil {
+		return nil
+	}
+	joined, err := s.eventPartRepo.Exists(userID, *eventID)
+	if err != nil {
+		return err
+	}
+	if !joined {
+		return errors.New("you must join the event before posting")
 	}
 	return nil
 }

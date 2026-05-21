@@ -8,4 +8,5 @@ type IEventParticipantRepository interface {
 	Exists(userID uint, eventID string) (bool, error)
 	FindMyJoined(userID uint, page, limit int) ([]model.Event, int64, error)
 	InvalidateUser(userID uint)
+	InvalidateByEvent(eventID string)
 }
