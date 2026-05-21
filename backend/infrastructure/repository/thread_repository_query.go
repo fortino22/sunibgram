@@ -180,7 +180,7 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 	return result.Threads, result.Total, nil
 }
 
-func (r *threadCached) FindCommunityTop(communityID, requesterUserID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindCommunityTop(communityID, requesterUserID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	return r.findCommunityThreads(
 		communityID,
 		requesterUserID,
@@ -191,43 +191,69 @@ func (r *threadCached) FindCommunityTop(communityID, requesterUserID uint, page,
 	)
 }
 
-func (r *threadCached) FindCommunityLatest(communityID, requesterUserID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindCommunityLatest(communityID, requesterUserID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	return r.findCommunityThreads(communityID, requesterUserID, page, limit, "latest", "threads.created_at DESC")
 }
 
-func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, page, limit int, keySuffix, orderClause string) ([]model.Thread, int64, error) {
+func (r *threadCached) FindCommunityThreadsBySort(communityID, requesterUserID uint, sort string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+	orderClause, keySuffix := communitySortClause(sort)
+	return r.findCommunityThreads(communityID, requesterUserID, page, limit, keySuffix, orderClause)
+}
+
+func communitySortClause(sort string) (string, string) {
+	switch sort {
+	case "top":
+		return "(threads.like_count + threads.repost_count + threads.bookmark_count) DESC, threads.created_at DESC", "top"
+	case "likes":
+		return "threads.like_count DESC, threads.created_at DESC", "likes"
+	default:
+		return "threads.created_at DESC", "latest"
+	}
+}
+
+func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, page, limit int, keySuffix, orderClause string) ([]model.Thread, []*model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread
+		Parents []*model.Thread
 		Total   int64
 	}
 	ctx := context.Background()
 	var result cached
 	key := fmt.Sprintf("%s:viewer:%d", threadCommunityKey(communityID, page, limit, keySuffix), requesterUserID)
-	if err := r.cache.Get(ctx, key, &result); err != nil {
-		var threads []model.Thread
-		var total int64
-		requesterID := &requesterUserID
-		if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
-			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Count(&total).Error; err != nil {
-			return nil, 0, err
-		}
-		offset := (page - 1) * limit
-		if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
-			Where("community_id = ? AND type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Order(orderClause).
-			Offset(offset).Limit(limit).
-			Find(&threads).Error; err != nil {
-			return nil, 0, err
-		}
-		result = cached{Threads: threads, Total: total}
-		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
-			for _, t := range result.Threads {
-				r.trackFeedCacheKey(ctx, t.ThreadID, key)
-			}
+	if err := r.cache.Get(ctx, key, &result); err == nil && len(result.Parents) == len(result.Threads) {
+		return result.Threads, result.Parents, result.Total, nil
+	}
+
+	var threads []model.Thread
+	var total int64
+	requesterID := &requesterUserID
+	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
+	if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
+		Where("community_id = ? AND type IN ?", communityID, threadTypes).
+		Count(&total).Error; err != nil {
+		return nil, nil, 0, err
+	}
+	offset := (page - 1) * limit
+	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
+		Where("community_id = ? AND type IN ?", communityID, threadTypes).
+		Order(orderClause).
+		Offset(offset).Limit(limit).
+		Find(&threads).Error; err != nil {
+		return nil, nil, 0, err
+	}
+
+	threads, parents, err := r.attachVisibleParents(threads, requesterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	result = cached{Threads: threads, Parents: parents, Total: total}
+	if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+		for _, t := range result.Threads {
+			r.trackFeedCacheKey(ctx, t.ThreadID, key)
 		}
 	}
-	return result.Threads, result.Total, nil
+	return result.Threads, result.Parents, result.Total, nil
 }
 
 func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]model.CommunityThreadMedia, error) {
@@ -237,7 +263,7 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 		Table("thread_media").
 		Select("thread_media.media_id, thread_media.thread_id, thread_media.object_name, thread_media.bucket, thread_media.created_at").
 		Joins("JOIN threads ON threads.thread_id = thread_media.thread_id"), requesterID).
-		Where("threads.community_id = ? AND threads.type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
+		Where("threads.community_id = ? AND threads.type IN ?", communityID, []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}).
 		Order("threads.created_at DESC, thread_media.created_at ASC").
 		Find(&rows).Error; err != nil {
 		return nil, err
@@ -257,47 +283,60 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 	return result, nil
 }
 
-func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	type cached struct {
 		Threads []model.Thread
+		Parents []*model.Thread
 		Total   int64
 	}
 	ctx := context.Background()
 	var result cached
 	key := fmt.Sprintf("thread:my-communities:user:%d:page:%d:limit:%d", userID, page, limit)
-	if err := r.cache.Get(ctx, key, &result); err != nil {
-		var threads []model.Thread
-		var total int64
-
-		requesterID := &userID
-		base := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
-			Joins("JOIN communities ON communities.community_id = threads.community_id").
-			Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
-			Where("threads.community_id IS NOT NULL").
-			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Where("communities.is_active = ?", true)
-
-		if err := base.Count(&total).Error; err != nil {
-			return nil, 0, err
-		}
-
-		offset := (page - 1) * limit
-		if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
-			Joins("JOIN communities ON communities.community_id = threads.community_id").
-			Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
-			Where("threads.community_id IS NOT NULL").
-			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost)}).
-			Where("communities.is_active = ?", true).
-			Order("threads.created_at DESC").
-			Offset(offset).Limit(limit).
-			Find(&threads).Error; err != nil {
-			return nil, 0, err
-		}
-
-		result = cached{Threads: threads, Total: total}
-		r.cache.Set(ctx, key, result, threadFeedTTL)
+	if err := r.cache.Get(ctx, key, &result); err == nil && len(result.Parents) == len(result.Threads) {
+		return result.Threads, result.Parents, result.Total, nil
 	}
-	return result.Threads, result.Total, nil
+
+	var threads []model.Thread
+	var total int64
+
+	requesterID := &userID
+	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
+	base := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
+		Joins("JOIN communities ON communities.community_id = threads.community_id").
+		Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
+		Where("threads.community_id IS NOT NULL").
+		Where("threads.type IN ?", threadTypes).
+		Where("communities.is_active = ?", true)
+
+	if err := base.Count(&total).Error; err != nil {
+		return nil, nil, 0, err
+	}
+
+	offset := (page - 1) * limit
+	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
+		Joins("JOIN communities ON communities.community_id = threads.community_id").
+		Joins("JOIN community_members cm ON cm.community_id = threads.community_id AND cm.user_id = ?", userID).
+		Where("threads.community_id IS NOT NULL").
+		Where("threads.type IN ?", threadTypes).
+		Where("communities.is_active = ?", true).
+		Order("threads.created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&threads).Error; err != nil {
+		return nil, nil, 0, err
+	}
+
+	threads, parents, err := r.attachVisibleParents(threads, requesterID)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	result = cached{Threads: threads, Parents: parents, Total: total}
+	if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+		for _, t := range result.Threads {
+			r.trackFeedCacheKey(ctx, t.ThreadID, key)
+		}
+	}
+	return result.Threads, result.Parents, result.Total, nil
 }
 
 func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {

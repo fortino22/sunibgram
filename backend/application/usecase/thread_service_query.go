@@ -156,28 +156,28 @@ func (s *ThreadService) ensureCommunityThreadAccess(communityID, userID uint) er
 	return nil
 }
 
-func (s *ThreadService) GetCommunityThreadTop(communityID, userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetCommunityThreadTop(communityID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := s.threadRepo.FindCommunityTop(communityID, userID, page, limit)
-	if err != nil {
-		return nil, 0, err
-	}
-	return threads, total, nil
+	return s.threadRepo.FindCommunityTop(communityID, userID, page, limit)
 }
 
-func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := s.threadRepo.FindCommunityLatest(communityID, userID, page, limit)
-	if err != nil {
-		return nil, 0, err
+	return s.threadRepo.FindCommunityLatest(communityID, userID, page, limit)
+}
+
+func (s *ThreadService) GetCommunityThreadsBySort(communityID, userID uint, sort string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
+		return nil, nil, 0, err
 	}
-	return threads, total, nil
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	return s.threadRepo.FindCommunityThreadsBySort(communityID, userID, sort, page, limit)
 }
 
 func (s *ThreadService) GetCommunityThreadMedia(communityID, userID uint) ([]model.CommunityThreadMedia, error) {
@@ -196,13 +196,9 @@ func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.
 	return s.filterUserFeed(context.Background(), userID, threads, parents)
 }
 
-func (s *ThreadService) GetMyCommunityThreads(ctx context.Context, userID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetMyCommunityThreads(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := s.threadRepo.FindMyCommunityThreads(userID, page, limit)
-	if err != nil {
-		return nil, 0, err
-	}
-	return threads, total, nil
+	return s.threadRepo.FindMyCommunityThreads(userID, page, limit)
 }
 
 func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {

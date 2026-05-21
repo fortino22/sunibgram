@@ -179,7 +179,9 @@ func main() {
 	notificationHandler := webapisocket.NewNotificationHandler(socketHub, notificationService)
 
 	// --- Server ---
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		BodyLimit: 50 * 1024 * 1024,
+	})
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:3000",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",

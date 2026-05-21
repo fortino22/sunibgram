@@ -55,6 +55,7 @@ func registerCommunityRoutes(
 	communities.Post("/:id/requests/:userId/approve", requestCtrl.Approve)
 	communities.Post("/:id/requests/:userId/decline", requestCtrl.Decline)
 	communities.Post("/:communityID/threads", communityThreadCtrl.CreateCommunityThread)
+	communities.Get("/:id/threads/sort", communityThreadCtrl.GetCommunityThreadsBySort)
 	communities.Get("/:id/threads/top", communityThreadCtrl.GetCommunityThreadTop)
 	communities.Get("/:id/threads/latest", communityThreadCtrl.GetCommunityThreadLatest)
 	communities.Get("/:id/threads/media", communityThreadCtrl.GetCommunityThreadMedia)
