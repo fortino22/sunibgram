@@ -19,6 +19,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 		return err
 	}
 	ctx := context.Background()
+	var repostInheritedCommunityID *uint
 	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		r.db.writeDB.Model(&model.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
@@ -30,6 +31,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 		var orig model.Thread
 		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
 			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
+			repostInheritedCommunityID = orig.CommunityID
 		}
 	}
 	if thread.ParentID != nil {
@@ -44,8 +46,12 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
 	r.invalidateForYouFeedCachesForFollowers(ctx, thread.UserID)
-	if thread.CommunityID != nil {
-		r.invalidateForYouFeedCachesForCommunity(ctx, *thread.CommunityID)
+	effectiveCommunityID := thread.CommunityID
+	if effectiveCommunityID == nil {
+		effectiveCommunityID = repostInheritedCommunityID
+	}
+	if effectiveCommunityID != nil {
+		r.invalidateForYouFeedCachesForCommunity(ctx, *effectiveCommunityID)
 		r.invalidateCommunityThreadQueryCaches(ctx)
 	}
 	r.invalidateTrendingFeed(ctx)
@@ -194,6 +200,10 @@ func (r *threadCached) Delete(id uint) error {
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", -1)
 		patchEventCounterByThreadID(r.db.writeDB, r.cache, *thread.OriginalThreadID, "repost_count", -1)
 		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
+		var orig model.Thread
+		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
+			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
+		}
 	}
 	if thread.ParentID != nil {
 		r.db.writeDB.Model(&model.Thread{}).

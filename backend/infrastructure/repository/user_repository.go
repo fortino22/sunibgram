@@ -180,6 +180,8 @@ func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
 	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
 	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
 	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
+	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
+	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
 	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
 	_ = r.cache.Delete(ctx, "feed:trending:global")
 }
