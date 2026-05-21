@@ -133,6 +133,7 @@ func (c *CommunityMemberController) GetCommunityUsers(ctx *fiber.Ctx) error {
 			UserID:      item.UserID,
 			Username:    item.Username,
 			Name:        item.Name,
+			UserAvatar:  BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL),
 			IsPremium:   item.IsPremium,
 			Role:        string(item.Role),
 			IsFollowing: item.IsFollowing,

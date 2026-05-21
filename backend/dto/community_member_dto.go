@@ -20,6 +20,7 @@ type CommunityUserResponse struct {
 	UserID      uint   `json:"user_id"`
 	Username    string `json:"username"`
 	Name        string `json:"name"`
+	UserAvatar  string `json:"user_avatar"`
 	IsPremium   bool   `json:"is_premium"`
 	Role        string `json:"role"`
 	IsFollowing bool   `json:"is_following"`

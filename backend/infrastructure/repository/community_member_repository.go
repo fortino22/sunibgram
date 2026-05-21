@@ -123,7 +123,7 @@ func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *m
 
 	var members []model.CommunityMember
 	offset := (page - 1) * limit
-	q := r.readDB.Preload("User").
+	q := r.readDB.Preload("User").Preload("Profile").
 		Joins("JOIN users ON users.user_id = community_members.user_id").
 		Where("community_members.community_id = ?", communityID)
 	if role != nil {

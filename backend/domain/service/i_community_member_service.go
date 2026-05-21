@@ -17,10 +17,12 @@ type ICommunityMemberService interface {
 }
 
 type CommunityUserItem struct {
-	UserID      uint
-	Username    string
-	Name        string
-	IsPremium   bool
-	Role        model.CommunityMemberRole
-	IsFollowing bool
+	UserID           uint
+	Username         string
+	Name             string
+	AvatarObjectName string
+	AvatarBucket     string
+	IsPremium        bool
+	Role             model.CommunityMemberRole
+	IsFollowing      bool
 }
