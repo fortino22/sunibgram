@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useComposeStore } from '@/stores/composeStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 interface NavItem {
   id: string;
@@ -131,6 +132,7 @@ export function Sidebar() {
   const avatarSrc = profile?.avatar ?? null;
   const isCollapsed = pathname.startsWith('/messages');
   const openCompose = useComposeStore((s) => s.openCompose);
+  const unreadNotifications = useNotificationStore((s) => s.unreadCount);
 
   const handleLogout = async () => {
     await fetch('/api/auth/clear-session', { method: 'POST' });
@@ -163,9 +165,14 @@ export function Sidebar() {
 
       {/* Nav items */}
       <div style={{ padding: '0 10px', flex: 1 }}>
-        {NAV_ITEMS.map((item) => (
-          <SidebarItem key={item.id} item={item} active={isActive(item)} collapsed={isCollapsed} />
-        ))}
+        {NAV_ITEMS.map((item) => {
+          const badge = item.id === 'notifications' && unreadNotifications > 0
+            ? (unreadNotifications > 99 ? 99 : unreadNotifications)
+            : item.badge;
+          return (
+            <SidebarItem key={item.id} item={{ ...item, badge }} active={isActive(item)} collapsed={isCollapsed} />
+          );
+        })}
 
         {/* New Post button */}
         <div style={{ marginTop: 16, padding: isCollapsed ? '0' : '0 2px', display: 'flex', justifyContent: isCollapsed ? 'center' : undefined }}>

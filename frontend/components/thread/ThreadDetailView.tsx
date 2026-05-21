@@ -16,14 +16,21 @@ import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
 import { ImageDetailModal } from './ImageDetailModal';
 import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
+import { QuotedPostBox } from './QuotedPostBox';
+
+function formatThreadDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${time} · ${day}`;
+}
 
 interface ThreadDetailViewProps {
   root: ThreadItem;
   replies: ThreadItem[];
-  viewFullThreadId?: number | null;
 }
 
-export function ThreadDetailView({ root, replies, viewFullThreadId = null }: ThreadDetailViewProps) {
+export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(root.id, {
@@ -105,18 +112,23 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
         {/* Author row */}
         <div className="flex items-center" style={{ gap: 12 }}>
           <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
-          <div className="min-w-0 flex-1 flex items-center" style={{ gap: 8 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-              {author.username}
-            </span>
-            {author.is_premium && (
-              <span style={{ fontSize: 10, background: 'var(--accent-soft)', color: 'var(--accent)', padding: '1px 5px', borderRadius: 4, fontWeight: 600, letterSpacing: '0.02em' }}>
-                PRO
+          <div className="min-w-0 flex-1" style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                {author.name}
               </span>
-            )}
-            {root.is_pin && (
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>Pinned</span>
-            )}
+              {author.is_premium && (
+                <span style={{ fontSize: 10, background: 'var(--accent-soft)', color: 'var(--accent)', padding: '1px 5px', borderRadius: 4, fontWeight: 600, letterSpacing: '0.02em' }}>
+                  PRO
+                </span>
+              )}
+              {root.is_pin && (
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>Pinned</span>
+              )}
+            </div>
+            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+              @{author.username}
+            </span>
           </div>
           {canManage && (
             <ThreadOptionsMenu
@@ -141,19 +153,26 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
               errorMessage={updateMutation.error?.message}
             />
           ) : (
-            <ThreadBody
-              content={root.content}
-              media={root.media}
-              onImageClick={(i) => setLightboxIndex(i)}
-            />
+            <>
+              <ThreadBody
+                content={root.content}
+                media={root.media}
+                onImageClick={(i) => setLightboxIndex(i)}
+              />
+              {root.parent_context && (
+                <QuotedPostBox context={root.parent_context} />
+              )}
+            </>
           )}
         </div>
 
-        {root.time_ago && (
-          <div style={{ marginTop: 16, fontSize: 13, color: 'var(--text-tertiary)' }}>
-            {root.time_ago}
+        {root.created_at && (
+          <div style={{ marginTop: 16, fontSize: 15, color: 'var(--text-tertiary)' }}>
+            {formatThreadDate(root.created_at)}
           </div>
         )}
+
+        <hr style={{ marginTop: 12, borderColor: 'var(--border)', borderTopWidth: 1 }} />
 
         {deleteMutation.isError && (
           <div
@@ -169,31 +188,8 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
           </div>
         )}
 
-        {/* Stats row — border top and bottom */}
-        <div
-          className="border-t border-b flex flex-wrap text-sm"
-          style={{
-            marginTop: 12,
-            padding: '12px 0',
-            rowGap: 8,
-            columnGap: 20,
-            color: 'var(--text-tertiary)',
-            borderColor: 'var(--border)',
-          }}
-        >
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{root.stats.likes}</strong> Likes
-          </span>
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{root.stats.reposts}</strong> Reposts
-          </span>
-          <span>
-            <strong style={{ color: 'var(--text)' }}>{root.stats.bookmarks}</strong> Bookmarks
-          </span>
-        </div>
-
-        {/* Actions — 4px below stats border */}
-        <div style={{ marginTop: 4 }}>
+        {/* Actions */}
+        <div style={{ marginTop: 12 }}>
           <ThreadActions
             comments={root.stats.comments}
             likes={root.stats.likes}
@@ -213,31 +209,6 @@ export function ThreadDetailView({ root, replies, viewFullThreadId = null }: Thr
         placeholder={`Post your reply to @${root.author.username}`}
         parentId={root.id}
       />
-
-      {viewFullThreadId !== null && (
-        <section
-          className="border-b"
-          style={{
-            borderColor: 'var(--border)',
-            background: 'var(--bg-card)',
-            padding: '14px 20px',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => router.push(`/thread/${viewFullThreadId}`)}
-            className="rounded-full text-sm font-semibold"
-            style={{
-              padding: '8px 16px',
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--text)',
-            }}
-          >
-            View full thread
-          </button>
-        </section>
-      )}
 
       <ReplyTree threads={replies} />
 

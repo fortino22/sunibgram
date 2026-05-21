@@ -7,8 +7,16 @@ import { RightPanel } from './RightPanel';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { NewPostModal } from '@/components/shared/NewPostModal';
 import { ReplyModal } from '@/components/shared/ReplyModal';
+import { useNotificationSocket } from '@/hooks/useNotificationSocket';
+import { useAuthStore } from '@/stores/authStore';
 
 const AUTH_PATHS = ['/login', '/signup', '/forgot-password'];
+
+function NotificationSocketMount() {
+  const token = useAuthStore((s) => s.token);
+  useNotificationSocket({ accessToken: token });
+  return null;
+}
 
 interface MainWrapperProps {
   children: ReactNode;
@@ -24,6 +32,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
 
   return (
     <AuthGuard>
+      <NotificationSocketMount />
       <NewPostModal />
       <ReplyModal />
       <div

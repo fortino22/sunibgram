@@ -14,18 +14,20 @@ import { useAuthStore } from '@/stores/authStore';
 import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from '@/components/thread/threadUtils';
 import { ThreadBody } from '@/components/thread/ThreadBody';
 import { ImageDetailModal } from '@/components/thread/ImageDetailModal';
+import { QuotedPostBox } from '@/components/thread/QuotedPostBox';
 
 interface ProfileThreadCardProps {
   thread: ThreadItem;
   replyingTo?: string;
   replyingToId?: number;
+  hideParentContext?: boolean;
   onLike?: () => void;
   onRepost?: () => void;
   onBookmark?: () => void;
   onReply?: () => void;
 }
 
-export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, onRepost, onBookmark, onReply }: ProfileThreadCardProps) {
+export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParentContext = false, onLike, onRepost, onBookmark, onReply }: ProfileThreadCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
@@ -173,11 +175,18 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, onLike, on
               />
             </div>
           ) : (
-            <ThreadBody
-              content={thread.content}
-              media={thread.media}
-              onImageClick={(i) => setLightboxIndex(i)}
-            />
+            <>
+              <ThreadBody
+                content={thread.content}
+                media={thread.media}
+                onImageClick={(i) => setLightboxIndex(i)}
+              />
+              {!hideParentContext && thread.parent_context && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <QuotedPostBox context={thread.parent_context} />
+                </div>
+              )}
+            </>
           )}
 
           {lightboxIndex !== null && (

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useCategories } from '@/hooks/useCommunities';
 import { useUpdateCommunity } from '@/hooks/useCommunityMutations';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
@@ -17,16 +18,21 @@ interface EditCommunityModalProps {
 export function EditCommunityModal({ community, onClose, onSuccess }: EditCommunityModalProps) {
   const { data: categoriesData } = useCategories();
   const categories = categoriesData?.data ?? [];
-  const categoryId = useMemo(
-    () => categories.find((c) => c.name === community.category_name)?.id,
-    [categories, community.category_name]
-  );
   const { mutateAsync, isPending, error } = useUpdateCommunity(community.community_id);
 
   const [name, setName] = useState(community.name);
   const [description, setDescription] = useState(community.description ?? '');
-  const [rules, setRules] = useState(community.rules ?? '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [keepRuleIds, setKeepRuleIds] = useState<number[]>(community.rules.map((r) => r.id));
+  const [newRules, setNewRules] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<CommunityVisibility>(community.visibility);
+
+  useEffect(() => {
+    if (!selectedCategoryId && categories.length > 0) {
+      const found = categories.find((c) => c.name === community.category_name)?.id ?? '';
+      setSelectedCategoryId(found);
+    }
+  }, [categories, community.category_name, selectedCategoryId]);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(community.banner_url || null);
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null);
@@ -47,14 +53,28 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    if (description.length > 2000) {
+      toast.error('Description cannot exceed 2000 characters.');
+      return;
+    }
+    const badRuleIdx = newRules.findIndex((r) => r.trim().length > 500);
+    if (badRuleIdx !== -1) {
+      toast.error(`New rule ${badRuleIdx + 1} exceeds 500 characters.`);
+      return;
+    }
+    if (keepRuleIds.length + newRules.length > 10) {
+      toast.error('A community can have at most 10 rules.');
+      return;
+    }
     try {
       await mutateAsync({
         name: name.trim(),
         description: description.trim(),
-        rules: rules.trim(),
+        keep_rule_ids: keepRuleIds,
+        new_rules: newRules.map((r) => r.trim()).filter(Boolean),
         visibility,
         banner: bannerFile,
-        categoryId,
+        categoryId: selectedCategoryId,
       });
       onSuccess();
     } catch {
@@ -145,12 +165,18 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Category</label>
-            <select style={{ ...inputStyle, appearance: 'none' }} disabled>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              <option value="">{community.category_name || 'Current category'}</option>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Category *</label>
+            <select
+              style={{ ...inputStyle, appearance: 'none' }}
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              required
+            >
+              <option value="">Select category</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
             </select>
-            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>Category cannot be changed after creation</div>
           </div>
 
           <div>
@@ -173,13 +199,93 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Description</label>
-            <textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this community about?" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Description</label>
+              <span style={{ fontSize: 11, color: description.length > 2000 ? 'var(--error, #e53e3e)' : 'var(--text-tertiary)' }}>
+                {description.length}/2000
+              </span>
+            </div>
+            <textarea
+              style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What is this community about?"
+              maxLength={2000}
+            />
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Rules</label>
-            <textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} value={rules} onChange={(e) => setRules(e.target.value)} placeholder="Community rules and guidelines" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Rules</label>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                {keepRuleIds.length + newRules.length}/10
+              </span>
+            </div>
+            {community.rules.map((rule) => (
+              <div key={rule.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
+                <input
+                  type="checkbox"
+                  checked={keepRuleIds.includes(rule.id)}
+                  onChange={(e) => {
+                    setKeepRuleIds(
+                      e.target.checked
+                        ? [...keepRuleIds, rule.id]
+                        : keepRuleIds.filter((id) => id !== rule.id)
+                    );
+                  }}
+                  style={{ marginTop: 2, flexShrink: 0, cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 13, color: keepRuleIds.includes(rule.id) ? 'var(--text)' : 'var(--text-tertiary)', lineHeight: 1.5 }}>
+                  {rule.text}
+                </span>
+              </div>
+            ))}
+            {newRules.map((rule, i) => (
+              <div key={i} style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    style={{ ...inputStyle, flex: 1 }}
+                    value={rule}
+                    onChange={(e) => {
+                      const next = [...newRules];
+                      next[i] = e.target.value;
+                      setNewRules(next);
+                    }}
+                    placeholder={`New rule ${i + 1}`}
+                    maxLength={500}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNewRules(newRules.filter((_, j) => j !== i))}
+                    style={{
+                      background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+                      color: 'var(--text-tertiary)', cursor: 'pointer', padding: '8px 10px', fontSize: 14,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                {rule.length > 480 && (
+                  <div style={{ fontSize: 11, color: rule.length > 500 ? 'var(--error, #e53e3e)' : 'var(--text-tertiary)', marginTop: 2 }}>
+                    {rule.length}/500
+                  </div>
+                )}
+              </div>
+            ))}
+            {keepRuleIds.length + newRules.length < 10 && (
+              <button
+                type="button"
+                onClick={() => setNewRules([...newRules, ''])}
+                style={{
+                  fontSize: 13, color: 'var(--text-secondary)', background: 'none',
+                  border: '1px dashed var(--border)', borderRadius: 8, padding: '7px 14px',
+                  cursor: 'pointer', width: '100%', marginTop: 2,
+                }}
+              >
+                + Add rule
+              </button>
+            )}
           </div>
 
           {error && (

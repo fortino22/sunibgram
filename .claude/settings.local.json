@@ -54,7 +54,12 @@
       "Bash(Where-Object Name -match \"\\(message|chat|conversation|dialog|modal\\)\")",
       "Bash(xargs grep -l \"socket\\\\.io\\\\|socketio\\\\|websocket\")",
       "Bash(xargs grep -l \"socket\\\\.io\\\\|io\\(\")",
-      "Bash(xargs grep -l \"useChatSocket\")"
+      "Bash(xargs grep -l \"useChatSocket\")",
+      "Bash(xargs grep -l \"interface.*Community\\\\|type.*Community\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\components\\\\community\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\app\" -Directory)",
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\app\" -Include \"*.tsx\",\"*.ts\")"
     ]
   }
 }

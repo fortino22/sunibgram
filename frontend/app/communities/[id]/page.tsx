@@ -266,7 +266,7 @@ export default function CommunityDetailPage() {
       {/* About tab */}
       {activeTab === 'about' && (
         <>
-          {community.rules && (
+          {community.rules.length > 0 && (
             <div
               style={{
                 margin: '16px 20px 0',
@@ -276,12 +276,14 @@ export default function CommunityDetailPage() {
                 border: '1px solid var(--border)',
               }}
             >
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
                 RULES
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                {community.rules}
-              </div>
+              {community.rules.map((rule, i) => (
+                <div key={rule.id} style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: i < community.rules.length - 1 ? 6 : 0 }}>
+                  {i + 1}. {rule.text}
+                </div>
+              ))}
             </div>
           )}
           <div style={{ padding: '16px 20px 8px', fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>

@@ -11,11 +11,11 @@ export interface CommunityData {
   username: string;
   name: string;
   description: string;
-  rules: string;
+  rules: { id: number; text: string }[];
   category_name: string;
   visibility: CommunityVisibility;
-  avatar_url: string;
   banner_url: string;
+  avatar_url?: string | null;
   member_count: number;
   top_members: CommunityTopMemberData[];
   created_at: string;
@@ -101,15 +101,20 @@ export interface CategoryListResponse {
 export interface CommunityParams {
   name: string;
   description: string;
-  rules: string;
+  rules: string[];
   categoryId: string;
   visibility: CommunityVisibility;
-  avatar?: File | null;
   banner?: File | null;
 }
 
-export interface UpdateCommunityParams extends Partial<CommunityParams> {
-  clearAvatar?: boolean;
+export interface UpdateCommunityParams {
+  name?: string;
+  description?: string;
+  keep_rule_ids?: number[];
+  new_rules?: string[];
+  categoryId?: string;
+  visibility?: CommunityVisibility;
+  banner?: File | null;
   clearBanner?: boolean;
 }
 
@@ -124,27 +129,37 @@ function appendOptionalString(formData: FormData, key: string, value?: string | 
   }
 }
 
-function buildCommunityFormData(params: CommunityParams | UpdateCommunityParams): FormData {
+function buildCreateCommunityFormData(params: CommunityParams): FormData {
   const formData = new FormData();
   appendOptionalString(formData, 'name', params.name);
   appendOptionalString(formData, 'description', params.description);
-  appendOptionalString(formData, 'rules', params.rules);
+  params.rules.forEach((rule) => formData.append('rules', rule));
   appendOptionalString(formData, 'category_id', params.categoryId);
   appendOptionalString(formData, 'visibility', params.visibility);
+  if (params.banner) {
+    formData.append('banner', params.banner);
+  }
+  return formData;
+}
 
-  if ('clearAvatar' in params) {
-    appendOptionalString(formData, 'clear_avatar', params.clearAvatar);
+function buildUpdateCommunityFormData(params: UpdateCommunityParams): FormData {
+  const formData = new FormData();
+  appendOptionalString(formData, 'name', params.name);
+  appendOptionalString(formData, 'description', params.description);
+  appendOptionalString(formData, 'category_id', params.categoryId);
+  appendOptionalString(formData, 'visibility', params.visibility);
+  if (params.keep_rule_ids) {
+    params.keep_rule_ids.forEach((id) => formData.append('keep_rule_ids', String(id)));
+  }
+  if (params.new_rules) {
+    params.new_rules.forEach((rule) => formData.append('new_rules', rule));
   }
   if ('clearBanner' in params) {
     appendOptionalString(formData, 'clear_banner', params.clearBanner);
   }
-  if (params.avatar) {
-    formData.append('avatar', params.avatar);
-  }
   if (params.banner) {
     formData.append('banner', params.banner);
   }
-
   return formData;
 }
 
@@ -239,7 +254,7 @@ export async function getDiscoverCommunities(
 }
 
 export function createCommunity(params: CommunityParams, token: string): Promise<CommunityData> {
-  return api.post<CommunityData>('/api/communities', buildCommunityFormData(params), token);
+  return api.post<CommunityData>('/api/communities', buildCreateCommunityFormData(params), token);
 }
 
 export function updateCommunity(
@@ -247,7 +262,7 @@ export function updateCommunity(
   params: UpdateCommunityParams,
   token: string
 ): Promise<CommunityData> {
-  return putFormData<CommunityData>(`/api/communities/${id}`, buildCommunityFormData(params), token);
+  return putFormData<CommunityData>(`/api/communities/${id}`, buildUpdateCommunityFormData(params), token);
 }
 
 export function deleteCommunity(id: number | string, token: string): Promise<CommunityMessageResponse> {

@@ -168,8 +168,41 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
+	// Build a set of thread IDs already present in the chain so we don't
+	// re-fetch parents that are part of the chain itself.
+	chainIDs := make(map[uint]struct{}, len(threads))
+	for _, t := range threads {
+		chainIDs[t.ThreadID] = struct{}{}
+	}
+
+	// Fetch unique parent threads that are not already in the chain.
+	parentCache := make(map[uint]*model.Thread)
+	for _, t := range threads {
+		if t.ParentID == nil {
+			continue
+		}
+		pid := *t.ParentID
+		if _, inChain := chainIDs[pid]; inChain {
+			continue
+		}
+		if _, fetched := parentCache[pid]; fetched {
+			continue
+		}
+		if p, fetchErr := c.threadService.GetByID(pid); fetchErr == nil {
+			parentCache[pid] = p
+		}
+	}
+
+	// Build a parallel parents slice (nil where no external parent exists).
+	parents := make([]*model.Thread, len(threads))
+	for i, t := range threads {
+		if t.ParentID != nil {
+			parents[i] = parentCache[*t.ParentID]
+		}
+	}
+
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: c.buildFeedItemsNoPin(threads, &claims.UserID),
+		Data: c.buildUserFeedItemsNoPin(threads, parents, &claims.UserID),
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }

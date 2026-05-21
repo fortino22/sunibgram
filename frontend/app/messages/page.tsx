@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { MessageCircle } from 'lucide-react';
 import { ConversationList } from '@/components/chat/ConversationList';
@@ -18,7 +18,18 @@ import { useChatStore } from '@/stores/chatStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useDeleteMessage } from '@/hooks/chat/useDeleteMessage';
 import { useAddReaction, useRemoveReaction, useSwapReaction } from '@/hooks/chat/useReactToMessage';
+import { useSearchParams } from 'next/navigation';
 import type { ChatMessage, ChatRoomsResponse } from '@/lib/services/chat';
+
+function RoomDeepLink({ setActiveRoomId }: { setActiveRoomId: (id: number) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const roomParam = searchParams.get('room');
+    if (roomParam) setActiveRoomId(Number(roomParam));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
 
 export default function MessagesPage() {
   const token = useAuthStore((s) => s.token);
@@ -146,6 +157,10 @@ export default function MessagesPage() {
         overflow: 'hidden',
       }}
     >
+      <Suspense fallback={null}>
+        <RoomDeepLink setActiveRoomId={setActiveRoomId} />
+      </Suspense>
+
       {/* Left — Conversation list */}
       <div style={{ width: 300, flexShrink: 0 }}>
         <ConversationList

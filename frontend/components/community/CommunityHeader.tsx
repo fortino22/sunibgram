@@ -1,17 +1,7 @@
 'use client';
 
 import type { CommunityData, CommunityRole } from '@/lib/services/communities';
-
-const AVATAR_COLORS = [
-  '#e57373', '#f06292', '#ba68c8', '#7986cb',
-  '#4fc3f7', '#4db6ac', '#81c784', '#ffb74d',
-];
-
-function memberColor(userId: string): string {
-  let hash = 0;
-  for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
+import { Avatar } from '@/components/shared/Avatar';
 
 interface CommunityHeaderProps {
   community: CommunityData;
@@ -219,21 +209,16 @@ export function CommunityHeader({
             {(community.top_members ?? []).length > 0 && (
               <div style={{ display: 'flex' }}>
                 {(community.top_members ?? []).slice(0, 3).map((m, i) => (
-                  <div
+                  <Avatar
                     key={m.user_id}
+                    username={m.user_id}
+                    avatarUrl={m.avatar_url}
+                    size={24}
                     style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
                       border: '2px solid var(--bg)',
                       marginLeft: i === 0 ? 0 : -8,
                       zIndex: (community.top_members ?? []).length - i,
                       position: 'relative',
-                      overflow: 'hidden',
-                      flexShrink: 0,
-                      background: m.avatar_url
-                        ? `url(${m.avatar_url}) center/cover no-repeat`
-                        : memberColor(m.user_id),
                     }}
                   />
                 ))}

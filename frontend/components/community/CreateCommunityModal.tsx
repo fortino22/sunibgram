@@ -21,7 +21,7 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [rules, setRules] = useState('');
+  const [rules, setRules] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState('');
   const [visibility, setVisibility] = useState<CommunityVisibility>('PUBLIC');
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -56,11 +56,20 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
       toast.error('Please add a banner image.');
       return;
     }
+    if (description.length > 2000) {
+      toast.error('Description cannot exceed 2000 characters.');
+      return;
+    }
+    const badRuleIdx = rules.findIndex((r) => r.trim().length > 500);
+    if (badRuleIdx !== -1) {
+      toast.error(`Rule ${badRuleIdx + 1} exceeds 500 characters.`);
+      return;
+    }
     try {
       const community = await mutateAsync({
         name: name.trim(),
         description: description.trim(),
-        rules: rules.trim(),
+        rules: rules.map((r) => r.trim()).filter(Boolean),
         categoryId,
         visibility,
         banner: bannerFile,
@@ -222,27 +231,76 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-              Description
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Description
+              </label>
+              <span style={{ fontSize: 11, color: description.length > 2000 ? 'var(--error, #e53e3e)' : 'var(--text-tertiary)' }}>
+                {description.length}/2000
+              </span>
+            </div>
             <textarea
               style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What is this community about?"
+              maxLength={2000}
             />
           </div>
 
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-              Rules
-            </label>
-            <textarea
-              style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }}
-              value={rules}
-              onChange={(e) => setRules(e.target.value)}
-              placeholder="Community rules and guidelines"
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Rules
+              </label>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{rules.length}/10</span>
+            </div>
+            {rules.map((rule, i) => (
+              <div key={i} style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <input
+                    style={{ ...inputStyle, flex: 1 }}
+                    value={rule}
+                    onChange={(e) => {
+                      const next = [...rules];
+                      next[i] = e.target.value;
+                      setRules(next);
+                    }}
+                    placeholder={`Rule ${i + 1}`}
+                    maxLength={500}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setRules(rules.filter((_, j) => j !== i))}
+                    style={{
+                      background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+                      color: 'var(--text-tertiary)', cursor: 'pointer', padding: '8px 10px', fontSize: 14,
+                      flexShrink: 0,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                {rule.length > 480 && (
+                  <div style={{ fontSize: 11, color: rule.length > 500 ? 'var(--error, #e53e3e)' : 'var(--text-tertiary)', marginTop: 2 }}>
+                    {rule.length}/500
+                  </div>
+                )}
+              </div>
+            ))}
+            {rules.length < 10 && (
+              <button
+                type="button"
+                onClick={() => setRules([...rules, ''])}
+                style={{
+                  fontSize: 13, color: 'var(--text-secondary)', background: 'none',
+                  border: '1px dashed var(--border)', borderRadius: 8, padding: '7px 14px',
+                  cursor: 'pointer', width: '100%', marginTop: 2,
+                }}
+              >
+                + Add rule
+              </button>
+            )}
           </div>
 
           {error && (

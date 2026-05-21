@@ -1,6 +1,7 @@
 'use client';
 
 import type { DiscoverCommunityData } from '@/lib/services/communities';
+import { Avatar } from '@/components/shared/Avatar';
 
 interface CommunityDiscoverCardProps {
   community: DiscoverCommunityData;
@@ -97,19 +98,14 @@ export function CommunityDiscoverCard({ community, onClick }: CommunityDiscoverC
         {community.top_members.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center' }}>
             {community.top_members.slice(0, 5).map((m, i) => (
-              <div
+              <Avatar
                 key={i}
+                username={m.user_id}
+                avatarUrl={m.avatar_url || null}
+                size={29}
                 style={{
-                  width: 29,
-                  height: 29,
-                  borderRadius: '50%',
                   border: '2px solid var(--bg-card)',
-                  overflow: 'hidden',
                   marginLeft: i > 0 ? -9 : 0,
-                  flexShrink: 0,
-                  background: m.avatar_url
-                    ? `url(${m.avatar_url}) center/cover no-repeat`
-                    : MONOGRAM_COLORS[i % MONOGRAM_COLORS.length],
                   zIndex: 5 - i,
                   position: 'relative',
                 }}

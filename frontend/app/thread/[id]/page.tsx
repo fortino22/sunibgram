@@ -36,7 +36,6 @@ export default function ThreadPage() {
     <ThreadDetailView
       root={chainQuery.data.root}
       replies={chainQuery.data.replies}
-      viewFullThreadId={chainQuery.data.rootThreadId}
     />
   );
 }
