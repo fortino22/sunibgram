@@ -360,11 +360,14 @@ func (s *EventService) createEventReview(eventID, adminID, action, note string) 
 	return s.eventReviewRepo.Create(review)
 }
 
-func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, filter string, page, limit int) ([]model.Thread, int64, error) {
+func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, filter, sort string, page, limit int) ([]model.Thread, int64, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, 0, err
 	}
 	if err := validateEventThreadFilter(filter); err != nil {
+		return nil, 0, err
+	}
+	if err := validateEventThreadSort(sort); err != nil {
 		return nil, 0, err
 	}
 	event, err := s.eventRepo.FindByID(id)
@@ -372,7 +375,7 @@ func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, fi
 		return nil, 0, errors.New("event not found")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	threads, total, err := s.eventRepo.FindThreads(id, event.UserID, requesterID, filter, page, limit)
+	threads, total, err := s.eventRepo.FindThreads(id, event.UserID, requesterID, filter, sort, page, limit)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -385,6 +388,15 @@ func validateEventThreadFilter(filter string) error {
 		return nil
 	default:
 		return errors.New("invalid filter: use official or unofficial")
+	}
+}
+
+func validateEventThreadSort(sort string) error {
+	switch sort {
+	case "", "latest", "like", "top":
+		return nil
+	default:
+		return errors.New("invalid sort: use latest, like, or top")
 	}
 }
 

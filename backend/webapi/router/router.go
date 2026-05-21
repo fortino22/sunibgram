@@ -35,6 +35,7 @@ func Register(
 	communityPinCtrl *controller.CommunityPinController,
 	eventPinCtrl *controller.EventPinController,
 	eventParticipantCtrl *controller.EventParticipantController,
+	eventThreadPinCtrl *controller.EventThreadPinController,
 	categoryCtrl *controller.CategoryController,
 	violationCtrl *controller.ViolationController,
 	reportCtrl *controller.ReportController,
@@ -57,7 +58,7 @@ func Register(
 	registerExploreRoutes(api, exploreCtrl, auth)
 	registerHashtagRoutes(api, hashtagCtrl, auth)
 	registerThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, summaryCtrl, auth)
-	registerEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, auth)
+	registerEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, eventThreadPinCtrl, auth)
 	registerEmailRoutes(api, emailCtrl, auth)
 	registerUserRoutes(api, followCtrl, exploreCtrl, auth)
 	registerAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)

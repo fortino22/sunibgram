@@ -51,8 +51,19 @@ func eventPendingListKey(limit int) string {
 	return fmt.Sprintf("event:pending:list:limit:%d", limit)
 }
 
-func eventThreadsKey(id, filter, viewer string, page, limit int) string {
-	return fmt.Sprintf("event:threads:%s:filter:%s:viewer:%s:page:%d:limit:%d", id, filter, viewer, page, limit)
+func eventThreadsKey(id, filter, sort, viewer string, page, limit int) string {
+	return fmt.Sprintf("event:threads:%s:filter:%s:sort:%s:viewer:%s:page:%d:limit:%d", id, filter, sort, viewer, page, limit)
+}
+
+func eventThreadSortClause(sort string) string {
+	switch sort {
+	case "like":
+		return "COALESCE(original.like_count, threads.like_count) DESC, threads.created_at DESC"
+	case "top":
+		return "(COALESCE(original.like_count, threads.like_count) + COALESCE(original.repost_count, threads.repost_count) + COALESCE(original.bookmark_count, threads.bookmark_count)) DESC, threads.created_at DESC"
+	default:
+		return "threads.created_at DESC"
+	}
 }
 
 func (r *eventRepository) Save(event *model.Event) error {
@@ -283,9 +294,9 @@ func (r *eventRepository) Delete(id string) error {
 	return nil
 }
 
-func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter string, page, limit int) ([]model.Thread, int64, error) {
+func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter, sort string, page, limit int) ([]model.Thread, int64, error) {
 	ctx := context.Background()
-	key := eventThreadsKey(eventID, filter, threadVisibilityCachePart(requesterID), page, limit)
+	key := eventThreadsKey(eventID, filter, sort, threadVisibilityCachePart(requesterID), page, limit)
 	var result cachedEventThreads
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
@@ -295,16 +306,21 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 
 	var threads []model.Thread
 	var total int64
+	threadInEvent := `EXISTS (
+		SELECT 1 FROM thread_events te
+		WHERE te.event_id = ?
+		AND te.thread_id IN (threads.thread_id, COALESCE(threads.original_thread_id, 0), COALESCE(threads.root_id, 0), COALESCE(threads.parent_id, 0))
+	)`
 	q := applyThreadVisibility(r.readDB.Model(&model.Thread{}), requesterID).
-		Joins("JOIN thread_events ON thread_events.thread_id = threads.thread_id").
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-		Where("thread_events.event_id = ?", eventID)
+		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+		Joins("LEFT JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
+		Where(threadInEvent, eventID)
 	if requesterID == nil {
-		q = q.Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+		q = q.Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
 	} else {
 		q = q.
-			Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", *requesterID).
-			Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
+			Joins("LEFT JOIN community_members ON community_members.community_id = COALESCE(threads.community_id, original.community_id) AND community_members.user_id = ?", *requesterID).
+			Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
 				model.CommunityVisibilityPublic, *requesterID)
 	}
 	switch filter {
@@ -316,7 +332,7 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 	q.Count(&total)
 	offset := (page - 1) * limit
 	if err := preloadThreadDetails(q).
-		Order("thread_events.created_at DESC").
+		Order(eventThreadSortClause(sort)).
 		Offset(offset).Limit(limit).
 		Find(&threads).Error; err != nil {
 		return nil, 0, err
@@ -332,6 +348,20 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 		}
 	}
 	return result.Threads, result.Total, nil
+}
+
+func (r *eventRepository) IsThreadInEvent(eventID string, threadID uint) (bool, error) {
+	var count int64
+	err := r.readDB.Raw(`
+		SELECT COUNT(*) FROM threads t
+		WHERE t.thread_id = ?
+		AND EXISTS (
+			SELECT 1 FROM thread_events te
+			WHERE te.event_id = ?
+			AND te.thread_id IN (t.thread_id, COALESCE(t.original_thread_id, 0), COALESCE(t.root_id, 0), COALESCE(t.parent_id, 0))
+		)
+	`, threadID, eventID).Scan(&count).Error
+	return count > 0, err
 }
 
 func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threadID uint, column string, delta int) error {

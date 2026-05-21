@@ -16,18 +16,19 @@ import (
 )
 
 type EventController struct {
-	eventService     service.IEventService
-	threadService    service.IThreadService
-	mediaService     service.IThreadMediaService
-	likeService      service.ILikeService
-	bookmarkService  service.IBookmarkService
-	threadPinService service.IThreadPinService
-	profileService   service.IUserProfileService
-	pollService      service.IThreadPollService
+	eventService        service.IEventService
+	threadService       service.IThreadService
+	mediaService        service.IThreadMediaService
+	likeService         service.ILikeService
+	bookmarkService     service.IBookmarkService
+	threadPinService    service.IThreadPinService
+	profileService      service.IUserProfileService
+	pollService         service.IThreadPollService
+	eventThreadPinSvc   service.IEventThreadPinService
 }
 
-func NewEventController(eventService service.IEventService, threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService, pollService service.IThreadPollService) *EventController {
-	return &EventController{eventService: eventService, threadService: threadService, mediaService: mediaService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService, pollService: pollService}
+func NewEventController(eventService service.IEventService, threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService, pollService service.IThreadPollService, eventThreadPinSvc service.IEventThreadPinService) *EventController {
+	return &EventController{eventService: eventService, threadService: threadService, mediaService: mediaService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService, pollService: pollService, eventThreadPinSvc: eventThreadPinSvc}
 }
 
 func (c *EventController) Create(ctx *fiber.Ctx) error {
@@ -210,16 +211,47 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	}
 	page, limit := ParsePagination(ctx)
 	filter := ctx.Query("filter")
-	threads, total, err := c.eventService.GetThreads(ctx.Context(), &claims.UserID, ctx.Params("id"), filter, page, limit)
+	sort := ctx.Query("sort", "latest")
+	eventID := ctx.Params("id")
+	threads, total, err := c.eventService.GetThreads(ctx.Context(), &claims.UserID, eventID, filter, sort, page, limit)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
 		}
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
+
+	var pinnedThreadID uint
+	if filter == "official" && page == 1 && c.eventThreadPinSvc != nil {
+		if pin, _ := c.eventThreadPinSvc.GetPinned(eventID); pin != nil {
+			pinnedThreadID = pin.ThreadID
+			for i, t := range threads {
+				if t.ThreadID == pin.ThreadID {
+					threads = append(threads[:i], threads[i+1:]...)
+					break
+				}
+			}
+			if pinned, ferr := c.threadService.GetByID(pin.ThreadID); ferr == nil && pinned != nil {
+				threads = append([]model.Thread{*pinned}, threads...)
+			} else {
+				pinnedThreadID = 0
+			}
+		}
+	}
+
 	tc := &ThreadController{threadService: c.threadService, mediaService: c.mediaService, likeService: c.likeService, bookmarkService: c.bookmarkService, threadPinService: c.threadPinService, profileService: c.profileService, pollService: c.pollService}
+	data := tc.buildFeedItemsNoPin(threads, &claims.UserID)
+	if pinnedThreadID != 0 {
+		for i := range data {
+			if data[i].ID == pinnedThreadID {
+				t := true
+				data[i].PinnedByEventAdmin = &t
+				break
+			}
+		}
+	}
 	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
-		Data: tc.buildFeedItemsNoPin(threads, &claims.UserID),
+		Data: data,
 		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }

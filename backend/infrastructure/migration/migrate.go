@@ -38,6 +38,7 @@ func AutoMigrate(db *gorm.DB) {
 		&model.CommunityRequest{},
 		&model.CommunityRule{},
 		&model.CommunityThreadPin{},
+		&model.EventThreadPin{},
 		&model.UserCommunityPin{},
 		&model.UserEventPin{},
 		&model.EventParticipant{},

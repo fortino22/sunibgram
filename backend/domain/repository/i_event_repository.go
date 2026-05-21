@@ -17,6 +17,7 @@ type IEventRepository interface {
 	Update(event *model.Event) error
 	UpdateStatus(id, status string) error
 	Delete(id string) error
-	FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter string, page, limit int) ([]model.Thread, int64, error)
+	FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter, sort string, page, limit int) ([]model.Thread, int64, error)
+	IsThreadInEvent(eventID string, threadID uint) (bool, error)
 	PatchEventCounterByThreadID(ctx context.Context, threadID uint, column string, delta int) error
 }

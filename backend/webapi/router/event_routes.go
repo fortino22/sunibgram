@@ -10,6 +10,7 @@ func registerEventRoutes(
 	eventCtrl *controller.EventController,
 	pinCtrl *controller.EventPinController,
 	participantCtrl *controller.EventParticipantController,
+	threadPinCtrl *controller.EventThreadPinController,
 	auth fiber.Handler,
 ) {
 	events := api.Group("/events", auth)
@@ -26,6 +27,8 @@ func registerEventRoutes(
 	events.Patch("/:id/revision", eventCtrl.RequestRevision)
 	events.Delete("/:id", eventCtrl.Delete)
 	events.Get("/:id/threads", eventCtrl.GetThreads)
+	events.Post("/:id/threads/:threadId/pin", threadPinCtrl.Pin)
+	events.Delete("/:id/threads/:threadId/unpin", threadPinCtrl.Unpin)
 	events.Post("/:id/pin", pinCtrl.Pin)
 	events.Delete("/:id/unpin", pinCtrl.Unpin)
 	events.Post("/:id/join", participantCtrl.Join)

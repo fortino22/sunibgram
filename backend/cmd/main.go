@@ -81,6 +81,7 @@ func main() {
 	chatReactionRepo := infrarepo.NewChatReactionRepository(writeDB, readDB)
 	notificationRepo := infrarepo.NewNotificationRepository(writeDB, readDB, redisCache)
 	threadPollRepo := infrarepo.NewThreadPollRepository(writeDB, readDB, redisCache)
+	eventThreadPinRepo := infrarepo.NewEventThreadPinRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
@@ -127,6 +128,7 @@ func main() {
 	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
 	chatReactionService := usecase.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
 	threadPollService := usecase.NewThreadPollService(threadRepo, threadPollRepo, storageUsecase)
+	eventThreadPinService := usecase.NewEventThreadPinService(eventThreadPinRepo, eventRepo, threadRepo)
 
 	// --- Controllers ---
 	cacheCtrl := controller.NewCacheController(cacheService)
@@ -139,7 +141,8 @@ func main() {
 	verificationCtrl := controller.NewVerificationController(verificationService)
 	followCtrl := controller.NewFollowController(followService, profileService)
 	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
-	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
+	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService, threadPollService, eventThreadPinService)
+	eventThreadPinCtrl := controller.NewEventThreadPinController(eventThreadPinService)
 	hashtagCtrl := controller.NewHashtagController(hashtagService)
 	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService, threadPollService)
 	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService, threadPollService)
@@ -219,6 +222,7 @@ func main() {
 		communityPinCtrl,
 		eventPinCtrl,
 		eventParticipantCtrl,
+		eventThreadPinCtrl,
 		categoryCtrl,
 		violationCtrl,
 		reportCtrl,
