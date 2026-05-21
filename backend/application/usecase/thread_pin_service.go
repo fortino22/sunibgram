@@ -58,3 +58,7 @@ func (s *ThreadPinService) IsPinned(userID, threadID uint) bool {
 func (s *ThreadPinService) ArePinnedFor(userID uint, threadIDs []uint) (map[uint]bool, error) {
 	return s.threadPinRepo.ArePinnedFor(userID, threadIDs)
 }
+
+func (s *ThreadPinService) AllPinnedThreadIDs(userID uint) ([]uint, error) {
+	return s.threadPinRepo.AllPinnedThreadIDs(userID)
+}

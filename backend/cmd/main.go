@@ -39,6 +39,7 @@ func main() {
 		log.Printf("community members cache startup flush error: %v", err)
 	}
 	middleware.Init(redisCache)
+	controller.SetFeedBuilderCache(redisCache)
 	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 
 	// --- Repositories ---
@@ -57,7 +58,7 @@ func main() {
 	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
 	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
 	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
-	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB)
+	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB, redisCache)
 	categoryRepo := infrarepo.NewCategoryRepository(writeDB, readDB, redisCache)
 	violationRepo := infrarepo.NewViolationRepository(writeDB, readDB)
 	reportRepo := infrarepo.NewReportRepository(writeDB, readDB)

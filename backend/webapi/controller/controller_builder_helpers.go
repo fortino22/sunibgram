@@ -4,8 +4,18 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
+	"github.com/sunibgram/infrastructure/cache"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
+
+// feedBuilderCache holds the Redis cache shared across controllers via package-level init.
+// Set from cmd/main.go via SetFeedBuilderCache.
+var feedBuilderCache *cache.Cache
+
+// SetFeedBuilderCache injects the Redis cache used by the FeedBuilder for viewer-flag sets.
+func SetFeedBuilderCache(c *cache.Cache) {
+	feedBuilderCache = c
+}
 
 func newFeedBuilder(
 	media service.IThreadMediaService,
@@ -25,6 +35,7 @@ func newFeedBuilder(
 		PinSvc:      pin,
 		PollSvc:     poll,
 		ProfileSvc:  profile,
+		Cache:       feedBuilderCache,
 		ViewerID:    viewerID,
 	}
 }

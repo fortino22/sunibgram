@@ -11,5 +11,6 @@ type IBookmarkService interface {
 	Unbookmark(userID, threadID uint) error
 	IsBookmarked(userID, threadID uint) bool
 	AreThreadsBookmarked(userID uint, threadIDs []uint) (map[uint]bool, error)
+	AllBookmarkedThreadIDs(userID uint) ([]uint, error)
 	GetMyBookmarks(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error)
 }
