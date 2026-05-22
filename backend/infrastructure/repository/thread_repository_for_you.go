@@ -23,6 +23,7 @@ const (
 	forYouMinScore      = 0.01
 	forYouAuthorCap     = 20
 	forYouCandidateCap  = 800
+	forYouFreshWindow   = 1 * time.Hour
 )
 
 const mainFeedReplyInteractionSQL = "(threads.like_count + threads.repost_count + threads.comment_count)"
@@ -157,24 +158,38 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 	}
 	addCandidates(community, 0.7, false, false)
 
-	candidates := make([]forYouCandidate, 0, len(merged))
+	fresh := make([]forYouCandidate, 0)
+	ranked := make([]forYouCandidate, 0, len(merged))
+	freshCutoff := now.Add(-forYouFreshWindow)
 	for _, candidate := range merged {
-		candidates = append(candidates, candidate)
+		if candidate.thread.CreatedAt.After(freshCutoff) {
+			fresh = append(fresh, candidate)
+		} else {
+			ranked = append(ranked, candidate)
+		}
 	}
 
-	sort.SliceStable(candidates, func(i, j int) bool {
-		if candidates[i].score == candidates[j].score {
-			return candidates[i].thread.CreatedAt.After(candidates[j].thread.CreatedAt)
-		}
-		return candidates[i].score > candidates[j].score
+	sort.SliceStable(fresh, func(i, j int) bool {
+		return fresh[i].thread.CreatedAt.After(fresh[j].thread.CreatedAt)
 	})
+
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].score == ranked[j].score {
+			return ranked[i].thread.CreatedAt.After(ranked[j].thread.CreatedAt)
+		}
+		return ranked[i].score > ranked[j].score
+	})
+
+	rng := rand.New(rand.NewSource(seed))
+	ranked = shuffleWithinBands(ranked, rng)
+
+	candidates := make([]forYouCandidate, 0, len(fresh)+len(ranked))
+	candidates = append(candidates, fresh...)
+	candidates = append(candidates, ranked...)
 
 	if len(candidates) > forYouCandidateCap {
 		candidates = candidates[:forYouCandidateCap]
 	}
-
-	rng := rand.New(rand.NewSource(seed))
-	candidates = shuffleWithinBands(candidates, rng)
 
 	capped := applyAuthorCap(candidates, forYouAuthorCap)
 
