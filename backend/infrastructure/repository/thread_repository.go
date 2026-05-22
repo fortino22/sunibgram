@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
@@ -29,20 +30,39 @@ func preloadThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
-// Deep User.UserFaculty.Faculty chains are intentionally NOT preloaded here.
-// Faculty + is_premium are overlayed onto cached threads by FeedBuilder via
-// user:meta:<uid> (ProfileMetaCacheKey), populated through
-// LoadAvatarsForUserIDs at every controller feed-rendering site. Dropping the
-// deep preload saves 4 DB round trips per cache-miss feed page (UserFaculty +
-// Faculty × User chain + OriginalThread.User chain). Existing fallback in
-// FeedBuilder.AuthorField (u.UserFaculty != nil) is left as defensive code:
-// with these Preloads removed, t.User.UserFaculty is always nil, so the
-// fallback is dead in the happy path.
+// userJoinSelect returns a fresh sub-statement restricting the JOIN'd users
+// table to safe public columns. Used as the conds argument of Joins("User", ...)
+// so the LEFT JOIN selects only those columns (password_hash and email stay in
+// the DB, never loaded into Go memory). Mirrors preloadThreadUser column set.
+func userJoinSelect(db *gorm.DB) *gorm.DB {
+	return db.Session(&gorm.Session{NewDB: true}).
+		Model(&model.User{}).
+		Select("user_id", "name", "user_name", "is_premium")
+}
+
+// Phase 2 — flat JOIN for the User relation, Preload for Community and the
+// OriginalThread chain. The main thread's User is LEFT JOIN'd directly into
+// the primary SELECT (eliminates one Preload round trip). OriginalThread is
+// still preloaded because the visibility filter and self-referential alias
+// make a flat JOIN risky; instead, the OriginalThread Preload itself uses
+// Joins("User") inside the callback so the OriginalThread.User load is
+// flattened into the OriginalThread query.
+//
+// Deep User.UserFaculty.Faculty chains intentionally NOT preloaded — Faculty
+// + is_premium overlayed via user:meta:<uid> in FeedBuilder. Existing
+// fallback in FeedBuilder.AuthorField (u.UserFaculty != nil) is dead in the
+// happy path with these Preloads dropped.
+//
+// Community is kept as Preload to avoid a double JOIN with the raw
+// visibility filter Joins("LEFT JOIN communities ...") that callers add via
+// applyThreadVisibility.
 func preloadThreadDetails(db *gorm.DB) *gorm.DB {
 	return db.
-		Preload("User", preloadThreadUser).
-		Preload("OriginalThread.User", preloadThreadUser).
+		Joins("User", userJoinSelect(db)).
 		Preload("Community").
+		Preload("OriginalThread", func(otdb *gorm.DB) *gorm.DB {
+			return otdb.Joins("User", userJoinSelect(otdb))
+		}).
 		Preload("OriginalThread.Community").
 		Preload("ThreadEvents.Event").
 		Preload("OriginalThread.ThreadEvents.Event")
@@ -50,7 +70,7 @@ func preloadThreadDetails(db *gorm.DB) *gorm.DB {
 
 func preloadThreadParentDetails(db *gorm.DB) *gorm.DB {
 	return db.
-		Preload("User", preloadThreadUser).
+		Joins("User", userJoinSelect(db)).
 		Preload("Community").
 		Preload("ThreadEvents.Event")
 }

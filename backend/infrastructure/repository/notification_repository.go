@@ -67,5 +67,14 @@ func (r *notificationRepository) SetSenderCache(sender *model.NotificationSender
 	if r.cache == nil || sender == nil {
 		return nil
 	}
-	return r.cache.Set(context.Background(), notificationSenderKey(sender.UserID), sender, cache.DefaultTTL)
+	ctx := context.Background()
+	key := notificationSenderKey(sender.UserID)
+	if err := r.cache.Set(ctx, key, sender, cache.DefaultTTL); err != nil {
+		return err
+	}
+	// Register under the global tag so notificationSenderGlobalTag-based
+	// invalidation (faculty rename, admin user mutations) drops it in
+	// O(set size) instead of SCAN.
+	_ = r.cache.RegisterCacheKey(ctx, notificationSenderGlobalTag(), key)
+	return nil
 }

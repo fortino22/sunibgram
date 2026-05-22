@@ -18,8 +18,8 @@ type User struct {
 	UserID      uint         `gorm:"primaryKey;autoIncrement"`
 	Name        string       `gorm:"not null"`
 	UserName    string       `gorm:"uniqueIndex;not null"`
-	Email       string       `gorm:"uniqueIndex;not null"`
-	Password    string       `gorm:"not null"`
+	Email       string       `gorm:"uniqueIndex;not null" json:"-"`
+	Password    string       `gorm:"not null" json:"-"`
 	RoleID      uint         `gorm:"not null;default:1"`
 	IsPremium   bool         `gorm:"not null;default:false"`
 	Role        Role         `gorm:"foreignKey:RoleID;references:RoleID"`

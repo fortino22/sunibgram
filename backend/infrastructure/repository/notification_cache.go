@@ -22,5 +22,7 @@ func invalidateNotificationSenderCachePattern(ctx context.Context, c *cache.Cach
 	if c == nil {
 		return
 	}
-	_ = c.DeleteByPattern(ctx, "notification:sender:*")
+	// notificationSenderGlobalTag is registered at every SetSenderCache call
+	// site — drops every cached sender entry in O(set size).
+	_ = c.InvalidateTag(ctx, notificationSenderGlobalTag())
 }

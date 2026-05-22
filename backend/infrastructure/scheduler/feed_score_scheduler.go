@@ -84,14 +84,25 @@ func preloadSchedulerThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
-// Deep User.UserFaculty.Faculty chains intentionally not preloaded — overlay
-// via user:meta:<uid> in FeedBuilder handles faculty rendering. Saves 4 DB
-// queries per scheduler run.
+// schedulerUserJoinSelect mirrors userJoinSelect in the repository package
+// for the scheduler's Joins("User", ...) form. Restricts loaded user columns
+// to public fields.
+func schedulerUserJoinSelect(db *gorm.DB) *gorm.DB {
+	return db.Session(&gorm.Session{NewDB: true}).
+		Model(&model.User{}).
+		Select("user_id", "name", "user_name", "is_premium")
+}
+
+// Phase 2 — User flattened into LEFT JOIN, OriginalThread kept as Preload
+// with nested User Joins. Deep User.UserFaculty.Faculty intentionally not
+// loaded — overlay via user:meta:<uid> in FeedBuilder handles it.
 func preloadSchedulerThreadDetails(db *gorm.DB) *gorm.DB {
 	return db.
-		Preload("User", preloadSchedulerThreadUser).
-		Preload("OriginalThread.User", preloadSchedulerThreadUser).
+		Joins("User", schedulerUserJoinSelect(db)).
 		Preload("Community").
+		Preload("OriginalThread", func(otdb *gorm.DB) *gorm.DB {
+			return otdb.Joins("User", schedulerUserJoinSelect(otdb))
+		}).
 		Preload("OriginalThread.Community").
 		Preload("ThreadEvents.Event").
 		Preload("OriginalThread.ThreadEvents.Event")
