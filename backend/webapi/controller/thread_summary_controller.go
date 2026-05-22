@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/application/usecase"
+	threadsummaryuc "github.com/sunibgram/application/usecase/thread_summary"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
@@ -26,7 +26,7 @@ func (c *ThreadSummaryController) GetSummary(ctx *fiber.Ctx) error {
 
 	summary, err := c.summaryService.Summarize(ctx.Context(), threadID)
 	if err != nil {
-		if errors.Is(err, usecase.ErrThreadSummaryNotReady) {
+		if errors.Is(err, threadsummaryuc.ErrThreadSummaryNotReady) {
 			return ctx.Status(fiber.StatusAccepted).JSON(fiber.Map{"status": "processing"})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})

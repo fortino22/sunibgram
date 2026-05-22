@@ -10,7 +10,45 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 
-	"github.com/sunibgram/application/usecase"
+	authuc "github.com/sunibgram/application/usecase/auth"
+	bookmarkuc "github.com/sunibgram/application/usecase/bookmark"
+	cacheuc "github.com/sunibgram/application/usecase/cache"
+	categoryuc "github.com/sunibgram/application/usecase/category"
+	chatuc "github.com/sunibgram/application/usecase/chat"
+	chatmediauc "github.com/sunibgram/application/usecase/chat_media"
+	chatreactionuc "github.com/sunibgram/application/usecase/chat_reaction"
+	chatroomuc "github.com/sunibgram/application/usecase/chat_room"
+	communityuc "github.com/sunibgram/application/usecase/community"
+	communitypinuc "github.com/sunibgram/application/usecase/community_pin"
+	communityrequestuc "github.com/sunibgram/application/usecase/community_request"
+	communityruleuc "github.com/sunibgram/application/usecase/community_rule"
+	communitythreadpinuc "github.com/sunibgram/application/usecase/community_thread_pin"
+	emailuc "github.com/sunibgram/application/usecase/email"
+	eventuc "github.com/sunibgram/application/usecase/event"
+	eventparticipantuc "github.com/sunibgram/application/usecase/event_participant"
+	eventpinuc "github.com/sunibgram/application/usecase/event_pin"
+	eventthreadpinuc "github.com/sunibgram/application/usecase/event_thread_pin"
+	exploreuc "github.com/sunibgram/application/usecase/explore"
+	facultyuc "github.com/sunibgram/application/usecase/faculty"
+	followuc "github.com/sunibgram/application/usecase/follow"
+	hashtaguc "github.com/sunibgram/application/usecase/hashtag"
+	likeuc "github.com/sunibgram/application/usecase/like"
+	notificationuc "github.com/sunibgram/application/usecase/notification"
+	orderuc "github.com/sunibgram/application/usecase/order"
+	premiumsubscriptionuc "github.com/sunibgram/application/usecase/premium_subscription"
+	reportuc "github.com/sunibgram/application/usecase/report"
+	roleuc "github.com/sunibgram/application/usecase/role"
+	storageuc "github.com/sunibgram/application/usecase/storage"
+	threaduc "github.com/sunibgram/application/usecase/thread"
+	threadmediauc "github.com/sunibgram/application/usecase/thread_media"
+	threadpinuc "github.com/sunibgram/application/usecase/thread_pin"
+	threadpolluc "github.com/sunibgram/application/usecase/thread_poll"
+	threadsummaryuc "github.com/sunibgram/application/usecase/thread_summary"
+	useruc "github.com/sunibgram/application/usecase/user"
+	userprofileuc "github.com/sunibgram/application/usecase/user_profile"
+	usersettingsuc "github.com/sunibgram/application/usecase/user_settings"
+	verificationuc "github.com/sunibgram/application/usecase/verification"
+	violationuc "github.com/sunibgram/application/usecase/violation"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/config"
 	infraemail "github.com/sunibgram/infrastructure/email"
@@ -123,8 +161,8 @@ func main() {
 	eventThreadPinRepo := eventthreadpinrepo.NewEventThreadPinRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
-	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
-	emailService := usecase.NewEmailService(infraemail.NewSMTPClient(), redisCache)
+	storageUsecase := storageuc.NewStorageUsecase(storage.NewMinioClient())
+	emailService := emailuc.NewEmailService(infraemail.NewSMTPClient(), redisCache)
 	const emailWorkerCount = 4
 	for i := 0; i < emailWorkerCount; i++ {
 		go emailService.StartWorker(context.Background())
@@ -133,44 +171,44 @@ func main() {
 	socketHub := infrasocket.NewHub()
 
 	// --- Usecases ---
-	cacheService := usecase.NewCacheService(cacheRepo)
-	authService := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, userSettingsRepo, redisCache)
-	roleService := usecase.NewRoleService(roleRepo)
-	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
-	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo, threadRepo)
-	profileService := usecase.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, cacheRepo, storageUsecase)
-	verificationService := usecase.NewVerificationService(verificationRepo, userRepo, emailService)
-	notificationService := usecase.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
-	followService := usecase.NewFollowService(followRepo, userRepo, cacheRepo, notificationService)
-	hashtagService := usecase.NewHashtagService(hashtagRepo, redisCache)
-	summaryService := usecase.NewThreadSummaryService(threadRepo, cacheRepo, ollamaClient)
-	threadService := usecase.NewThreadService(threadRepo, hashtagRepo, eventRepo, eventParticipantRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService, summaryService)
-	eventService := usecase.NewEventService(eventRepo, eventReviewRepo, eventPinRepo, eventParticipantRepo, storageUsecase, userSettingsRepo, followRepo, threadRepo)
-	exploreService := usecase.NewExploreService(exploreRepo, threadRepo, userSettingsRepo, followRepo)
-	threadMediaService := usecase.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
-	likeService := usecase.NewLikeService(likeRepo, threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
-	bookmarkService := usecase.NewBookmarkService(bookmarkRepo, threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
-	threadPinService := usecase.NewThreadPinService(threadPinRepo, threadRepo)
-	categoryService := usecase.NewCategoryService(categoryRepo)
-	violationService := usecase.NewViolationService(violationRepo)
-	reportService := usecase.NewReportService(reportRepo, violationRepo, userRepo, threadRepo, profileService, cacheRepo)
-	communityService := usecase.NewCommunityService(communityRepo, communityMemberRepo, userRepo, profileRepo, followRepo, categoryRepo, communityRuleRepo, communityPinRepo, cacheRepo, storageUsecase)
-	communityMemberService := usecase.NewCommunityMemberService(communityRepo, communityMemberRepo, followRepo, cacheRepo)
-	communityRequestService := usecase.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
-	communityRuleService := usecase.NewCommunityRuleService(communityRepo, communityRuleRepo)
-	communityThreadPinService := usecase.NewCommunityThreadPinService(communityThreadPinRepo, communityRepo, communityMemberRepo, threadRepo)
-	communityPinService := usecase.NewCommunityPinService(communityPinRepo, communityRepo, communityMemberRepo)
-	eventPinService := usecase.NewEventPinService(eventPinRepo, eventRepo)
-	eventParticipantService := usecase.NewEventParticipantService(eventParticipantRepo, eventRepo)
-	facultyService := usecase.NewFacultyService(facultyRepo, userFacultyRepo)
-	orderService := usecase.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
-	premiumSubscriptionService := usecase.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
-	chatRoomService := usecase.NewChatRoomService(chatRoomRepo, userRepo, storageUsecase)
-	chatService := usecase.NewChatService(chatRepo, chatRoomRepo, chatReadRepo, notificationService)
-	chatMediaService := usecase.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
-	chatReactionService := usecase.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
-	threadPollService := usecase.NewThreadPollService(threadRepo, threadPollRepo, storageUsecase)
-	eventThreadPinService := usecase.NewEventThreadPinService(eventThreadPinRepo, eventRepo, threadRepo)
+	cacheService := cacheuc.NewCacheService(cacheRepo)
+	authService := authuc.NewAuthService(userRepo, roleRepo, verificationRepo, userSettingsRepo, redisCache)
+	roleService := roleuc.NewRoleService(roleRepo)
+	userService := useruc.NewUserService(userRepo, followRepo, profileRepo)
+	userSettingsService := usersettingsuc.NewUserSettingsService(userSettingsRepo, threadRepo)
+	profileService := userprofileuc.NewUserProfileService(userRepo, followRepo, profileRepo, userFacultyRepo, cacheRepo, storageUsecase)
+	verificationService := verificationuc.NewVerificationService(verificationRepo, userRepo, emailService)
+	notificationService := notificationuc.NewNotificationService(notificationRepo, userRepo, profileRepo, userFacultyRepo, storageUsecase, socketHub)
+	followService := followuc.NewFollowService(followRepo, userRepo, cacheRepo, notificationService)
+	hashtagService := hashtaguc.NewHashtagService(hashtagRepo, redisCache)
+	summaryService := threadsummaryuc.NewThreadSummaryService(threadRepo, cacheRepo, ollamaClient)
+	threadService := threaduc.NewThreadService(threadRepo, hashtagRepo, eventRepo, eventParticipantRepo, hashtagService, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService, summaryService)
+	eventService := eventuc.NewEventService(eventRepo, eventReviewRepo, eventPinRepo, eventParticipantRepo, storageUsecase, userSettingsRepo, followRepo, threadRepo)
+	exploreService := exploreuc.NewExploreService(exploreRepo, threadRepo, userSettingsRepo, followRepo)
+	threadMediaService := threadmediauc.NewThreadMediaService(threadRepo, threadMediaRepo, storageUsecase)
+	likeService := likeuc.NewLikeService(likeRepo, threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	bookmarkService := bookmarkuc.NewBookmarkService(bookmarkRepo, threadRepo, communityRepo, communityMemberRepo, userSettingsRepo, followRepo, notificationService)
+	threadPinService := threadpinuc.NewThreadPinService(threadPinRepo, threadRepo)
+	categoryService := categoryuc.NewCategoryService(categoryRepo)
+	violationService := violationuc.NewViolationService(violationRepo)
+	reportService := reportuc.NewReportService(reportRepo, violationRepo, userRepo, threadRepo, profileService, cacheRepo)
+	communityService := communityuc.NewCommunityService(communityRepo, communityMemberRepo, userRepo, profileRepo, followRepo, categoryRepo, communityRuleRepo, communityPinRepo, cacheRepo, storageUsecase)
+	communityMemberService := communityuc.NewCommunityMemberService(communityRepo, communityMemberRepo, followRepo, cacheRepo)
+	communityRequestService := communityrequestuc.NewCommunityRequestService(communityRepo, communityMemberRepo, communityRequestRepo, cacheRepo)
+	communityRuleService := communityruleuc.NewCommunityRuleService(communityRepo, communityRuleRepo)
+	communityThreadPinService := communitythreadpinuc.NewCommunityThreadPinService(communityThreadPinRepo, communityRepo, communityMemberRepo, threadRepo)
+	communityPinService := communitypinuc.NewCommunityPinService(communityPinRepo, communityRepo, communityMemberRepo)
+	eventPinService := eventpinuc.NewEventPinService(eventPinRepo, eventRepo)
+	eventParticipantService := eventparticipantuc.NewEventParticipantService(eventParticipantRepo, eventRepo)
+	facultyService := facultyuc.NewFacultyService(facultyRepo, userFacultyRepo)
+	orderService := orderuc.NewOrderService(orderRepo, userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
+	premiumSubscriptionService := premiumsubscriptionuc.NewPremiumSubscriptionService(userRepo, premiumSubscriptionRepo, communityRepo, cacheRepo)
+	chatRoomService := chatroomuc.NewChatRoomService(chatRoomRepo, userRepo, storageUsecase)
+	chatService := chatuc.NewChatService(chatRepo, chatRoomRepo, chatReadRepo, notificationService)
+	chatMediaService := chatmediauc.NewChatMediaService(chatRepo, chatMediaRepo, storageUsecase)
+	chatReactionService := chatreactionuc.NewChatReactionService(chatRepo, chatReactionRepo, chatRoomRepo)
+	threadPollService := threadpolluc.NewThreadPollService(threadRepo, threadPollRepo, storageUsecase)
+	eventThreadPinService := eventthreadpinuc.NewEventThreadPinService(eventThreadPinRepo, eventRepo, threadRepo)
 
 	// --- Controllers ---
 	cacheCtrl := controller.NewCacheController(cacheService)
