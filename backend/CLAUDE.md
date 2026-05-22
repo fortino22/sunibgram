@@ -104,6 +104,15 @@ Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src
 
 **Pagination** — services return `([]T, int64, error)`. Controllers wrap in `dto.PaginatedXxxResponse{Data, Meta: dto.FeedMeta{Total, Page, Limit}}`.
 
+**For You feed ordering** — `FindForYouFeed` in `thread_repository_for_you.go` splits candidates into two bands by `created_at` age vs `forYouFreshWindow` (1h):
+- `fresh` (age < 1h) → sorted `created_at DESC` (chronological, score ignored)
+- `ranked` (age ≥ 1h) → sorted `feed_score DESC` + `shuffleWithinBands` (current scored algorithm)
+- Final list = `[fresh..., ranked...]` → `forYouCandidateCap` (800) → `applyAuthorCap` (20/author, walks combined list in order)
+
+Fresh band guarantees newest posts surface at top regardless of score; ranked band gets the personalized scoring + shuffle. Tune via `forYouFreshWindow` const. Threads age out of fresh band on next request (re-evaluated per call using `time.Now()`).
+
+`GET /threads/feed/new-count?since_id=<id>` (`CountNewSinceID`) uses strict `thread_id > since_id` — frontend must pass `Math.max(...visibleIDs)` not `data[0].id`, because fresh band sorts by `created_at` not by ID. With fresh band non-empty `data[0]` usually equals max id (PK auto-increment correlates with time), but if fresh empty the ranked top item is **not** max id.
+
 **Error handling:**
 ```go
 "forbidden"     → fiber.StatusForbidden
