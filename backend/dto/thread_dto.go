@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/sunibgram/dto/utils"
+import "github.com/sunibgram/webapi/dto/_shared"
 
 type MentionUserResponse struct {
 	UserID      string `json:"user_id"`

@@ -11,7 +11,7 @@ import (
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	dtoutils "github.com/sunibgram/dto/utils"
+	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	"github.com/sunibgram/infrastructure/cache"
 )
 

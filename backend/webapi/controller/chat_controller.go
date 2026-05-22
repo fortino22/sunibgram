@@ -12,7 +12,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	dtoutils "github.com/sunibgram/dto/utils"
+	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 )
 
 type ChatController struct {

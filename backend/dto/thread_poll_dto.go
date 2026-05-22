@@ -4,7 +4,7 @@ import (
 	"math"
 
 	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/dto/utils"
+	"github.com/sunibgram/webapi/dto/_shared"
 )
 
 type PollOptionResponse struct {

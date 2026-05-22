@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/dto/utils"
+	"github.com/sunibgram/webapi/dto/_shared"
 )
 
 type UserProfileController struct {

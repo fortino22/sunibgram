@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/sunibgram/dto/utils"
+import "github.com/sunibgram/webapi/dto/_shared"
 
 type RegisterRequest struct {
 	Name            string `json:"name"`

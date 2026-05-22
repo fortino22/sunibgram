@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sunibgram/dto/utils"
+	"github.com/sunibgram/webapi/dto/_shared"
 )
 
 type EventTime struct {

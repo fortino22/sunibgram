@@ -6,7 +6,7 @@ import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/dto"
-	"github.com/sunibgram/dto/utils"
+	"github.com/sunibgram/webapi/dto/_shared"
 )
 
 type CategoryController struct {

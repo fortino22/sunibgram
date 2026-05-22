@@ -1,7 +1,7 @@
 package dto
 
 import (
-	dtoutils "github.com/sunibgram/dto/utils"
+	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 )
 
 type CreateNotificationRequest struct {
