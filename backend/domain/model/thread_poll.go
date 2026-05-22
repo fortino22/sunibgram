@@ -33,8 +33,8 @@ type ThreadPollOption struct {
 	OptionID   uint      `gorm:"primaryKey;autoIncrement" json:"option_id"`
 	PollID     uint      `gorm:"not null;index" json:"poll_id"`
 	Label      string    `gorm:"type:varchar(25);not null" json:"label"`
-	ObjectName string    `gorm:"type:varchar(500)" json:"-"`
-	Bucket     string    `gorm:"type:varchar(100)" json:"-"`
+	ObjectName string    `gorm:"type:varchar(500)" json:"object_name,omitempty"`
+	Bucket     string    `gorm:"type:varchar(100)" json:"bucket,omitempty"`
 	Position   int16     `gorm:"not null" json:"position"`
 	VoteCount  int       `gorm:"not null;default:0" json:"vote_count"`
 	CreatedAt  time.Time `json:"created_at"`

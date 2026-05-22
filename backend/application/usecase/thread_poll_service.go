@@ -169,7 +169,7 @@ func (s *ThreadPollService) Vote(ctx context.Context, threadID, optionID, userID
 	if option.PollID != poll.PollID {
 		return nil, nil, errors.New("option does not belong to poll")
 	}
-	if err := s.pollRepo.CastVote(poll.PollID, optionID, userID); err != nil {
+	if err := s.pollRepo.CastVote(poll.PollID, resolvedThreadID, optionID, userID); err != nil {
 		return nil, nil, err
 	}
 	refreshed, err := s.pollRepo.FindByThreadID(resolvedThreadID)

@@ -8,6 +8,6 @@ type IThreadPollRepository interface {
 	FindByThreadIDs(threadIDs []uint) (map[uint]*model.ThreadPoll, error)
 	FindUserVotes(userID uint, pollIDs []uint) (map[uint]uint, error)
 	FindOptionByID(optionID uint) (*model.ThreadPollOption, error)
-	CastVote(pollID, optionID, userID uint) error
+	CastVote(pollID, threadID, optionID, userID uint) error
 	DeleteByThreadID(threadID uint) ([]model.ThreadPollOption, error)
 }

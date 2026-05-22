@@ -202,7 +202,7 @@ func (r *ThreadPollRepository) FindOptionByID(optionID uint) (*model.ThreadPollO
 
 // CastVote inserts a new vote or switches an existing vote to a different option.
 // Atomic: option vote_counts shift via gorm.Expr; poll total_votes only increments on first vote.
-func (r *ThreadPollRepository) CastVote(pollID, optionID, userID uint) error {
+func (r *ThreadPollRepository) CastVote(pollID, threadID, optionID, userID uint) error {
 	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
 		var existing model.ThreadPollVote
 		err := tx.Where("poll_id = ? AND user_id = ?", pollID, userID).First(&existing).Error
@@ -249,14 +249,9 @@ func (r *ThreadPollRepository) CastVote(pollID, optionID, userID uint) error {
 	}); err != nil {
 		return err
 	}
-	// invalidate caches: need threadID for poll body key
 	if r.cache != nil {
 		ctx := context.Background()
-		var threadID uint
-		if err := r.readDB.Model(&model.ThreadPoll{}).
-			Select("thread_id").
-			Where("poll_id = ?", pollID).
-			Scan(&threadID).Error; err == nil && threadID != 0 {
+		if threadID != 0 {
 			_ = r.cache.Delete(ctx, pollThreadKey(threadID))
 		}
 		_ = r.cache.Set(ctx, pollUserVoteKey(pollID, userID), optionID, pollVoteTTL)
