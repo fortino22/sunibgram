@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/sunibgram/application/usecase"
 	"github.com/sunibgram/infrastructure/cache"
@@ -92,7 +93,7 @@ func main() {
 
 	// --- Usecases ---
 	cacheService := usecase.NewCacheService(cacheRepo)
-	authService := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, redisCache)
+	authService := usecase.NewAuthService(userRepo, roleRepo, verificationRepo, userSettingsRepo, redisCache)
 	roleService := usecase.NewRoleService(roleRepo)
 	userService := usecase.NewUserService(userRepo, followRepo, profileRepo)
 	userSettingsService := usecase.NewUserSettingsService(userSettingsRepo, threadRepo)
@@ -185,6 +186,7 @@ func main() {
 	app := fiber.New(fiber.Config{
 		BodyLimit: 50 * 1024 * 1024,
 	})
+	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:3000",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",

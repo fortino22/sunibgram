@@ -100,6 +100,10 @@ func (r *UserSettingsRepository) GetPrivacyMapByUserIDs(ctx context.Context, use
 	return result, nil
 }
 
+func (r *UserSettingsRepository) Create(ctx context.Context, setting *model.UserSettings) error {
+	return r.writeDB.WithContext(ctx).Create(setting).Error
+}
+
 func (r *UserSettingsRepository) UpdateUserSetting(ctx context.Context, setting *model.UserSettings) error {
 	if err := r.writeDB.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}},

@@ -64,7 +64,7 @@ func (r *ThreadPollRepository) Create(poll *model.ThreadPoll, options []model.Th
 	}
 	if r.cache != nil {
 		ctx := context.Background()
-		_ = r.cache.Delete(ctx, pollThreadKey(poll.ThreadID), threadKey(poll.ThreadID))
+		_ = r.cache.Delete(ctx, pollThreadKey(poll.ThreadID), threadKey(poll.ThreadID), parentThreadKey(poll.ThreadID))
 	}
 	return nil
 }

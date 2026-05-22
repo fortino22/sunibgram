@@ -71,7 +71,7 @@ func (r *threadCached) invalidateFeedCachesByThreadID(ctx context.Context, threa
 }
 
 func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *uint, communityID *uint) {
-	r.cache.Delete(ctx, threadKey(threadID))
+	r.cache.Delete(ctx, threadKey(threadID), parentThreadKey(threadID))
 
 	treeID := threadID
 	if rootID != nil && *rootID != 0 {

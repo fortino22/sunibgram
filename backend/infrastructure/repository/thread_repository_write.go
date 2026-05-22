@@ -64,7 +64,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	ctx := context.Background()
 	thread, err := r.FindByID(threadID)
 	if err != nil {
-		r.cache.Delete(ctx, threadKey(threadID))
+		r.cache.Delete(ctx, threadKey(threadID), parentThreadKey(threadID))
 		r.invalidateTrendingFeed(ctx)
 		return
 	}
@@ -95,7 +95,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 		return err
 	}
 	ctx := context.Background()
-	r.cache.Delete(ctx, threadKey(thread.ThreadID))
+	r.cache.Delete(ctx, threadKey(thread.ThreadID), parentThreadKey(thread.ThreadID))
 	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
 	r.invalidateFeedCachesByThreadID(ctx, thread.ThreadID)
 	r.invalidateInteractions(ctx, thread.ThreadID)
@@ -119,7 +119,7 @@ func (r *threadCached) UpdateReplyPermission(threadID uint, replyPermission mode
 		return err
 	}
 	ctx := context.Background()
-	r.cache.Delete(ctx, threadKey(threadID))
+	r.cache.Delete(ctx, threadKey(threadID), parentThreadKey(threadID))
 	return nil
 }
 
