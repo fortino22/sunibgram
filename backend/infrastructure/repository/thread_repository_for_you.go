@@ -100,7 +100,7 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 
 	merged := make(map[uint]forYouCandidate)
 	now := time.Now()
-	addCandidates := func(threads []model.Thread, sourceWeight float64, includeReposts bool) {
+	addCandidates := func(threads []model.Thread, sourceWeight float64, includeReposts, forceKeep bool) {
 		for _, thread := range threads {
 			if thread.Type == model.ThreadTypeRepost && !includeReposts {
 				continue
@@ -111,7 +111,19 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 			}
 			decay := 1.0 / (1.0 + ageHours/forYouHalflifeHours)
 			score := thread.FeedScore * sourceWeight * decay
-			if score < forYouMinScore {
+			if forceKeep {
+				// Own threads always surface to the author. Very recent posts
+				// (under 1h, before the feed_score scheduler has run) get
+				// boosted into the top band so a just-posted thread appears
+				// near the top of the author's own feed.
+				floor := 0.5
+				if ageHours < 1 {
+					floor = 5.0
+				}
+				if score < floor {
+					score = floor
+				}
+			} else if score < forYouMinScore {
 				continue
 			}
 			current, ok := merged[thread.ThreadID]
@@ -125,25 +137,25 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	addCandidates(own, 1.0, true)
+	addCandidates(own, 1.0, true, true)
 
 	global, err := r.findForYouGlobal(ctx)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	addCandidates(global, 1.0, false)
+	addCandidates(global, 1.0, false, false)
 
 	following, err := r.findForYouFollowing(ctx, userID)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	addCandidates(following, 0.8, true)
+	addCandidates(following, 0.8, true, false)
 
 	community, err := r.findForYouCommunity(ctx, userID)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	addCandidates(community, 0.7, false)
+	addCandidates(community, 0.7, false, false)
 
 	candidates := make([]forYouCandidate, 0, len(merged))
 	for _, candidate := range merged {
