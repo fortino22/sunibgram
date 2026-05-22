@@ -4,8 +4,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/sunibgram/application/helper"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/application/helper"
 )
 
 func migrateChatEncryption(db *gorm.DB) {

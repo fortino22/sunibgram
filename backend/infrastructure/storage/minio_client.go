@@ -12,7 +12,8 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	domainservice "github.com/sunibgram/domain/service"
+
+	storagesvciface "github.com/sunibgram/domain/service/storage"
 )
 
 type MinioStorage struct {
@@ -21,11 +22,11 @@ type MinioStorage struct {
 	useSSL       bool
 }
 
-func NewMinioClient() domainservice.IStorageService {
-	endpoint       := strings.TrimSpace(os.Getenv("MINIO_ENDPOINT"))
-	accessKey      := strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY"))
-	secretKey      := strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY"))
-	useSSL         := strings.TrimSpace(os.Getenv("MINIO_USE_SSL")) == "true"
+func NewMinioClient() storagesvciface.IStorageService {
+	endpoint := strings.TrimSpace(os.Getenv("MINIO_ENDPOINT"))
+	accessKey := strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY"))
+	secretKey := strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY"))
+	useSSL := strings.TrimSpace(os.Getenv("MINIO_USE_SSL")) == "true"
 	publicEndpoint := strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT"))
 	if publicEndpoint == "" {
 		publicEndpoint = endpoint

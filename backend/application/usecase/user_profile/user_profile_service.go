@@ -1,0 +1,317 @@
+package userprofileuc
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"mime/multipart"
+	"strings"
+	"unicode/utf8"
+
+	"github.com/sunibgram/application/helper"
+	communityuc "github.com/sunibgram/application/usecase/community"
+	storageuc "github.com/sunibgram/application/usecase/storage"
+	mediamodel "github.com/sunibgram/domain/model/media"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
+	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
+)
+
+func userAvatarCacheKey(userID uint) string {
+	return fmt.Sprintf("user:%d:avatar", userID)
+}
+
+type UserProfileService struct {
+	userRepo        userrepoiface.IUserRepository
+	followRepo      followrepoiface.IFollowRepository
+	profileRepo     userprofilerepoiface.IUserProfileRepository
+	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository
+	cacheRepo       cacherepoiface.ICacheRepository
+	storageUsecase  *storageuc.StorageUsecase
+}
+
+func NewUserProfileService(
+	userRepo userrepoiface.IUserRepository,
+	followRepo followrepoiface.IFollowRepository,
+	profileRepo userprofilerepoiface.IUserProfileRepository,
+	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
+	storageUsecase *storageuc.StorageUsecase,
+) userprofilesvciface.IUserProfileService {
+	return &UserProfileService{
+		userRepo:        userRepo,
+		followRepo:      followRepo,
+		profileRepo:     profileRepo,
+		userFacultyRepo: userFacultyRepo,
+		cacheRepo:       cacheRepo,
+		storageUsecase:  storageUsecase,
+	}
+}
+
+func (s *UserProfileService) AvatarCacheRepository() cacherepoiface.ICacheRepository {
+	return s.cacheRepo
+}
+
+func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, input userprofilesvciface.UpsertProfileInput) error {
+	if userID == 0 {
+		return errors.New("invalid user id")
+	}
+	existing, _ := s.profileRepo.FindByUserID(userID)
+	if existing == nil {
+		existing = &userprofilemodel.UserProfile{UserID: userID}
+	}
+
+	if input.Avatar != nil {
+		if err := validateProfileImage(input.Avatar, "avatar"); err != nil {
+			return err
+		}
+		if existing.AvatarObjectName != "" && existing.AvatarBucket != "" {
+			if err := s.storageUsecase.Delete(ctx, existing.AvatarBucket, existing.AvatarObjectName); err != nil {
+				return fmt.Errorf("failed to delete old avatar: %w", err)
+			}
+		}
+		objectName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, input.Avatar, "avatar")
+		if err != nil {
+			return err
+		}
+		existing.AvatarObjectName = objectName
+		existing.AvatarBucket = bucket
+	}
+
+	if input.Banner != nil {
+		if err := validateProfileImage(input.Banner, "banner"); err != nil {
+			return err
+		}
+		if existing.BannerObjectName != "" && existing.BannerBucket != "" {
+			if err := s.storageUsecase.Delete(ctx, existing.BannerBucket, existing.BannerObjectName); err != nil {
+				return fmt.Errorf("failed to delete old banner: %w", err)
+			}
+		}
+		objectName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, input.Banner, "banner")
+		if err != nil {
+			return err
+		}
+		existing.BannerObjectName = objectName
+		existing.BannerBucket = bucket
+	}
+
+	if input.Bio != nil {
+		trimmed := strings.TrimSpace(*input.Bio)
+		if utf8.RuneCountInString(trimmed) > 500 {
+			return errors.New("bio must be 500 characters or less")
+		}
+		*input.Bio = trimmed
+		existing.Bio = trimmed
+	}
+
+	if err := s.profileRepo.Upsert(existing); err != nil {
+		return err
+	}
+	if input.Avatar != nil {
+		communityuc.InvalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+	}
+	s.invalidateUserProfileCaches(ctx, userID)
+	return nil
+}
+
+func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, input userprofilesvciface.UpdateProfileInput) error {
+	if input.Name != nil || input.Username != nil {
+		user, err := s.userRepo.FindByID(userID)
+		if err != nil {
+			return errors.New("user not found")
+		}
+		name := user.Name
+		username := user.UserName
+		if input.Name != nil {
+			name = strings.TrimSpace(*input.Name)
+			if name == "" {
+				return errors.New("name cannot be empty")
+			}
+			if utf8.RuneCountInString(name) > 100 {
+				return errors.New("name must be 100 characters or less")
+			}
+		}
+		if input.Username != nil {
+			username = strings.TrimSpace(*input.Username)
+			if username == "" {
+				return errors.New("username cannot be empty")
+			}
+			if utf8.RuneCountInString(username) > 50 {
+				return errors.New("username must be 50 characters or less")
+			}
+			if username != user.UserName {
+				taken, err := s.userRepo.ExistsByUserName(username)
+				if err != nil {
+					return err
+				}
+				if taken {
+					return errors.New("username already taken")
+				}
+			}
+		}
+		if err := s.userRepo.UpdateInfo(userID, name, username); err != nil {
+			return err
+		}
+		if s.cacheRepo != nil {
+			// Tag-based invalidation. Global thread feed families cover the
+			// legacy patterns "community:threads:top/latest:*",
+			// "thread:all-communities:*", "thread:following:*"; userFeeds /
+			// userForYou cover the per-user user feeds and foryou source.
+			_ = s.cacheRepo.InvalidateUserFeeds(ctx, userID)
+			_ = s.cacheRepo.InvalidateUserForYouFeeds(ctx, userID)
+			_ = s.cacheRepo.InvalidateGlobalThreadFeeds(ctx)
+			_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
+		}
+		s.invalidateUserProfileCaches(ctx, userID)
+	}
+
+	if input.ClearAvatar || input.ClearBanner {
+		existing, _ := s.profileRepo.FindByUserID(userID)
+		if existing != nil {
+			if input.ClearAvatar && existing.AvatarObjectName != "" && existing.AvatarBucket != "" {
+				if err := s.storageUsecase.Delete(ctx, existing.AvatarBucket, existing.AvatarObjectName); err != nil {
+					return fmt.Errorf("failed to delete avatar: %w", err)
+				}
+				existing.AvatarObjectName = ""
+				existing.AvatarBucket = ""
+			}
+			if input.ClearBanner && existing.BannerObjectName != "" && existing.BannerBucket != "" {
+				if err := s.storageUsecase.Delete(ctx, existing.BannerBucket, existing.BannerObjectName); err != nil {
+					return fmt.Errorf("failed to delete banner: %w", err)
+				}
+				existing.BannerObjectName = ""
+				existing.BannerBucket = ""
+			}
+			if err := s.profileRepo.Upsert(existing); err != nil {
+				return err
+			}
+			if input.ClearAvatar {
+				communityuc.InvalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
+			}
+			s.invalidateUserProfileCaches(ctx, userID)
+		}
+	}
+
+	if input.BirthdayDate != nil {
+		if err := userprofilemodel.ValidateBirthdayDate(*input.BirthdayDate); err != nil {
+			return err
+		}
+		existing, _ := s.profileRepo.FindByUserID(userID)
+		if existing == nil {
+			return errors.New("profile not found")
+		}
+		existing.BirthdayDate = *input.BirthdayDate
+		if err := s.profileRepo.Upsert(existing); err != nil {
+			return err
+		}
+		s.invalidateUserProfileCaches(ctx, userID)
+	}
+
+	mediaInput := userprofilesvciface.UpsertProfileInput{
+		Avatar: input.Avatar,
+		Banner: input.Banner,
+		Bio:    input.Bio,
+	}
+	if mediaInput.Avatar != nil || mediaInput.Banner != nil || mediaInput.Bio != nil {
+		return s.UpsertProfile(ctx, userID, mediaInput)
+	}
+	return nil
+}
+
+func validateProfileImage(header *multipart.FileHeader, uploadType string) error {
+	if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxImageUploadSize(uploadType)); err != nil {
+		return err
+	}
+	if err := mediamodel.ValidateImageExt(header.Filename); err != nil {
+		return err
+	}
+	f, err := header.Open()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return mediamodel.ValidateImageFile(f)
+}
+
+func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, userID uint) {
+	if s.cacheRepo == nil {
+		return
+	}
+	_ = s.cacheRepo.Delete(ctx,
+		userAvatarCacheKey(userID),
+		fmt.Sprintf("user:id:%d", userID),
+		fmt.Sprintf("profile:user:%d", userID),
+		fmt.Sprintf("notification:sender:%d", userID),
+		fmt.Sprintf("userfaculty:user:%d", userID),
+	)
+	_ = s.cacheRepo.Delete(ctx, "reports:all", "feed:trending:global")
+	// Tag-based invalidation — covers thread:userfeed/usermedia/following:<uid>
+	// (userFeedsTag), feed:foryou:user:<uid>:src/newcount (userForYouTag),
+	// thread:my-communities:user:<uid> + per-viewer feed slices
+	// (viewerThreadFeedsTag), and the global thread feed families
+	// (thread:roots/community/all-communities/following/event:threads, all
+	// registered under globalThreadFeedsTag at every Set site).
+	_ = s.cacheRepo.InvalidateUserFeeds(ctx, userID)
+	_ = s.cacheRepo.InvalidateUserForYouFeeds(ctx, userID)
+	_ = s.cacheRepo.InvalidateViewerThreadFeeds(ctx, userID)
+	_ = s.cacheRepo.InvalidateGlobalThreadFeeds(ctx)
+	// Per-user interaction lists (bookmarks/likes:user:<uid>:*) → tag invalidation.
+	_ = s.cacheRepo.InvalidateInteractionUserList(ctx, "bookmarks", userID)
+	_ = s.cacheRepo.InvalidateInteractionUserList(ctx, "likes", userID)
+	// community:users:* (member listings showing is_following etc) →
+	// communityMembersGlobalTag drops every community's user list.
+	_ = s.cacheRepo.InvalidateCommunityMembersGlobal(ctx)
+	_ = s.cacheRepo.InvalidateReportsID(ctx)
+	_ = s.cacheRepo.InvalidateCommunityRequestsGlobal(ctx)
+}
+
+func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofilesvciface.FullProfile, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := s.followRepo.GetStat(userID)
+	if err != nil {
+		return nil, err
+	}
+	profile, _ := s.profileRepo.FindByUserID(userID)
+	if profile == nil {
+		profile = &userprofilemodel.UserProfile{UserID: userID}
+	}
+	userFaculty, _ := s.userFacultyRepo.FindByUserID(userID)
+	isFollowing := false
+	if viewerID != nil && *viewerID != 0 && *viewerID != userID {
+		isFollowing, err = s.followRepo.Exists(*viewerID, userID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &userprofilesvciface.FullProfile{
+		User:        user,
+		Stat:        stat,
+		Profile:     profile,
+		UserFaculty: userFaculty,
+		IsFollowing: isFollowing,
+	}, nil
+}
+
+func (s *UserProfileService) GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error) {
+	return s.profileRepo.FindByUserIDs(userIDs)
+}
+
+func (s *UserProfileService) GetUsers(userIDs []uint) ([]usermodel.User, error) {
+	return s.userRepo.FindByIDs(userIDs)
+}
+
+func (s *UserProfileService) GetUserFaculties(userIDs []uint) ([]usermodel.UserFaculty, error) {
+	return s.userFacultyRepo.FindByUserIDs(userIDs)
+}
+
+func (s *UserProfileService) GetURL(bucket, objectName string) string {
+	return s.storageUsecase.GetURL(bucket, objectName)
+}
