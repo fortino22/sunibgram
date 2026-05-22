@@ -12,9 +12,10 @@ type MentionUserResponse struct {
 }
 
 type CreateThreadRequest struct {
-	Content  string  `json:"content"`
-	ParentID *uint   `json:"parent_id"`
-	EventID  *string `json:"event_id"`
+	Content         string  `json:"content"`
+	ParentID        *uint   `json:"parent_id"`
+	EventID         *string `json:"event_id"`
+	ReplyPermission *string `json:"reply_permission"`
 }
 
 type UpdateThreadRequest struct {
@@ -22,15 +23,20 @@ type UpdateThreadRequest struct {
 	EventID *string `json:"event_id"`
 }
 
+type UpdateReplyPermissionRequest struct {
+	ReplyPermission string `json:"reply_permission"`
+}
+
 type ThreadResponse struct {
-	ThreadID      uint                  `json:"thread_id"`
-	UserID        uint                  `json:"user_id"`
-	Username      string                `json:"username"`
-	Content       string                `json:"content"`
-	ParentID      *uint                 `json:"parent_id,omitempty"`
-	RootID        *uint                 `json:"root_id,omitempty"`
-	EventID       *string               `json:"event_id,omitempty"`
-	EventName     *string               `json:"event_name,omitempty"`
+	ThreadID        uint                  `json:"thread_id"`
+	UserID          uint                  `json:"user_id"`
+	Username        string                `json:"username"`
+	Content         string                `json:"content"`
+	ReplyPermission string                `json:"reply_permission"`
+	ParentID        *uint                 `json:"parent_id,omitempty"`
+	RootID          *uint                 `json:"root_id,omitempty"`
+	EventID         *string               `json:"event_id,omitempty"`
+	EventName       *string               `json:"event_name,omitempty"`
 	Media         []ThreadMediaResponse `json:"media"`
 	Poll          *PollResponse         `json:"poll,omitempty"`
 	LikeCount     int                   `json:"like_count"`
@@ -76,14 +82,15 @@ type FeedStats struct {
 }
 
 type FeedParentContext struct {
-	ID        uint                  `json:"id"`
-	ParentID  *uint                 `json:"parent_id,omitempty"`
-	RootID    *uint                 `json:"root_id,omitempty"`
-	EventID   *string               `json:"event_id,omitempty"`
-	EventName *string               `json:"event_name,omitempty"`
-	Community *FeedCommunity        `json:"community,omitempty"`
-	Author    FeedAuthor            `json:"author"`
-	Content   string                `json:"content"`
+	ID              uint                  `json:"id"`
+	ParentID        *uint                 `json:"parent_id,omitempty"`
+	RootID          *uint                 `json:"root_id,omitempty"`
+	EventID         *string               `json:"event_id,omitempty"`
+	EventName       *string               `json:"event_name,omitempty"`
+	Community       *FeedCommunity        `json:"community,omitempty"`
+	Author          FeedAuthor            `json:"author"`
+	Content         string                `json:"content"`
+	ReplyPermission string                `json:"reply_permission"`
 	Media     []ThreadMediaResponse `json:"media"`
 	Poll      *PollResponse         `json:"poll,omitempty"`
 	Stats     FeedStats             `json:"stats"`
@@ -106,6 +113,7 @@ type FeedItemResponse struct {
 	EventName          *string               `json:"event_name,omitempty"`
 	Community          *FeedCommunity        `json:"community,omitempty"`
 	Content            string                `json:"content"`
+	ReplyPermission    string                `json:"reply_permission"`
 	CreatedAt          utils.FormattedTime   `json:"created_at"`
 	UpdatedAt          utils.FormattedTime   `json:"updated_at"`
 	TimeAgo            string                `json:"time_ago"`

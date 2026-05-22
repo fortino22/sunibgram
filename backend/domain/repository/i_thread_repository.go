@@ -15,6 +15,7 @@ type IThreadRepository interface {
 	FindByRootID(rootID uint, page, limit int) ([]model.Thread, int64, error)
 	FindChain(anchorID uint) (model.Thread, []model.Thread, []model.Thread, error)
 	Update(thread *model.Thread) error
+	UpdateReplyPermission(threadID uint, replyPermission model.ReplyPermission) error
 	Delete(id uint) error
 	FindPostsByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)
 	FindReplyTabByUserID(requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error)

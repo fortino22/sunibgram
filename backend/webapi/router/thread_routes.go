@@ -35,6 +35,7 @@ func registerThreadRoutes(
 	threadsAuth.Get("/:id", threadCtrl.GetByID)
 	threadsAuth.Get("/:id/chain", threadCtrl.GetChain)
 	threadsAuth.Put("/:id", threadCtrl.Update)
+	threadsAuth.Patch("/:id/reply-permission", threadCtrl.UpdateReplyPermission)
 	threadsAuth.Delete("/:id", threadCtrl.Delete)
 	threadsAuth.Post("/:id/pin", threadPinCtrl.Pin)
 	threadsAuth.Delete("/:id/unpin", threadPinCtrl.Unpin)

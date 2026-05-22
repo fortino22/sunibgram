@@ -12,7 +12,7 @@ import (
 	"github.com/sunibgram/domain/model"
 )
 
-func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string) (*model.Thread, error) {
+func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, replyPermission *string) (*model.Thread, error) {
 	content = strings.TrimSpace(content)
 	if utf8.RuneCountInString(content) > 5000 {
 		return nil, errors.New("content must be 5000 characters or less")
@@ -29,6 +29,17 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	var parent *model.Thread
 
 	var communityID *uint
+
+	resolvedReplyPerm := model.ReplyPermissionEveryone
+	if replyPermission != nil && *replyPermission != "" {
+		if !model.IsValidReplyPermission(*replyPermission) {
+			return nil, errors.New("invalid reply_permission")
+		}
+		if parentID != nil {
+			return nil, errors.New("reply_permission can only be set on root threads")
+		}
+		resolvedReplyPerm = model.ReplyPermission(*replyPermission)
+	}
 
 	if parentID != nil {
 		foundParent, err := s.threadRepo.FindByID(*parentID)
@@ -57,6 +68,9 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		} else {
 			rootID = parent.RootID
 		}
+		if err := s.enforceReplyPermission(parent, rootID, userID); err != nil {
+			return nil, err
+		}
 		if parent.CommunityID != nil {
 			community, err := s.communityRepo.FindByID(*parent.CommunityID)
 			if err != nil {
@@ -75,13 +89,14 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 	}
 
 	thread := &model.Thread{
-		UserID:      userID,
-		Type:        threadType,
-		Content:     content,
-		ParentID:    parentID,
-		RootID:      rootID,
-		CommunityID: communityID,
-		EventID:     eventID,
+		UserID:          userID,
+		Type:            threadType,
+		Content:         content,
+		ReplyPermission: resolvedReplyPerm,
+		ParentID:        parentID,
+		RootID:          rootID,
+		CommunityID:     communityID,
+		EventID:         eventID,
 	}
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err
@@ -316,6 +331,65 @@ func (s *ThreadService) IsReposted(userID, threadID uint) bool {
 
 func (s *ThreadService) AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error) {
 	return s.threadRepo.AreThreadsReposted(userID, threadIDs)
+}
+
+func (s *ThreadService) enforceReplyPermission(parent *model.Thread, rootID *uint, replierID uint) error {
+	root := parent
+	if rootID != nil && *rootID != parent.ThreadID {
+		fetched, err := s.threadRepo.FindByID(*rootID)
+		if err != nil {
+			return errors.New("root thread not found")
+		}
+		root = fetched
+	}
+	if root.UserID == replierID {
+		return nil
+	}
+	switch root.ReplyPermission {
+	case model.ReplyPermissionEveryone, "":
+		return nil
+	case model.ReplyPermissionFollowing:
+		authorFollowsReplier, err := s.followRepo.Exists(root.UserID, replierID)
+		if err != nil {
+			return err
+		}
+		if !authorFollowsReplier {
+			return errors.New("not allowed to reply to this thread")
+		}
+		return nil
+	case model.ReplyPermissionMutual:
+		authorFollowsReplier, err := s.followRepo.Exists(root.UserID, replierID)
+		if err != nil {
+			return err
+		}
+		replierFollowsAuthor, err := s.followRepo.Exists(replierID, root.UserID)
+		if err != nil {
+			return err
+		}
+		if !authorFollowsReplier || !replierFollowsAuthor {
+			return errors.New("not allowed to reply to this thread")
+		}
+		return nil
+	default:
+		return errors.New("not allowed to reply to this thread")
+	}
+}
+
+func (s *ThreadService) UpdateReplyPermission(ctx context.Context, threadID, userID uint, replyPermission string) error {
+	if !model.IsValidReplyPermission(replyPermission) {
+		return errors.New("invalid reply_permission")
+	}
+	thread, err := s.threadRepo.FindByID(threadID)
+	if err != nil {
+		return errors.New("thread not found")
+	}
+	if thread.UserID != userID {
+		return errors.New("forbidden")
+	}
+	if thread.Type != model.ThreadTypePost {
+		return errors.New("reply_permission can only be set on root threads")
+	}
+	return s.threadRepo.UpdateReplyPermission(threadID, model.ReplyPermission(replyPermission))
 }
 
 func (s *ThreadService) ensureThreadCommunityWritable(thread *model.Thread) error {

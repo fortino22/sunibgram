@@ -109,6 +109,20 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	return nil
 }
 
+func (r *threadCached) UpdateReplyPermission(threadID uint, replyPermission model.ReplyPermission) error {
+	if err := r.db.writeDB.Model(&model.Thread{}).
+		Where("thread_id = ?", threadID).
+		UpdateColumns(map[string]any{
+			"reply_permission": replyPermission,
+			"updated_at":       gorm.Expr("NOW()"),
+		}).Error; err != nil {
+		return err
+	}
+	ctx := context.Background()
+	r.cache.Delete(ctx, threadKey(threadID))
+	return nil
+}
+
 func (r *threadCached) validateThreadEventExists(eventID *string) error {
 	if eventID == nil || *eventID == "" {
 		return nil

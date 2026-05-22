@@ -51,6 +51,11 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
+	var replyPermission *string
+	if raw := strings.TrimSpace(ctx.FormValue("reply_permission")); raw != "" {
+		replyPermission = &raw
+	}
+
 	pollInput, _, hasPoll, err := ParseCreatePollFromMultipart(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
@@ -59,8 +64,11 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "polls are only allowed on post-type threads"})
 	}
 
-	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID)
+	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID, replyPermission)
 	if err != nil {
+		if err.Error() == "not allowed to reply to this thread" {
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -273,6 +281,36 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread updated successfully"})
+}
+
+func (c *ThreadController) UpdateReplyPermission(ctx *fiber.Ctx) error {
+	claims, ok := RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	id, ok := ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
+	}
+
+	var req dto.UpdateReplyPermissionRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	if err := c.threadService.UpdateReplyPermission(ctx.Context(), id, claims.UserID, req.ReplyPermission); err != nil {
+		switch err.Error() {
+		case "forbidden":
+			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		case "thread not found":
+			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		default:
+			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "reply permission updated successfully"})
 }
 
 func (c *ThreadController) Delete(ctx *fiber.Ctx) error {

@@ -111,19 +111,20 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 			p := parents[i]
 			eventID, eventName := webapiutils.EventFields(p)
 			item.ParentContext = &dto.FeedParentContext{
-				ID:        p.ThreadID,
-				ParentID:  p.ParentID,
-				RootID:    p.RootID,
-				EventID:   eventID,
-				EventName: eventName,
-				Community: webapiutils.CommunityField(p),
-				Author:    fb.AuthorField(p.User),
-				Content:   p.Content,
-				Media:     fb.ToMediaResponses(mediaByThread[p.ThreadID]),
-				Poll:      fb.PollForParent(p),
-				Stats:     dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
-				CreatedAt: dtoutils.Wrap(p.CreatedAt),
-				UpdatedAt: dtoutils.Wrap(p.UpdatedAt),
+				ID:              p.ThreadID,
+				ParentID:        p.ParentID,
+				RootID:          p.RootID,
+				EventID:         eventID,
+				EventName:       eventName,
+				Community:       webapiutils.CommunityField(p),
+				Author:          fb.AuthorField(p.User),
+				Content:         p.Content,
+				ReplyPermission: string(p.ReplyPermission),
+				Media:           fb.ToMediaResponses(mediaByThread[p.ThreadID]),
+				Poll:            fb.PollForParent(p),
+				Stats:           dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
+				CreatedAt:       dtoutils.Wrap(p.CreatedAt),
+				UpdatedAt:       dtoutils.Wrap(p.UpdatedAt),
 			}
 		}
 		data[i] = item
