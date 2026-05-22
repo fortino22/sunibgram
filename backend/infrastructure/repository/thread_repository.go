@@ -29,14 +29,21 @@ func preloadThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
+// Deep User.UserFaculty.Faculty chains are intentionally NOT preloaded here.
+// Faculty + is_premium are overlayed onto cached threads by FeedBuilder via
+// user:meta:<uid> (ProfileMetaCacheKey), populated through
+// LoadAvatarsForUserIDs at every controller feed-rendering site. Dropping the
+// deep preload saves 4 DB round trips per cache-miss feed page (UserFaculty +
+// Faculty × User chain + OriginalThread.User chain). Existing fallback in
+// FeedBuilder.AuthorField (u.UserFaculty != nil) is left as defensive code:
+// with these Preloads removed, t.User.UserFaculty is always nil, so the
+// fallback is dead in the happy path.
 func preloadThreadDetails(db *gorm.DB) *gorm.DB {
 	return db.
 		Preload("User", preloadThreadUser).
 		Preload("OriginalThread.User", preloadThreadUser).
 		Preload("Community").
 		Preload("OriginalThread.Community").
-		Preload("User.UserFaculty.Faculty").
-		Preload("OriginalThread.User.UserFaculty.Faculty").
 		Preload("ThreadEvents.Event").
 		Preload("OriginalThread.ThreadEvents.Event")
 }
@@ -45,7 +52,6 @@ func preloadThreadParentDetails(db *gorm.DB) *gorm.DB {
 	return db.
 		Preload("User", preloadThreadUser).
 		Preload("Community").
-		Preload("User.UserFaculty.Faculty").
 		Preload("ThreadEvents.Event")
 }
 

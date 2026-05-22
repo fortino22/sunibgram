@@ -84,14 +84,15 @@ func preloadSchedulerThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
+// Deep User.UserFaculty.Faculty chains intentionally not preloaded — overlay
+// via user:meta:<uid> in FeedBuilder handles faculty rendering. Saves 4 DB
+// queries per scheduler run.
 func preloadSchedulerThreadDetails(db *gorm.DB) *gorm.DB {
 	return db.
 		Preload("User", preloadSchedulerThreadUser).
 		Preload("OriginalThread.User", preloadSchedulerThreadUser).
 		Preload("Community").
 		Preload("OriginalThread.Community").
-		Preload("User.UserFaculty.Faculty").
-		Preload("OriginalThread.User.UserFaculty.Faculty").
 		Preload("ThreadEvents.Event").
 		Preload("OriginalThread.ThreadEvents.Event")
 }
