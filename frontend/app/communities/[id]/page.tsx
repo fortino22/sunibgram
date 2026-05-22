@@ -30,6 +30,7 @@ import {
   useDeleteCommunity,
 } from '@/hooks/useCommunityMutations';
 import { useAuthStore } from '@/stores/authStore';
+import { useHomeStore } from '@/stores/homeStore';
 import type { CommunityRole } from '@/lib/services/communities';
 
 type Tab = 'top' | 'latest' | 'media' | 'about' | 'requests';
@@ -44,6 +45,9 @@ export default function CommunityDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>('latest');
   const [showEdit, setShowEdit] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
+
+  const { pinnedCommunity, setPinnedCommunity } = useHomeStore();
+  const isPinned = pinnedCommunity?.id === communityId;
 
   const communityQuery = useCommunity(isValidId ? communityId : undefined);
   const membersQuery = useCommunityMembers(isValidId ? communityId : undefined);
@@ -76,6 +80,14 @@ export default function CommunityDetailPage() {
 
   const community = communityQuery.data;
   const members = membersQuery.data?.data ?? [];
+
+  function handlePinToggle() {
+    if (isPinned) {
+      setPinnedCommunity(null);
+    } else {
+      setPinnedCommunity({ id: communityId, name: community.name });
+    }
+  }
   const requests = requestsQuery.data?.data ?? [];
 
   // Determine current user's role from members list
@@ -163,6 +175,24 @@ export default function CommunityDetailPage() {
           ←
         </button>
         <div style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)' }}>{community.name}</div>
+        <button
+          onClick={handlePinToggle}
+          title={isPinned ? 'Unpin from home' : 'Pin to home tab'}
+          style={{
+            marginLeft: 'auto',
+            background: 'none',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '6px 12px',
+            color: isPinned ? 'var(--accent)' : 'var(--text-tertiary)',
+            fontSize: 13,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontWeight: isPinned ? 600 : 400,
+          }}
+        >
+          {isPinned ? 'Pinned' : 'Pin to home'}
+        </button>
       </div>
 
       {/* Community header */}

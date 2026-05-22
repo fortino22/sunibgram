@@ -252,6 +252,18 @@ export function getFollowingThreads(
   return api.get<ThreadListResponse>(`/api/threads/following${query(params)}`, token);
 }
 
+export function getFacultyThreads(
+  facultyId: number | string,
+  params: PaginationParams = {},
+  token: string
+): Promise<ThreadListResponse> {
+  const search = new URLSearchParams();
+  search.set('faculty_id', String(facultyId));
+  if (params.page !== undefined) search.set('page', String(params.page));
+  if (params.limit !== undefined) search.set('limit', String(params.limit));
+  return api.get<ThreadListResponse>(`/api/threads/faculty?${search.toString()}`, token);
+}
+
 export function getMyThreads(userId: number | string, params: PaginationParams = {}, token: string): Promise<ThreadListResponse> {
   return api.get<ThreadListResponse>(`/api/threads/user/${userId}${query(params)}`, token);
 }

@@ -19,6 +19,7 @@ import {
   Heart,
   Repeat2,
   BookmarkCheck,
+  Calendar,
   type LucideProps,
 } from 'lucide-react';
 import type { FC } from 'react';
@@ -44,6 +45,7 @@ const ICON_MAP: Record<string, FC<LucideProps>> = {
   poll:         BarChart2,
   heart:        Heart,
   repost:       Repeat2,
+  calendar:     Calendar,
 };
 
 interface IconProps {

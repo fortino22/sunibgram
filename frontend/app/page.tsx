@@ -1,34 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { EventsFeedPanel } from '@/components/events/EventsFeedPanel';
 import { CreatePostBox } from '@/components/shared/CreatePostBox';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
 import { Icon } from '@/components/ui/Icon';
 import { useFollowingThreads } from '@/hooks/useFollowingThreads';
 import { useThreads } from '@/hooks/useThreads';
+import { useFacultyThreads } from '@/hooks/useFacultyThreads';
+import { useCommunityThreadsLatest } from '@/hooks/useCommunities';
+import { useMyProfile } from '@/hooks/useMyProfile';
+import { useHomeStore } from '@/stores/homeStore';
 import type { ThreadItem } from '@/lib/services/threads';
 
-type FeedTabId = 'for-you' | 'following' | 'cs' | 'events';
+type FeedTabId = 'for-you' | 'following' | 'dynamic';
 
 interface Tab {
   id: FeedTabId;
   label: string;
 }
 
-const TABS: Tab[] = [
-  { id: 'for-you',   label: 'For You' },
+const STATIC_TABS: Tab[] = [
+  { id: 'for-you', label: 'For You' },
   { id: 'following', label: 'Following' },
-  { id: 'cs',        label: 'Comp Sci' },
-  { id: 'events',    label: 'Events' },
 ];
 
-const EMPTY_MESSAGES: Record<FeedTabId, { title: string; subtitle: string }> = {
+const EMPTY_MESSAGES: Record<string, { title: string; subtitle: string }> = {
   'for-you':   { title: 'Nothing here yet',                subtitle: 'Posts from campus will appear here.' },
   'following': { title: 'No posts from people you follow', subtitle: 'Follow more people to see their posts here.' },
-  'cs':        { title: 'No Comp Sci posts yet',           subtitle: 'Posts from Computer Science students will appear here.' },
-  'events':    { title: 'No events or announcements yet',  subtitle: 'Campus events and announcements will appear here.' },
+  'faculty':   { title: 'No faculty posts yet',            subtitle: 'Posts from your faculty will appear here.' },
+  'community': { title: 'No community posts yet',          subtitle: 'Posts from this community will appear here.' },
 };
 
 interface FeedTabButtonProps {
@@ -62,8 +63,8 @@ function FeedTabButton({ tab, active, onClick }: FeedTabButtonProps) {
   );
 }
 
-function EmptyFeed({ tab }: { tab: FeedTabId }) {
-  const { title, subtitle } = EMPTY_MESSAGES[tab];
+function EmptyFeed({ emptyKey }: { emptyKey: string }) {
+  const { title, subtitle } = EMPTY_MESSAGES[emptyKey] ?? EMPTY_MESSAGES['for-you'];
   return (
     <div
       style={{
@@ -116,17 +117,46 @@ function EmptyFeed({ tab }: { tab: FeedTabId }) {
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<FeedTabId>('for-you');
+
+  const { pinnedCommunity, tab3Mode, setTab3Mode } = useHomeStore();
+  const { data: profile } = useMyProfile();
+  const facultyId = profile?.faculty?.faculty_id ?? null;
+  const facultyName = profile?.faculty?.faculty_name ?? 'Faculty';
+  const tab3Label = tab3Mode === 'community' && pinnedCommunity ? pinnedCommunity.name : facultyName;
+
+  const isForYou = activeTab === 'for-you';
+  const isFollowing = activeTab === 'following';
+  const isDynamic = activeTab === 'dynamic';
+  const isFacultyMode = tab3Mode === 'faculty' || !pinnedCommunity;
+  const isCommunityMode = tab3Mode === 'community' && !!pinnedCommunity;
+
   const threadsQuery = useThreads();
-  const followingThreadsQuery = useFollowingThreads(1, 10, activeTab === 'following');
-  const isForYouTab = activeTab === 'for-you';
-  const isFollowingTab = activeTab === 'following';
-  const isEventsTab = activeTab === 'events';
-  const activeQuery = isFollowingTab ? followingThreadsQuery : threadsQuery;
+  const followingQuery = useFollowingThreads(1, 10, isFollowing);
+  const facultyQuery = useFacultyThreads(facultyId, 1, 10, isDynamic && isFacultyMode);
+  const communityQuery = useCommunityThreadsLatest(
+    isDynamic && isCommunityMode ? pinnedCommunity?.id : undefined
+  );
+
+  const activeQuery = isFollowing
+    ? followingQuery
+    : isDynamic && isCommunityMode
+    ? communityQuery
+    : isDynamic
+    ? facultyQuery
+    : threadsQuery;
+
   const activeThreads = activeQuery.data?.data ?? [];
+  const emptyKey = isDynamic ? (isCommunityMode ? 'community' : 'faculty') : activeTab;
+
+  const allTabs: Tab[] = [
+    ...STATIC_TABS,
+    { id: 'dynamic', label: tab3Label },
+  ];
+
+  const showModeSwitcher = isDynamic && !!pinnedCommunity;
 
   return (
     <div>
-      {/* Sticky header with tabs */}
       <div
         style={{
           position: 'sticky',
@@ -150,7 +180,7 @@ export default function HomePage() {
             Home
           </div>
           <div style={{ display: 'flex' }}>
-            {TABS.map((t) => (
+            {allTabs.map((t) => (
               <FeedTabButton
                 key={t.id}
                 tab={t}
@@ -160,24 +190,68 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+
+        {showModeSwitcher && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              padding: '8px 20px',
+              borderTop: '1px solid var(--border)',
+            }}
+          >
+            <button
+              onClick={() => setTab3Mode('faculty')}
+              style={{
+                padding: '4px 14px',
+                borderRadius: 9999,
+                border: '1px solid var(--border)',
+                background: isFacultyMode ? 'var(--accent)' : 'transparent',
+                color: isFacultyMode ? '#fff' : 'var(--text-tertiary)',
+                fontSize: 13,
+                fontWeight: isFacultyMode ? 600 : 400,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {facultyName}
+            </button>
+            <button
+              onClick={() => setTab3Mode('community')}
+              style={{
+                padding: '4px 14px',
+                borderRadius: 9999,
+                border: '1px solid var(--border)',
+                background: isCommunityMode ? 'var(--accent)' : 'transparent',
+                color: isCommunityMode ? '#fff' : 'var(--text-tertiary)',
+                fontSize: 13,
+                fontWeight: isCommunityMode ? 600 : 400,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {pinnedCommunity.name}
+            </button>
+          </div>
+        )}
       </div>
 
-      {!isEventsTab && <CreatePostBox />}
+      {(isForYou || isFollowing) && <CreatePostBox />}
 
-      {isEventsTab ? (
-        <EventsFeedPanel active={isEventsTab} />
-      ) : (isForYouTab || isFollowingTab) && activeQuery.isLoading ? (
+      {activeQuery.isLoading ? (
         <div>
           {Array.from({ length: 3 }, (_, i) => <ThreadCardSkeleton key={i} />)}
         </div>
-      ) : (isForYouTab || isFollowingTab) && activeThreads.length > 0 ? (
+      ) : activeThreads.length > 0 ? (
         <div>
           {activeThreads.map((thread: ThreadItem) => (
             <ThreadCard key={thread.id} thread={thread} />
           ))}
         </div>
       ) : (
-        <EmptyFeed tab={activeTab} />
+        <EmptyFeed emptyKey={emptyKey} />
       )}
     </div>
   );
