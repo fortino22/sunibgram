@@ -93,7 +93,10 @@ func (r *communityRequestRepository) FindPending(communityID uint, page, limit i
 	}
 	if r.cache != nil {
 		result = cachedCommunityRequests{Requests: requests, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityRequestsTag(communityID), key)
+			r.cache.RegisterCacheKey(ctx, communityRequestsGlobalTag(), key)
+		}
 	}
 	return requests, total, nil
 }
@@ -102,5 +105,5 @@ func (r *communityRequestRepository) invalidateCommunityRequests(communityID uin
 	if r.cache == nil {
 		return
 	}
-	_ = r.cache.DeleteByPattern(context.Background(), fmt.Sprintf("community:requests:%d:*", communityID))
+	_ = r.cache.InvalidateTag(context.Background(), communityRequestsTag(communityID))
 }

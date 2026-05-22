@@ -48,7 +48,10 @@ func (r *interactionRepo) interactionThreadTag(threadID uint) string {
 }
 
 func (r *interactionRepo) invalidateUser(ctx context.Context, userID uint) {
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", r.table, userID))
+	// interactionUserListTag is registered at every findByUserID Set site, so
+	// InvalidateTag drops all pages of this user's interaction list in
+	// O(set size) — no SCAN.
+	_ = r.cache.InvalidateTag(ctx, interactionUserListTag(r.table, userID))
 }
 
 func (r *interactionRepo) invalidateByThreadID(ctx context.Context, threadID uint) {
@@ -161,6 +164,7 @@ func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Th
 		Timestamps: timestamps,
 		Total:      total,
 	}, r.ttl); err == nil {
+		r.cache.RegisterCacheKey(ctx, interactionUserListTag(r.table, userID), key)
 		for _, threadID := range ids {
 			if threadID != 0 {
 				r.cache.RegisterCacheKey(ctx, r.interactionThreadTag(threadID), key)

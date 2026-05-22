@@ -136,8 +136,9 @@ func (r *categoryRepository) invalidateCategoryUpdate(id uuid.UUID) {
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, categoryAllKey(), categoryIDKey(id))
 	_ = r.cache.Delete(ctx, "discover:communities")
-	_ = r.cache.DeleteByPattern(ctx, "community:id:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:created:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:joined:*")
+	_ = r.cache.InvalidateTags(ctx,
+		communityIDGlobalTag(),
+		communityListsGlobalTag(),
+	)
 	invalidateExploreCache(ctx, r.cache)
 }

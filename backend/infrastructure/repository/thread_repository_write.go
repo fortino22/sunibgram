@@ -55,7 +55,7 @@ func (r *threadCached) Save(thread *model.Thread) error {
 		r.invalidateCommunityThreadQueryCaches(ctx)
 	}
 	r.invalidateTrendingFeed(ctx)
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.InvalidateTag(ctx, threadRootsGlobalTag())
 	invalidateExplorePostCaches(ctx, r.cache)
 	return nil
 }
@@ -71,7 +71,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	r.invalidate(ctx, threadID, thread.RootID, thread.CommunityID)
 	r.invalidateFeedCachesByThreadID(ctx, threadID)
 	r.invalidateCommunityThreadQueryCaches(ctx)
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.InvalidateTag(ctx, threadRootsGlobalTag())
 	r.invalidateInteractions(ctx, threadID)
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
@@ -104,7 +104,7 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	r.invalidateCommunityThreadQueryCaches(ctx)
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.InvalidateTag(ctx, threadRootsGlobalTag())
 	invalidateExplorePostCaches(ctx, r.cache)
 	return nil
 }
@@ -153,7 +153,7 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 			patchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount)
 			refreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
 		}
-		r.cache.DeleteByPattern(ctx, "event:threads:*")
+		_ = r.cache.InvalidateTag(ctx, eventThreadsGlobalTag())
 		return nil
 	}
 	if err := r.db.writeDB.Create(&model.ThreadEvent{ThreadID: threadID, EventID: *eventID}).Error; err != nil {
@@ -167,7 +167,7 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 		patchEventCounters(r.db.writeDB, r.cache, *eventID, 1, stats.LikeCount, stats.RepostCount)
 		refreshEventParticipantCount(r.db.writeDB, r.cache, *eventID)
 	}
-	r.cache.DeleteByPattern(ctx, "event:threads:*")
+	_ = r.cache.InvalidateTag(ctx, eventThreadsGlobalTag())
 	return nil
 }
 
@@ -234,7 +234,7 @@ func (r *threadCached) Delete(id uint) error {
 	r.invalidateCommunityThreadQueryCaches(ctx)
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.InvalidateTag(ctx, threadRootsGlobalTag())
 
 	r.likes.deleteByThreadID(id)
 	r.bookmarks.deleteByThreadID(id)

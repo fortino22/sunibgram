@@ -72,8 +72,27 @@ Prefer tags over SCAN. Tags are O(set size), SCAN is O(keyspace). Add tag builde
 **Tag invariant** — every Set of a key that should be tag-invalidatable must register under the tag. Half-migration = permanent stale (until cache TTL). Migrate one entity surface at a time: change all Set sites first, then switch invalidate path. Existing tagged surfaces:
 - `userFeedsTag(uid)` — `thread:userfeed/usermedia/following:<uid>:*` (Set sites in `thread_repository_user_feed.go`)
 - `userForYouTag(uid)` — `feed:foryou:user:<uid>:src/newcount:*` (Set sites in `thread_repository_for_you.go`)
-- `threadFeedsTag(tid)` — feed caches containing thread (Set sites in `thread_repository_*.go`)
+- `threadFeedsTag(tid)` — feed caches containing thread (Set sites in `thread_repository_*.go` via `storeFeedIDs`/`trackFeedCacheKey`)
 - `interactionThreadCacheKeysKey(table, tid)` — like/bookmark/repost listings containing thread (Set in `interaction_query.go`)
+
+**Profile-meta overlay** — `FeedBuilder.AuthorField` in `webapi/utils/feed_builder.go` overlays `is_premium` + `faculty` from `user:meta:<uid>` (`ProfileMetaCacheKey`) onto cached threads. Lets `thread:id:*`, `thread:chain:*`, `thread:parent:*`, and feed-list caches stay cached across `UpdatePremium` / `UserFaculty` mutations — only `user:meta:<uid>` needs invalidation.
+
+Overlay correctness requires **both** at the controller call site:
+1. `FeedBuilder.ProfileSvc` set (non-nil) — `controller_builder_helpers.go:newFeedBuilder` wires this; bespoke `FeedBuilder{...}` literals must include it.
+2. `fb.LoadAvatarsForUserIDs(threadUserIDs(threads))` called before `ToFeedItem`/`AuthorField`.
+
+Missing either → falls back to embedded `User.IsPremium` / `User.UserFaculty` from cached thread = stale.
+
+**Mutation → invalidation cheatsheet** — surfaces that snapshot mutable user/entity fields:
+
+| Mutation | DTOs that snapshot it | Required invalidation |
+|---|---|---|
+| `User.IsPremium` (`UpdatePremium`, `ExpireForDev`, trial activation) | `FeedAuthor`, `ReportUserResponse`, `NotificationSenderResponse`, `CommunityAbout/Member/Request/UserResponse`, `ExploreUserResponse`, `FollowUserResponse`, `UserProfileResponse` | `user:id:<uid>`, `user:meta:<uid>`, `notification:sender:<uid>`, `reports:all`, `reports:id:*`, `follows:user:*`, `community:about/users/requests/id:v2:*`, `community:threads:top/latest:*`, `explore:*`, all thread feed families (via `invalidateUserThreadCaches`) |
+| `UserFaculty.Save/Delete` (assignment) | `FeedAuthor.Faculty`, `ReportUserResponse.Faculty`, `NotificationSenderResponse.Faculty`, `UserProfileResponse.Faculty` | `userfaculty:user:<uid>`, `user:meta:<uid>`, `user:id:<uid>`, `profile:user:<uid>`, `notification:sender:<uid>`, `reports:all/id:*`, all thread feed families |
+| `Faculty.Update/Delete` (entity rename) | every overlay reads `user:meta:<uid>.FacultyName` | `faculty:id:<id>`, `faculty:list:*`, `profile:user:*`, `userfaculty:user:*`, **`user:meta:*`** (pattern — affects all users in faculty), `notification:sender:*`, `explore:*`, all thread feed families incl. `thread:id:*`, `thread:chain:*`, `feed:trending:global`, `feed:foryou:*` |
+| `Event.Update/Delete` | `FeedItemResponse.EventID/EventName` (cached threads preload `ThreadEvents.Event`) | `invalidateEvent(id)` (lists + `event:threads:<id>:*`) **plus** `invalidateEventThreadCaches(id)` per affected thread: `thread:id/parent`, `threadFeedsTag`, `interactionThreadCacheKeysKey`, user/community/chain patterns, `feed:trending:global`, `feed:foryou:*`, `thread:roots/all-communities/my-communities:*`, `community:threads:top/latest:*` |
+
+Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src:*` (per-viewer foryou source) cache full `[]model.Thread` with full preload — they snapshot event_name/is_premium/faculty but do **not** register under `threadFeedsTag`. Mutations affecting fields embedded in cached threads must pattern-delete `feed:foryou:*` and direct-delete `feed:trending:global` explicitly. Overlay handles user fields, but event fields have no overlay → cache invalidation is the only fix.
 
 **File validation** — lives in `domain/model/`. `model.ValidateImageExt` (jpg/jpeg/png/webp) in `media.go`. `model.ValidateThreadMediaExt` in `thread_media.go`. Never in application layer.
 
@@ -84,6 +103,15 @@ Prefer tags over SCAN. Tags are O(set size), SCAN is O(keyspace). Add tag builde
 **Auth** — JWT middleware at `webapi/middleware/auth.go`. Claims: `utils.Get(ctx)` from `webapi/utils/ctrl_helpers.go` → `Claims{UserID, Username, Email, RoleID, RoleName, SID}`.
 
 **Pagination** — services return `([]T, int64, error)`. Controllers wrap in `dto.PaginatedXxxResponse{Data, Meta: dto.FeedMeta{Total, Page, Limit}}`.
+
+**For You feed ordering** — `FindForYouFeed` in `thread_repository_for_you.go` splits candidates into two bands by `created_at` age vs `forYouFreshWindow` (1h):
+- `fresh` (age < 1h) → sorted `created_at DESC` (chronological, score ignored)
+- `ranked` (age ≥ 1h) → sorted `feed_score DESC` + `shuffleWithinBands` (current scored algorithm)
+- Final list = `[fresh..., ranked...]` → `forYouCandidateCap` (800) → `applyAuthorCap` (20/author, walks combined list in order)
+
+Fresh band guarantees newest posts surface at top regardless of score; ranked band gets the personalized scoring + shuffle. Tune via `forYouFreshWindow` const. Threads age out of fresh band on next request (re-evaluated per call using `time.Now()`).
+
+`GET /threads/feed/new-count?since_id=<id>` (`CountNewSinceID`) uses strict `thread_id > since_id` — frontend must pass `Math.max(...visibleIDs)` not `data[0].id`, because fresh band sorts by `created_at` not by ID. With fresh band non-empty `data[0]` usually equals max id (PK auto-increment correlates with time), but if fresh empty the ranked top item is **not** max id.
 
 **Error handling:**
 ```go

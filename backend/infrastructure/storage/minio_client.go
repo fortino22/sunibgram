@@ -32,7 +32,11 @@ func NewMinioClient() domainservice.IStorageService {
 	}
 
 	transport := &http.Transport{
-		Proxy: func(*http.Request) (*url.URL, error) { return nil, nil },
+		Proxy:               func(*http.Request) (*url.URL, error) { return nil, nil },
+		MaxIdleConns:        200,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+		DisableCompression:  true,
 	}
 
 	client, err := minio.New(endpoint, &minio.Options{

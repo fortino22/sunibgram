@@ -75,6 +75,11 @@ func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]model.Th
 		return nil, 0, err
 	}
 	r.storeFeedIDs(ctx, key, threads, nil, threadFeedTTL)
+	r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+	r.cache.RegisterCacheKey(ctx, threadRootsGlobalTag(), key)
+	if requesterID != nil && *requesterID != 0 {
+		r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(*requesterID), key)
+	}
 	return threads, total, nil
 }
 
@@ -120,6 +125,7 @@ func (r *threadCached) findAncestors(anchor model.Thread) ([]model.Thread, error
 			SELECT t.thread_id, t.parent_id, a.depth + 1
 			FROM threads t
 			JOIN ancestors a ON t.thread_id = a.parent_id
+			WHERE a.depth < 100
 		)
 		SELECT thread_id FROM ancestors ORDER BY depth DESC
 	`
@@ -215,6 +221,9 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 		return nil, 0, err
 	}
 	r.storeChainFeedIDs(ctx, key, threads)
+	r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+	r.cache.RegisterCacheKey(ctx, threadChainGlobalTag(), key)
+	r.cache.RegisterCacheKey(ctx, threadChainTag(rootID), key)
 	return threads, total, nil
 }
 
@@ -309,6 +318,12 @@ func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, p
 	}
 
 	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+	r.cache.RegisterCacheKey(ctx, threadCommunityGlobalTag(), key)
+	r.cache.RegisterCacheKey(ctx, threadCommunityTag(communityID), key)
+	if requesterUserID != 0 {
+		r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(requesterUserID), key)
+	}
 	return threads, parents, total, nil
 }
 
@@ -413,6 +428,11 @@ func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]m
 	}
 
 	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+	r.cache.RegisterCacheKey(ctx, threadMyCommunitiesGlobalTag(), key)
+	if userID != 0 {
+		r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(userID), key)
+	}
 	return threads, parents, total, nil
 }
 
@@ -505,6 +525,11 @@ func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUI
 	}
 
 	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+	r.cache.RegisterCacheKey(ctx, threadAllCommunitiesGlobalTag(), key)
+	if userID != 0 {
+		r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(userID), key)
+	}
 	return threads, parents, total, nil
 }
 
@@ -605,5 +630,10 @@ func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string,
 	}
 
 	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+	r.cache.RegisterCacheKey(ctx, communityThreadsGlobalTag(), key)
+	if userID != 0 {
+		r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(userID), key)
+	}
 	return threads, parents, total, nil
 }

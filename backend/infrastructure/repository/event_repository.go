@@ -131,7 +131,9 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 
 	result = cachedEvents{Trending: trending, Running: running, Future: future}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, result, r.ttl)
+		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, eventListsTag(), key)
+		}
 	}
 	return result.Trending, result.Running, result.Future, nil
 }
@@ -178,7 +180,9 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]model.Event, []model
 
 	result = cachedEvents{Trending: trending, Running: running, Future: future}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, result, r.ttl)
+		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, eventListsTag(), key)
+		}
 	}
 	return result.Trending, result.Running, result.Future, nil
 }
@@ -202,7 +206,9 @@ func (r *eventRepository) FindPending(limit int) ([]model.Event, error) {
 	}
 
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, events, r.ttl)
+		if err := r.cache.Set(ctx, key, events, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, eventListsTag(), key)
+		}
 	}
 	return events, nil
 }
@@ -350,6 +356,12 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 	result = cachedEventThreads{Threads: threads, Total: total}
 	if r.cache != nil {
 		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+			r.cache.RegisterCacheKey(ctx, eventThreadsGlobalTag(), key)
+			r.cache.RegisterCacheKey(ctx, eventThreadsByEventTag(eventID), key)
+			if requesterID != nil && *requesterID != 0 {
+				r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(*requesterID), key)
+			}
 			for _, t := range result.Threads {
 				if t.ThreadID != 0 {
 					r.cache.RegisterCacheKey(ctx, threadFeedsTag(t.ThreadID), key)
@@ -437,11 +449,9 @@ func (r *eventRepository) invalidateLists() {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPatterns(ctx,
-		"event:list:*",
-		"event:approved:list:*",
-		"event:pending:list:*",
-	)
+	// eventListsTag covers event:list/approved:list/pending:list at every Set
+	// site (FindGrouped, FindGroupedApproved, FindPending).
+	_ = r.cache.InvalidateTag(ctx, eventListsTag())
 }
 
 func (r *eventRepository) invalidateEvent(id string) {
@@ -450,12 +460,9 @@ func (r *eventRepository) invalidateEvent(id string) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, eventIDKey(id))
-	_ = r.cache.DeleteByPatterns(ctx,
-		"event:list:*",
-		"event:approved:list:*",
-		"event:pending:list:*",
-		fmt.Sprintf("event:threads:%s:*", id),
-	)
+	// eventListsTag → all event list caches; eventThreadsByEventTag → all
+	// cached event:threads:<id>:* pages for this event.
+	_ = r.cache.InvalidateTags(ctx, eventListsTag(), eventThreadsByEventTag(id))
 }
 
 func (r *eventRepository) invalidateEventThreadCaches(id string) {
@@ -505,17 +512,31 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 			communityIDSet[*thread.CommunityID] = struct{}{}
 		}
 	}
+	// Per-tree, per-community, per-user, per-follower → reverse-index tags.
+	// Each tag set was populated when the corresponding cache was first
+	// written (storeFeedIDs / storeChainFeedIDs / findUserFeed / etc).
+	chainTags := make([]string, 0, len(treeIDSet))
 	for treeID := range treeIDSet {
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", treeID))
+		chainTags = append(chainTags, threadChainTag(treeID))
 	}
+	communityTags := make([]string, 0, len(communityIDSet))
 	for communityID := range communityIDSet {
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:community:%d:*", communityID))
+		communityTags = append(communityTags, threadCommunityTag(communityID))
 	}
+	userTags := make([]string, 0, len(userIDSet))
 	userIDs := make([]uint, 0, len(userIDSet))
 	for userID := range userIDSet {
 		userIDs = append(userIDs, userID)
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+		userTags = append(userTags, userFeedsTag(userID))
+	}
+	if len(chainTags) > 0 {
+		_ = r.cache.InvalidateTags(ctx, chainTags...)
+	}
+	if len(communityTags) > 0 {
+		_ = r.cache.InvalidateTags(ctx, communityTags...)
+	}
+	if len(userTags) > 0 {
+		_ = r.cache.InvalidateTags(ctx, userTags...)
 	}
 	if len(userIDs) > 0 {
 		var followerIDs []uint
@@ -523,14 +544,25 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 			Distinct("follower_id").
 			Where("following_id IN ?", userIDs).
 			Pluck("follower_id", &followerIDs).Error; err == nil {
+			followerTags := make([]string, 0, len(followerIDs))
 			for _, followerID := range followerIDs {
-				_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", followerID))
+				followerTags = append(followerTags, userFeedsTag(followerID))
+			}
+			if len(followerTags) > 0 {
+				_ = r.cache.InvalidateTags(ctx, followerTags...)
 			}
 		}
 	}
 	r.invalidateInteractionUserCaches(ctx, "likes", threadIDs)
 	r.invalidateInteractionUserCaches(ctx, "bookmarks", threadIDs)
 	r.invalidateInteractionUserCaches(ctx, "reposts", threadIDs)
+	_ = r.cache.Delete(ctx, "feed:trending:global")
+	// globalThreadFeedsTag covers thread:roots/all-communities/my-communities,
+	// community:threads:top/latest at every Set site. feed:foryou:* is still
+	// global SCAN — no per-user tag covers global wipe; mutations on a single
+	// event affect cached foryou candidates for every viewer.
+	_ = r.cache.InvalidateTag(ctx, globalThreadFeedsTag())
+	_ = r.cache.DeleteByPattern(ctx, "feed:foryou:*")
 	invalidateExploreCache(ctx, r.cache)
 }
 
@@ -545,9 +577,14 @@ func (r *eventRepository) invalidateInteractionUserCaches(ctx context.Context, t
 		Pluck("user_id", &userIDs).Error; err != nil {
 		return
 	}
-	for _, userID := range userIDs {
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", table, userID))
+	if len(userIDs) == 0 {
+		return
 	}
+	tags := make([]string, 0, len(userIDs))
+	for _, userID := range userIDs {
+		tags = append(tags, interactionUserListTag(table, userID))
+	}
+	_ = r.cache.InvalidateTags(ctx, tags...)
 }
 
 func interactionThreadCacheKeysKey(table string, threadID uint) string {

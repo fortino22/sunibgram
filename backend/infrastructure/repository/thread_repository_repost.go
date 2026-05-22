@@ -72,7 +72,7 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	r.invalidateForYouFeedCacheForUser(ctx, repost.UserID)
 	r.invalidateForYouFeedCachesForFollowers(ctx, repost.UserID)
 	r.invalidateTrendingFeed(ctx)
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
+	_ = r.cache.InvalidateTag(ctx, threadRootsGlobalTag())
 	var orig model.Thread
 	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {
 		r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)

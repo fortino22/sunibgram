@@ -85,6 +85,12 @@ func (s *PremiumSubscriptionService) ExpireForDev(userID uint) error {
 	if err := s.premiumSubscriptionRepo.ExpireForDev(userID); err != nil {
 		return err
 	}
+	if err := s.communityRepo.DeactivateByOwnerIDs([]uint{userID}); err != nil {
+		return err
+	}
+	if err := s.userRepo.UpdatePremium(userID, false); err != nil {
+		return err
+	}
 	if err := s.ExpireSubscriptions(); err != nil {
 		return err
 	}
@@ -97,11 +103,8 @@ func (s *PremiumSubscriptionService) invalidateCommunityThreadQueryCaches() {
 		return
 	}
 	ctx := context.Background()
-	_ = s.cacheRepo.DeleteByPatterns(ctx,
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"thread:all-communities:*",
-		"community:requests:*",
-		"community:users:*",
-	)
+	_ = s.cacheRepo.InvalidateCommunityThreadsGlobal(ctx)
+	_ = s.cacheRepo.InvalidateThreadAllCommunitiesGlobal(ctx)
+	_ = s.cacheRepo.InvalidateCommunityMembersGlobal(ctx)
+	_ = s.cacheRepo.InvalidateCommunityRequestsGlobal(ctx)
 }

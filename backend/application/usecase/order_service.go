@@ -179,10 +179,9 @@ func (s *OrderService) HandleNotification(payload map[string]interface{}) error 
 		}
 		if s.cacheRepo != nil {
 			ctx := context.Background()
-			_ = s.cacheRepo.DeleteByPattern(ctx, "community:requests:*")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
+			_ = s.cacheRepo.InvalidateCommunityRequestsGlobal(ctx)
+			_ = s.cacheRepo.InvalidateCommunityThreadsGlobal(ctx)
+			_ = s.cacheRepo.InvalidateThreadAllCommunitiesGlobal(ctx)
 		}
 	}
 

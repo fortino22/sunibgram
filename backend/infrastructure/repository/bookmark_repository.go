@@ -32,10 +32,9 @@ func (r *BookmarkRepository) Save(bookmark *model.Bookmark) error {
 	r.base.invalidateUser(ctx, bookmark.UserID)
 	r.patchCount(bookmark.ThreadID, "bookmark_count", 1)
 	ViewerFlagAdd(r.base.cache, bookmark.UserID, "bookmarked", bookmark.ThreadID)
-	r.base.cache.DeleteByPatterns(ctx,
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"thread:roots:*",
+	_ = r.base.cache.InvalidateTags(ctx,
+		communityThreadsGlobalTag(),
+		threadRootsGlobalTag(),
 	)
 	invalidateExploreCache(ctx, r.base.cache)
 	return nil
@@ -51,10 +50,7 @@ func (r *BookmarkRepository) Delete(userID, threadID uint) error {
 	r.base.invalidateUser(ctx, userID)
 	r.patchCount(threadID, "bookmark_count", -1)
 	ViewerFlagRemove(r.base.cache, userID, "bookmarked", threadID)
-	r.base.cache.DeleteByPatterns(ctx,
-		"community:threads:top:*",
-		"community:threads:latest:*",
-	)
+	_ = r.base.cache.InvalidateTag(ctx, communityThreadsGlobalTag())
 	invalidateExploreCache(ctx, r.base.cache)
 	return nil
 }

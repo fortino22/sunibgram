@@ -143,10 +143,11 @@ func (c *Cache) DeleteByPatterns(ctx context.Context, patterns ...string) error 
 }
 
 func (c *Cache) SAdd(ctx context.Context, key string, member string, ttl time.Duration) error {
-	if err := c.client.SAdd(ctx, key, member).Err(); err != nil {
-		return err
-	}
-	return c.client.Expire(ctx, key, ttl).Err()
+	pipe := c.client.TxPipeline()
+	pipe.SAdd(ctx, key, member)
+	pipe.Expire(ctx, key, ttl)
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 // SAddMany adds multiple members atomically and refreshes the TTL.
@@ -158,10 +159,55 @@ func (c *Cache) SAddMany(ctx context.Context, key string, members []string, ttl 
 	for i, m := range members {
 		args[i] = m
 	}
-	if err := c.client.SAdd(ctx, key, args...).Err(); err != nil {
-		return err
+	pipe := c.client.TxPipeline()
+	pipe.SAdd(ctx, key, args...)
+	pipe.Expire(ctx, key, ttl)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// MGet returns map[key]rawJSONBytes for hits. Missing keys are absent from the
+// returned map. Caller unmarshals per-key (types may differ across keys).
+// Falls back to per-key Get on the rare go-redis result-shape mismatch — never
+// returns partial errors that hide hits.
+func (c *Cache) MGet(ctx context.Context, keys []string) (map[string][]byte, error) {
+	if len(keys) == 0 {
+		return nil, nil
 	}
-	return c.client.Expire(ctx, key, ttl).Err()
+	vals, err := c.client.MGet(ctx, keys...).Result()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string][]byte, len(keys))
+	for i, v := range vals {
+		if v == nil {
+			continue
+		}
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		out[keys[i]] = []byte(s)
+	}
+	return out, nil
+}
+
+// MSet writes many JSON-encoded values under the same TTL in one pipelined
+// round trip. Same semantics as N serial Set calls; just amortizes RTT cost.
+func (c *Cache) MSet(ctx context.Context, entries map[string]any, ttl time.Duration) error {
+	if len(entries) == 0 {
+		return nil
+	}
+	pipe := c.client.TxPipeline()
+	for key, value := range entries {
+		b, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		pipe.Set(ctx, key, b, ttl)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (c *Cache) SMembers(ctx context.Context, key string) ([]string, error) {
@@ -202,10 +248,11 @@ func (c *Cache) Miss(err error) bool {
 	return err == redis.Nil
 }
 
-// TagTTL controls how long a reverse-index tag set survives. Must be >= the
-// TTL of any cache key registered under it; otherwise InvalidateTag will miss
-// keys that should be dropped.
-const TagTTL = 24 * time.Hour
+// TagTTL controls how long a reverse-index tag set survives. Must be > the
+// TTL of any cache key registered under it; otherwise InvalidateTag risks
+// missing keys whose tag set expired first. FacultyTTL == 24h so this is
+// bumped to 48h to keep a margin of safety.
+const TagTTL = 48 * time.Hour
 
 // RegisterCacheKey adds a cache key to a tag set. Tag sets are used by
 // InvalidateTag for O(set size) invalidation instead of O(keyspace) SCAN.

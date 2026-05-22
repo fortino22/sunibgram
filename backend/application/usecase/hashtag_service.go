@@ -45,13 +45,17 @@ func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]model.Tr
 		return nil, err
 	}
 	if s.cache != nil {
-		_ = s.cache.Set(ctx, key, hashtags, trendingHashtagTTL)
+		if err := s.cache.Set(ctx, key, hashtags, trendingHashtagTTL); err == nil {
+			// Tag mirror of trendingHashtagsTag() in
+			// infrastructure/repository/tag_keys.go. Keep these strings in sync.
+			_ = s.cache.RegisterCacheKey(ctx, "tag:trending-hashtags", key)
+		}
 	}
 	return hashtags, nil
 }
 
 func (s *HashtagService) InvalidateTrendingCache(ctx context.Context) {
 	if s.cache != nil {
-		s.cache.DeleteByPattern(ctx, "trending_hashtags:*")
+		_ = s.cache.InvalidateTag(ctx, "tag:trending-hashtags")
 	}
 }

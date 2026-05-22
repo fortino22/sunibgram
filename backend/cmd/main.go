@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -87,7 +86,10 @@ func main() {
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
 	emailService := usecase.NewEmailService(infraemail.NewSMTPClient(), redisCache)
-	go emailService.StartWorker(context.Background())
+	const emailWorkerCount = 4
+	for i := 0; i < emailWorkerCount; i++ {
+		go emailService.StartWorker(context.Background())
+	}
 	ollamaClient := ollama.NewClient()
 	socketHub := infrasocket.NewHub()
 
@@ -146,8 +148,8 @@ func main() {
 	eventThreadPinCtrl := controller.NewEventThreadPinController(eventThreadPinService)
 	hashtagCtrl := controller.NewHashtagController(hashtagService)
 	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService, threadPollService)
-	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService, threadPollService)
-	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService, threadPollService)
+	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService, threadPollService, profileService)
+	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService, threadPollService, profileService)
 	threadPinCtrl := controller.NewThreadPinController(threadPinService)
 	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
 	summaryCtrl := controller.NewThreadSummaryController(summaryService)
@@ -238,15 +240,7 @@ func main() {
 		threadPollCtrl,
 	)
 
-	go func() {
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-		for range ticker.C {
-			if err := premiumSubscriptionService.ExpireSubscriptions(); err != nil {
-				log.Printf("ExpireSubscriptions error: %v", err)
-			}
-		}
-	}()
+	go scheduler.RunSubscriptionExpiry(context.Background(), premiumSubscriptionService)
 
 	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
 	fmt.Printf("server running on %s\n", addr)

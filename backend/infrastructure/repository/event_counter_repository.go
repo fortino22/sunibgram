@@ -106,6 +106,5 @@ func invalidateEventCounterCaches(c *cache.Cache, eventID string) {
 	}
 	ctx := context.Background()
 	_ = c.Delete(ctx, eventIDKey(eventID))
-	_ = c.DeleteByPattern(ctx, "event:list:*")
-	_ = c.DeleteByPattern(ctx, "event:threads:"+eventID+":*")
+	_ = c.InvalidateTags(ctx, eventListsTag(), eventThreadsByEventTag(eventID))
 }

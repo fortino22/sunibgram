@@ -34,11 +34,14 @@ Inside a single seed window, the algorithm:
 
 1. Merges 4 candidate sources (own posts, global trending, following, communities).
 2. Applies log-based time decay so older posts drift down naturally.
-3. Sorts by score and shuffles **within score bands** so trending posts stay near the top but exact order varies between sessions.
-4. Caps to 20 posts per author.
-5. Slices the page.
+3. **Splits candidates into two bands by age:**
+   - **Fresh band** (`created_at` within last 1 hour) → sorted chronologically (`created_at DESC`), score ignored. Guarantees newest posts surface on top.
+   - **Ranked band** (older than 1 hour) → sorted by score + shuffled within score bands so trending posts stay near the top but exact order varies between sessions.
+4. Concatenates `[fresh..., ranked...]` so newest content always leads the feed.
+5. Caps to 20 posts per author (applied across the combined list).
+6. Slices the page.
 
-You do not need to think about any of this on the frontend — just call the endpoint, get a page, render it. The "feels fresh on refresh" behavior is automatic.
+You do not need to think about any of this on the frontend — just call the endpoint, get a page, render it. The "newest on top, trending below" + "feels fresh on refresh" behavior is automatic.
 
 ---
 
@@ -105,22 +108,24 @@ Authorization: Bearer <jwt>
 }
 ```
 
-- `since_id` — the largest `thread_id` currently rendered at the top of the user's feed.
+- `since_id` — **the largest `thread_id` across all currently rendered threads**, NOT `data[0].thread_id`. The backend filter is `WHERE thread_id > since_id`; passing the first item's id can produce a false "new posts" banner when the ranked band leads (e.g. fresh band empty) because the top item then is the highest-scored, not the highest-id.
 - `count` — number of new threads, capped at `1000` (display as `"999+"` in UI).
 - Result is cached server-side for 30 seconds per `(userID, since_id)` pair, so polling is cheap.
 
 ### Polling strategy
 
-Use TanStack Query with `refetchInterval`:
+Use TanStack Query with `refetchInterval`. Compute `sinceID` as the **max** of all loaded thread ids:
 
 ```ts
-const topThread = feedPages?.[0]?.data?.[0]
-const sinceID = topThread?.thread_id
+const allThreads = feedPages?.flatMap(p => p.data) ?? []
+const sinceID = allThreads.length
+  ? Math.max(...allThreads.map(t => t.thread_id))
+  : 0
 
 const { data: newCountData } = useQuery({
   queryKey: ['threads', 'feed', 'new-count', sinceID],
   queryFn: () => api.get<{ count: number }>(`/threads/feed/new-count?since_id=${sinceID}`),
-  enabled: !!sinceID,
+  enabled: sinceID > 0,
   refetchInterval: 30_000,           // poll every 30s
   refetchIntervalInBackground: false, // pause when tab not focused
 })
@@ -174,7 +179,7 @@ This is functionally identical to tapping the new-posts banner, just triggered b
 | State | Source | Purpose |
 |---|---|---|
 | `feedPages` | `useInfiniteQuery(['threads', 'feed'])` | Rendered list |
-| `sinceID` | `feedPages[0].data[0].thread_id` | Newest visible thread id |
+| `sinceID` | `Math.max(...allThreads.map(t => t.thread_id))` | Newest visible thread id (max PK, **not** `data[0]`) |
 | `newCount` | `useQuery(['threads', 'feed', 'new-count', sinceID])` | Banner number |
 
 There is **no client-side seed to manage** — the seed lives entirely in Redis. The frontend's only job is to call `/refresh` at the right moments and refetch.
@@ -228,7 +233,7 @@ T = ...    User presses browser refresh / hard reload
 - ❌ Do not poll `/feed/new-count` faster than every 15s.
 - ❌ Do not store the seed in localStorage/sessionStorage — it is server-side only.
 - ❌ Do not assume a refresh endpoint call alone updates the UI — you must refetch the feed query afterward.
-- ❌ Do not pass `since_id` from an older page (e.g. middle of the list) — always use the **top** thread id.
+- ❌ Do not pass `since_id` as `data[0].thread_id` — fresh band sorts by `created_at`, so the first item is the newest **by time**, but if the fresh band is empty the first item is the highest-scored, not the highest-id. Always use `Math.max(...allThreads.map(t => t.thread_id))`.
 
 ---
 
@@ -241,7 +246,8 @@ T = ...    User presses browser refresh / hard reload
 | User scrolls past minute boundary | Seed TTL is sliding (refreshed on every read), so as long as they keep scrolling within 10 min, order stays stable. |
 | User pulls to refresh while at page 5 | `invalidateQueries` resets pagination cursor; user is returned to page 1 of the fresh order. |
 | New-count query returns 0 | Banner hidden — `newCount > 0` guard. |
-| `since_id` is 0 (no threads loaded yet) | Skip the query (`enabled: !!sinceID`). |
+| `since_id` is 0 (no threads loaded yet) | Skip the query (`enabled: sinceID > 0`). |
+| Fresh band ages out mid-session | Post older than 1h moves from fresh band → ranked band on next refetch; may sink down by score. Expected behavior. |
 | Backend returns 5xx on `/refresh` | Treat as soft failure — still invalidate local feed query so user sees a refetch attempt. |
 
 ---
@@ -267,13 +273,16 @@ export function ForYouFeed() {
     initialPageParam: 1,
   })
 
-  const sinceID = feedQuery.data?.pages[0]?.data[0]?.thread_id
+  const allThreads = feedQuery.data?.pages.flatMap(p => p.data) ?? []
+  const sinceID = allThreads.length
+    ? Math.max(...allThreads.map(t => t.thread_id))
+    : 0
 
   const newCountQuery = useQuery({
     queryKey: ['threads', 'feed', 'new-count', sinceID],
     queryFn: () =>
       api.get<{ count: number }>(`/threads/feed/new-count?since_id=${sinceID}`),
-    enabled: !!sinceID,
+    enabled: sinceID > 0,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
   })

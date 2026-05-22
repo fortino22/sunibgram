@@ -33,10 +33,9 @@ func (r *RepostRepository) Save(repost *model.Repost) error {
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, repost.UserID)
 	r.patchCount(repost.ThreadID, "repost_count", 1)
-	r.base.cache.DeleteByPatterns(ctx,
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"thread:roots:*",
+	_ = r.base.cache.InvalidateTags(ctx,
+		communityThreadsGlobalTag(),
+		threadRootsGlobalTag(),
 	)
 	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
@@ -53,10 +52,7 @@ func (r *RepostRepository) Delete(userID, threadID uint) error {
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, userID)
 	r.patchCount(threadID, "repost_count", -1)
-	r.base.cache.DeleteByPatterns(ctx,
-		"community:threads:top:*",
-		"community:threads:latest:*",
-	)
+	_ = r.base.cache.InvalidateTag(ctx, communityThreadsGlobalTag())
 	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }

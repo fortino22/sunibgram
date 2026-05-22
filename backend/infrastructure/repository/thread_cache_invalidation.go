@@ -44,11 +44,12 @@ func communityThreadsQueryKey(sort, query string, userID uint, page, limit int) 
 }
 
 func (r *threadCached) invalidateCommunityThreadQueryCaches(ctx context.Context) {
-	r.cache.DeleteByPatterns(ctx,
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"thread:all-communities:*",
-		"thread:my-communities:*",
+	// Per-family global tags — each registered at the single Set site of its
+	// family. Same blast radius as the legacy 4-pattern SCAN.
+	_ = r.cache.InvalidateTags(ctx,
+		communityThreadsGlobalTag(),
+		threadAllCommunitiesGlobalTag(),
+		threadMyCommunitiesGlobalTag(),
 	)
 }
 
@@ -93,11 +94,15 @@ func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *ui
 	if rootID != nil && *rootID != 0 {
 		treeID = *rootID
 	}
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:chain:%d:*", treeID))
-
+	// threadChainTag / threadCommunityTag replace
+	// DeleteByPattern("thread:chain:<t>:*") and
+	// DeleteByPattern("thread:community:<c>:*"). Set sites are storeChainFeedIDs
+	// (chain) and findCommunityThreads (community).
+	tags := []string{threadChainTag(treeID)}
 	if communityID != nil && *communityID != 0 {
-		r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:community:%d:*", *communityID))
+		tags = append(tags, threadCommunityTag(*communityID))
 	}
+	_ = r.cache.InvalidateTags(ctx, tags...)
 }
 
 func (r *threadCached) invalidateInteractions(ctx context.Context, threadID uint) {
@@ -119,7 +124,9 @@ func (r *threadCached) invalidateUserMediaCache(ctx context.Context, userID uint
 }
 
 func (r *threadCached) invalidateFollowingFeedCache(ctx context.Context) {
-	r.cache.DeleteByPattern(ctx, "thread:following:*")
+	// threadFollowingGlobalTag is registered at FindFollowingFeed Set.
+	// Replaces SCAN of thread:following:* across the entire keyspace.
+	_ = r.cache.InvalidateTag(ctx, threadFollowingGlobalTag())
 }
 
 // invalidateForYouFeedCacheForUser drops the per-user candidate caches and the
@@ -165,15 +172,11 @@ func (r *threadCached) invalidateTrendingFeed(ctx context.Context) {
 func (r *threadCached) InvalidateUserFeedCaches(ctx context.Context, userID uint) {
 	// User-scoped: reverse-index tag (O(set size), no SCAN).
 	_ = r.cache.InvalidateTag(ctx, userFeedsTag(userID))
-	// Global feed families: low-cardinality pagination variants, SCAN is fine.
-	r.cache.DeleteByPatterns(ctx,
-		"thread:following:*",
-		"thread:roots:*",
-		"thread:my-communities:*",
-		"thread:all-communities:*",
-		"community:threads:*",
-		"event:threads:*",
-	)
+	// Global feed families collapse to globalThreadFeedsTag. Slightly broader
+	// blast radius than the legacy 6 patterns (also drops thread:chain and
+	// thread:community), which is harmless: caches re-populate on next read
+	// and the trigger (privacy toggle) is rare.
+	_ = r.cache.InvalidateTag(ctx, globalThreadFeedsTag())
 	r.invalidateTrendingFeed(ctx)
 	r.invalidateForYouFeedCacheForUser(ctx, userID)
 	r.invalidateForYouFeedCachesForFollowers(ctx, userID)

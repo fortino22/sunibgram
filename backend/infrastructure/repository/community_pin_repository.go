@@ -93,7 +93,9 @@ func (r *CommunityPinRepository) FindMyPins(userID uint, page, limit int) ([]mod
 
 	if r.cache != nil {
 		result = cachedCommunityPins{Communities: communities, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityPinsUserTag(userID), key)
+		}
 	}
 	return communities, total, nil
 }
@@ -103,7 +105,7 @@ func (r *CommunityPinRepository) InvalidateUser(userID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:pins:user:%d:*", userID))
+	_ = r.cache.InvalidateTag(ctx, communityPinsUserTag(userID))
 }
 
 func (r *CommunityPinRepository) InvalidateByCommunity(communityID uint) {
@@ -118,7 +120,12 @@ func (r *CommunityPinRepository) InvalidateByCommunity(communityID uint) {
 		Pluck("user_id", &userIDs).Error; err != nil {
 		return
 	}
-	for _, uid := range userIDs {
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:pins:user:%d:*", uid))
+	if len(userIDs) == 0 {
+		return
 	}
+	tags := make([]string, 0, len(userIDs))
+	for _, uid := range userIDs {
+		tags = append(tags, communityPinsUserTag(uid))
+	}
+	_ = r.cache.InvalidateTags(ctx, tags...)
 }

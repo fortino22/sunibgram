@@ -74,7 +74,9 @@ func (r *communityRepository) FindByID(id uint) (*model.Community, error) {
 	}
 	community.TopMembers = topMembers[id]
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, community, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, community, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityIDGlobalTag(), key)
+		}
 	}
 	return &community, nil
 }
@@ -399,7 +401,10 @@ func (r *communityRepository) FindByCreatorID(userID uint, page, limit int) ([]m
 	}
 	if r.cache != nil {
 		result = cachedCommunities{Communities: communities, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityListsByUserTag(userID), key)
+			r.cache.RegisterCacheKey(ctx, communityListsGlobalTag(), key)
+		}
 	}
 	return communities, total, nil
 }
@@ -431,7 +436,10 @@ func (r *communityRepository) FindJoinedByUserID(userID uint, page, limit int) (
 	}
 	if r.cache != nil {
 		result = cachedCommunities{Communities: communities, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityListsByUserTag(userID), key)
+			r.cache.RegisterCacheKey(ctx, communityListsGlobalTag(), key)
+		}
 	}
 	return communities, total, nil
 }
@@ -441,7 +449,7 @@ func (r *communityRepository) invalidateCommunityCreate(creatorID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:created:%d:*", creatorID))
+	_ = r.cache.InvalidateTag(ctx, communityListsByUserTag(creatorID))
 	invalidateExploreCache(ctx, r.cache)
 }
 
@@ -451,10 +459,9 @@ func (r *communityRepository) invalidateCommunityUpdate(id, creatorID uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, communityIDKey(id), fmt.Sprintf("community:about:admins:%d", id))
-	_ = r.cache.DeleteByPatterns(ctx,
-		fmt.Sprintf("community:created:%d:*", creatorID),
-		fmt.Sprintf("community:about:topmembers:%d:*", id),
-		fmt.Sprintf("community:about:%d:*", id),
+	_ = r.cache.InvalidateTags(ctx,
+		communityListsByUserTag(creatorID),
+		communityMembersTag(id),
 	)
 	r.invalidateCommunityThreadCaches(ctx, id)
 	invalidateExploreCache(ctx, r.cache)
@@ -466,27 +473,34 @@ func (r *communityRepository) invalidateCommunityDelete(id, creatorID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, "community:joined:*")
+	_ = r.cache.InvalidateTag(ctx, communityListsGlobalTag())
 	invalidateExploreCache(ctx, r.cache)
 }
 
 func (r *communityRepository) invalidateCommunityThreadCaches(ctx context.Context, communityID uint) {
 	_ = r.cache.Delete(ctx, "feed:trending:global")
+	// Per-family global tags + per-community tag — replaces the migrated
+	// patterns. Remaining SCAN patterns (thread:id:*, thread:userfeed/usermedia:*,
+	// bookmarks/likes:user:*, feed:foryou:*) have no global tag yet — every
+	// Set site for those families would have to register, costing one extra
+	// SADD per write. Community update/delete is rare enough that pattern
+	// SCAN is acceptable.
+	_ = r.cache.InvalidateTags(ctx,
+		threadRootsGlobalTag(),
+		threadChainGlobalTag(),
+		threadCommunityTag(communityID),
+		communityThreadsGlobalTag(),
+		threadAllCommunitiesGlobalTag(),
+		threadMyCommunitiesGlobalTag(),
+		threadFollowingGlobalTag(),
+		eventThreadsGlobalTag(),
+	)
 	_ = r.cache.DeleteByPatterns(ctx,
 		"thread:id:*",
-		"thread:roots:*",
-		"thread:chain:*",
-		fmt.Sprintf("thread:community:%d:*", communityID),
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"thread:all-communities:*",
-		"thread:my-communities:*",
 		"thread:userfeed:*",
 		"thread:usermedia:*",
-		"thread:following:*",
 		"feed:foryou:*",
 		"bookmarks:user:*",
 		"likes:user:*",
-		"event:threads:*",
 	)
 }
