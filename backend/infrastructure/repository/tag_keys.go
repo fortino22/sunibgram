@@ -103,6 +103,13 @@ func followListUserTag(userID uint, listType string) string {
 	return fmt.Sprintf("tag:follows:user:%d:%s", userID, listType)
 }
 
+// followListGlobalTag covers every cached follow-list page across all users.
+// Registered alongside followListUserTag(uid, type) at each Set site.
+// Replaces DeleteByPattern("follows:user:*") in user_repository.invalidateUserPremiumCaches.
+func followListGlobalTag() string {
+	return "tag:follows:user:global"
+}
+
 // interactionUserListTag covers <table>:user:<uid>:* for one user's bookmark/
 // like/repost listings across pages. table is "likes" | "bookmarks" |
 // "reposts". Replaces DeleteByPattern("<table>:user:<uid>:*") in

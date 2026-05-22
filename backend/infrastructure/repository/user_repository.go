@@ -171,9 +171,10 @@ func (r *UserRepository) invalidateUserPremiumCaches() {
 		reportsIDTag(),
 		communityRequestsGlobalTag(),
 	)
-	// follows:user:* still SCAN — global wipe, no global tag for the follow
-	// list family (would add SADD on every list write).
-	_ = r.cache.DeleteByPattern(ctx, "follows:user:*")
+	// followListGlobalTag is registered alongside followListUserTag at every
+	// GetFollowing/GetFollowers Set site — drops every cached follow-list page
+	// in O(set size).
+	_ = r.cache.InvalidateTag(ctx, followListGlobalTag())
 }
 
 func (r *UserRepository) invalidateUserThreadCaches(userID uint) {

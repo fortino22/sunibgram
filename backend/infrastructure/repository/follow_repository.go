@@ -299,6 +299,7 @@ func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]model.U
 		result = cached{Users: users, Total: total}
 		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
 			r.cache.RegisterCacheKey(ctx, followListUserTag(userID, "following"), key)
+			r.cache.RegisterCacheKey(ctx, followListGlobalTag(), key)
 		}
 	}
 	return result.Users, result.Total, nil
@@ -335,6 +336,7 @@ func (r *followRepository) GetFollowers(userID uint, page, limit int) ([]model.U
 		result = cached{Users: users, Total: total}
 		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
 			r.cache.RegisterCacheKey(ctx, followListUserTag(userID, "followers"), key)
+			r.cache.RegisterCacheKey(ctx, followListGlobalTag(), key)
 		}
 	}
 	return result.Users, result.Total, nil

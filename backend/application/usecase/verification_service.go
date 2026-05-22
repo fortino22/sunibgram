@@ -1,9 +1,14 @@
 package usecase
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/sunibgram/domain/model"
@@ -12,6 +17,47 @@ import (
 	"github.com/sunibgram/infrastructure/ratelimit"
 	"golang.org/x/crypto/bcrypt"
 )
+
+const otpHashV2Prefix = "v2:"
+
+// otpHMACSecret resolves the HMAC key for OTP hashing. Prefers a dedicated
+// OTP_HMAC_SECRET; falls back to JWT_SECRET to avoid forcing a new env var on
+// deployers. Last-resort literal matches the existing JWT fallback pattern so
+// no environment becomes unbootable; rotate by setting OTP_HMAC_SECRET.
+func otpHMACSecret() []byte {
+	if s := strings.TrimSpace(os.Getenv("OTP_HMAC_SECRET")); s != "" {
+		return []byte(s)
+	}
+	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
+		return []byte(s)
+	}
+	return []byte("sunibgram-otp")
+}
+
+// hashOTP returns a versioned HMAC-SHA256 hash of the plaintext code. The
+// "v2:" prefix discriminates from legacy bcrypt hashes ("$2a$...") still
+// present in the verification_codes table from before this migration. Bcrypt
+// rows drain naturally via the 10-minute OTP TTL.
+func hashOTP(plain string) string {
+	h := hmac.New(sha256.New, otpHMACSecret())
+	h.Write([]byte(plain))
+	return otpHashV2Prefix + hex.EncodeToString(h.Sum(nil))
+}
+
+// verifyOTPHash dispatches by hash prefix: v2 → HMAC compare in constant
+// time; anything else → bcrypt compare (legacy in-flight codes).
+func verifyOTPHash(stored, plain string) bool {
+	if strings.HasPrefix(stored, otpHashV2Prefix) {
+		want, err := hex.DecodeString(strings.TrimPrefix(stored, otpHashV2Prefix))
+		if err != nil {
+			return false
+		}
+		h := hmac.New(sha256.New, otpHMACSecret())
+		h.Write([]byte(plain))
+		return hmac.Equal(want, h.Sum(nil))
+	}
+	return bcrypt.CompareHashAndPassword([]byte(stored), []byte(plain)) == nil
+}
 
 type VerificationService struct {
 	verificationRepo repository.IVerificationRepository
@@ -66,14 +112,9 @@ func (s *VerificationService) SendCode(email string, t model.VerificationType) e
 	_ = s.verificationRepo.DeleteByEmailAndType(email, t)
 
 	plain := fmt.Sprintf("%06d", rand.Intn(1000000))
-	hashed, err := bcrypt.GenerateFromPassword([]byte(plain), bcrypt.DefaultCost)
-	if err != nil {
-		return errors.New("failed to process code")
-	}
-
 	record := &model.VerificationCode{
 		Email:     email,
-		Code:      string(hashed),
+		Code:      hashOTP(plain),
 		Type:      t,
 		ExpiresAt: time.Now().Add(10 * time.Minute),
 	}
@@ -112,7 +153,7 @@ func (s *VerificationService) VerifyCode(email, code string, t model.Verificatio
 		return errors.New("code has expired")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(record.Code), []byte(code)); err != nil {
+	if !verifyOTPHash(record.Code, code) {
 		return errors.New("invalid code")
 	}
 
