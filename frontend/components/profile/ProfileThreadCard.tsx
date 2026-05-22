@@ -10,6 +10,7 @@ import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
+import type { CommunityRole } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
 import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from '@/components/thread/threadUtils';
 import { ThreadBody } from '@/components/thread/ThreadBody';
@@ -26,9 +27,13 @@ interface ProfileThreadCardProps {
   onRepost?: () => void;
   onBookmark?: () => void;
   onReply?: () => void;
+  communityRole?: CommunityRole | null;
+  onPinThread?: (threadId: number) => void;
+  onUnpinThread?: (threadId: number) => void;
+  pinningThread?: boolean;
 }
 
-export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParentContext = false, onLike, onRepost, onBookmark, onReply }: ProfileThreadCardProps) {
+export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParentContext = false, onLike, onRepost, onBookmark, onReply, communityRole, onPinThread, onUnpinThread, pinningThread }: ProfileThreadCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
@@ -75,6 +80,19 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
           <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>
             {thread.reposted_by_name || thread.reposted_by_username} reposting
           </span>
+        </div>
+      )}
+
+      {thread.is_pin && (
+        <div
+          style={{
+            padding: '8px 20px 0 55px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+          }}
+        >
+          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>📌 Pinned</span>
         </div>
       )}
 
@@ -125,22 +143,22 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               @{thread.author.username}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
-            {thread.is_pin && (
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>
-                Pinned
-              </span>
-            )}
-            {canManage && (
+            {(canManage || communityRole === 'ADMIN' || communityRole === 'OWNER') && (
               <div
-                style={{ marginLeft: thread.is_pin ? 8 : 'auto' }}
+                style={{ marginLeft: 'auto' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <ThreadOptionsMenu
-                  onEdit={() => setIsEditing(true)}
-                  onDelete={() => void handleDelete()}
+                  onEdit={canManage ? () => setIsEditing(true) : undefined}
+                  onDelete={canManage ? () => void handleDelete() : undefined}
                   deleting={deleteMutation.isPending}
                   disabled={updateMutation.isPending}
                   compact
+                  communityRole={communityRole}
+                  isPinned={thread.is_pin === true}
+                  pinning={pinningThread}
+                  onPin={onPinThread ? () => onPinThread(thread.id) : undefined}
+                  onUnpin={onUnpinThread ? () => onUnpinThread(thread.id) : undefined}
                 />
               </div>
             )}

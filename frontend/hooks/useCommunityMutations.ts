@@ -14,6 +14,10 @@ import {
   updateCommunity,
   deleteCommunity,
   createCommunityThread,
+  pinCommunity,
+  unpinCommunity,
+  pinCommunityThread,
+  unpinCommunityThread,
   type CommunityParams,
   type UpdateCommunityParams,
   type CommunityRole,
@@ -153,6 +157,50 @@ export function useCreateCommunityThread(communityId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: CommunityThreadParams) => createCommunityThread(communityId, params, token!),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['community', communityId, 'threads'] });
+    },
+  });
+}
+
+export function usePinCommunity(communityId: number) {
+  const token = useAuthStore((s) => s.token);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => pinCommunity(communityId, token!),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['communities', 'pins'] });
+    },
+  });
+}
+
+export function useUnpinCommunity(communityId: number) {
+  const token = useAuthStore((s) => s.token);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => unpinCommunity(communityId, token!),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['communities', 'pins'] });
+    },
+  });
+}
+
+export function usePinCommunityThread(communityId: number) {
+  const token = useAuthStore((s) => s.token);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: number) => pinCommunityThread(communityId, threadId, token!),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['community', communityId, 'threads'] });
+    },
+  });
+}
+
+export function useUnpinCommunityThread(communityId: number) {
+  const token = useAuthStore((s) => s.token);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (threadId: number) => unpinCommunityThread(communityId, threadId, token!),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'threads'] });
     },

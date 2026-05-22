@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, Check, BarChart3, Plus } from 'lucide-react';
+import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, Check, BarChart3, Plus, UserCheck } from 'lucide-react';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -160,6 +160,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const audienceMenuRef = useRef<HTMLDivElement | null>(null);
+  const replyPermMenuRef = useRef<HTMLDivElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
   const pollOptionInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const pollImageUrlsRef = useRef<Record<string, string>>({});
@@ -172,6 +173,10 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   // Audience
   const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
   const [showAudienceMenu, setShowAudienceMenu] = useState(false);
+
+  // Reply permission
+  const [replyPermission, setReplyPermission] = useState<'EVERYONE' | 'FOLLOWING' | 'MUTUAL'>('EVERYONE');
+  const [showReplyPermMenu, setShowReplyPermMenu] = useState(false);
 
   // Emoji / GIF
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -250,6 +255,17 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showAudienceMenu]);
+
+  useEffect(() => {
+    if (!showReplyPermMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (replyPermMenuRef.current && !replyPermMenuRef.current.contains(e.target as Node)) {
+        setShowReplyPermMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showReplyPermMenu]);
 
   const avatarSrc = profile?.avatar ?? null;
   const selectedFiles = previews.map((p) => p.file);
@@ -573,6 +589,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             },
           }),
           ...(isReply && { parentId }),
+          ...(!isReply && { replyPermission }),
         });
       }
       if (!isReply) setContent('');
@@ -580,6 +597,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       setPreviews([]);
       if (!isReply) {
         resetPollComposer();
+        setReplyPermission('EVERYONE');
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
       onSuccess?.();
@@ -1155,6 +1173,93 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   Remove poll
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Reply permission indicator — new posts only */}
+          {!isReply && (
+            <div style={{ position: 'relative', marginBottom: 10 }} ref={replyPermMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowReplyPermMenu((v) => !v)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  padding: '2px 6px 2px 2px',
+                  borderRadius: 20,
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--accent)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {replyPermission === 'EVERYONE' && <Globe size={14} />}
+                {replyPermission === 'FOLLOWING' && <UserCheck size={14} />}
+                {replyPermission === 'MUTUAL' && <Users size={14} />}
+                {replyPermission === 'EVERYONE' ? 'Everyone' : replyPermission === 'FOLLOWING' ? 'Followers' : 'Mutual followers'} can reply
+              </button>
+
+              {showReplyPermMenu && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 'calc(100% + 6px)',
+                    left: 0,
+                    minWidth: 240,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 16,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
+                    zIndex: 60,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div style={{ padding: '14px 16px 8px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                    Who can reply?
+                  </div>
+                  {(
+                    [
+                      { value: 'EVERYONE', label: 'Everyone', Icon: Globe },
+                      { value: 'FOLLOWING', label: 'Followers', Icon: UserCheck },
+                      { value: 'MUTUAL', label: 'Mutual followers', Icon: Users },
+                    ] as const
+                  ).map(({ value, label, Icon }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => { setReplyPermission(value); setShowReplyPermMenu(false); }}
+                      style={{
+                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '10px 16px',
+                        background: replyPermission === value ? 'var(--bg-subtle)' : 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <div style={{
+                        width: 40, height: 40, borderRadius: '50%',
+                        background: 'var(--accent)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <Icon size={20} color="#fff" />
+                      </div>
+                      <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+                      {replyPermission === value && <Check size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+                    </button>
+                  ))}
+                  <div style={{ height: 8 }} />
+                </div>
+              )}
             </div>
           )}
 

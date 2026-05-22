@@ -293,7 +293,7 @@ export function kickCommunityMember(
   userId: number | string,
   token: string
 ): Promise<CommunityMessageResponse> {
-  return api.delete<CommunityMessageResponse>(`/api/communities/${id}/members/${userId}`, token);
+  return api.post<CommunityMessageResponse>(`/api/communities/${id}/members/${userId}/kick`, undefined, token);
 }
 
 export function updateCommunityMemberRole(
@@ -418,7 +418,7 @@ export function getExploreCommunitiesThreads(
   params?: { page?: number; limit?: number }
 ): Promise<ThreadListResponse> {
   const search = new URLSearchParams();
-  if (categoryId) search.set('categoryId', categoryId);
+  if (categoryId) search.set('category', categoryId);
   if (params?.page !== undefined) search.set('page', String(params.page));
   if (params?.limit !== undefined) search.set('limit', String(params.limit));
   const q = search.toString() ? `?${search.toString()}` : '';
@@ -455,4 +455,119 @@ export function searchCommunityThreadsLatest(
   if (params?.page !== undefined) search.set('page', String(params.page));
   if (params?.limit !== undefined) search.set('limit', String(params.limit));
   return api.get<ThreadListResponse>(`/api/communities/threads/latest?${search.toString()}`, token);
+}
+
+// ─── Community About ──────────────────────────────────────────────────────────
+
+export interface CommunityAboutMember {
+  user_id: number;
+  username: string;
+  name: string;
+  avatar_url: string;
+  bio: string;
+  is_premium: boolean;
+  is_following: boolean;
+}
+
+export interface CommunityAboutData {
+  community_id: number;
+  name: string;
+  info: {
+    description: string;
+    posting_policy: string;
+    visibility_policy: string;
+    join_policy: string;
+  };
+  creator: CommunityAboutMember & { community_created_at: string };
+  rules: { id: number; text: string }[];
+  admins: CommunityAboutMember[];
+  top_members: CommunityAboutMember[];
+}
+
+export function getCommunityAbout(id: number | string, token: string): Promise<CommunityAboutData> {
+  return api.get<CommunityAboutData>(`/api/communities/${id}/about`, token);
+}
+
+// ─── Community Users ──────────────────────────────────────────────────────────
+
+export interface CommunityUserData {
+  user_id: number;
+  username: string;
+  name: string;
+  user_avatar: string;
+  is_premium: boolean;
+  role: CommunityRole;
+  is_following: boolean;
+}
+
+export interface PaginatedCommunityUserData {
+  data: CommunityUserData[];
+  meta: CommunityMeta;
+}
+
+export function getCommunityUsers(
+  id: number | string,
+  params: { role?: string; query?: string; page?: number; limit?: number },
+  token: string
+): Promise<PaginatedCommunityUserData> {
+  const search = new URLSearchParams();
+  if (params.role) search.set('role', params.role);
+  if (params.query) search.set('query', params.query);
+  if (params.page !== undefined) search.set('page', String(params.page));
+  if (params.limit !== undefined) search.set('limit', String(params.limit));
+  const q = search.toString() ? `?${search.toString()}` : '';
+  return api.get<PaginatedCommunityUserData>(`/api/communities/${id}/users${q}`, token);
+}
+
+// ─── Community Pins ───────────────────────────────────────────────────────────
+
+export interface PinnedCommunityData {
+  community_id: number;
+  community_name: string;
+  community_banner: string;
+}
+
+export interface PaginatedPinnedCommunityData {
+  data: PinnedCommunityData[];
+  meta: CommunityMeta;
+}
+
+export function getPinnedCommunities(
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<PaginatedPinnedCommunityData> {
+  return api.get<PaginatedPinnedCommunityData>(`/api/communities/pins/me${paginationQuery(params)}`, token);
+}
+
+export function pinCommunity(id: number | string, token: string): Promise<CommunityMessageResponse> {
+  return api.post<CommunityMessageResponse>(`/api/communities/${id}/pin`, undefined, token);
+}
+
+export function unpinCommunity(id: number | string, token: string): Promise<CommunityMessageResponse> {
+  return api.delete<CommunityMessageResponse>(`/api/communities/${id}/unpin`, token);
+}
+
+// ─── Community Thread Pins ────────────────────────────────────────────────────
+
+export function pinCommunityThread(
+  communityId: number | string,
+  threadId: number | string,
+  token: string
+): Promise<CommunityMessageResponse> {
+  return api.post<CommunityMessageResponse>(
+    `/api/communities/${communityId}/threads/${threadId}/pin`,
+    undefined,
+    token
+  );
+}
+
+export function unpinCommunityThread(
+  communityId: number | string,
+  threadId: number | string,
+  token: string
+): Promise<CommunityMessageResponse> {
+  return api.delete<CommunityMessageResponse>(
+    `/api/communities/${communityId}/threads/${threadId}/unpin`,
+    token
+  );
 }

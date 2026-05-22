@@ -11,6 +11,7 @@ import {
   useCategories,
   useMyCommunitiesThreadsFeed,
   useExploreCommunitiesThreads,
+  usePinnedCommunities,
 } from '@/hooks/useCommunities';
 
 type Tab = 'home' | 'explore';
@@ -77,11 +78,13 @@ export default function CommunitiesPage() {
   };
 
   const joinedQuery = useJoinedCommunities();
+  const pinsQuery = usePinnedCommunities();
   const homeFeedQuery = useMyCommunitiesThreadsFeed();
   const exploreFeedQuery = useExploreCommunitiesThreads(categoryId);
   const { data: categoriesData } = useCategories();
 
   const communities = joinedQuery.data?.data ?? [];
+  const pinnedCommunities = pinsQuery.data?.data ?? [];
   const categories = categoriesData?.data ?? [];
   const homeThreads = homeFeedQuery.data?.data ?? [];
   const exploreThreads = exploreFeedQuery.data?.data ?? [];
@@ -170,6 +173,81 @@ export default function CommunitiesPage() {
 
       {activeTab === 'home' && (
         <>
+          {pinnedCommunities.length > 0 && (
+            <div style={{ padding: '12px 20px 4px', borderBottom: '1px solid var(--border)' }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--text-tertiary)',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  marginBottom: 8,
+                }}
+              >
+                Pinned
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  paddingBottom: 4,
+                }}
+              >
+                {pinnedCommunities.map((p) => (
+                  <button
+                    key={p.community_id}
+                    onClick={() => router.push(`/communities/${p.community_id}`)}
+                    style={{
+                      position: 'relative',
+                      flexShrink: 0,
+                      width: 120,
+                      height: 76,
+                      borderRadius: 10,
+                      overflow: 'hidden',
+                      border: '1px solid var(--border)',
+                      background: p.community_banner
+                        ? `url(${p.community_banner}) center/cover no-repeat`
+                        : 'var(--bg-subtle)',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.75) 100%)',
+                      }}
+                    />
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: 6,
+                        left: 7,
+                        right: 7,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#fff',
+                        textAlign: 'left',
+                        overflow: 'hidden',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical' as const,
+                        lineHeight: '1.3',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.6)',
+                      }}
+                    >
+                      {p.community_name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {communities.length > 0 && (
             <div
               ref={sliderRef}

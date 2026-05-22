@@ -17,6 +17,9 @@ import {
   searchCommunities,
   searchCommunityThreadsTop,
   searchCommunityThreadsLatest,
+  getCommunityAbout,
+  getCommunityUsers,
+  getPinnedCommunities,
 } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -158,5 +161,36 @@ export function useSearchCommunityThreadsLatest(query: string) {
     queryFn: () => searchCommunityThreadsLatest(token!, query, { limit: 20 }),
     enabled: !!token && query.trim().length > 0,
     staleTime: 60 * 1000,
+  });
+}
+
+export function useCommunityAbout(communityId: number | undefined) {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['community', communityId, 'about'],
+    queryFn: () => getCommunityAbout(communityId!, token!),
+    enabled: !!token && !!communityId,
+  });
+}
+
+export function useCommunityUsers(
+  communityId: number | undefined,
+  params: { role?: string; query?: string } = {}
+) {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['community', communityId, 'users', params.role ?? null, params.query ?? ''],
+    queryFn: () => getCommunityUsers(communityId!, { ...params, limit: 30 }, token!),
+    enabled: !!token && !!communityId,
+  });
+}
+
+export function usePinnedCommunities() {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['communities', 'pins'],
+    queryFn: () => getPinnedCommunities(token!, { limit: 50 }),
+    enabled: !!token,
+    staleTime: 2 * 60 * 1000,
   });
 }

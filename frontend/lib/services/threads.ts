@@ -53,6 +53,7 @@ export interface ThreadResponse {
   reposted_by_name?: string;
   created_at: FormattedTime;
   updated_at: FormattedTime;
+  reply_permission?: string;
 }
 
 export interface PaginatedThreadsResponse {
@@ -105,6 +106,7 @@ export interface FeedParentContext {
   stats: FeedStats;
   created_at: FormattedTime;
   updated_at: FormattedTime;
+  reply_permission?: string;
 }
 
 export interface FeedItemResponse {
@@ -132,6 +134,7 @@ export interface FeedItemResponse {
   is_bookmarked?: boolean;
   is_reposted?: boolean;
   is_pin?: boolean;
+  reply_permission?: string;
 }
 
 export interface FeedMeta {
@@ -167,6 +170,7 @@ export interface ThreadMutationParams {
   clearMedia?: boolean;
   isPrivate?: boolean;
   poll?: ThreadPollInput;
+  replyPermission?: string;
 }
 
 export const DEFAULT_THREAD_CHAIN_PARAMS: Required<PaginationParams> = {
@@ -197,6 +201,9 @@ function buildThreadFormData(params: ThreadMutationParams): FormData {
   }
   if (params.isPrivate !== undefined) {
     formData.append('is_private', String(params.isPrivate));
+  }
+  if (params.replyPermission && !params.parentId) {
+    formData.append('reply_permission', params.replyPermission);
   }
   params.files?.forEach((file) => {
     formData.append('files', file);
@@ -314,6 +321,14 @@ export function updateThread(
 
 export function deleteThread(id: number | string, token: string): Promise<ThreadMessageResponse> {
   return api.delete<ThreadMessageResponse>(`/api/threads/${id}`, token);
+}
+
+export function updateReplyPermission(
+  id: number | string,
+  replyPermission: string,
+  token: string
+): Promise<ThreadMessageResponse> {
+  return api.patch<ThreadMessageResponse>(`/api/threads/${id}/reply-permission`, { reply_permission: replyPermission }, token);
 }
 
 export function likeThread(id: number | string, token: string): Promise<ThreadMessageResponse> {

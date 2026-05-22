@@ -59,7 +59,12 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\components\\\\community\" -ErrorAction SilentlyContinue)",
       "Bash(Select-Object Name)",
       "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\app\" -Directory)",
-      "Bash(Get-ChildItem -Recurse \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\app\" -Include \"*.tsx\",\"*.ts\")"
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\app\" -Include \"*.tsx\",\"*.ts\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\backend\" -Recurse -Directory)",
+      "Bash(Format-Table FullName)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\" -Recurse -Directory)",
+      "Bash(git log *)",
+      "PowerShell(npm run *)"
     ]
   }
 }

@@ -2,25 +2,37 @@
 
 import { MoreHorizontal } from 'lucide-react';
 import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
+import type { CommunityRole } from '@/lib/services/communities';
 
 interface ThreadOptionsMenuProps {
-  onEdit: () => void;
-  onDelete: () => void;
-  deleting: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  deleting?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  communityRole?: CommunityRole | null;
+  isPinned?: boolean;
+  pinning?: boolean;
+  onPin?: () => void;
+  onUnpin?: () => void;
 }
 
 export function ThreadOptionsMenu({
   onEdit,
   onDelete,
-  deleting,
+  deleting = false,
   disabled = false,
   compact = false,
+  communityRole,
+  isPinned = false,
+  pinning = false,
+  onPin,
+  onUnpin,
 }: ThreadOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const iconSize = compact ? 16 : 18;
+  const canCommunityPin = communityRole === 'ADMIN' || communityRole === 'OWNER';
 
   useEffect(() => {
     if (!open) {
@@ -62,13 +74,25 @@ export function ThreadOptionsMenu({
   function handleEdit(event: ReactMouseEvent<HTMLButtonElement>) {
     stopEvent(event);
     setOpen(false);
-    onEdit();
+    onEdit?.();
   }
 
   function handleDelete(event: ReactMouseEvent<HTMLButtonElement>) {
     stopEvent(event);
     setOpen(false);
-    onDelete();
+    onDelete?.();
+  }
+
+  function handlePin(event: ReactMouseEvent<HTMLButtonElement>) {
+    stopEvent(event);
+    setOpen(false);
+    onPin?.();
+  }
+
+  function handleUnpin(event: ReactMouseEvent<HTMLButtonElement>) {
+    stopEvent(event);
+    setOpen(false);
+    onUnpin?.();
   }
 
   return (
@@ -99,27 +123,72 @@ export function ThreadOptionsMenu({
             boxShadow: '0 18px 40px rgba(15, 20, 25, 0.16)',
           }}
         >
-          <button
-            type="button"
-            onClick={handleEdit}
-            className="flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
-            style={{ color: 'var(--text)' }}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="mt-1 flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
-            style={{
-              color: 'var(--coral)',
-              opacity: deleting ? 0.5 : 1,
-              cursor: deleting ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {deleting ? 'Deleting...' : 'Delete'}
-          </button>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={handleEdit}
+              className="flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
+              style={{ color: 'var(--text)' }}
+            >
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className={`${onEdit ? 'mt-1 ' : ''}flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium`}
+              style={{
+                color: 'var(--coral)',
+                opacity: deleting ? 0.5 : 1,
+                cursor: deleting ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          )}
+
+          {canCommunityPin && (onPin ?? onUnpin) && (
+            <div
+              style={{
+                borderTop: '1px solid var(--border)',
+                marginTop: 4,
+                paddingTop: 4,
+              }}
+            >
+              {!isPinned && onPin && (
+                <button
+                  type="button"
+                  onClick={handlePin}
+                  disabled={pinning}
+                  className="flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
+                  style={{
+                    color: 'var(--text)',
+                    opacity: pinning ? 0.5 : 1,
+                    cursor: pinning ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {pinning ? 'Pinning...' : 'Pin post'}
+                </button>
+              )}
+              {isPinned && onUnpin && (
+                <button
+                  type="button"
+                  onClick={handleUnpin}
+                  disabled={pinning}
+                  className="flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    opacity: pinning ? 0.5 : 1,
+                    cursor: pinning ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {pinning ? 'Unpinning...' : 'Unpin post'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
