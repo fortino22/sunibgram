@@ -164,6 +164,10 @@ func (r *UserRepository) invalidateUserPremiumCaches() {
 		"follows:user:*",
 		"community:threads:top:*",
 		"community:threads:latest:*",
+		"community:users:*",
+		"community:requests:*",
+		"community:about:*",
+		"community:id:v2:*",
 	)
 }
 

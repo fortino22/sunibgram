@@ -82,6 +82,8 @@ func (fb *FeedBuilder) avatarCacheRepo() repository.ICacheRepository {
 }
 
 // LoadAvatarsForUserIDs batch-fetches avatar URLs, is_premium, and faculty for the given user IDs.
+// Avatar and profile_meta caches are independent (different keys, different TTLs) and resolved
+// in separate passes so a hot avatar cache does not mask a stale or missing profile_meta entry.
 func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	if fb.ProfileSvc == nil || len(userIDs) == 0 {
 		return
@@ -98,9 +100,6 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	seen := make(map[uint]struct{}, len(userIDs))
 	needed := make([]uint, 0, len(userIDs))
 	for _, id := range userIDs {
-		if _, cached := fb.avatarCache[id]; cached {
-			continue
-		}
 		if _, dup := seen[id]; dup {
 			continue
 		}
@@ -112,10 +111,19 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	}
 	ctx := context.Background()
 	cacheRepo := fb.avatarCacheRepo()
-	misses := make([]uint, 0, len(needed))
+
+	fb.resolveAvatars(ctx, cacheRepo, needed)
+	fb.resolveProfileMeta(needed)
+}
+
+func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo repository.ICacheRepository, needed []uint) {
+	avatarMisses := make([]uint, 0, len(needed))
 	for _, id := range needed {
+		if _, cached := fb.avatarCache[id]; cached {
+			continue
+		}
 		if cacheRepo == nil {
-			misses = append(misses, id)
+			avatarMisses = append(avatarMisses, id)
 			continue
 		}
 		var avatarURL string
@@ -123,17 +131,17 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 			fb.avatarCache[id] = avatarURL
 			continue
 		}
-		misses = append(misses, id)
+		avatarMisses = append(avatarMisses, id)
 	}
-	if len(misses) == 0 {
+	if len(avatarMisses) == 0 {
 		return
 	}
-	profiles, err := fb.ProfileSvc.GetProfiles(misses)
+	profiles, err := fb.ProfileSvc.GetProfiles(avatarMisses)
 	if err != nil {
 		return
 	}
-	missed := make(map[uint]struct{}, len(misses))
-	for _, id := range misses {
+	missed := make(map[uint]struct{}, len(avatarMisses))
+	for _, id := range avatarMisses {
 		missed[id] = struct{}{}
 	}
 	for _, p := range profiles {
@@ -153,31 +161,34 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 			_ = cacheRepo.Set(ctx, avatarCacheKey(id), "", avatarCacheTTL)
 		}
 	}
+}
 
-	// Try Redis profile_meta first for is_premium + faculty. Fall back to DB on miss.
-	metaMisses := fb.loadProfileMetaFromCache(misses)
-
-	if len(metaMisses) > 0 {
-		users, err := fb.ProfileSvc.GetUsers(metaMisses)
-		if err == nil {
-			for _, u := range users {
-				fb.isPremiumCache[u.UserID] = u.IsPremium
+func (fb *FeedBuilder) resolveProfileMeta(needed []uint) {
+	metaMisses := fb.loadProfileMetaFromCache(needed)
+	if len(metaMisses) == 0 {
+		return
+	}
+	users, errUsers := fb.ProfileSvc.GetUsers(metaMisses)
+	if errUsers == nil {
+		for _, u := range users {
+			fb.isPremiumCache[u.UserID] = u.IsPremium
+		}
+	}
+	faculties, errFac := fb.ProfileSvc.GetUserFaculties(metaMisses)
+	if errFac == nil {
+		for _, id := range metaMisses {
+			if _, ok := fb.facultyCache[id]; !ok {
+				fb.facultyCache[id] = nil
 			}
 		}
-		faculties, err := fb.ProfileSvc.GetUserFaculties(metaMisses)
-		if err == nil {
-			for _, id := range metaMisses {
-				if _, ok := fb.facultyCache[id]; !ok {
-					fb.facultyCache[id] = nil
-				}
-			}
-			for _, uf := range faculties {
-				fb.facultyCache[uf.UserID] = &dto.FeedAuthorFaculty{
-					FacultyID:   uf.FacultyID,
-					FacultyName: uf.Faculty.FacultyName,
-				}
+		for _, uf := range faculties {
+			fb.facultyCache[uf.UserID] = &dto.FeedAuthorFaculty{
+				FacultyID:   uf.FacultyID,
+				FacultyName: uf.Faculty.FacultyName,
 			}
 		}
+	}
+	if errUsers == nil && errFac == nil {
 		fb.writeProfileMetaToCache(metaMisses)
 	}
 }
@@ -199,10 +210,20 @@ func ProfileMetaCacheKey(userID uint) string {
 
 func (fb *FeedBuilder) loadProfileMetaFromCache(userIDs []uint) (missing []uint) {
 	if fb.Cache == nil {
-		return userIDs
+		missing = make([]uint, 0, len(userIDs))
+		for _, id := range userIDs {
+			if _, ok := fb.isPremiumCache[id]; ok {
+				continue
+			}
+			missing = append(missing, id)
+		}
+		return missing
 	}
 	ctx := context.Background()
 	for _, id := range userIDs {
+		if _, ok := fb.isPremiumCache[id]; ok {
+			continue
+		}
 		var entry profileMetaCacheEntry
 		if err := fb.Cache.Get(ctx, ProfileMetaCacheKey(id), &entry); err != nil {
 			missing = append(missing, id)
