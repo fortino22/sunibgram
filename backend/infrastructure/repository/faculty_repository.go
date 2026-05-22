@@ -64,7 +64,12 @@ func (r *facultyRepository) FindAll(page, limit int) ([]model.Faculty, int64, er
 		return nil, 0, err
 	}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, cachedFaculties{Faculties: faculties, Total: total}, cache.FacultyTTL)
+		// FacultyTTL == 24h equals TagTTL exactly. Tag set must outlive any
+		// cached value registered under it, so refresh tag TTL on Set instead
+		// of relying on stale members.
+		if err := r.cache.Set(ctx, key, cachedFaculties{Faculties: faculties, Total: total}, cache.FacultyTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, facultyListTag(), key)
+		}
 	}
 	return faculties, total, nil
 }
@@ -135,7 +140,7 @@ func (r *facultyRepository) invalidateFacultyList() {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, "faculty:list:*")
+	_ = r.cache.InvalidateTag(ctx, facultyListTag())
 	invalidateExploreCache(ctx, r.cache)
 }
 
@@ -145,8 +150,10 @@ func (r *facultyRepository) invalidateFacultyUpdate(id uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, facultyIDKey(id))
+	_ = r.cache.InvalidateTag(ctx, facultyListTag())
+	// profile:user:*, userfaculty:user:*, user:meta:*, notification:sender:*
+	// still SCAN — admin op, no global tag for those families.
 	_ = r.cache.DeleteByPatterns(ctx,
-		"faculty:list:*",
 		"profile:user:*",
 		"userfaculty:user:*",
 		"user:meta:*",
@@ -161,19 +168,26 @@ func (r *facultyRepository) invalidateFacultyAuthorResponses() {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, "feed:trending:global", "reports:all")
+	// Per-family global tags. Faculty rename affects every cached thread/feed
+	// that snapshots the renamed faculty name in author/embedded metadata.
+	_ = r.cache.InvalidateTags(ctx,
+		threadRootsGlobalTag(),
+		threadChainGlobalTag(),
+		threadCommunityGlobalTag(),
+		threadAllCommunitiesGlobalTag(),
+		threadMyCommunitiesGlobalTag(),
+		threadFollowingGlobalTag(),
+		communityThreadsGlobalTag(),
+		eventThreadsGlobalTag(),
+	)
+	// thread:id:*, thread:userfeed/usermedia:*, feed:foryou:*,
+	// <interaction>:user:*, reports:id:* — no global tag (would add a SADD on
+	// every per-thread / per-user / per-list write). Faculty rename is an
+	// admin op (very rare), SCAN is acceptable for these surfaces.
 	_ = r.cache.DeleteByPatterns(ctx,
 		"thread:id:*",
-		"thread:roots:*",
-		"thread:chain:*",
 		"thread:userfeed:*",
 		"thread:usermedia:*",
-		"thread:following:*",
-		"thread:community:*",
-		"thread:all-communities:*",
-		"thread:my-communities:*",
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"event:threads:*",
 		"feed:foryou:*",
 		"bookmarks:user:*",
 		"likes:user:*",

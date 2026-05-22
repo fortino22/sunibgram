@@ -150,16 +150,13 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			return err
 		}
 		if s.cacheRepo != nil {
-			_ = s.cacheRepo.DeleteByPatterns(ctx,
-				"community:threads:top:*",
-				"community:threads:latest:*",
-				"thread:all-communities:*",
-				// Invalidate all feed caches that embed the user's name inside thread objects.
-				fmt.Sprintf("thread:userfeed:%d:*", userID),
-				fmt.Sprintf("thread:usermedia:%d:*", userID),
-				fmt.Sprintf("feed:foryou:%d:*", userID),
-				"thread:following:*",
-			)
+			// Tag-based invalidation. Global thread feed families cover the
+			// legacy patterns "community:threads:top/latest:*",
+			// "thread:all-communities:*", "thread:following:*"; userFeeds /
+			// userForYou cover the per-user user feeds and foryou source.
+			_ = s.cacheRepo.InvalidateUserFeeds(ctx, userID)
+			_ = s.cacheRepo.InvalidateUserForYouFeeds(ctx, userID)
+			_ = s.cacheRepo.InvalidateGlobalThreadFeeds(ctx)
 			_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
 		}
 		s.invalidateUserProfileCaches(ctx, userID)
@@ -245,22 +242,24 @@ func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, us
 		fmt.Sprintf("userfaculty:user:%d", userID),
 	)
 	_ = s.cacheRepo.Delete(ctx, "reports:all", "feed:trending:global")
-	_ = s.cacheRepo.DeleteByPatterns(ctx,
-		"reports:id:*",
-		fmt.Sprintf("thread:userfeed:%d:*", userID),
-		fmt.Sprintf("thread:usermedia:%d:*", userID),
-		fmt.Sprintf("feed:foryou:%d:*", userID),
-		fmt.Sprintf("bookmarks:user:%d:*", userID),
-		fmt.Sprintf("likes:user:%d:*", userID),
-		fmt.Sprintf("thread:my-communities:user:%d:*", userID),
-		"thread:roots:*",
-		"thread:following:*",
-		"thread:community:*",
-		"thread:all-communities:*",
-		"event:threads:*",
-		"community:requests:*",
-		"community:users:*",
-	)
+	// Tag-based invalidation — covers thread:userfeed/usermedia/following:<uid>
+	// (userFeedsTag), feed:foryou:user:<uid>:src/newcount (userForYouTag),
+	// thread:my-communities:user:<uid> + per-viewer feed slices
+	// (viewerThreadFeedsTag), and the global thread feed families
+	// (thread:roots/community/all-communities/following/event:threads, all
+	// registered under globalThreadFeedsTag at every Set site).
+	_ = s.cacheRepo.InvalidateUserFeeds(ctx, userID)
+	_ = s.cacheRepo.InvalidateUserForYouFeeds(ctx, userID)
+	_ = s.cacheRepo.InvalidateViewerThreadFeeds(ctx, userID)
+	_ = s.cacheRepo.InvalidateGlobalThreadFeeds(ctx)
+	// Per-user interaction lists (bookmarks/likes:user:<uid>:*) → tag invalidation.
+	_ = s.cacheRepo.InvalidateInteractionUserList(ctx, "bookmarks", userID)
+	_ = s.cacheRepo.InvalidateInteractionUserList(ctx, "likes", userID)
+	// community:users:* (member listings showing is_following etc) →
+	// communityMembersGlobalTag drops every community's user list.
+	_ = s.cacheRepo.InvalidateCommunityMembersGlobal(ctx)
+	_ = s.cacheRepo.InvalidateReportsID(ctx)
+	_ = s.cacheRepo.InvalidateCommunityRequestsGlobal(ctx)
 }
 
 func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {

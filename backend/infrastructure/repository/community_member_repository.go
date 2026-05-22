@@ -76,7 +76,10 @@ func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, li
 	}
 	if r.cache != nil {
 		result = cachedCommunityMembers{Members: members, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityMembersTag(communityID), key)
+			r.cache.RegisterCacheKey(ctx, communityMembersGlobalTag(), key)
+		}
 	}
 	return members, total, nil
 }
@@ -141,7 +144,10 @@ func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *m
 
 	if r.cache != nil {
 		result = cachedCommunityUsers{Members: members, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityMembersTag(communityID), key)
+			r.cache.RegisterCacheKey(ctx, communityMembersGlobalTag(), key)
+		}
 	}
 	return members, total, nil
 }
@@ -189,7 +195,10 @@ func (r *communityMemberRepository) FindTopMembers(communityID uint, limit int) 
 		return nil, err
 	}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, members, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, members, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, communityMembersTag(communityID), key)
+			r.cache.RegisterCacheKey(ctx, communityMembersGlobalTag(), key)
+		}
 	}
 	return members, nil
 }
@@ -231,7 +240,10 @@ func (r *communityMemberRepository) UpdateMemberCount(communityID uint, delta in
 	if r.cache != nil {
 		ctx := context.Background()
 		_ = r.cache.Delete(ctx, communityIDKey(communityID))
-		_ = r.cache.DeleteByPatterns(ctx, "community:joined:*", "community:created:*")
+		// communityListsGlobalTag covers community:joined/created:* across
+		// every user — registered at FindByCreatorID/FindJoinedByUserID Set
+		// sites.
+		_ = r.cache.InvalidateTag(ctx, communityListsGlobalTag())
 		invalidateExploreCache(ctx, r.cache)
 	}
 	return nil
@@ -243,20 +255,21 @@ func (r *communityMemberRepository) invalidateCommunityMemberChange(communityID,
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, communityIDKey(communityID), fmt.Sprintf("community:about:admins:%d", communityID))
-	_ = r.cache.DeleteByPatterns(ctx,
-		fmt.Sprintf("community:members:%d:*", communityID),
-		fmt.Sprintf("community:users:%d:*", communityID),
-		fmt.Sprintf("community:joined:%d:*", userID),
-		fmt.Sprintf("community:about:topmembers:%d:*", communityID),
-		fmt.Sprintf("community:about:%d:*", communityID),
-		fmt.Sprintf("feed:foryou:%d:*", userID),
-		fmt.Sprintf("thread:following:%d:*", userID),
-		fmt.Sprintf("thread:userfeed:*:req:%d", userID),
-		fmt.Sprintf("thread:usermedia:*:req:%d", userID),
-		fmt.Sprintf("thread:my-communities:user:%d:*", userID),
-		fmt.Sprintf("thread:all-communities:user:%d:*", userID),
-		fmt.Sprintf("community:threads:*:user:%d:*", userID),
-		fmt.Sprintf("event:threads:*:viewer:%d:*", userID),
+	// Tag-based — covers every legacy pattern:
+	//   communityMembersTag    → community:members/users/about/about:topmembers:<cid>:*
+	//   communityListsByUserTag → community:joined/created:<uid>:*
+	//   userForYouTag          → feed:foryou:user:<uid>:*
+	//   userFeedsTag           → thread:userfeed/usermedia/following:<uid>:*
+	//   viewerThreadFeedsTag   → thread:userfeed/usermedia:*:req:<uid>,
+	//                            thread:my-communities/all-communities:user:<uid>:*,
+	//                            community:threads:*:user:<uid>:*,
+	//                            event:threads:*:viewer:<uid>:*
+	_ = r.cache.InvalidateTags(ctx,
+		communityMembersTag(communityID),
+		communityListsByUserTag(userID),
+		userForYouTag(userID),
+		userFeedsTag(userID),
+		viewerThreadFeedsTag(userID),
 	)
 	invalidateExploreCache(ctx, r.cache)
 }
@@ -272,10 +285,5 @@ func (r *communityMemberRepository) invalidateCommunityMemberRole(communityID ui
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
-	_ = r.cache.DeleteByPatterns(ctx,
-		fmt.Sprintf("community:members:%d:*", communityID),
-		fmt.Sprintf("community:users:%d:*", communityID),
-		fmt.Sprintf("community:about:topmembers:%d:*", communityID),
-		fmt.Sprintf("community:about:%d:*", communityID),
-	)
+	_ = r.cache.InvalidateTag(ctx, communityMembersTag(communityID))
 }

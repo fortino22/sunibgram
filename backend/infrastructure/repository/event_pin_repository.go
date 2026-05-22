@@ -92,7 +92,9 @@ func (r *EventPinRepository) FindMyPins(userID uint, page, limit int) ([]model.E
 
 	if r.cache != nil {
 		result = cachedEventPins{Events: events, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, eventPinsUserTag(userID), key)
+		}
 	}
 	return events, total, nil
 }
@@ -102,7 +104,7 @@ func (r *EventPinRepository) InvalidateUser(userID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:pins:user:%d:*", userID))
+	_ = r.cache.InvalidateTag(ctx, eventPinsUserTag(userID))
 }
 
 func (r *EventPinRepository) InvalidateByEvent(eventID string) {
@@ -117,7 +119,12 @@ func (r *EventPinRepository) InvalidateByEvent(eventID string) {
 		Pluck("user_id", &userIDs).Error; err != nil {
 		return
 	}
-	for _, uid := range userIDs {
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:pins:user:%d:*", uid))
+	if len(userIDs) == 0 {
+		return
 	}
+	tags := make([]string, 0, len(userIDs))
+	for _, uid := range userIDs {
+		tags = append(tags, eventPinsUserTag(uid))
+	}
+	_ = r.cache.InvalidateTags(ctx, tags...)
 }

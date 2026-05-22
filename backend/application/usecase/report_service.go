@@ -132,7 +132,9 @@ func (s *ReportService) GetByID(id uuid.UUID) (*model.ReportDetail, error) {
 		return nil, errors.New("report not found")
 	}
 	if s.cacheRepo != nil {
-		_ = s.cacheRepo.Set(ctx, key, details[0], reportCacheTTL)
+		if err := s.cacheRepo.Set(ctx, key, details[0], reportCacheTTL); err == nil {
+			_ = s.cacheRepo.RegisterReportsID(ctx, key)
+		}
 	}
 	return &details[0], nil
 }
@@ -295,7 +297,7 @@ func (s *ReportService) invalidateReportCaches(reporterID uint, reportedUserID *
 	}
 	ctx := context.Background()
 	_ = s.cacheRepo.Delete(ctx, "reports:all")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "reports:id:*")
+	_ = s.cacheRepo.InvalidateReportsID(ctx)
 	ids := []uint{reporterID}
 	if reportedUserID != nil {
 		ids = append(ids, *reportedUserID)

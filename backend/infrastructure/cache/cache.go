@@ -202,10 +202,11 @@ func (c *Cache) Miss(err error) bool {
 	return err == redis.Nil
 }
 
-// TagTTL controls how long a reverse-index tag set survives. Must be >= the
-// TTL of any cache key registered under it; otherwise InvalidateTag will miss
-// keys that should be dropped.
-const TagTTL = 24 * time.Hour
+// TagTTL controls how long a reverse-index tag set survives. Must be > the
+// TTL of any cache key registered under it; otherwise InvalidateTag risks
+// missing keys whose tag set expired first. FacultyTTL == 24h so this is
+// bumped to 48h to keep a margin of safety.
+const TagTTL = 48 * time.Hour
 
 // RegisterCacheKey adds a cache key to a tag set. Tag sets are used by
 // InvalidateTag for O(set size) invalidation instead of O(keyspace) SCAN.

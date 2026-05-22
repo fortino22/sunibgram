@@ -84,7 +84,9 @@ func (r *EventParticipantRepository) FindMyJoined(userID uint, page, limit int) 
 
 	if r.cache != nil {
 		result = cachedJoinedEvents{Events: events, Total: total}
-		_ = r.cache.Set(ctx, key, result, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, result, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, eventJoinedUserTag(userID), key)
+		}
 	}
 	return events, total, nil
 }
@@ -94,7 +96,7 @@ func (r *EventParticipantRepository) InvalidateUser(userID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:joined:user:%d:*", userID))
+	_ = r.cache.InvalidateTag(ctx, eventJoinedUserTag(userID))
 }
 
 func (r *EventParticipantRepository) InvalidateByEvent(eventID string) {
@@ -109,7 +111,12 @@ func (r *EventParticipantRepository) InvalidateByEvent(eventID string) {
 		Pluck("user_id", &userIDs).Error; err != nil {
 		return
 	}
-	for _, uid := range userIDs {
-		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:joined:user:%d:*", uid))
+	if len(userIDs) == 0 {
+		return
 	}
+	tags := make([]string, 0, len(userIDs))
+	for _, uid := range userIDs {
+		tags = append(tags, eventJoinedUserTag(uid))
+	}
+	_ = r.cache.InvalidateTags(ctx, tags...)
 }

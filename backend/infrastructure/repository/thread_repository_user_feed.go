@@ -55,6 +55,9 @@ func (r *threadCached) findUserFeed(requesterID, userID uint, types []string, pa
 	}
 	if err := r.cache.Set(ctx, key, cachedFeed{Threads: threads, Parents: parents, Total: total}, threadFeedTTL); err == nil {
 		r.trackUserFeedKey(ctx, userID, key)
+		if requesterID != 0 {
+			r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(requesterID), key)
+		}
 		for _, t := range threads {
 			r.trackFeedCacheKey(ctx, t.ThreadID, key)
 		}
@@ -119,6 +122,9 @@ func (r *threadCached) FindMediaByUserID(requesterID, userID uint, page, limit i
 	if len(ids) == 0 {
 		if err := r.cache.Set(ctx, key, cachedMedia{Threads: []model.Thread{}, Parents: []*model.Thread{}, Total: total}, threadFeedTTL); err == nil {
 			r.trackUserFeedKey(ctx, userID, key)
+			if requesterID != 0 {
+				r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(requesterID), key)
+			}
 		}
 		return []model.Thread{}, []*model.Thread{}, total, nil
 	}
@@ -137,6 +143,9 @@ func (r *threadCached) FindMediaByUserID(requesterID, userID uint, page, limit i
 	}
 	if err := r.cache.Set(ctx, key, cachedMedia{Threads: threads, Parents: parents, Total: total}, threadFeedTTL); err == nil {
 		r.trackUserFeedKey(ctx, userID, key)
+		if requesterID != 0 {
+			r.cache.RegisterCacheKey(ctx, viewerThreadFeedsTag(requesterID), key)
+		}
 		for _, t := range threads {
 			r.trackFeedCacheKey(ctx, t.ThreadID, key)
 		}
@@ -198,6 +207,8 @@ func (r *threadCached) FindFollowingFeed(userID uint, page, limit int) ([]model.
 	}
 	if err := r.cache.Set(ctx, key, cachedFollowing{Threads: threads, Parents: parents, Total: total}, followingFeedTTL); err == nil {
 		r.trackUserFeedKey(ctx, userID, key)
+		r.cache.RegisterCacheKey(ctx, globalThreadFeedsTag(), key)
+		r.cache.RegisterCacheKey(ctx, threadFollowingGlobalTag(), key)
 		for _, t := range threads {
 			r.trackFeedCacheKey(ctx, t.ThreadID, key)
 		}

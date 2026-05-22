@@ -159,16 +159,21 @@ func (r *UserRepository) invalidateUserPremiumCaches() {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, "reports:all")
-	_ = r.cache.DeleteByPatterns(ctx,
-		"reports:id:*",
-		"follows:user:*",
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"community:users:*",
-		"community:requests:*",
-		"community:about:*",
-		"community:id:v2:*",
+	// Tag-based invalidation. communityMembersGlobalTag also covers the
+	// community:about:* surface (registered there alongside community:users:*
+	// at the Set sites).
+	_ = r.cache.InvalidateTags(ctx,
+		communityThreadsGlobalTag(),
+		communityMembersGlobalTag(),
+		communityIDGlobalTag(),
 	)
+	_ = r.cache.InvalidateTags(ctx,
+		reportsIDTag(),
+		communityRequestsGlobalTag(),
+	)
+	// follows:user:* still SCAN — global wipe, no global tag for the follow
+	// list family (would add SADD on every list write).
+	_ = r.cache.DeleteByPattern(ctx, "follows:user:*")
 }
 
 func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
@@ -177,25 +182,28 @@ func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, "feed:trending:global")
-	// User-scoped: reverse-index tag (O(set size), no SCAN). Covers
-	// thread:userfeed/usermedia/following:%d and feed:foryou:user:%d:*.
+	// Tag-based invalidation.
+	//   userFeedsTag           → thread:userfeed/usermedia/following:<uid>:*
+	//   userForYouTag          → feed:foryou:user:<uid>:*
+	//   viewerThreadFeedsTag   → thread:my-communities:user:<uid>:* + all
+	//                            other viewer-scoped feed slices
+	//   interactionUserListTag → bookmarks/likes:user:<uid>:*
+	//   threadFollowingGlobalTag / threadRootsGlobalTag /
+	//   threadCommunityGlobalTag / threadAllCommunitiesGlobalTag /
+	//   communityThreadsGlobalTag / eventThreadsGlobalTag → global feed
+	//   families.
 	_ = r.cache.InvalidateTags(ctx,
 		userFeedsTag(userID),
 		userForYouTag(userID),
-	)
-	// Remaining patterns: viewer-scoped + global. Set sites not yet
-	// tagged — keep on SCAN-batched until migration extends to them.
-	_ = r.cache.DeleteByPatterns(ctx,
-		fmt.Sprintf("bookmarks:user:%d:*", userID),
-		fmt.Sprintf("likes:user:%d:*", userID),
-		fmt.Sprintf("thread:my-communities:user:%d:*", userID),
-		"thread:following:*",
-		"thread:roots:*",
-		"thread:community:*",
-		"thread:all-communities:*",
-		"community:threads:top:*",
-		"community:threads:latest:*",
-		"event:threads:*",
+		viewerThreadFeedsTag(userID),
+		interactionUserListTag("bookmarks", userID),
+		interactionUserListTag("likes", userID),
+		threadFollowingGlobalTag(),
+		threadRootsGlobalTag(),
+		threadCommunityGlobalTag(),
+		threadAllCommunitiesGlobalTag(),
+		communityThreadsGlobalTag(),
+		eventThreadsGlobalTag(),
 	)
 }
 

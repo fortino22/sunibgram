@@ -127,18 +127,26 @@ func (r *UserSettingsRepository) invalidateVisibilityDependentCaches(ctx context
 	if r.cache == nil {
 		return
 	}
+	// Per-family global tags cover thread:roots/community/all-communities/
+	// my-communities/following + community:threads + event:threads at every
+	// Set site.
+	_ = r.cache.InvalidateTags(ctx,
+		threadRootsGlobalTag(),
+		threadCommunityGlobalTag(),
+		threadAllCommunitiesGlobalTag(),
+		threadMyCommunitiesGlobalTag(),
+		threadFollowingGlobalTag(),
+		communityThreadsGlobalTag(),
+		eventThreadsGlobalTag(),
+	)
+	// thread:userfeed/usermedia:* and feed:foryou:* still SCAN — no global
+	// tag yet (per-user tags are userFeedsTag / userForYouTag, registered
+	// per-user at each Set; adding global tags would add a SADD on every
+	// user-feed write). Privacy toggle is per-user-rare, SCAN acceptable.
 	_ = r.cache.DeleteByPatterns(ctx,
 		"thread:userfeed:*",
 		"thread:usermedia:*",
-		"thread:following:*",
-		"thread:roots:*",
-		"thread:community:*",
-		"thread:all-communities:*",
-		"thread:my-communities:*",
-		"community:threads:top:*",
-		"community:threads:latest:*",
 		"feed:foryou:*",
-		"event:threads:*",
 	)
 	_ = r.cache.Delete(ctx, "feed:trending:global")
 }

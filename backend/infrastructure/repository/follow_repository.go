@@ -105,16 +105,18 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 }
 
 func (r *followRepository) invalidateVisibilityFeedsForViewer(ctx context.Context, viewerID uint) {
-	r.cache.DeleteByPatterns(ctx,
-		threadForYouFeedPattern(viewerID),
-		fmt.Sprintf("thread:following:%d:*", viewerID),
-		fmt.Sprintf("thread:roots:*:viewer:%d", viewerID),
-		fmt.Sprintf("thread:userfeed:*:req:%d", viewerID),
-		fmt.Sprintf("thread:usermedia:*:req:%d", viewerID),
-		fmt.Sprintf("thread:my-communities:user:%d:*", viewerID),
-		fmt.Sprintf("thread:all-communities:user:%d:*", viewerID),
-		fmt.Sprintf("community:threads:*:user:%d:*", viewerID),
-		fmt.Sprintf("event:threads:*:viewer:%d:*", viewerID),
+	// Tag-based invalidation. Same blast radius as the legacy 9-pattern SCAN:
+	//   userForYouTag       → feed:foryou:user:<v>:*
+	//   userFeedsTag        → thread:userfeed/usermedia/following:<v>:*
+	//   viewerThreadFeedsTag → thread:roots:*:viewer:<v>,
+	//                          thread:userfeed/usermedia:*:req:<v>,
+	//                          thread:my-communities/all-communities:user:<v>:*,
+	//                          community:threads:*:user:<v>:*,
+	//                          event:threads:*:viewer:<v>:*
+	_ = r.cache.InvalidateTags(ctx,
+		userForYouTag(viewerID),
+		userFeedsTag(viewerID),
+		viewerThreadFeedsTag(viewerID),
 	)
 }
 
@@ -295,7 +297,9 @@ func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]model.U
 			return nil, 0, err
 		}
 		result = cached{Users: users, Total: total}
-		r.cache.Set(ctx, key, result, r.ttl)
+		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, followListUserTag(userID, "following"), key)
+		}
 	}
 	return result.Users, result.Total, nil
 }
@@ -329,15 +333,19 @@ func (r *followRepository) GetFollowers(userID uint, page, limit int) ([]model.U
 			return nil, 0, err
 		}
 		result = cached{Users: users, Total: total}
-		r.cache.Set(ctx, key, result, r.ttl)
+		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, followListUserTag(userID, "followers"), key)
+		}
 	}
 	return result.Users, result.Total, nil
 }
 
 func (r *followRepository) invalidateFollowLists(followerID, followingID uint) {
 	ctx := context.Background()
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("follows:user:%d:following:*", followerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("follows:user:%d:followers:*", followingID))
+	_ = r.cache.InvalidateTags(ctx,
+		followListUserTag(followerID, "following"),
+		followListUserTag(followingID, "followers"),
+	)
 }
 
 func (r *followRepository) patchStatCache(userID uint, followerDelta, followingDelta int) {

@@ -83,5 +83,5 @@ func (r *EventThreadPinRepository) invalidate(eventID string) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, eventThreadPinKey(eventID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:%s:*", eventID))
+	_ = r.cache.InvalidateTag(ctx, eventThreadsByEventTag(eventID))
 }

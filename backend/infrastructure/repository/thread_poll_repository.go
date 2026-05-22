@@ -186,7 +186,10 @@ func (r *ThreadPollRepository) FindUserVotes(userID uint, pollIDs []uint) (map[u
 	if r.cache != nil {
 		for _, pid := range missing {
 			optID := hit[pid] // 0 if no vote — cache miss-marker
-			_ = r.cache.Set(ctx, pollUserVoteKey(pid, userID), optID, pollVoteTTL)
+			key := pollUserVoteKey(pid, userID)
+			if err := r.cache.Set(ctx, key, optID, pollVoteTTL); err == nil {
+				r.cache.RegisterCacheKey(ctx, pollUserVotesTag(pid), key)
+			}
 		}
 	}
 	return result, nil
@@ -254,7 +257,10 @@ func (r *ThreadPollRepository) CastVote(pollID, threadID, optionID, userID uint)
 		if threadID != 0 {
 			_ = r.cache.Delete(ctx, pollThreadKey(threadID))
 		}
-		_ = r.cache.Set(ctx, pollUserVoteKey(pollID, userID), optionID, pollVoteTTL)
+		key := pollUserVoteKey(pollID, userID)
+		if err := r.cache.Set(ctx, key, optionID, pollVoteTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, pollUserVotesTag(pollID), key)
+		}
 	}
 	return nil
 }
@@ -308,7 +314,7 @@ func (r *ThreadPollRepository) DeleteByThreadID(threadID uint) ([]model.ThreadPo
 	if r.cache != nil {
 		ctx := context.Background()
 		_ = r.cache.Delete(ctx, pollThreadKey(threadID))
-		_ = r.cache.DeleteByPattern(ctx, pollUserVotePattern(poll.PollID))
+		_ = r.cache.InvalidateTag(ctx, pollUserVotesTag(poll.PollID))
 	}
 	return options, nil
 }

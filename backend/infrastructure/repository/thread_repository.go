@@ -23,7 +23,7 @@ type threadDB struct {
 	readDB  *gorm.DB
 }
 
-const threadFeedTTL = 60 * time.Second
+const threadFeedTTL = 5 * time.Minute
 
 func preloadThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")

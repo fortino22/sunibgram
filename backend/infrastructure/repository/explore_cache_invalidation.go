@@ -6,25 +6,23 @@ import (
 	"github.com/sunibgram/infrastructure/cache"
 )
 
-const exploreCachePattern = "explore:*"
-
 func invalidateExploreCache(ctx context.Context, c *cache.Cache) {
 	if c == nil {
 		return
 	}
-	_ = c.DeleteByPattern(ctx, exploreCachePattern)
+	_ = c.InvalidateTag(ctx, exploreGlobalTag())
 }
 
 func invalidateExplorePostCaches(ctx context.Context, c *cache.Cache) {
 	if c == nil {
 		return
 	}
-	_ = c.DeleteByPatterns(ctx, "explore:top:*", "explore:latest:*")
+	_ = c.InvalidateTags(ctx, exploreTopTag(), exploreLatestTag())
 }
 
 func invalidateExploreTopCache(ctx context.Context, c *cache.Cache) {
 	if c == nil {
 		return
 	}
-	_ = c.DeleteByPattern(ctx, "explore:top:*")
+	_ = c.InvalidateTag(ctx, exploreTopTag())
 }

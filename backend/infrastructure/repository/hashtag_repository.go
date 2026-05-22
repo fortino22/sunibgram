@@ -251,7 +251,7 @@ func patchHashtagCounters(db *gorm.DB, c *cache.Cache, hashtagIDs []uuid.UUID, c
 		Where("id IN ?", hashtagIDs).
 		UpdateColumns(updates)
 	if c != nil {
-		c.DeleteByPattern(context.Background(), "trending_hashtags:*")
+		_ = c.InvalidateTag(context.Background(), trendingHashtagsTag())
 	}
 }
 

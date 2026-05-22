@@ -47,8 +47,10 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 		invalidateNotificationSenderCache(ctx, r.cache, profile.UserID)
 		invalidateExploreCache(ctx, r.cache)
 		if r.cache != nil {
-			_ = r.cache.DeleteByPattern(ctx, "community:members:*")
-			_ = r.cache.DeleteByPattern(ctx, "community:id:*")
+			_ = r.cache.InvalidateTags(ctx,
+				communityMembersGlobalTag(),
+				communityIDGlobalTag(),
+			)
 		}
 		return nil
 	}
@@ -63,8 +65,10 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 	invalidateNotificationSenderCache(ctx, r.cache, profile.UserID)
 	invalidateExploreCache(ctx, r.cache)
 	if r.cache != nil {
-		_ = r.cache.DeleteByPattern(ctx, "community:members:*")
-		_ = r.cache.DeleteByPattern(ctx, "community:id:*")
+		_ = r.cache.InvalidateTags(ctx,
+			communityMembersGlobalTag(),
+			communityIDGlobalTag(),
+		)
 	}
 	return nil
 }

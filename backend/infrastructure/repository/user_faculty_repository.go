@@ -108,17 +108,20 @@ func (r *userFacultyRepository) invalidateThreadCaches() {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, "feed:trending:global", "reports:all")
+	_ = r.cache.InvalidateTags(ctx,
+		threadRootsGlobalTag(),
+		threadCommunityGlobalTag(),
+		threadAllCommunitiesGlobalTag(),
+		threadMyCommunitiesGlobalTag(),
+		threadFollowingGlobalTag(),
+		communityThreadsGlobalTag(),
+		eventThreadsGlobalTag(),
+	)
+	// thread:userfeed/usermedia:*, feed:foryou:*, reports:id:* still SCAN —
+	// rare faculty assignment path, no global tag for those families.
 	_ = r.cache.DeleteByPatterns(ctx,
-		"event:threads:*",
-		"thread:following:*",
-		"thread:roots:*",
-		"thread:community:*",
-		"thread:all-communities:*",
-		"thread:my-communities:*",
 		"thread:userfeed:*",
 		"thread:usermedia:*",
-		"community:threads:top:*",
-		"community:threads:latest:*",
 		"feed:foryou:*",
 		"reports:id:*",
 	)

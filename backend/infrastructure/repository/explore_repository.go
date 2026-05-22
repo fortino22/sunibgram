@@ -79,7 +79,9 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 
 	result = model.ExploreResult{Users: users, Threads: threads}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, result, exploreSearchTTL)
+		if err := r.cache.Set(ctx, key, result, exploreSearchTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, exploreGlobalTag(), key)
+		}
 	}
 	return &result, nil
 }
@@ -110,7 +112,9 @@ func (r *exploreRepository) FindPeople(ctx context.Context, query string, reques
 		return nil, err
 	}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, users, r.ttl)
+		if err := r.cache.Set(ctx, key, users, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, exploreGlobalTag(), key)
+		}
 	}
 	return users, nil
 }
@@ -160,7 +164,9 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 
 	result = cachedExploreCommunities{Communities: communities, Total: total}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, result, r.ttl)
+		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, exploreGlobalTag(), key)
+		}
 	}
 	return communities, total, nil
 }
@@ -219,7 +225,9 @@ func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID
 		}
 	}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, users, r.ttl)
+		if err := r.cache.Set(ctx, key, users, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, exploreGlobalTag(), key)
+		}
 	}
 	return users, nil
 }
@@ -269,7 +277,9 @@ func (r *exploreRepository) findExploreThreads(ctx context.Context, section, que
 	if len(ids) == 0 {
 		result = cachedExploreThreads{Threads: []model.Thread{}, Total: total}
 		if r.cache != nil {
-			_ = r.cache.Set(ctx, key, result, r.ttl)
+			if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
+				r.registerExploreSectionTags(ctx, section, key)
+			}
 		}
 		return result.Threads, result.Total, nil
 	}
@@ -286,9 +296,24 @@ func (r *exploreRepository) findExploreThreads(ctx context.Context, section, que
 	}
 	result = cachedExploreThreads{Threads: threads, Total: total}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, result, r.ttl)
+		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
+			r.registerExploreSectionTags(ctx, section, key)
+		}
 	}
 	return result.Threads, result.Total, nil
+}
+
+// registerExploreSectionTags wires per-section tags + global. Top/latest get
+// their dedicated tag so invalidateExploreTopCache can drop just top without
+// touching latest, search, people, communities.
+func (r *exploreRepository) registerExploreSectionTags(ctx context.Context, section, key string) {
+	r.cache.RegisterCacheKey(ctx, exploreGlobalTag(), key)
+	switch section {
+	case "top":
+		r.cache.RegisterCacheKey(ctx, exploreTopTag(), key)
+	case "latest":
+		r.cache.RegisterCacheKey(ctx, exploreLatestTag(), key)
+	}
 }
 
 func (r *exploreRepository) exploreThreadBase(ctx context.Context, query string, requesterID *uint, types []string) *gorm.DB {
