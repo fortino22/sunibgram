@@ -16,7 +16,45 @@ import (
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/migration"
 	"github.com/sunibgram/infrastructure/ollama"
-	infrarepo "github.com/sunibgram/infrastructure/repository"
+	bookmarkrepo "github.com/sunibgram/infrastructure/repository/bookmark"
+	cacherepo "github.com/sunibgram/infrastructure/repository/cache"
+	categoryrepo "github.com/sunibgram/infrastructure/repository/category"
+	chatrepo "github.com/sunibgram/infrastructure/repository/chat"
+	chatmediarepo "github.com/sunibgram/infrastructure/repository/chat_media"
+	chatreactionrepo "github.com/sunibgram/infrastructure/repository/chat_reaction"
+	chatreadrepo "github.com/sunibgram/infrastructure/repository/chat_read"
+	chatroomrepo "github.com/sunibgram/infrastructure/repository/chat_room"
+	communityrepo "github.com/sunibgram/infrastructure/repository/community"
+	communitymemberrepo "github.com/sunibgram/infrastructure/repository/community_member"
+	communitypinrepo "github.com/sunibgram/infrastructure/repository/community_pin"
+	communityrequestrepo "github.com/sunibgram/infrastructure/repository/community_request"
+	communityrulerepo "github.com/sunibgram/infrastructure/repository/community_rule"
+	communitythreadpinrepo "github.com/sunibgram/infrastructure/repository/community_thread_pin"
+	eventrepo "github.com/sunibgram/infrastructure/repository/event"
+	eventparticipantrepo "github.com/sunibgram/infrastructure/repository/event_participant"
+	eventpinrepo "github.com/sunibgram/infrastructure/repository/event_pin"
+	eventreviewrepo "github.com/sunibgram/infrastructure/repository/event_review"
+	eventthreadpinrepo "github.com/sunibgram/infrastructure/repository/event_thread_pin"
+	explorerepo "github.com/sunibgram/infrastructure/repository/explore"
+	facultyrepo "github.com/sunibgram/infrastructure/repository/faculty"
+	followrepo "github.com/sunibgram/infrastructure/repository/follow"
+	hashtagrepo "github.com/sunibgram/infrastructure/repository/hashtag"
+	likerepo "github.com/sunibgram/infrastructure/repository/like"
+	notificationrepo "github.com/sunibgram/infrastructure/repository/notification"
+	orderrepo "github.com/sunibgram/infrastructure/repository/order"
+	premiumsubscriptionrepo "github.com/sunibgram/infrastructure/repository/premium_subscription"
+	reportrepo "github.com/sunibgram/infrastructure/repository/report"
+	rolerepo "github.com/sunibgram/infrastructure/repository/role"
+	threadrepo "github.com/sunibgram/infrastructure/repository/thread"
+	threadmediarepo "github.com/sunibgram/infrastructure/repository/thread_media"
+	threadpinrepo "github.com/sunibgram/infrastructure/repository/thread_pin"
+	threadpollrepo "github.com/sunibgram/infrastructure/repository/thread_poll"
+	userrepo "github.com/sunibgram/infrastructure/repository/user"
+	userfacultyrepo "github.com/sunibgram/infrastructure/repository/user_faculty"
+	userprofilerepo "github.com/sunibgram/infrastructure/repository/user_profile"
+	usersettingsrepo "github.com/sunibgram/infrastructure/repository/user_settings"
+	verificationrepo "github.com/sunibgram/infrastructure/repository/verification"
+	violationrepo "github.com/sunibgram/infrastructure/repository/violation"
 	"github.com/sunibgram/infrastructure/scheduler"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
 	"github.com/sunibgram/infrastructure/storage"
@@ -44,45 +82,45 @@ func main() {
 	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 
 	// --- Repositories ---
-	cacheRepo := infrarepo.NewCacheRepository(redisCache)
-	roleRepo := infrarepo.NewRoleRepository(writeDB, readDB)
-	userRepo := infrarepo.NewUserRepository(writeDB, readDB, redisCache)
-	userSettingsRepo := infrarepo.NewUserSettingsRepository(writeDB, readDB, redisCache)
-	profileRepo := infrarepo.NewUserProfileRepository(writeDB, readDB, redisCache)
-	verificationRepo := infrarepo.NewVerificationRepository(writeDB, readDB)
-	followRepo := infrarepo.NewFollowRepository(writeDB, readDB, redisCache)
-	threadRepo, patchCount := infrarepo.NewThreadRepository(writeDB, readDB, redisCache)
-	eventRepo := infrarepo.NewEventRepository(writeDB, readDB, redisCache)
-	eventReviewRepo := infrarepo.NewEventReviewRepository(writeDB, readDB)
-	hashtagRepo := infrarepo.NewHashtagRepository(writeDB, readDB)
-	exploreRepo := infrarepo.NewExploreRepository(readDB, redisCache)
-	threadMediaRepo := infrarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
-	likeRepo := infrarepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
-	bookmarkRepo := infrarepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
-	threadPinRepo := infrarepo.NewThreadPinRepository(writeDB, readDB, redisCache)
-	categoryRepo := infrarepo.NewCategoryRepository(writeDB, readDB, redisCache)
-	violationRepo := infrarepo.NewViolationRepository(writeDB, readDB)
-	reportRepo := infrarepo.NewReportRepository(writeDB, readDB)
-	communityRepo := infrarepo.NewCommunityRepository(writeDB, readDB, redisCache)
-	communityMemberRepo := infrarepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
-	communityRequestRepo := infrarepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
-	communityRuleRepo := infrarepo.NewCommunityRuleRepository(writeDB, readDB)
-	communityThreadPinRepo := infrarepo.NewCommunityThreadPinRepository(writeDB, readDB)
-	communityPinRepo := infrarepo.NewCommunityPinRepository(writeDB, readDB, redisCache)
-	eventPinRepo := infrarepo.NewEventPinRepository(writeDB, readDB, redisCache)
-	eventParticipantRepo := infrarepo.NewEventParticipantRepository(writeDB, readDB, redisCache)
-	facultyRepo := infrarepo.NewFacultyRepository(writeDB, readDB, redisCache)
-	userFacultyRepo := infrarepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
-	orderRepo := infrarepo.NewOrderRepository(writeDB, readDB)
-	premiumSubscriptionRepo := infrarepo.NewPremiumSubscriptionRepository(writeDB, readDB)
-	chatRoomRepo := infrarepo.NewChatRoomRepository(writeDB, readDB, redisCache)
-	chatRepo := infrarepo.NewChatRepository(writeDB, readDB)
-	chatMediaRepo := infrarepo.NewChatMediaRepository(writeDB, readDB)
-	chatReadRepo := infrarepo.NewChatReadRepository(writeDB, readDB)
-	chatReactionRepo := infrarepo.NewChatReactionRepository(writeDB, readDB)
-	notificationRepo := infrarepo.NewNotificationRepository(writeDB, readDB, redisCache)
-	threadPollRepo := infrarepo.NewThreadPollRepository(writeDB, readDB, redisCache)
-	eventThreadPinRepo := infrarepo.NewEventThreadPinRepository(writeDB, readDB, redisCache)
+	cacheRepo := cacherepo.NewCacheRepository(redisCache)
+	roleRepo := rolerepo.NewRoleRepository(writeDB, readDB)
+	userRepo := userrepo.NewUserRepository(writeDB, readDB, redisCache)
+	userSettingsRepo := usersettingsrepo.NewUserSettingsRepository(writeDB, readDB, redisCache)
+	profileRepo := userprofilerepo.NewUserProfileRepository(writeDB, readDB, redisCache)
+	verificationRepo := verificationrepo.NewVerificationRepository(writeDB, readDB)
+	followRepo := followrepo.NewFollowRepository(writeDB, readDB, redisCache)
+	threadRepo, patchCount := threadrepo.NewThreadRepository(writeDB, readDB, redisCache)
+	eventRepo := eventrepo.NewEventRepository(writeDB, readDB, redisCache)
+	eventReviewRepo := eventreviewrepo.NewEventReviewRepository(writeDB, readDB)
+	hashtagRepo := hashtagrepo.NewHashtagRepository(writeDB, readDB)
+	exploreRepo := explorerepo.NewExploreRepository(readDB, redisCache)
+	threadMediaRepo := threadmediarepo.NewThreadMediaRepository(writeDB, readDB, redisCache)
+	likeRepo := likerepo.NewLikeRepository(writeDB, readDB, redisCache, patchCount)
+	bookmarkRepo := bookmarkrepo.NewBookmarkRepository(writeDB, readDB, redisCache, patchCount)
+	threadPinRepo := threadpinrepo.NewThreadPinRepository(writeDB, readDB, redisCache)
+	categoryRepo := categoryrepo.NewCategoryRepository(writeDB, readDB, redisCache)
+	violationRepo := violationrepo.NewViolationRepository(writeDB, readDB)
+	reportRepo := reportrepo.NewReportRepository(writeDB, readDB)
+	communityRepo := communityrepo.NewCommunityRepository(writeDB, readDB, redisCache)
+	communityMemberRepo := communitymemberrepo.NewCommunityMemberRepository(writeDB, readDB, redisCache)
+	communityRequestRepo := communityrequestrepo.NewCommunityRequestRepository(writeDB, readDB, redisCache)
+	communityRuleRepo := communityrulerepo.NewCommunityRuleRepository(writeDB, readDB)
+	communityThreadPinRepo := communitythreadpinrepo.NewCommunityThreadPinRepository(writeDB, readDB)
+	communityPinRepo := communitypinrepo.NewCommunityPinRepository(writeDB, readDB, redisCache)
+	eventPinRepo := eventpinrepo.NewEventPinRepository(writeDB, readDB, redisCache)
+	eventParticipantRepo := eventparticipantrepo.NewEventParticipantRepository(writeDB, readDB, redisCache)
+	facultyRepo := facultyrepo.NewFacultyRepository(writeDB, readDB, redisCache)
+	userFacultyRepo := userfacultyrepo.NewUserFacultyRepository(writeDB, readDB, redisCache)
+	orderRepo := orderrepo.NewOrderRepository(writeDB, readDB)
+	premiumSubscriptionRepo := premiumsubscriptionrepo.NewPremiumSubscriptionRepository(writeDB, readDB)
+	chatRoomRepo := chatroomrepo.NewChatRoomRepository(writeDB, readDB, redisCache)
+	chatRepo := chatrepo.NewChatRepository(writeDB, readDB)
+	chatMediaRepo := chatmediarepo.NewChatMediaRepository(writeDB, readDB)
+	chatReadRepo := chatreadrepo.NewChatReadRepository(writeDB, readDB)
+	chatReactionRepo := chatreactionrepo.NewChatReactionRepository(writeDB, readDB)
+	notificationRepo := notificationrepo.NewNotificationRepository(writeDB, readDB, redisCache)
+	threadPollRepo := threadpollrepo.NewThreadPollRepository(writeDB, readDB, redisCache)
+	eventThreadPinRepo := eventthreadpinrepo.NewEventThreadPinRepository(writeDB, readDB, redisCache)
 
 	// --- External Services ---
 	storageUsecase := usecase.NewStorageUsecase(storage.NewMinioClient())
