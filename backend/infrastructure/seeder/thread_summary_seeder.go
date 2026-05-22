@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 var sampleReplies = []string{

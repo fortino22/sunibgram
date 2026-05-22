@@ -2,8 +2,11 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	communitydto "github.com/sunibgram/webapi/dto/community"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type CommunityPinController struct {
@@ -53,11 +56,11 @@ func (c *CommunityPinController) GetMyPins(ctx *fiber.Ctx) error {
 	page, limit := ParsePagination(ctx)
 	communities, total, err := c.pinService.GetMyPins(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
-	slim := make([]dto.MyCommunityResponse, len(communities))
+	slim := make([]communitydto.MyCommunityResponse, len(communities))
 	for i := range communities {
-		slim[i] = dto.MyCommunityResponse{
+		slim[i] = communitydto.MyCommunityResponse{
 			CommunityID:   communities[i].CommunityID,
 			CommunityName: communities[i].Name,
 			BannerURL:     BuildMediaURL(communities[i].BannerObjectName, communities[i].BannerBucket, c.communityService.GetURL),
@@ -65,15 +68,15 @@ func (c *CommunityPinController) GetMyPins(ctx *fiber.Ctx) error {
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": slim,
-		"meta": dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		"meta": threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
 func communityPinErrorResponse(ctx *fiber.Ctx, err error) error {
 	switch err.Error() {
 	case "community not found":
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	default:
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 }

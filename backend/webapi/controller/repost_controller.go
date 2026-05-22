@@ -2,8 +2,9 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type RepostController struct {
@@ -28,9 +29,9 @@ func (c *RepostController) Repost(ctx *fiber.Ctx) error {
 
 	if err := c.threadService.Repost(ctx.Context(), claims.UserID, threadID); err != nil {
 		if err.Error() == "thread not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusConflict).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusConflict).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "reposted successfully"})
@@ -48,7 +49,7 @@ func (c *RepostController) Unrepost(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.threadService.Unrepost(ctx.Context(), claims.UserID, threadID); err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "unreposted successfully"})

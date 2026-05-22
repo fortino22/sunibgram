@@ -4,8 +4,8 @@ import (
 	"sort"
 
 	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
@@ -25,40 +25,40 @@ func (c *ThreadController) fbNoPin(viewerID *uint) webapiutils.FeedBuilder {
 	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, c.pollService, viewerID)
 }
 
-func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
+func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	fb := c.fb(viewerID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
-func (c *ThreadController) buildFeedItemsNoPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
+func (c *ThreadController) buildFeedItemsNoPin(threads []model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	fb := c.fbNoPin(viewerID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
-func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerID *uint) []dto.FeedItemResponse {
+func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	fb := c.fbWithPin(viewerID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
-func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fb(viewerID))
 }
 
-func (c *ThreadController) buildUserFeedItemsNoPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItemsNoPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbNoPin(viewerID))
 }
 
-func (c *ThreadController) buildUserFeedItemsWithPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []dto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItemsWithPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbWithPin(viewerID))
 }
 
-func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread, parents []*model.Thread, fb webapiutils.FeedBuilder) []dto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread, parents []*model.Thread, fb webapiutils.FeedBuilder) []threaddto.FeedItemResponse {
 	allIDs := make([]uint, 0, len(threads)*2)
 	for _, t := range threads {
 		allIDs = append(allIDs, t.ThreadID)
@@ -99,7 +99,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 	}
 	fb.LoadPollsForThreadIDs(pollIDs)
 
-	data := make([]dto.FeedItemResponse, len(threads))
+	data := make([]threaddto.FeedItemResponse, len(threads))
 	for i, t := range threads {
 		mediaID := t.ThreadID
 		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
@@ -109,7 +109,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 		if parents[i] != nil {
 			p := parents[i]
 			eventID, eventName := webapiutils.EventFields(p)
-			item.ParentContext = &dto.FeedParentContext{
+			item.ParentContext = &threaddto.FeedParentContext{
 				ID:              p.ThreadID,
 				ParentID:        p.ParentID,
 				RootID:          p.RootID,
@@ -121,7 +121,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 				ReplyPermission: string(p.ReplyPermission),
 				Media:           fb.ToMediaResponses(mediaByThread[p.ThreadID]),
 				Poll:            fb.PollForParent(p),
-				Stats:           dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
+				Stats:           threaddto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
 				CreatedAt:       dtoutils.Wrap(p.CreatedAt),
 				UpdatedAt:       dtoutils.Wrap(p.UpdatedAt),
 			}
@@ -134,6 +134,6 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 	return data
 }
 
-func (c *ThreadController) ensureFalseViewerFlags(data []dto.FeedItemResponse) {
+func (c *ThreadController) ensureFalseViewerFlags(data []threaddto.FeedItemResponse) {
 	ensureFalseFeedViewerFlags(data)
 }

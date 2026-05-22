@@ -9,11 +9,12 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/application/helper"
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
-	"gorm.io/gorm"
 )
 
 type CommunityService struct {

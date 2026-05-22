@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -33,4 +34,3 @@ func (c *PremiumSubscriptionController) ActivateTrial(ctx *fiber.Ctx) error {
 	_ = subscription
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "subscribed successfully for one month"})
 }
-

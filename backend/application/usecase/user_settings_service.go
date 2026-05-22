@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
-	"gorm.io/gorm"
 )
 
 type UserSettingsService struct {

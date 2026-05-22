@@ -4,10 +4,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/sunibgram/domain/model"
-	domainrepo "github.com/sunibgram/domain/repository"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	"github.com/sunibgram/domain/model"
+	domainrepo "github.com/sunibgram/domain/repository"
 )
 
 type ChatReadRepository struct {

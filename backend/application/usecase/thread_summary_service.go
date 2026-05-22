@@ -9,11 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/ollama"
-	"golang.org/x/sync/singleflight"
 )
 
 const threadSummaryTTL = time.Hour

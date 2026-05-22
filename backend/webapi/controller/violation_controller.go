@@ -2,10 +2,12 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	violationdto "github.com/sunibgram/webapi/dto/violation"
 )
 
 type ViolationController struct {
@@ -17,9 +19,9 @@ func NewViolationController(violationService service.IViolationService) *Violati
 }
 
 func (c *ViolationController) Create(ctx *fiber.Ctx) error {
-	var req dto.CreateViolationRequest
+	var req violationdto.CreateViolationRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	if err := c.violationService.Create(req.Name, req.Description); err != nil {
 		return HandleServiceError(ctx, err)
@@ -30,7 +32,7 @@ func (c *ViolationController) Create(ctx *fiber.Ctx) error {
 func (c *ViolationController) GetAll(ctx *fiber.Ctx) error {
 	violations, err := c.violationService.GetAll()
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toViolationResponses(violations)})
 }
@@ -53,9 +55,9 @@ func (c *ViolationController) Update(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.UpdateViolationRequest
+	var req violationdto.UpdateViolationRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	if err := c.violationService.Update(id, req.Name, req.Description); err != nil {
 		return HandleServiceError(ctx, err)
@@ -74,8 +76,8 @@ func (c *ViolationController) Delete(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "violation deleted successfully"})
 }
 
-func toViolationResponse(violation *model.Violation) dto.ViolationResponse {
-	return dto.ViolationResponse{
+func toViolationResponse(violation *model.Violation) violationdto.ViolationResponse {
+	return violationdto.ViolationResponse{
 		ID:          violation.ID.String(),
 		Name:        violation.Name,
 		Description: violation.Description,
@@ -84,8 +86,8 @@ func toViolationResponse(violation *model.Violation) dto.ViolationResponse {
 	}
 }
 
-func toViolationResponses(violations []model.Violation) []dto.ViolationResponse {
-	responses := make([]dto.ViolationResponse, len(violations))
+func toViolationResponses(violations []model.Violation) []violationdto.ViolationResponse {
+	responses := make([]violationdto.ViolationResponse, len(violations))
 	for i := range violations {
 		responses[i] = toViolationResponse(&violations[i])
 	}

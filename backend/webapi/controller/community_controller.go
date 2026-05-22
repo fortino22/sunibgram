@@ -8,10 +8,14 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	communitydto "github.com/sunibgram/webapi/dto/community"
+	communityruledto "github.com/sunibgram/webapi/dto/community_rule"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
@@ -50,7 +54,7 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 		name, description, rules, categoryID, visibility,
 		banner,
 	); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "community created successfully"})
@@ -71,7 +75,7 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 	description := ctx.FormValue("description")
 	keepRuleIDs, err := parseKeepRuleIDs(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	newRules := readNewRulesFromForm(ctx)
 	categoryID, ok := parseRequiredFormUUID(ctx, "category_id", "category")
@@ -86,7 +90,7 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 		banner = f
 	}
 	if banner != nil && clearBanner {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "cannot upload banner and clear_banner simultaneously"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "cannot upload banner and clear_banner simultaneously"})
 	}
 
 	if _, _, err := c.communityService.Update(
@@ -95,9 +99,9 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 		banner, clearBanner,
 	); err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "community updated successfully"})
@@ -116,9 +120,9 @@ func (c *CommunityController) Delete(ctx *fiber.Ctx) error {
 
 	if err := c.communityService.Delete(ctx.Context(), id, claims.UserID); err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "community deleted successfully"})
@@ -132,7 +136,7 @@ func (c *CommunityController) GetByID(ctx *fiber.Ctx) error {
 
 	community, err := c.communityService.GetByID(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "community not found"})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "community not found"})
 	}
 
 	rules, _ := c.ruleService.ListByCommunity(id)
@@ -144,14 +148,14 @@ func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
 	if raw := ctx.Query("category"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid category id"})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid category id"})
 		}
 		categoryID = &id
 	}
 
 	communities, err := c.communityService.Discover(ctx.Context(), categoryID)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})
@@ -160,7 +164,7 @@ func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
 func (c *CommunityController) SearchByName(ctx *fiber.Ctx) error {
 	communities, err := c.communityService.SearchByName(ctx.Context(), ctx.Query("community_name"))
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})
@@ -176,12 +180,12 @@ func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 
 	communities, total, err := c.communityService.GetMyCreated(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	slim := make([]dto.MyCommunityResponse, len(communities))
+	slim := make([]communitydto.MyCommunityResponse, len(communities))
 	for i := range communities {
-		slim[i] = dto.MyCommunityResponse{
+		slim[i] = communitydto.MyCommunityResponse{
 			CommunityID:   communities[i].CommunityID,
 			CommunityName: communities[i].Name,
 			BannerURL:     BuildMediaURL(communities[i].BannerObjectName, communities[i].BannerBucket, c.communityService.GetURL),
@@ -190,7 +194,7 @@ func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": slim,
-		"meta": dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		"meta": threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -204,12 +208,12 @@ func (c *CommunityController) GetMyJoined(ctx *fiber.Ctx) error {
 
 	communities, total, err := c.communityService.GetMyJoined(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityResponse{
+	return ctx.Status(fiber.StatusOK).JSON(communitydto.PaginatedCommunityResponse{
 		Data: c.toResponses(communities),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -228,15 +232,15 @@ func (c *CommunityController) GetAbout(ctx *fiber.Ctx) error {
 	about, err := c.communityService.GetAbout(ctx.Context(), id, viewerID)
 	if err != nil {
 		if err.Error() == "community not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(c.buildAboutResponse(about))
 }
 
-func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) dto.CommunityAboutResponse {
+func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) communitydto.CommunityAboutResponse {
 	comm := about.Community
 	postingPolicy := "Only members can post."
 	visibilityPolicy := "All Communities are publicly visible."
@@ -253,7 +257,7 @@ func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) 
 		creatorBio = about.Creator.Profile.Bio
 	}
 
-	creator := dto.CommunityAboutCreatorResponse{
+	creator := communitydto.CommunityAboutCreatorResponse{
 		Name:        about.Creator.User.Name,
 		UserID:      about.Creator.User.UserID,
 		Username:    about.Creator.User.UserName,
@@ -264,10 +268,10 @@ func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) 
 		CreatedAt:   utils.Wrap(comm.CreatedAt),
 	}
 
-	return dto.CommunityAboutResponse{
+	return communitydto.CommunityAboutResponse{
 		CommunityID: comm.CommunityID,
 		Name:        comm.Name,
-		Info: dto.CommunityAboutInfoResponse{
+		Info: communitydto.CommunityAboutInfoResponse{
 			Description:      comm.Description,
 			PostingPolicy:    postingPolicy,
 			VisibilityPolicy: visibilityPolicy,
@@ -280,8 +284,8 @@ func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) 
 	}
 }
 
-func (c *CommunityController) toAboutMemberResponses(users []service.CommunityAboutUser) []dto.CommunityAboutMemberResponse {
-	out := make([]dto.CommunityAboutMemberResponse, 0, len(users))
+func (c *CommunityController) toAboutMemberResponses(users []service.CommunityAboutUser) []communitydto.CommunityAboutMemberResponse {
+	out := make([]communitydto.CommunityAboutMemberResponse, 0, len(users))
 	for i := range users {
 		u := users[i]
 		if u.User == nil {
@@ -293,7 +297,7 @@ func (c *CommunityController) toAboutMemberResponses(users []service.CommunityAb
 			avatarURL = BuildMediaURL(u.Profile.AvatarObjectName, u.Profile.AvatarBucket, c.profileService.GetURL)
 			bio = u.Profile.Bio
 		}
-		out = append(out, dto.CommunityAboutMemberResponse{
+		out = append(out, communitydto.CommunityAboutMemberResponse{
 			UserID:      u.User.UserID,
 			Name:        u.User.Name,
 			Username:    u.User.UserName,
@@ -306,18 +310,18 @@ func (c *CommunityController) toAboutMemberResponses(users []service.CommunityAb
 	return out
 }
 
-func (c *CommunityController) toResponse(comm *model.Community) dto.CommunityResponse {
+func (c *CommunityController) toResponse(comm *model.Community) communitydto.CommunityResponse {
 	return c.buildResponse(comm, nil)
 }
 
-func (c *CommunityController) toResponseWithRules(comm *model.Community, rules []model.CommunityRule) dto.CommunityResponse {
+func (c *CommunityController) toResponseWithRules(comm *model.Community, rules []model.CommunityRule) communitydto.CommunityResponse {
 	return c.buildResponse(comm, toRuleMiniResponses(rules))
 }
 
-func toRuleMiniResponses(rules []model.CommunityRule) []dto.CommunityRuleMiniResponse {
-	out := make([]dto.CommunityRuleMiniResponse, len(rules))
+func toRuleMiniResponses(rules []model.CommunityRule) []communityruledto.CommunityRuleMiniResponse {
+	out := make([]communityruledto.CommunityRuleMiniResponse, len(rules))
 	for i := range rules {
-		out[i] = dto.CommunityRuleMiniResponse{
+		out[i] = communityruledto.CommunityRuleMiniResponse{
 			ID:   rules[i].ID,
 			Text: rules[i].Text,
 		}
@@ -325,14 +329,14 @@ func toRuleMiniResponses(rules []model.CommunityRule) []dto.CommunityRuleMiniRes
 	return out
 }
 
-func (c *CommunityController) buildResponse(comm *model.Community, rules []dto.CommunityRuleMiniResponse) dto.CommunityResponse {
+func (c *CommunityController) buildResponse(comm *model.Community, rules []communityruledto.CommunityRuleMiniResponse) communitydto.CommunityResponse {
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 	topMembers := c.toTopMemberResponses(comm.TopMembers)
 	var categoryName string
 	if comm.Category != nil {
 		categoryName = comm.Category.Name
 	}
-	return dto.CommunityResponse{
+	return communitydto.CommunityResponse{
 		CommunityID:  comm.CommunityID,
 		UserID:       comm.UserID,
 		Username:     comm.User.UserName,
@@ -349,8 +353,8 @@ func (c *CommunityController) buildResponse(comm *model.Community, rules []dto.C
 	}
 }
 
-func (c *CommunityController) toResponses(communities []model.Community) []dto.CommunityResponse {
-	out := make([]dto.CommunityResponse, len(communities))
+func (c *CommunityController) toResponses(communities []model.Community) []communitydto.CommunityResponse {
+	out := make([]communitydto.CommunityResponse, len(communities))
 	for i := range communities {
 		out[i] = c.toResponse(&communities[i])
 	}
@@ -404,10 +408,10 @@ func parseKeepRuleIDs(ctx *fiber.Ctx) ([]uint, error) {
 	return ids, nil
 }
 
-func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) dto.DiscoverCommunityResponse {
-	members := make([]dto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
+func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) communitydto.DiscoverCommunityResponse {
+	members := make([]communitydto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
 	for i := range comm.TopMembers {
-		members[i] = dto.DiscoverCommunityMemberResponse{
+		members[i] = communitydto.DiscoverCommunityMemberResponse{
 			UserID: strconv.FormatUint(uint64(comm.TopMembers[i].UserID), 10),
 			AvatarURL: BuildMediaURL(
 				comm.TopMembers[i].AvatarObjectName,
@@ -421,7 +425,7 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 	if comm.Category != nil {
 		categoryName = comm.Category.Name
 	}
-	return dto.DiscoverCommunityResponse{
+	return communitydto.DiscoverCommunityResponse{
 		CommunityID:  comm.CommunityID,
 		Name:         comm.Name,
 		BannerURL:    BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL),
@@ -431,10 +435,10 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 	}
 }
 
-func (c *CommunityController) toTopMemberResponses(members []model.DiscoverCommunityMember) []dto.CommunityTopMemberResponse {
-	out := make([]dto.CommunityTopMemberResponse, len(members))
+func (c *CommunityController) toTopMemberResponses(members []model.DiscoverCommunityMember) []communitydto.CommunityTopMemberResponse {
+	out := make([]communitydto.CommunityTopMemberResponse, len(members))
 	for i := range members {
-		out[i] = dto.CommunityTopMemberResponse{
+		out[i] = communitydto.CommunityTopMemberResponse{
 			UserID: strconv.FormatUint(uint64(members[i].UserID), 10),
 			AvatarURL: BuildMediaURL(
 				members[i].AvatarObjectName,
@@ -446,8 +450,8 @@ func (c *CommunityController) toTopMemberResponses(members []model.DiscoverCommu
 	return out
 }
 
-func (c *CommunityController) toDiscoverResponses(communities []model.DiscoverCommunity) []dto.DiscoverCommunityResponse {
-	out := make([]dto.DiscoverCommunityResponse, len(communities))
+func (c *CommunityController) toDiscoverResponses(communities []model.DiscoverCommunity) []communitydto.DiscoverCommunityResponse {
+	out := make([]communitydto.DiscoverCommunityResponse, len(communities))
 	for i := range communities {
 		out[i] = c.toDiscoverResponse(&communities[i])
 	}
@@ -457,12 +461,12 @@ func (c *CommunityController) toDiscoverResponses(communities []model.DiscoverCo
 func parseRequiredFormUUID(ctx *fiber.Ctx, fieldName, entityName string) (*uuid.UUID, bool) {
 	raw := ctx.FormValue(fieldName)
 	if raw == "" {
-		_ = ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: entityName + " is required"})
+		_ = ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: entityName + " is required"})
 		return nil, false
 	}
 	id, err := uuid.Parse(raw)
 	if err != nil {
-		_ = ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid " + entityName + " id"})
+		_ = ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid " + entityName + " id"})
 		return nil, false
 	}
 	return &id, true

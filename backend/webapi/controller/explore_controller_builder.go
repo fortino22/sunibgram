@@ -2,26 +2,29 @@ package controller
 
 import (
 	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
+	communitydto "github.com/sunibgram/webapi/dto/community"
+	exploredto "github.com/sunibgram/webapi/dto/explore"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
+	threadmediadto "github.com/sunibgram/webapi/dto/thread_media"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 const defaultExploreResponseLimit = 20
 
-func (c *ExploreController) toResponse(result *model.ExploreResult) dto.ExploreResponse {
-	return dto.ExploreResponse{
+func (c *ExploreController) toResponse(result *model.ExploreResult) exploredto.ExploreResponse {
+	return exploredto.ExploreResponse{
 		Users:   c.toUserResponses(result.Users),
 		Threads: c.toThreadResponses(result.Threads),
 	}
 }
 
-func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []dto.ExploreUserResponse {
-	responses := make([]dto.ExploreUserResponse, len(users))
+func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []exploredto.ExploreUserResponse {
+	responses := make([]exploredto.ExploreUserResponse, len(users))
 	for i, item := range users {
 		avatarURL := BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
 
-		responses[i] = dto.ExploreUserResponse{
+		responses[i] = exploredto.ExploreUserResponse{
 			UserID:      item.UserID,
 			Profile:     avatarURL,
 			Username:    item.Username,
@@ -33,12 +36,12 @@ func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []d
 	return responses
 }
 
-func (c *ExploreController) toPeopleResponses(users []model.ExploreUserResult) []dto.ExplorePeopleResponse {
-	responses := make([]dto.ExplorePeopleResponse, len(users))
+func (c *ExploreController) toPeopleResponses(users []model.ExploreUserResult) []exploredto.ExplorePeopleResponse {
+	responses := make([]exploredto.ExplorePeopleResponse, len(users))
 	for i, item := range users {
 		avatarURL := BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
 
-		responses[i] = dto.ExplorePeopleResponse{
+		responses[i] = exploredto.ExplorePeopleResponse{
 			UserID:         item.UserID,
 			UserProfilePic: avatarURL,
 			Username:       item.Username,
@@ -50,15 +53,15 @@ func (c *ExploreController) toPeopleResponses(users []model.ExploreUserResult) [
 	return responses
 }
 
-func (c *ExploreController) toThreadResponses(threads []model.ExploreThreadResult) []dto.ExploreThreadResponse {
-	responses := make([]dto.ExploreThreadResponse, len(threads))
+func (c *ExploreController) toThreadResponses(threads []model.ExploreThreadResult) []exploredto.ExploreThreadResponse {
+	responses := make([]exploredto.ExploreThreadResponse, len(threads))
 	for i, thread := range threads {
-		responses[i] = dto.ExploreThreadResponse{Content: thread.Content}
+		responses[i] = exploredto.ExploreThreadResponse{Content: thread.Content}
 	}
 	return responses
 }
 
-func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*model.Thread, total int64, viewerID *uint) dto.PaginatedFeedResponse {
+func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*model.Thread, total int64, viewerID *uint) threaddto.PaginatedFeedResponse {
 	allIDs := make([]uint, 0, len(threads)*2)
 	for _, t := range threads {
 		allIDs = append(allIDs, t.ThreadID)
@@ -100,7 +103,7 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 	}
 	fb.LoadPollsForThreadIDs(pollIDs)
 
-	data := make([]dto.FeedItemResponse, len(threads))
+	data := make([]threaddto.FeedItemResponse, len(threads))
 	for i, t := range threads {
 		mediaID := t.ThreadID
 		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
@@ -110,7 +113,7 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 		if i < len(parents) && parents[i] != nil {
 			p := parents[i]
 			eventID, eventName := webapiutils.EventFields(p)
-			item.ParentContext = &dto.FeedParentContext{
+			item.ParentContext = &threaddto.FeedParentContext{
 				ID:              p.ThreadID,
 				ParentID:        p.ParentID,
 				RootID:          p.RootID,
@@ -122,7 +125,7 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 				ReplyPermission: string(p.ReplyPermission),
 				Media:           fb.ToMediaResponses(mediaByThread[p.ThreadID]),
 				Poll:            fb.PollForParent(p),
-				Stats:           dto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
+				Stats:           threaddto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
 				CreatedAt:       dtoutils.Wrap(p.CreatedAt),
 				UpdatedAt:       dtoutils.Wrap(p.UpdatedAt),
 			}
@@ -130,47 +133,47 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 		data[i] = item
 	}
 	ensureFalseFeedViewerFlags(data)
-	return dto.PaginatedFeedResponse{
+	return threaddto.PaginatedFeedResponse{
 		Data: data,
-		Meta: dto.FeedMeta{Total: total, Page: 1, Limit: defaultExploreResponseLimit},
+		Meta: threaddto.FeedMeta{Total: total, Page: 1, Limit: defaultExploreResponseLimit},
 	}
 }
 
-func (c *ExploreController) toMediaResponse(threads []model.Thread, total int64) dto.PaginatedExploreMediaResponse {
+func (c *ExploreController) toMediaResponse(threads []model.Thread, total int64) exploredto.PaginatedExploreMediaResponse {
 	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
-	data := make([]dto.ExploreMediaResponse, len(threads))
+	data := make([]exploredto.ExploreMediaResponse, len(threads))
 	for i, thread := range threads {
 		media := mediaByThread[thread.ThreadID]
-		mediaResponses := make([]dto.ThreadMediaResponse, len(media))
+		mediaResponses := make([]threadmediadto.ThreadMediaResponse, len(media))
 		for j, item := range media {
-			mediaResponses[j] = dto.ThreadMediaResponse{
+			mediaResponses[j] = threadmediadto.ThreadMediaResponse{
 				MediaID: item.MediaID,
 				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
 			}
 		}
-		data[i] = dto.ExploreMediaResponse{
+		data[i] = exploredto.ExploreMediaResponse{
 			ThreadID: thread.ThreadID,
 			Media:    mediaResponses,
 		}
 	}
-	return dto.PaginatedExploreMediaResponse{
+	return exploredto.PaginatedExploreMediaResponse{
 		Data: data,
-		Meta: dto.FeedMeta{Total: total, Page: 1, Limit: defaultExploreResponseLimit},
+		Meta: threaddto.FeedMeta{Total: total, Page: 1, Limit: defaultExploreResponseLimit},
 	}
 }
 
-func (c *ExploreController) toCommunityResponses(communities []model.Community) []dto.CommunityResponse {
-	responses := make([]dto.CommunityResponse, len(communities))
+func (c *ExploreController) toCommunityResponses(communities []model.Community) []communitydto.CommunityResponse {
+	responses := make([]communitydto.CommunityResponse, len(communities))
 	for i := range communities {
 		responses[i] = c.toCommunityResponse(&communities[i])
 	}
 	return responses
 }
 
-func (c *ExploreController) toExploreCommunityResponses(communities []model.ExploreCommunityResult) []dto.ExploreCommunityResponse {
-	responses := make([]dto.ExploreCommunityResponse, len(communities))
+func (c *ExploreController) toExploreCommunityResponses(communities []model.ExploreCommunityResult) []exploredto.ExploreCommunityResponse {
+	responses := make([]exploredto.ExploreCommunityResponse, len(communities))
 	for i, comm := range communities {
-		responses[i] = dto.ExploreCommunityResponse{
+		responses[i] = exploredto.ExploreCommunityResponse{
 			CommunityID:   comm.CommunityID,
 			CommunityName: comm.Name,
 			MemberCount:   comm.MemberCount,
@@ -180,13 +183,13 @@ func (c *ExploreController) toExploreCommunityResponses(communities []model.Expl
 	return responses
 }
 
-func (c *ExploreController) toCommunityResponse(comm *model.Community) dto.CommunityResponse {
+func (c *ExploreController) toCommunityResponse(comm *model.Community) communitydto.CommunityResponse {
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 	var categoryName string
 	if comm.Category != nil {
 		categoryName = comm.Category.Name
 	}
-	return dto.CommunityResponse{
+	return communitydto.CommunityResponse{
 		CommunityID:  comm.CommunityID,
 		UserID:       comm.UserID,
 		Username:     comm.User.UserName,

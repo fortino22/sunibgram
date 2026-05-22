@@ -2,10 +2,11 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	communityruledto "github.com/sunibgram/webapi/dto/community_rule"
 )
 
 type CommunityRuleController struct {
@@ -27,13 +28,13 @@ func (c *CommunityRuleController) List(ctx *fiber.Ctx) error {
 		return HandleServiceError(ctx, err)
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.CommunityRuleListResponse{Data: c.toResponses(rules)})
+	return ctx.Status(fiber.StatusOK).JSON(communityruledto.CommunityRuleListResponse{Data: c.toResponses(rules)})
 }
 
-func (c *CommunityRuleController) toResponses(rules []model.CommunityRule) []dto.CommunityRuleResponse {
-	out := make([]dto.CommunityRuleResponse, len(rules))
+func (c *CommunityRuleController) toResponses(rules []model.CommunityRule) []communityruledto.CommunityRuleResponse {
+	out := make([]communityruledto.CommunityRuleResponse, len(rules))
 	for i := range rules {
-		out[i] = dto.CommunityRuleResponse{
+		out[i] = communityruledto.CommunityRuleResponse{
 			ID:          rules[i].ID,
 			CommunityID: rules[i].CommunityID,
 			OrderNum:    rules[i].OrderNum,

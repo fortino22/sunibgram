@@ -3,8 +3,8 @@ package controller
 import (
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
 	"github.com/sunibgram/infrastructure/cache"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
@@ -60,10 +60,10 @@ func loadThreadMediaByID(mediaService service.IThreadMediaService, threadIDs []u
 	return mediaByThread
 }
 
-func buildFeedItemsFromThreads(threads []model.Thread, mediaByThread map[uint][]model.ThreadMedia, fb webapiutils.FeedBuilder) []dto.FeedItemResponse {
+func buildFeedItemsFromThreads(threads []model.Thread, mediaByThread map[uint][]model.ThreadMedia, fb webapiutils.FeedBuilder) []threaddto.FeedItemResponse {
 	fb.LoadViewerFlagsForThreads(threads)
 	fb.LoadPollsForThreads(threads)
-	data := make([]dto.FeedItemResponse, len(threads))
+	data := make([]threaddto.FeedItemResponse, len(threads))
 	for i, thread := range threads {
 		mediaID := thread.ThreadID
 		if thread.Type == model.ThreadTypeRepost && thread.OriginalThread != nil {
@@ -74,7 +74,7 @@ func buildFeedItemsFromThreads(threads []model.Thread, mediaByThread map[uint][]
 	return data
 }
 
-func ensureFalseFeedViewerFlags(data []dto.FeedItemResponse) {
+func ensureFalseFeedViewerFlags(data []threaddto.FeedItemResponse) {
 	webapiutils.EnsureFalseViewerFlags(data)
 }
 

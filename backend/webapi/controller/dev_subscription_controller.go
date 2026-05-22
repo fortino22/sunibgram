@@ -2,6 +2,7 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/service"
 )
 

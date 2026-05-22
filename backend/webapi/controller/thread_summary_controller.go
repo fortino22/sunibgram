@@ -4,9 +4,10 @@ import (
 	"errors"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/application/usecase"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type ThreadSummaryController struct {
@@ -28,7 +29,7 @@ func (c *ThreadSummaryController) GetSummary(ctx *fiber.Ctx) error {
 		if errors.Is(err, usecase.ErrThreadSummaryNotReady) {
 			return ctx.Status(fiber.StatusAccepted).JSON(fiber.Map{"status": "processing"})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.JSON(fiber.Map{"summary": summary})

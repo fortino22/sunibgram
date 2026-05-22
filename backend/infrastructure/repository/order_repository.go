@@ -3,9 +3,10 @@ package repository
 import (
 	"errors"
 
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
-	"gorm.io/gorm"
 )
 
 type orderRepository struct {

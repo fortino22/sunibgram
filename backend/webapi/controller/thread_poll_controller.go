@@ -6,8 +6,10 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	threadpolldto "github.com/sunibgram/webapi/dto/thread_poll"
 )
 
 type ThreadPollController struct {
@@ -27,9 +29,9 @@ func (c *ThreadPollController) Vote(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	var req dto.VotePollRequest
+	var req threadpolldto.VotePollRequest
 	if err := ctx.BodyParser(&req); err != nil || req.OptionID == 0 {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "option_id is required"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "option_id is required"})
 	}
 	_, _, err := c.pollService.Vote(ctx.Context(), threadID, req.OptionID, claims.UserID)
 	if err != nil {

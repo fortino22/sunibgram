@@ -2,10 +2,13 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	communityrequestdto "github.com/sunibgram/webapi/dto/community_request"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type CommunityRequestController struct {
@@ -29,7 +32,7 @@ func (c *CommunityRequestController) Send(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.requestService.Send(ctx.Context(), id, claims.UserID); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "join request sent"})
@@ -47,7 +50,7 @@ func (c *CommunityRequestController) Cancel(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.requestService.Cancel(ctx.Context(), id, claims.UserID); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "join request cancelled"})
@@ -71,9 +74,9 @@ func (c *CommunityRequestController) Approve(ctx *fiber.Ctx) error {
 
 	if err := c.requestService.Approve(ctx.Context(), id, claims.UserID, targetID); err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "request approved"})
@@ -97,9 +100,9 @@ func (c *CommunityRequestController) Decline(ctx *fiber.Ctx) error {
 
 	if err := c.requestService.Decline(ctx.Context(), id, claims.UserID, targetID); err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "request declined"})
@@ -121,24 +124,24 @@ func (c *CommunityRequestController) GetPending(ctx *fiber.Ctx) error {
 	requests, total, err := c.requestService.GetPending(ctx.Context(), id, claims.UserID, page, limit)
 	if err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	avatarMap, err := c.requestAvatarMap(requests)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityRequestResponse{
+	return ctx.Status(fiber.StatusOK).JSON(communityrequestdto.PaginatedCommunityRequestResponse{
 		Data: c.toCommunityRequestResponses(requests, avatarMap),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
-func (c *CommunityRequestController) toCommunityRequestResponse(r *model.CommunityRequest, avatarMap map[uint]string) dto.CommunityRequestResponse {
-	return dto.CommunityRequestResponse{
+func (c *CommunityRequestController) toCommunityRequestResponse(r *model.CommunityRequest, avatarMap map[uint]string) communityrequestdto.CommunityRequestResponse {
+	return communityrequestdto.CommunityRequestResponse{
 		CommunityID: r.CommunityID,
 		UserID:      r.UserID,
 		Name:        r.User.Name,
@@ -150,8 +153,8 @@ func (c *CommunityRequestController) toCommunityRequestResponse(r *model.Communi
 	}
 }
 
-func (c *CommunityRequestController) toCommunityRequestResponses(requests []model.CommunityRequest, avatarMap map[uint]string) []dto.CommunityRequestResponse {
-	out := make([]dto.CommunityRequestResponse, len(requests))
+func (c *CommunityRequestController) toCommunityRequestResponses(requests []model.CommunityRequest, avatarMap map[uint]string) []communityrequestdto.CommunityRequestResponse {
+	out := make([]communityrequestdto.CommunityRequestResponse, len(requests))
 	for i := range requests {
 		out[i] = c.toCommunityRequestResponse(&requests[i], avatarMap)
 	}

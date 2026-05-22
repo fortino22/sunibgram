@@ -5,20 +5,23 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
+	threadmediadto "github.com/sunibgram/webapi/dto/thread_media"
 )
 
 type CommunityThreadController struct {
-	threadService     service.IThreadService
-	mediaService      service.IThreadMediaService
-	likeService       service.ILikeService
-	bookmarkService   service.IBookmarkService
-	threadPinService  service.IThreadPinService
-	profileService    service.IUserProfileService
-	pollService       service.IThreadPollService
-	communityPinSvc   service.ICommunityThreadPinService
+	threadService    service.IThreadService
+	mediaService     service.IThreadMediaService
+	likeService      service.ILikeService
+	bookmarkService  service.IBookmarkService
+	threadPinService service.IThreadPinService
+	profileService   service.IUserProfileService
+	pollService      service.IThreadPollService
+	communityPinSvc  service.ICommunityThreadPinService
 }
 
 func NewCommunityThreadController(
@@ -66,7 +69,7 @@ func (c *CommunityThreadController) GetCommunityThreadsBySort(ctx *fiber.Ctx) er
 	switch sort {
 	case "top", "latest", "likes":
 	default:
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid sort; allowed: top, latest, likes"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid sort; allowed: top, latest, likes"})
 	}
 
 	page, limit := ParsePagination(ctx)
@@ -74,9 +77,9 @@ func (c *CommunityThreadController) GetCommunityThreadsBySort(ctx *fiber.Ctx) er
 	threads, parents, total, err := c.threadService.GetCommunityThreadsBySort(communityID, claims.UserID, sort, page, limit)
 	if err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	var pinnedThreadID uint
@@ -101,18 +104,18 @@ func (c *CommunityThreadController) GetCommunityThreadsBySort(ctx *fiber.Ctx) er
 
 	tc := c.threadCtrl()
 	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
-	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
+	response := make([]threaddto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
 		if pinnedThreadID != 0 && item.ID == pinnedThreadID {
 			t := true
 			item.PinnedByAdmin = &t
 		}
-		response[i] = dto.CommunityThreadFeedItemResponse{FeedItemResponse: item}
+		response[i] = threaddto.CommunityThreadFeedItemResponse{FeedItemResponse: item}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityThreadResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedCommunityThreadResponse{
 		Data: response,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -137,24 +140,24 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 
 	files := threadMediaFiles(ctx)
 	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
-		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	content := ctx.FormValue("content")
 	eventID, eventIDPresent, err := parseOptionalEventID(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	pollInput, _, hasPoll, err := ParseCreatePollFromMultipart(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	if content == "" && !eventIDPresent && len(files) == 0 && !hasPoll {
-		var req dto.CreateThreadRequest
+		var req threaddto.CreateThreadRequest
 		if err := ctx.BodyParser(&req); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 		}
 		content = req.Content
 		eventID = req.EventID
@@ -176,7 +179,7 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 		if _, err := c.pollService.Create(ctx.Context(), thread.ThreadID, claims.UserID, pollInput); err != nil {
 			_ = c.mediaService.DeleteByThread(ctx.Context(), thread.ThreadID)
 			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -204,9 +207,9 @@ func (c *CommunityThreadController) getCommunityThreads(
 	threads, parents, total, err := load(communityID, claims.UserID, page, limit)
 	if err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	var pinnedThreadID uint
@@ -231,20 +234,20 @@ func (c *CommunityThreadController) getCommunityThreads(
 
 	tc := c.threadCtrl()
 	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
-	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
+	response := make([]threaddto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
 		if pinnedThreadID != 0 && item.ID == pinnedThreadID {
 			t := true
 			item.PinnedByAdmin = &t
 		}
-		response[i] = dto.CommunityThreadFeedItemResponse{
+		response[i] = threaddto.CommunityThreadFeedItemResponse{
 			FeedItemResponse: item,
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityThreadResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedCommunityThreadResponse{
 		Data: response,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -274,21 +277,21 @@ func (c *CommunityThreadController) getCommunityThreadsByQuery(
 
 	threads, parents, total, err := load(ctx.Context(), claims.UserID, query, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	tc := c.threadCtrl()
 	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
-	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
+	response := make([]threaddto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
-		response[i] = dto.CommunityThreadFeedItemResponse{
+		response[i] = threaddto.CommunityThreadFeedItemResponse{
 			FeedItemResponse: item,
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityThreadResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedCommunityThreadResponse{
 		Data: response,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -302,19 +305,19 @@ func (c *CommunityThreadController) GetMyCommunityThreads(ctx *fiber.Ctx) error 
 
 	threads, parents, total, err := c.threadService.GetMyCommunityThreads(ctx.Context(), claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	tc := c.threadCtrl()
 	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
-	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
+	response := make([]threaddto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
-		response[i] = dto.CommunityThreadFeedItemResponse{FeedItemResponse: item}
+		response[i] = threaddto.CommunityThreadFeedItemResponse{FeedItemResponse: item}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityThreadResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedCommunityThreadResponse{
 		Data: response,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -328,7 +331,7 @@ func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error
 	if raw := ctx.Query("category"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid category id"})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid category id"})
 		}
 		categoryID = &id
 	}
@@ -337,21 +340,21 @@ func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error
 
 	threads, parents, total, err := c.threadService.GetAllCommunityThreads(ctx.Context(), claims.UserID, categoryID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	tc := c.threadCtrl()
 	data := tc.buildUserFeedItemsWithPin(threads, parents, &claims.UserID)
-	response := make([]dto.CommunityThreadFeedItemResponse, len(data))
+	response := make([]threaddto.CommunityThreadFeedItemResponse, len(data))
 	for i, item := range data {
-		response[i] = dto.CommunityThreadFeedItemResponse{
+		response[i] = threaddto.CommunityThreadFeedItemResponse{
 			FeedItemResponse: item,
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedCommunityThreadResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedCommunityThreadResponse{
 		Data: response,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -369,21 +372,21 @@ func (c *CommunityThreadController) GetCommunityThreadMedia(ctx *fiber.Ctx) erro
 	threads, err := c.threadService.GetCommunityThreadMedia(communityID, claims.UserID)
 	if err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	data := make([]dto.CommunityThreadMediaResponse, len(threads))
+	data := make([]threaddto.CommunityThreadMediaResponse, len(threads))
 	for i, thread := range threads {
-		media := make([]dto.ThreadMediaResponse, len(thread.Media))
+		media := make([]threadmediadto.ThreadMediaResponse, len(thread.Media))
 		for j, item := range thread.Media {
-			media[j] = dto.ThreadMediaResponse{
+			media[j] = threadmediadto.ThreadMediaResponse{
 				MediaID: item.MediaID,
 				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
 			}
 		}
-		data[i] = dto.CommunityThreadMediaResponse{
+		data[i] = threaddto.CommunityThreadMediaResponse{
 			ThreadID: thread.ThreadID,
 			Media:    media,
 		}

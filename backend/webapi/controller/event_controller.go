@@ -9,22 +9,26 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	eventdto "github.com/sunibgram/webapi/dto/event"
+	eventreviewdto "github.com/sunibgram/webapi/dto/event_review"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type EventController struct {
-	eventService        service.IEventService
-	threadService       service.IThreadService
-	mediaService        service.IThreadMediaService
-	likeService         service.ILikeService
-	bookmarkService     service.IBookmarkService
-	threadPinService    service.IThreadPinService
-	profileService      service.IUserProfileService
-	pollService         service.IThreadPollService
-	eventThreadPinSvc   service.IEventThreadPinService
+	eventService      service.IEventService
+	threadService     service.IThreadService
+	mediaService      service.IThreadMediaService
+	likeService       service.ILikeService
+	bookmarkService   service.IBookmarkService
+	threadPinService  service.IThreadPinService
+	profileService    service.IUserProfileService
+	pollService       service.IThreadPollService
+	eventThreadPinSvc service.IEventThreadPinService
 }
 
 func NewEventController(eventService service.IEventService, threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService, pollService service.IThreadPollService, eventThreadPinSvc service.IEventThreadPinService) *EventController {
@@ -38,11 +42,11 @@ func (c *EventController) Create(ctx *fiber.Ctx) error {
 	}
 	req, banner, attachments, err := parseCreateEventRequest(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	_, err = c.eventService.Create(ctx.Context(), claims.UserID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachments)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "success"})
 }
@@ -54,9 +58,9 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 	_, limit := ParsePagination(ctx)
 	trending, running, future, err := c.eventService.GetAll(limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.EventGroupsResponse{
+	return ctx.Status(fiber.StatusOK).JSON(eventdto.EventGroupsResponse{
 		Trending: c.toListResponses(trending),
 		Running:  c.toListResponses(running),
 		Future:   c.toListResponses(future),
@@ -69,16 +73,16 @@ func (c *EventController) GetPending(ctx *fiber.Ctx) error {
 		return nil
 	}
 	if claims.RoleName != "admin" {
-		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 	page, limit := ParsePagination(ctx)
 	events, reviews, total, err := c.eventService.GetAdminEvents(ctx.Query("status"), ctx.Query("name"), page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedEventWithReviewHistoryResponse{
+	return ctx.Status(fiber.StatusOK).JSON(eventdto.PaginatedEventWithReviewHistoryResponse{
 		Data: c.toAdminEventReviewHistoryResponses(ctx.Context(), events, reviews),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -90,11 +94,11 @@ func (c *EventController) GetMyEvents(ctx *fiber.Ctx) error {
 	page, limit := ParsePagination(ctx)
 	events, reviews, total, err := c.eventService.GetMyEvents(claims.UserID, ctx.Query("status"), page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedMyEventResponse{
+	return ctx.Status(fiber.StatusOK).JSON(eventdto.PaginatedMyEventResponse{
 		Data: c.toEventReviewHistoryResponses(ctx.Context(), events, reviews),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -104,7 +108,7 @@ func (c *EventController) GetByID(ctx *fiber.Ctx) error {
 	}
 	event, err := c.eventService.GetByID(ctx.Params("id"))
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "event not found"})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "event not found"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(ctx.Context(), event))
 }
@@ -115,14 +119,14 @@ func (c *EventController) Update(ctx *fiber.Ctx) error {
 	}
 	req, banner, clearBanner, attachments, err := parseUpdateEventRequest(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	_, err = c.eventService.Update(ctx.Context(), ctx.Params("id"), req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, clearBanner, attachments)
 	if err != nil {
 		if err.Error() == "event not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "success"})
 }
@@ -133,9 +137,9 @@ func (c *EventController) Delete(ctx *fiber.Ctx) error {
 	}
 	if err := c.eventService.Delete(ctx.Context(), ctx.Params("id")); err != nil {
 		if err.Error() == "event not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "event deleted successfully"})
 }
@@ -146,15 +150,15 @@ func (c *EventController) ApproveEvent(ctx *fiber.Ctx) error {
 		return nil
 	}
 	if claims.RoleName != "admin" {
-		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
 	err := c.eventService.ApproveEvent(ctx.Params("id"), adminID)
 	if err != nil {
 		if err.Error() == "event not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event approved successfully"})
 }
@@ -165,19 +169,19 @@ func (c *EventController) DeclineEvent(ctx *fiber.Ctx) error {
 		return nil
 	}
 	if claims.RoleName != "admin" {
-		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
-	var req dto.DeclineEventRequest
+	var req eventreviewdto.DeclineEventRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
 	err := c.eventService.DeclineEvent(ctx.Params("id"), adminID, req.Reason)
 	if err != nil {
 		if err.Error() == "event not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event declined successfully"})
 }
@@ -188,18 +192,18 @@ func (c *EventController) RequestRevision(ctx *fiber.Ctx) error {
 		return nil
 	}
 	if claims.RoleName != "admin" {
-		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
-	var req dto.RevisionRequest
+	var req eventreviewdto.RevisionRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
 	if err := c.eventService.RequestRevision(ctx.Params("id"), adminID, req.Note); err != nil {
 		if err.Error() == "event not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event revision requested successfully"})
 }
@@ -216,9 +220,9 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	threads, parents, total, err := c.eventService.GetThreads(ctx.Context(), &claims.UserID, eventID, filter, sort, page, limit)
 	if err != nil {
 		if err.Error() == "event not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	var pinnedThreadID uint
@@ -252,13 +256,13 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 			}
 		}
 	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: data,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
-func (c *EventController) toResponse(ctx context.Context, event *model.Event) dto.EventResponse {
+func (c *EventController) toResponse(ctx context.Context, event *model.Event) eventdto.EventResponse {
 	bannerURL := BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL)
 	var attachmentURL string
 	if event.AttachmentObjectName != "" {
@@ -269,60 +273,60 @@ func (c *EventController) toResponse(ctx context.Context, event *model.Event) dt
 		}
 	}
 	pdfURLs := c.eventPDFURLs(ctx, event)
-	return dto.EventResponse{
-		ID:               event.ID,
-		UserID:           event.UserID,
-		Title:            event.Title,
-		Description:      event.Description,
-		Location:         event.Location,
-		Type:             event.Type,
-		Status:           event.Status,
-		StartTime:        dto.EventTime{Time: event.StartTime},
-		EndTime:          dto.EventTime{Time: event.EndTime},
-		BannerURL:        bannerURL,
-		AttachmentURL:    attachmentURL,
-		PDFURLs:          pdfURLs,
-		CreatedAt:        utils.Wrap(event.CreatedAt),
-		UpdatedAt:        utils.Wrap(event.UpdatedAt),
+	return eventdto.EventResponse{
+		ID:            event.ID,
+		UserID:        event.UserID,
+		Title:         event.Title,
+		Description:   event.Description,
+		Location:      event.Location,
+		Type:          event.Type,
+		Status:        event.Status,
+		StartTime:     eventdto.EventTime{Time: event.StartTime},
+		EndTime:       eventdto.EventTime{Time: event.EndTime},
+		BannerURL:     bannerURL,
+		AttachmentURL: attachmentURL,
+		PDFURLs:       pdfURLs,
+		CreatedAt:     utils.Wrap(event.CreatedAt),
+		UpdatedAt:     utils.Wrap(event.UpdatedAt),
 	}
 }
 
-func (c *EventController) toResponses(ctx context.Context, events []model.Event) []dto.EventResponse {
-	out := make([]dto.EventResponse, len(events))
+func (c *EventController) toResponses(ctx context.Context, events []model.Event) []eventdto.EventResponse {
+	out := make([]eventdto.EventResponse, len(events))
 	for i := range events {
 		out[i] = c.toResponse(ctx, &events[i])
 	}
 	return out
 }
 
-func (c *EventController) toListResponse(event *model.Event) dto.EventListResponse {
-	return dto.EventListResponse{
+func (c *EventController) toListResponse(event *model.Event) eventdto.EventListResponse {
+	return eventdto.EventListResponse{
 		ID:          event.ID,
 		UserID:      event.UserID,
 		Title:       event.Title,
 		Description: event.Description,
 		Location:    event.Location,
 		Type:        event.Type,
-		StartTime:   dto.EventTime{Time: event.StartTime},
-		EndTime:     dto.EventTime{Time: event.EndTime},
+		StartTime:   eventdto.EventTime{Time: event.StartTime},
+		EndTime:     eventdto.EventTime{Time: event.EndTime},
 		BannerURL:   BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL),
 		CreatedAt:   utils.Wrap(event.CreatedAt),
 		UpdatedAt:   utils.Wrap(event.UpdatedAt),
 	}
 }
 
-func (c *EventController) toListResponses(events []model.Event) []dto.EventListResponse {
-	out := make([]dto.EventListResponse, len(events))
+func (c *EventController) toListResponses(events []model.Event) []eventdto.EventListResponse {
+	out := make([]eventdto.EventListResponse, len(events))
 	for i := range events {
 		out[i] = c.toListResponse(&events[i])
 	}
 	return out
 }
 
-func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []dto.EventWithReviewHistoryResponse {
-	out := make([]dto.EventWithReviewHistoryResponse, len(events))
+func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []eventdto.EventWithReviewHistoryResponse {
+	out := make([]eventdto.EventWithReviewHistoryResponse, len(events))
 	for i := range events {
-		out[i] = dto.EventWithReviewHistoryResponse{
+		out[i] = eventdto.EventWithReviewHistoryResponse{
 			EventResponse: c.toResponse(ctx, &events[i]),
 			Notes:         c.toEventReviewNoteResponses(reviews[events[i].ID]),
 		}
@@ -330,10 +334,10 @@ func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, eve
 	return out
 }
 
-func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []dto.AdminEventWithReviewHistoryResponse {
-	out := make([]dto.AdminEventWithReviewHistoryResponse, len(events))
+func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []eventdto.AdminEventWithReviewHistoryResponse {
+	out := make([]eventdto.AdminEventWithReviewHistoryResponse, len(events))
 	for i := range events {
-		out[i] = dto.AdminEventWithReviewHistoryResponse{
+		out[i] = eventdto.AdminEventWithReviewHistoryResponse{
 			EventResponse: c.toResponse(ctx, &events[i]),
 			Notes:         c.toEventAdminReviewNoteResponses(reviews[events[i].ID]),
 		}
@@ -341,10 +345,10 @@ func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context
 	return out
 }
 
-func (c *EventController) toEventReviewNoteResponses(reviews []model.EventReview) []dto.EventReviewNoteResponse {
-	out := make([]dto.EventReviewNoteResponse, len(reviews))
+func (c *EventController) toEventReviewNoteResponses(reviews []model.EventReview) []eventreviewdto.EventReviewNoteResponse {
+	out := make([]eventreviewdto.EventReviewNoteResponse, len(reviews))
 	for i := range reviews {
-		out[i] = dto.EventReviewNoteResponse{
+		out[i] = eventreviewdto.EventReviewNoteResponse{
 			RevisionNumber: i + 1,
 			Notes:          reviews[i].Note,
 			CreatedAt:      utils.Wrap(reviews[i].CreatedAt),
@@ -353,10 +357,10 @@ func (c *EventController) toEventReviewNoteResponses(reviews []model.EventReview
 	return out
 }
 
-func (c *EventController) toEventAdminReviewNoteResponses(reviews []model.EventReview) []dto.EventAdminReviewNoteResponse {
-	out := make([]dto.EventAdminReviewNoteResponse, len(reviews))
+func (c *EventController) toEventAdminReviewNoteResponses(reviews []model.EventReview) []eventreviewdto.EventAdminReviewNoteResponse {
+	out := make([]eventreviewdto.EventAdminReviewNoteResponse, len(reviews))
 	for i := range reviews {
-		out[i] = dto.EventAdminReviewNoteResponse{
+		out[i] = eventreviewdto.EventAdminReviewNoteResponse{
 			RevisionNumber: i + 1,
 			Notes:          reviews[i].Note,
 			AdminName:      reviews[i].Admin.Name,
@@ -389,8 +393,8 @@ func (c *EventController) eventPDFURLs(ctx context.Context, event *model.Event) 
 	return urls
 }
 
-func parseCreateEventRequest(ctx *fiber.Ctx) (dto.CreateEventRequest, *multipart.FileHeader, []*multipart.FileHeader, error) {
-	var req dto.CreateEventRequest
+func parseCreateEventRequest(ctx *fiber.Ctx) (eventdto.CreateEventRequest, *multipart.FileHeader, []*multipart.FileHeader, error) {
+	var req eventdto.CreateEventRequest
 	if isMultipart(ctx) {
 		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.Type, &req.StartTime, &req.EndTime); err != nil {
 			return req, nil, nil, err
@@ -431,8 +435,8 @@ func validateEventPDFHeaders(files []*multipart.FileHeader) error {
 	return nil
 }
 
-func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart.FileHeader, bool, []*multipart.FileHeader, error) {
-	var req dto.UpdateEventRequest
+func parseUpdateEventRequest(ctx *fiber.Ctx) (eventdto.UpdateEventRequest, *multipart.FileHeader, bool, []*multipart.FileHeader, error) {
+	var req eventdto.UpdateEventRequest
 	if isMultipart(ctx) {
 		if err := fillEventRequestFromForm(ctx, &req.Title, &req.Description, &req.Location, &req.Type, &req.StartTime, &req.EndTime); err != nil {
 			return req, nil, false, nil, err
@@ -454,7 +458,7 @@ func parseUpdateEventRequest(ctx *fiber.Ctx) (dto.UpdateEventRequest, *multipart
 	return req, nil, false, nil, nil
 }
 
-func fillEventRequestFromForm(ctx *fiber.Ctx, title, description, location, eventType *string, startTime, endTime *dto.EventTime) error {
+func fillEventRequestFromForm(ctx *fiber.Ctx, title, description, location, eventType *string, startTime, endTime *eventdto.EventTime) error {
 	*title = ctx.FormValue("title")
 	*description = ctx.FormValue("description")
 	*location = ctx.FormValue("location")
@@ -470,7 +474,7 @@ func fillEventRequestFromForm(ctx *fiber.Ctx, title, description, location, even
 	return nil
 }
 
-func parseEventFormTime(value string, target *dto.EventTime) error {
+func parseEventFormTime(value string, target *eventdto.EventTime) error {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		target.Time = target.Time.UTC()

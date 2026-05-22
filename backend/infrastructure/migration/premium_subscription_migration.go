@@ -3,8 +3,9 @@ package migration
 import (
 	"log"
 
-	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 func migratePremiumSubscriptions(db *gorm.DB) {

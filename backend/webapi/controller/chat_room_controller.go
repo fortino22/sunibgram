@@ -4,10 +4,13 @@ import (
 	"mime/multipart"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	chatdto "github.com/sunibgram/webapi/dto/chat"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type ChatRoomController struct {
@@ -29,9 +32,9 @@ func (c *ChatRoomController) CreatePrivate(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.CreatePrivateChatRoomRequest
+	var req chatdto.CreatePrivateChatRoomRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid payload"})
 	}
 
 	room, err := c.chatRoomService.CreatePrivate(ctx.Context(), claims.UserID, req.TargetUserID)
@@ -55,9 +58,9 @@ func (c *ChatRoomController) CreateGroup(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.CreateGroupChatRoomRequest
+	var req chatdto.CreateGroupChatRoomRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid payload"})
 	}
 
 	room, err := c.chatRoomService.CreateGroup(ctx.Context(), claims.UserID, req.Name, req.Description, req.MemberIDs)
@@ -89,9 +92,9 @@ func (c *ChatRoomController) AddMember(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.AddGroupMemberRequest
+	var req chatdto.AddGroupMemberRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid payload"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid payload"})
 	}
 
 	room, alreadyMembers, err := c.chatRoomService.AddMemberToGroup(ctx.Context(), id, claims.UserID, req.UserIDs)
@@ -165,9 +168,9 @@ func (c *ChatRoomController) GetMembers(ctx *fiber.Ctx) error {
 		return HandleServiceError(ctx, err)
 	}
 
-	data := make([]dto.GroupMemberResponse, len(members))
+	data := make([]chatdto.GroupMemberResponse, len(members))
 	for i, m := range members {
-		data[i] = dto.GroupMemberResponse{
+		data[i] = chatdto.GroupMemberResponse{
 			UserID:      m.UserID,
 			Username:    m.Username,
 			Name:        m.Name,
@@ -238,13 +241,13 @@ func (c *ChatRoomController) GetMyRooms(ctx *fiber.Ctx) error {
 		return HandleServiceError(ctx, err)
 	}
 
-	data := make([]dto.ChatRoomResponse, len(rooms))
+	data := make([]chatdto.ChatRoomResponse, len(rooms))
 	for i := range rooms {
 		data[i] = toChatRoomResponseWithParticipant(&rooms[i])
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": data,
-		"meta": dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		"meta": threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -266,8 +269,8 @@ func (c *ChatRoomController) GetByID(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(toChatRoomResponse(room))
 }
 
-func toChatRoomResponse(room *model.ChatRoom) dto.ChatRoomResponse {
-	return dto.ChatRoomResponse{
+func toChatRoomResponse(room *model.ChatRoom) chatdto.ChatRoomResponse {
+	return chatdto.ChatRoomResponse{
 		RoomID:      room.RoomID,
 		Name:        room.Name,
 		Description: room.Description,
@@ -279,7 +282,7 @@ func toChatRoomResponse(room *model.ChatRoom) dto.ChatRoomResponse {
 	}
 }
 
-func toChatRoomResponseWithParticipant(room *service.ChatRoomWithParticipant) dto.ChatRoomResponse {
+func toChatRoomResponseWithParticipant(room *service.ChatRoomWithParticipant) chatdto.ChatRoomResponse {
 	resp := toChatRoomResponse(&room.ChatRoom)
 	resp.IsMuted = room.IsMuted
 	resp.UnreadCount = room.UnreadCount
@@ -288,7 +291,7 @@ func toChatRoomResponseWithParticipant(room *service.ChatRoomWithParticipant) dt
 		if room.OtherUser.AvatarURL != "" {
 			avatarURL = &room.OtherUser.AvatarURL
 		}
-		resp.OtherUser = &dto.ChatRoomParticipant{
+		resp.OtherUser = &chatdto.ChatRoomParticipant{
 			UserID:      room.OtherUser.UserID,
 			Username:    room.OtherUser.Username,
 			Name:        room.OtherUser.Name,
@@ -297,7 +300,7 @@ func toChatRoomResponseWithParticipant(room *service.ChatRoomWithParticipant) dt
 		}
 	}
 	if room.LastMessage != nil {
-		resp.LastMessage = &dto.LastMessagePreview{
+		resp.LastMessage = &chatdto.LastMessagePreview{
 			ChatID:    room.LastMessage.ChatID,
 			SenderID:  room.LastMessage.SenderID,
 			Message:   room.LastMessage.Message,

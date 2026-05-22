@@ -2,10 +2,12 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
@@ -49,9 +51,9 @@ func (c *LikeController) Like(ctx *fiber.Ctx) error {
 
 	if err := c.likeService.Like(claims.UserID, threadID); err != nil {
 		if err.Error() == "thread not found" {
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusConflict).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusConflict).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "liked successfully"})
@@ -69,7 +71,7 @@ func (c *LikeController) Unlike(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.likeService.Unlike(claims.UserID, threadID); err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "unliked successfully"})
@@ -85,7 +87,7 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 
 	threads, timestamps, total, err := c.likeService.GetMyLikes(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	ids := make([]uint, len(threads))
@@ -98,7 +100,7 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
 	}
 
-	data := make([]dto.FeedItemResponse, len(threads))
+	data := make([]threaddto.FeedItemResponse, len(threads))
 	fb := webapiutils.FeedBuilder{
 		Media:       c.mediaService,
 		LikeSvc:     c.likeService,
@@ -119,8 +121,8 @@ func (c *LikeController) GetMyLikes(ctx *fiber.Ctx) error {
 		data[i] = item
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: data,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }

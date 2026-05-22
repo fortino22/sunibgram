@@ -5,7 +5,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/sunibgram/dto"
+
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 	"github.com/sunibgram/webapi/middleware"
 )
 
@@ -17,38 +19,38 @@ func (c *ThreadController) GetFacultyThreads(ctx *fiber.Ctx) error {
 
 	requesterFacultyID, ok := c.authenticatedFacultyID(ctx, claims.UserID)
 	if !ok {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty not found"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "faculty not found"})
 	}
 
 	facultyID := requesterFacultyID
 	if raw := ctx.Query("faculty_id"); raw != "" {
 		id, err := strconv.ParseUint(raw, 10, 64)
 		if err != nil || id == 0 {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty_id"})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid faculty_id"})
 		}
 		facultyID = uint(id)
 	} else if raw := ctx.Query("facultyId"); raw != "" {
 		id, err := strconv.ParseUint(raw, 10, 64)
 		if err != nil || id == 0 {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid facultyId"})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid facultyId"})
 		}
 		facultyID = uint(id)
 	}
 
 	if facultyID != requesterFacultyID {
-		return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 
 	page, limit := ParsePagination(ctx)
 
 	threads, total, err := c.threadService.GetFacultyThreads(facultyID, claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: c.buildFeedItemsNoPin(threads, &claims.UserID),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 

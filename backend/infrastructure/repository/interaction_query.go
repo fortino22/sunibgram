@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/infrastructure/cache"
-	"gorm.io/gorm"
 )
 
 type interactionTimestamp struct {

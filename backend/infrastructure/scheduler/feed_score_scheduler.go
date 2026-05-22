@@ -5,9 +5,10 @@ import (
 	"log"
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/infrastructure/cache"
-	"gorm.io/gorm"
 )
 
 type FeedScoreScheduler struct {

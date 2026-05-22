@@ -4,10 +4,11 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type AuthController struct {
@@ -21,7 +22,7 @@ func NewAuthController(authService service.IAuthService, profileService service.
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
-	req := dto.RegisterRequest{
+	req := authdto.RegisterRequest{
 		Name:            ctx.FormValue("name"),
 		UserName:        ctx.FormValue("username"),
 		Email:           ctx.FormValue("email"),
@@ -32,20 +33,20 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 	birthdayDate, err := ParseDateField(req.BirthdayDate, "birthday_date")
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	raw := ctx.FormValue("faculty_id")
 	if raw == "" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty_id is required"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "faculty_id is required"})
 	}
 	fid, err := strconv.ParseUint(raw, 10, 64)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty_id"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid faculty_id"})
 	}
 	v := uint(fid)
 	if _, err := c.facultyService.GetByID(v); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty not found"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "faculty not found"})
 	}
 	facultyID := &v
 
@@ -61,7 +62,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.Register(user, profile, req.ConfirmPassword); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	input := service.UpsertProfileInput{}
@@ -76,13 +77,13 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 	if input.Avatar != nil || input.Banner != nil || input.Bio != nil {
 		if err := c.profileService.UpsertProfile(ctx.Context(), user.UserID, input); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
 	if facultyID != nil {
 		if err := c.facultyService.SetUserFaculty(user.UserID, facultyID); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -95,51 +96,51 @@ func (c *AuthController) ChangePassword(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.ChangePasswordRequest
+	var req authdto.ChangePasswordRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	if req.NewPassword != req.ConfirmPassword {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "new password and confirm password do not match"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "new password and confirm password do not match"})
 	}
 
 	if err := c.authService.ChangePassword(claims.UserID, req.OldPassword, req.NewPassword); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "password changed successfully"})
 }
 
 func (c *AuthController) ForgotPassword(ctx *fiber.Ctx) error {
-	var req dto.ForgotPasswordRequest
+	var req authdto.ForgotPasswordRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	if req.NewPassword != req.ConfirmPassword {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "new password and confirm password do not match"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "new password and confirm password do not match"})
 	}
 
 	if err := c.authService.ForgotPassword(req.Email, req.NewPassword); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "password reset successfully"})
 }
 
 func (c *AuthController) Login(ctx *fiber.Ctx) error {
-	var req dto.LoginRequest
+	var req authdto.LoginRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	pair, err := c.authService.Login(req.Email, req.Password)
 	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{
+	return ctx.Status(fiber.StatusOK).JSON(authdto.LoginResponse{
 		Message:     "login successful",
 		AccessToken: pair.AccessToken,
 		SID:         pair.SID,
@@ -147,17 +148,17 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) LoginWithOTP(ctx *fiber.Ctx) error {
-	var req dto.LoginWithOTPRequest
+	var req authdto.LoginWithOTPRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	pair, err := c.authService.LoginWithOTP(req.Email, req.Password, req.OTP)
 	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.LoginResponse{
+	return ctx.Status(fiber.StatusOK).JSON(authdto.LoginResponse{
 		Message:     "login successful",
 		AccessToken: pair.AccessToken,
 		SID:         pair.SID,
@@ -165,17 +166,17 @@ func (c *AuthController) LoginWithOTP(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {
-	var req dto.LoginRequest
+	var req authdto.LoginRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	_, pair, err := c.authService.LoginProd(req.Email, req.Password)
 	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.LoginProdResponse{
+	return ctx.Status(fiber.StatusOK).JSON(authdto.LoginProdResponse{
 		Message:              "login successful",
 		AccessToken:          pair.AccessToken,
 		SID:                  pair.SID,
@@ -184,17 +185,17 @@ func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {
 }
 
 func (c *AuthController) Refresh(ctx *fiber.Ctx) error {
-	var req dto.RefreshRequest
+	var req authdto.RefreshRequest
 	if err := ctx.BodyParser(&req); err != nil || req.SID == "" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "sid is required"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "sid is required"})
 	}
 
 	pair, err := c.authService.RefreshToken(ctx.Context(), req.SID)
 	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.RefreshResponse{
+	return ctx.Status(fiber.StatusOK).JSON(authdto.RefreshResponse{
 		AccessToken: pair.AccessToken,
 		SID:         pair.SID,
 	})
@@ -207,7 +208,7 @@ func (c *AuthController) Logout(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.Logout(ctx.Context(), claims.SID); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "logged out successfully"})

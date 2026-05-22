@@ -3,9 +3,10 @@ package migration
 import (
 	"log"
 
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/infrastructure/seeder"
-	"gorm.io/gorm"
 )
 
 func AutoMigrate(db *gorm.DB) {

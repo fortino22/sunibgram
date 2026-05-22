@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 const followingFeedTTL = 30 * time.Second

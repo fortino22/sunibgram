@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+
 	"github.com/sunibgram/application/usecase"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/config"

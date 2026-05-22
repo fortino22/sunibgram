@@ -11,11 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/ratelimit"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const otpHashV2Prefix = "v2:"

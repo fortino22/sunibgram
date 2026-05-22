@@ -3,9 +3,10 @@ package repository
 import (
 	"time"
 
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
-	"gorm.io/gorm"
 )
 
 type ChatRepository struct {

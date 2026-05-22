@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type UserProfileRepository struct {

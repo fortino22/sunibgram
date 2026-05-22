@@ -86,14 +86,14 @@ func eventListsTag() string {
 // Registered at the single Set site for the family alongside
 // globalThreadFeedsTag so callers can choose precise (one family) or broad
 // (all feed families) invalidation.
-func threadRootsGlobalTag() string         { return "tag:thread:roots:global" }
-func threadChainGlobalTag() string         { return "tag:thread:chain:global" }
-func threadCommunityGlobalTag() string     { return "tag:thread:community:global" }
+func threadRootsGlobalTag() string          { return "tag:thread:roots:global" }
+func threadChainGlobalTag() string          { return "tag:thread:chain:global" }
+func threadCommunityGlobalTag() string      { return "tag:thread:community:global" }
 func threadAllCommunitiesGlobalTag() string { return "tag:thread:all-communities:global" }
 func threadMyCommunitiesGlobalTag() string  { return "tag:thread:my-communities:global" }
-func threadFollowingGlobalTag() string     { return "tag:thread:following:global" }
-func communityThreadsGlobalTag() string    { return "tag:community:threads:global" }
-func eventThreadsGlobalTag() string        { return "tag:event:threads:global" }
+func threadFollowingGlobalTag() string      { return "tag:thread:following:global" }
+func communityThreadsGlobalTag() string     { return "tag:community:threads:global" }
+func eventThreadsGlobalTag() string         { return "tag:event:threads:global" }
 
 // followListUserTag covers follows:user:<uid>:<listType>:* for one user's
 // following or followers list pages. listType is "following" or "followers".

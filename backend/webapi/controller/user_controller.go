@@ -4,9 +4,11 @@ import (
 	"math"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	userdto "github.com/sunibgram/webapi/dto/user"
 )
 
 type UserController struct {
@@ -23,12 +25,12 @@ func (c *UserController) GetAll(ctx *fiber.Ctx) error {
 
 	users, total, err := c.userService.GetAllPaginated(page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	data := make([]dto.UserResponse, len(users))
+	data := make([]userdto.UserResponse, len(users))
 	for i, u := range users {
-		data[i] = dto.UserResponse{
+		data[i] = userdto.UserResponse{
 			UserID:    u.UserID,
 			Name:      u.Name,
 			UserName:  u.UserName,
@@ -41,7 +43,7 @@ func (c *UserController) GetAll(ctx *fiber.Ctx) error {
 
 	totalPages := int(math.Ceil(float64(total) / float64(limit)))
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedUsersResponse{
+	return ctx.Status(fiber.StatusOK).JSON(userdto.PaginatedUsersResponse{
 		Data:       data,
 		Total:      total,
 		Page:       page,
@@ -58,7 +60,7 @@ func (c *UserController) GetByID(ctx *fiber.Ctx) error {
 
 	fp, err := c.profileService.GetProfile(id, nil)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "user not found"})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "user not found"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(toUserProfileResponse(fp, c.profileService.GetURL))

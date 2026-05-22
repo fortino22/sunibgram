@@ -3,9 +3,10 @@ package repository
 import (
 	"context"
 
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/infrastructure/cache"
-	"gorm.io/gorm"
 )
 
 func eventIDForThread(db *gorm.DB, threadID uint) (string, bool) {

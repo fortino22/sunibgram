@@ -4,9 +4,10 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+
 	"github.com/sunibgram/domain/model"
 	domainrepo "github.com/sunibgram/domain/repository"
-	"gorm.io/gorm"
 )
 
 type reportRepository struct {

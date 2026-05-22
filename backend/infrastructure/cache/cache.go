@@ -110,8 +110,8 @@ func (c *Cache) DeleteByPatterns(ctx context.Context, patterns ...string) error 
 	}
 
 	var (
-		wg      sync.WaitGroup
-		errOnce sync.Once
+		wg       sync.WaitGroup
+		errOnce  sync.Once
 		firstErr error
 	)
 	for _, pattern := range patterns {

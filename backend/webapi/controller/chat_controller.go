@@ -9,10 +9,13 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	chatdto "github.com/sunibgram/webapi/dto/chat"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type ChatController struct {
@@ -49,7 +52,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 	var gifURL *string
 	if raw := strings.TrimSpace(ctx.FormValue("gif_url")); raw != "" {
 		if err := model.ValidateGifURL(raw); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		gifURL = &raw
 	}
@@ -69,7 +72,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 		files = form.File["files"]
 	}
 	if message == nil && gifURL == nil && len(files) == 0 {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "message or media is required"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "message or media is required"})
 	}
 
 	chat, err := c.chatService.Send(ctx.Context(), roomID, claims.UserID, message, gifURL, replyToID)
@@ -114,7 +117,7 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 
 	mediaByChat := c.loadMediaByChat(chats)
 	reactionsByChat := c.loadReactionsByChat(chats)
-	data := make([]dto.ChatResponse, len(chats))
+	data := make([]chatdto.ChatResponse, len(chats))
 	for i := range chats {
 		data[i] = c.toChatResponse(ctx.Context(), &chats[i], mediaByChat[chats[i].ChatID], reactionsByChat[chats[i].ChatID])
 	}
@@ -139,7 +142,7 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data": data,
-		"meta": dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		"meta": threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -184,9 +187,9 @@ func (c *ChatController) EditMessage(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.EditMessageRequest
+	var req chatdto.EditMessageRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	chat, err := c.chatService.GetByID(ctx.Context(), id)
@@ -215,12 +218,12 @@ func (c *ChatController) MarkMessagesRead(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.MarkMessagesReadRequest
+	var req chatdto.MarkMessagesReadRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	if req.RoomID == 0 || len(req.ChatIDs) == 0 {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	results, err := c.chatService.MarkMessagesRead(ctx.Context(), req.RoomID, req.ChatIDs, claims.UserID)
@@ -248,9 +251,9 @@ func (c *ChatController) AddReaction(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.AddReactionRequest
+	var req chatdto.AddReactionRequest
 	if err := ctx.BodyParser(&req); err != nil || strings.TrimSpace(req.Emoji) == "" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "emoji is required"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "emoji is required"})
 	}
 
 	chat, err := c.chatReactionService.Add(ctx.Context(), chatID, claims.UserID, req.Emoji)
@@ -282,7 +285,7 @@ func (c *ChatController) RemoveReaction(ctx *fiber.Ctx) error {
 	// Fiber decodes path params, but PathUnescape handles any double-encoded edge cases
 	emoji, _ := url.PathUnescape(ctx.Params("emoji"))
 	if strings.TrimSpace(emoji) == "" {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "emoji is required"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "emoji is required"})
 	}
 
 	chat, err := c.chatReactionService.Remove(ctx.Context(), chatID, claims.UserID, emoji)
@@ -355,7 +358,7 @@ func (c *ChatController) loadReactionsByChat(chats []model.Chat) map[uint][]mode
 	return byChat
 }
 
-func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, media []model.ChatMedia, reactions []model.ChatReaction) dto.ChatResponse {
+func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, media []model.ChatMedia, reactions []model.ChatReaction) chatdto.ChatResponse {
 	var deletedAt *dtoutils.FormattedTime
 	if chat.DeletedAt != nil {
 		wrapped := dtoutils.Wrap(*chat.DeletedAt)
@@ -367,11 +370,11 @@ func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, m
 		editedAt = &wrapped
 	}
 
-	var replyTo *dto.ChatReplyResponse
+	var replyTo *chatdto.ChatReplyResponse
 	if chat.ReplyTo != nil {
-		replyTo = &dto.ChatReplyResponse{
+		replyTo = &chatdto.ChatReplyResponse{
 			ChatID: chat.ReplyTo.ChatID,
-			Sender: dto.ChatSender{
+			Sender: chatdto.ChatSender{
 				ID:       chat.ReplyTo.SenderID,
 				Username: chat.ReplyTo.Sender.UserName,
 			},
@@ -380,10 +383,10 @@ func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, m
 		}
 	}
 
-	return dto.ChatResponse{
+	return chatdto.ChatResponse{
 		ChatID: chat.ChatID,
 		RoomID: chat.RoomID,
-		Sender: dto.ChatSender{
+		Sender: chatdto.ChatSender{
 			ID:       chat.SenderID,
 			Username: chat.Sender.UserName,
 		},
@@ -400,14 +403,14 @@ func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, m
 	}
 }
 
-func (c *ChatController) toChatMediaResponses(ctx context.Context, media []model.ChatMedia) []dto.ChatMediaResponse {
-	out := make([]dto.ChatMediaResponse, len(media))
+func (c *ChatController) toChatMediaResponses(ctx context.Context, media []model.ChatMedia) []chatdto.ChatMediaResponse {
+	out := make([]chatdto.ChatMediaResponse, len(media))
 	for i := range media {
 		u, err := c.chatMediaService.GeneratePresignedURL(ctx, media[i].Bucket, media[i].ObjectName)
 		if err != nil {
 			log.Printf("presign error bucket=%s object=%s: %v", media[i].Bucket, media[i].ObjectName, err)
 		}
-		out[i] = dto.ChatMediaResponse{
+		out[i] = chatdto.ChatMediaResponse{
 			MediaID:   media[i].MediaID,
 			URL:       u,
 			MediaType: media[i].MediaType,
@@ -417,17 +420,17 @@ func (c *ChatController) toChatMediaResponses(ctx context.Context, media []model
 	return out
 }
 
-func groupReactions(reactions []model.ChatReaction) []dto.ChatReactionSummary {
+func groupReactions(reactions []model.ChatReaction) []chatdto.ChatReactionSummary {
 	if len(reactions) == 0 {
-		return []dto.ChatReactionSummary{}
+		return []chatdto.ChatReactionSummary{}
 	}
 	byEmoji := make(map[string][]uint)
 	for _, r := range reactions {
 		byEmoji[r.Emoji] = append(byEmoji[r.Emoji], r.UserID)
 	}
-	summaries := make([]dto.ChatReactionSummary, 0, len(byEmoji))
+	summaries := make([]chatdto.ChatReactionSummary, 0, len(byEmoji))
 	for emoji, userIDs := range byEmoji {
-		summaries = append(summaries, dto.ChatReactionSummary{
+		summaries = append(summaries, chatdto.ChatReactionSummary{
 			Emoji:   emoji,
 			Count:   len(userIDs),
 			UserIDs: userIDs,

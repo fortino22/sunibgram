@@ -3,10 +3,12 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	categorydto "github.com/sunibgram/webapi/dto/category"
 )
 
 type CategoryController struct {
@@ -18,9 +20,9 @@ func NewCategoryController(categoryService service.ICategoryService) *CategoryCo
 }
 
 func (c *CategoryController) Create(ctx *fiber.Ctx) error {
-	var req dto.CreateCategoryRequest
+	var req categorydto.CreateCategoryRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	if err := c.categoryService.Create(req.Name); err != nil {
 		return HandleServiceError(ctx, err)
@@ -31,7 +33,7 @@ func (c *CategoryController) Create(ctx *fiber.Ctx) error {
 func (c *CategoryController) GetAll(ctx *fiber.Ctx) error {
 	categories, err := c.categoryService.GetAll()
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toCategoryResponses(categories)})
 }
@@ -42,9 +44,9 @@ func (c *CategoryController) Update(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.UpdateCategoryRequest
+	var req categorydto.UpdateCategoryRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	if err := c.categoryService.Update(id, req.Name); err != nil {
 		return HandleServiceError(ctx, err)
@@ -67,22 +69,22 @@ func (c *CategoryController) Delete(ctx *fiber.Ctx) error {
 func ParseUUIDParam(ctx *fiber.Ctx, paramName string, entityName string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(ctx.Params(paramName))
 	if err != nil {
-		_ = ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid " + entityName + " id"})
+		_ = ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid " + entityName + " id"})
 		return uuid.Nil, false
 	}
 	return id, true
 }
 
-func toCategoryResponse(category *model.Category) dto.CategoryResponse {
-	return dto.CategoryResponse{
+func toCategoryResponse(category *model.Category) categorydto.CategoryResponse {
+	return categorydto.CategoryResponse{
 		ID:        category.ID.String(),
 		Name:      category.Name,
 		CreatedAt: utils.Wrap(category.CreatedAt),
 	}
 }
 
-func toCategoryResponses(categories []model.Category) []dto.CategoryResponse {
-	responses := make([]dto.CategoryResponse, len(categories))
+func toCategoryResponses(categories []model.Category) []categorydto.CategoryResponse {
+	responses := make([]categorydto.CategoryResponse, len(categories))
 	for i := range categories {
 		responses[i] = toCategoryResponse(&categories[i])
 	}

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	fibersocketio "github.com/gofiber/contrib/socketio"
+
 	"github.com/sunibgram/domain/service"
 )
 

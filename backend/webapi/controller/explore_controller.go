@@ -2,8 +2,9 @@ package controller
 
 import (
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
@@ -50,9 +51,9 @@ func (c *ExploreController) ExploreSearch(ctx *fiber.Ctx) error {
 	result, err := c.exploreService.ExploreSearch(ctx.Context(), ctx.Query("q"), requesterID)
 	if err != nil {
 		if err.Error() == "query is required" {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(result))
 }

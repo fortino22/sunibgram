@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/cache"
 )

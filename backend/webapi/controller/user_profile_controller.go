@@ -6,9 +6,13 @@ import (
 	webapiutils "github.com/sunibgram/webapi/utils"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	"github.com/sunibgram/webapi/dto/_shared"
+	utils "github.com/sunibgram/webapi/dto/_shared"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	facultydto "github.com/sunibgram/webapi/dto/faculty"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
+	userprofiledto "github.com/sunibgram/webapi/dto/user_profile"
 )
 
 type UserProfileController struct {
@@ -39,9 +43,9 @@ func (c *UserProfileController) GetMyFaculty(ctx *fiber.Ctx) error {
 	}
 	uf, err := c.facultyService.GetUserFaculty(claims.UserID)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "faculty not found"})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "faculty not found"})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(dto.MyFacultyResponse{
+	return ctx.Status(fiber.StatusOK).JSON(facultydto.MyFacultyResponse{
 		FacultyID:   uf.Faculty.FacultyID,
 		FacultyName: uf.Faculty.FacultyName,
 		TotalUsers:  uf.Faculty.TotalUsers,
@@ -78,11 +82,11 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	if raw := ctx.FormValue("faculty_id"); raw != "" {
 		fid, err := strconv.ParseUint(raw, 10, 64)
 		if err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid faculty_id"})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid faculty_id"})
 		}
 		v := uint(fid)
 		if _, err := c.facultyService.GetByID(v); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "faculty not found"})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "faculty not found"})
 		}
 		facultyID = &v
 	}
@@ -100,10 +104,10 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	clearAvatar := ctx.FormValue("clear_avatar") == "true"
 	clearBanner := ctx.FormValue("clear_banner") == "true"
 	if avatarFile != nil && clearAvatar {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "cannot upload avatar and clear_avatar simultaneously"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "cannot upload avatar and clear_avatar simultaneously"})
 	}
 	if bannerFile != nil && clearBanner {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "cannot upload banner and clear_banner simultaneously"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "cannot upload banner and clear_banner simultaneously"})
 	}
 	if avatarFile != nil {
 		input.Avatar = avatarFile
@@ -121,7 +125,7 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	if raw := ctx.FormValue("birthday_date"); raw != "" {
 		birthdayDate, err := ParseDateField(raw, "birthday_date")
 		if err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		input.BirthdayDate = &birthdayDate
 	}
@@ -129,12 +133,12 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	avatarChanged := input.Avatar != nil || input.ClearAvatar
 
 	if err := c.profileService.UpdateProfile(ctx.Context(), claims.UserID, input); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	if facultyID != nil {
 		if err := c.facultyService.SetUserFaculty(claims.UserID, facultyID); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -164,16 +168,16 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint, viewerID *uint) error {
 	fp, err := c.profileService.GetProfile(userID, viewerID)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "user not found"})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "user not found"})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(fp))
 }
 
-func (c *UserProfileController) toResponse(fp *service.FullProfile) dto.UserProfileResponse {
+func (c *UserProfileController) toResponse(fp *service.FullProfile) userprofiledto.UserProfileResponse {
 	return toUserProfileResponse(fp, c.profileService.GetURL)
 }
 
-func toUserProfileResponse(fp *service.FullProfile, getURL func(string, string) string) dto.UserProfileResponse {
+func toUserProfileResponse(fp *service.FullProfile, getURL func(string, string) string) userprofiledto.UserProfileResponse {
 	avatarURL := ""
 	bannerURL := ""
 	if fp.Profile != nil {
@@ -194,14 +198,14 @@ func toUserProfileResponse(fp *service.FullProfile, getURL func(string, string) 
 		followerCount = fp.Stat.FollowerCount
 		followingCount = fp.Stat.FollowingCount
 	}
-	var faculty *dto.FeedAuthorFaculty
+	var faculty *threaddto.FeedAuthorFaculty
 	if fp.UserFaculty != nil {
-		faculty = &dto.FeedAuthorFaculty{
+		faculty = &threaddto.FeedAuthorFaculty{
 			FacultyID:   fp.UserFaculty.FacultyID,
 			FacultyName: fp.UserFaculty.Faculty.FacultyName,
 		}
 	}
-	return dto.UserProfileResponse{
+	return userprofiledto.UserProfileResponse{
 		UserID:         fp.User.UserID,
 		Name:           fp.User.Name,
 		Username:       fp.User.UserName,

@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 func (c *ThreadController) Mention(ctx *fiber.Ctx) error {
@@ -21,18 +23,18 @@ func (c *ThreadController) Mention(ctx *fiber.Ctx) error {
 	_, limit := ParsePagination(ctx)
 	users, err := c.threadService.GetMentionUsers(ctx.Context(), claims.UserID, query, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toMentionUserResponses(users)})
 }
 
-func (c *ThreadController) toMentionUserResponses(users []model.ExploreUserResult) []dto.MentionUserResponse {
-	responses := make([]dto.MentionUserResponse, len(users))
+func (c *ThreadController) toMentionUserResponses(users []model.ExploreUserResult) []threaddto.MentionUserResponse {
+	responses := make([]threaddto.MentionUserResponse, len(users))
 	for i, user := range users {
 		avatarURL := BuildMediaURL(user.AvatarObjectName, user.AvatarBucket, c.profileService.GetURL)
 
-		responses[i] = dto.MentionUserResponse{
+		responses[i] = threaddto.MentionUserResponse{
 			UserID:      strconv.FormatUint(uint64(user.UserID), 10),
 			Username:    user.Username,
 			Name:        user.Name,

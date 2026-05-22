@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sunibgram/domain/model"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 func SeedAdmin(db *gorm.DB) {

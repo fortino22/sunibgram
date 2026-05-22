@@ -4,9 +4,11 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	verificationdto "github.com/sunibgram/webapi/dto/verification"
 )
 
 type VerificationController struct {
@@ -18,9 +20,9 @@ func NewVerificationController(verificationService service.IVerificationService)
 }
 
 func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
-	var req dto.SendVerificationRequest
+	var req verificationdto.SendVerificationRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	req.Email = strings.TrimSpace(req.Email)
@@ -33,9 +35,9 @@ func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
 }
 
 func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
-	var req dto.SendVerificationRequest
+	var req verificationdto.SendVerificationRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	req.Email = strings.TrimSpace(req.Email)
@@ -49,9 +51,9 @@ func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
 }
 
 func (c *VerificationController) VerifyCode(ctx *fiber.Ctx) error {
-	var req dto.VerifyCodeRequest
+	var req verificationdto.VerifyCodeRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	req.Email = strings.TrimSpace(req.Email)

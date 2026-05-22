@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	fibersocketio "github.com/gofiber/contrib/socketio"
+
 	"github.com/sunibgram/domain/service"
 )
 

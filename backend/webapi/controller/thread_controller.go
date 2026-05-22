@@ -6,9 +6,12 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/sunibgram/domain/model"
 	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
+	authdto "github.com/sunibgram/webapi/dto/auth"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
+	threadmediadto "github.com/sunibgram/webapi/dto/thread_media"
 )
 
 type ThreadController struct {
@@ -35,7 +38,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 	content := ctx.FormValue("content")
 	files := threadMediaFiles(ctx)
 	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
-		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	var parentID *uint
@@ -48,7 +51,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 
 	eventID, _, err := parseOptionalEventID(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	var replyPermission *string
@@ -58,24 +61,24 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 
 	pollInput, _, hasPoll, err := ParseCreatePollFromMultipart(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	if hasPoll && parentID != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "polls are only allowed on post-type threads"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "polls are only allowed on post-type threads"})
 	}
 
 	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID, replyPermission)
 	if err != nil {
 		if err.Error() == "not allowed to reply to this thread" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	if len(files) > 0 {
 		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
 			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -83,7 +86,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		if _, err := c.pollService.Create(ctx.Context(), thread.ThreadID, claims.UserID, pollInput); err != nil {
 			_ = c.mediaService.DeleteByThread(ctx.Context(), thread.ThreadID)
 			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -100,12 +103,12 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 
 	threads, parents, total, err := c.threadService.GetForYouFeed(ctx.Context(), claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: c.buildUserFeedItemsNoPin(threads, parents, &claims.UserID),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -131,7 +134,7 @@ func (c *ThreadController) GetNewFeedCount(ctx *fiber.Ctx) error {
 	sinceID, _ := strconv.ParseUint(ctx.Query("since_id", "0"), 10, 64)
 	count, err := c.threadService.CountNewForYouSinceID(ctx.Context(), claims.UserID, uint(sinceID))
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	return ctx.JSON(fiber.Map{"count": count})
 }
@@ -149,19 +152,19 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 
 	thread, err := c.threadService.GetByID(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "thread not found"})
 	}
 
 	if thread.CommunityID != nil && thread.Community != nil && thread.Community.Visibility == model.CommunityVisibilityPrivate {
 		if !c.memberService.IsMember(*thread.CommunityID, claims.UserID) {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
 	}
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, thread.UserID); err != nil {
 		if err.Error() == "this account is private" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	media, _ := c.mediaService.GetByThreadID(id)
@@ -184,12 +187,12 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 
 	root, err := c.threadService.GetByID(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: "thread not found"})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "thread not found"})
 	}
 
 	if root.CommunityID != nil && root.Community != nil && root.Community.Visibility == model.CommunityVisibilityPrivate {
 		if !c.memberService.IsMember(*root.CommunityID, claims.UserID) {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
 	}
 
@@ -198,9 +201,9 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 	threads, total, err := c.threadService.GetChain(ctx.Context(), id, claims.UserID, page, limit)
 	if err != nil {
 		if err.Error() == "this account is private" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	// Build a set of thread IDs already present in the chain so we don't
@@ -236,9 +239,9 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: c.buildUserFeedItemsNoPin(threads, parents, &claims.UserID),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -254,29 +257,29 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 	}
 
 	if HasPollFieldsInForm(ctx) {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "poll cannot be edited"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "poll cannot be edited"})
 	}
 
 	content := ctx.FormValue("content")
 
 	if _, err := c.threadService.Update(ctx.Context(), id, claims.UserID, content); err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	keepIDs, keepSent, err := parseKeepMediaIDs(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	files := threadMediaFiles(ctx)
 	if err := model.ValidateThreadMediaCount(len(keepIDs) + len(files)); err != nil {
-		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	if keepSent || len(files) > 0 {
 		if err := c.mediaService.UpdateGranular(ctx.Context(), id, claims.UserID, keepIDs, files); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -294,19 +297,19 @@ func (c *ThreadController) UpdateReplyPermission(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var req dto.UpdateReplyPermissionRequest
+	var req threaddto.UpdateReplyPermissionRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: "invalid request body"})
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
 	if err := c.threadService.UpdateReplyPermission(ctx.Context(), id, claims.UserID, req.ReplyPermission); err != nil {
 		switch err.Error() {
 		case "forbidden":
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		case "thread not found":
-			return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		default:
-			return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 	}
 
@@ -326,9 +329,9 @@ func (c *ThreadController) Delete(ctx *fiber.Ctx) error {
 
 	if err := c.threadService.Delete(ctx.Context(), id, claims.UserID); err != nil {
 		if err.Error() == "forbidden" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: "forbidden"})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusNotFound).JSON(dto.ErrorResponse{Message: err.Error()})
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
 	_ = c.mediaService.DeleteByThread(ctx.Context(), id)
@@ -346,12 +349,12 @@ func (c *ThreadController) GetFollowingFeed(ctx *fiber.Ctx) error {
 
 	threads, parents, total, err := c.threadService.GetFollowingFeed(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: c.buildUserFeedItemsNoPin(threads, parents, &claims.UserID),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -367,20 +370,20 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 	targetUserID := id
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
 		if err.Error() == "this account is private" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetMyPosts(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: c.buildUserFeedItemsWithPin(threads, parents, &claims.UserID),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -396,20 +399,20 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 	targetUserID := id
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
 		if err.Error() == "this account is private" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ParsePagination(ctx)
 
 	threads, parents, total, err := c.threadService.GetMyReplies(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedFeedResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: c.buildUserFeedItemsWithPin(threads, parents, &claims.UserID),
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 
@@ -425,36 +428,36 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 	targetUserID := id
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
 		if err.Error() == "this account is private" {
-			return ctx.Status(fiber.StatusForbidden).JSON(dto.ErrorResponse{Message: err.Error()})
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ParsePagination(ctx)
 
 	threads, _, total, err := c.threadService.GetMyMediaThread(ctx.Context(), claims.UserID, targetUserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dto.ErrorResponse{Message: "internal server error"})
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
 	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
-	data := make([]dto.MediaOnlyItem, len(threads))
+	data := make([]threaddto.MediaOnlyItem, len(threads))
 	for i, thread := range threads {
-		media := make([]dto.ThreadMediaResponse, len(mediaByThread[thread.ThreadID]))
+		media := make([]threadmediadto.ThreadMediaResponse, len(mediaByThread[thread.ThreadID]))
 		for j, item := range mediaByThread[thread.ThreadID] {
-			media[j] = dto.ThreadMediaResponse{
+			media[j] = threadmediadto.ThreadMediaResponse{
 				MediaID: item.MediaID,
 				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
 			}
 		}
-		data[i] = dto.MediaOnlyItem{
+		data[i] = threaddto.MediaOnlyItem{
 			ThreadID: thread.ThreadID,
 			Media:    media,
 		}
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dto.PaginatedMediaOnlyResponse{
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedMediaOnlyResponse{
 		Data: data,
-		Meta: dto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
 

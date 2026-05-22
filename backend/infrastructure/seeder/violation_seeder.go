@@ -3,8 +3,9 @@ package seeder
 import (
 	"log"
 
-	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 var violationSeeds = []model.Violation{

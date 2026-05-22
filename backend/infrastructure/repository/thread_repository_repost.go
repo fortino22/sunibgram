@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 func (r *threadCached) ExistsRepost(userID, originalThreadID uint) (bool, error) {

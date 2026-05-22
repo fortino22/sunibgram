@@ -4,16 +4,17 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/sunibgram/dto"
+
 	"github.com/sunibgram/infrastructure/ratelimit"
 	"github.com/sunibgram/webapi/controller"
+	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 func registerAuthRoutes(api fiber.Router, ctrl *controller.AuthController, verificationCtrl *controller.VerificationController, authMW fiber.Handler) {
 	otpSendLimiter := ratelimit.New(3, 10*time.Minute)
 	otpSendRateLimit := func(c *fiber.Ctx) error {
 		if err := otpSendLimiter.Allow(c.IP()); err != nil {
-			return c.Status(fiber.StatusTooManyRequests).JSON(dto.ErrorResponse{Message: err.Error()})
+			return c.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return c.Next()
 	}

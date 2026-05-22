@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 func (r *threadCached) Save(thread *model.Thread) error {

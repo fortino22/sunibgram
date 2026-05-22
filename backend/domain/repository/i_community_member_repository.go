@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"github.com/sunibgram/domain/model"
 	"gorm.io/gorm"
+
+	"github.com/sunibgram/domain/model"
 )
 
 type ICommunityMemberRepository interface {
