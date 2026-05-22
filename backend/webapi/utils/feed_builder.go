@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -118,6 +119,8 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 
 func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo repository.ICacheRepository, needed []uint) {
 	avatarMisses := make([]uint, 0, len(needed))
+	pending := make([]uint, 0, len(needed))
+	pendingKeys := make([]string, 0, len(needed))
 	for _, id := range needed {
 		if _, cached := fb.avatarCache[id]; cached {
 			continue
@@ -126,12 +129,28 @@ func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo repository.
 			avatarMisses = append(avatarMisses, id)
 			continue
 		}
-		var avatarURL string
-		if err := cacheRepo.Get(ctx, avatarCacheKey(id), &avatarURL); err == nil {
-			fb.avatarCache[id] = avatarURL
-			continue
+		pending = append(pending, id)
+		pendingKeys = append(pendingKeys, avatarCacheKey(id))
+	}
+	if len(pending) > 0 {
+		hits, err := cacheRepo.MGet(ctx, pendingKeys)
+		if err != nil {
+			avatarMisses = append(avatarMisses, pending...)
+		} else {
+			for i, id := range pending {
+				raw, ok := hits[pendingKeys[i]]
+				if !ok {
+					avatarMisses = append(avatarMisses, id)
+					continue
+				}
+				var avatarURL string
+				if err := json.Unmarshal(raw, &avatarURL); err != nil {
+					avatarMisses = append(avatarMisses, id)
+					continue
+				}
+				fb.avatarCache[id] = avatarURL
+			}
 		}
-		avatarMisses = append(avatarMisses, id)
 	}
 	if len(avatarMisses) == 0 {
 		return
@@ -144,6 +163,7 @@ func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo repository.
 	for _, id := range avatarMisses {
 		missed[id] = struct{}{}
 	}
+	writes := make(map[string]any, len(avatarMisses))
 	for _, p := range profiles {
 		delete(missed, p.UserID)
 		avatarURL := ""
@@ -152,14 +172,17 @@ func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo repository.
 		}
 		fb.avatarCache[p.UserID] = avatarURL
 		if cacheRepo != nil {
-			_ = cacheRepo.Set(ctx, avatarCacheKey(p.UserID), avatarURL, avatarCacheTTL)
+			writes[avatarCacheKey(p.UserID)] = avatarURL
 		}
 	}
 	for id := range missed {
 		fb.avatarCache[id] = ""
 		if cacheRepo != nil {
-			_ = cacheRepo.Set(ctx, avatarCacheKey(id), "", avatarCacheTTL)
+			writes[avatarCacheKey(id)] = ""
 		}
+	}
+	if cacheRepo != nil && len(writes) > 0 {
+		_ = cacheRepo.MSet(ctx, writes, avatarCacheTTL)
 	}
 }
 
@@ -220,12 +243,30 @@ func (fb *FeedBuilder) loadProfileMetaFromCache(userIDs []uint) (missing []uint)
 		return missing
 	}
 	ctx := context.Background()
+	pending := make([]uint, 0, len(userIDs))
+	pendingKeys := make([]string, 0, len(userIDs))
 	for _, id := range userIDs {
 		if _, ok := fb.isPremiumCache[id]; ok {
 			continue
 		}
+		pending = append(pending, id)
+		pendingKeys = append(pendingKeys, ProfileMetaCacheKey(id))
+	}
+	if len(pending) == 0 {
+		return nil
+	}
+	hits, err := fb.Cache.MGet(ctx, pendingKeys)
+	if err != nil {
+		return pending
+	}
+	for i, id := range pending {
+		raw, ok := hits[pendingKeys[i]]
+		if !ok {
+			missing = append(missing, id)
+			continue
+		}
 		var entry profileMetaCacheEntry
-		if err := fb.Cache.Get(ctx, ProfileMetaCacheKey(id), &entry); err != nil {
+		if err := json.Unmarshal(raw, &entry); err != nil {
 			missing = append(missing, id)
 			continue
 		}
@@ -247,6 +288,7 @@ func (fb *FeedBuilder) writeProfileMetaToCache(userIDs []uint) {
 		return
 	}
 	ctx := context.Background()
+	entries := make(map[string]any, len(userIDs))
 	for _, id := range userIDs {
 		entry := profileMetaCacheEntry{IsPremium: fb.isPremiumCache[id]}
 		if f, ok := fb.facultyCache[id]; ok && f != nil {
@@ -254,8 +296,9 @@ func (fb *FeedBuilder) writeProfileMetaToCache(userIDs []uint) {
 			entry.FacultyID = f.FacultyID
 			entry.FacultyName = f.FacultyName
 		}
-		_ = fb.Cache.Set(ctx, ProfileMetaCacheKey(id), entry, profileMetaTTL)
+		entries[ProfileMetaCacheKey(id)] = entry
 	}
+	_ = fb.Cache.MSet(ctx, entries, profileMetaTTL)
 }
 
 // AuthorField builds a FeedAuthor from a User.

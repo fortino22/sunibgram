@@ -28,6 +28,14 @@ func (r *CacheRepository) Set(ctx context.Context, key string, value any, ttl ti
 	return r.cache.Set(ctx, key, value, ttl)
 }
 
+func (r *CacheRepository) MGet(ctx context.Context, keys []string) (map[string][]byte, error) {
+	return r.cache.MGet(ctx, keys)
+}
+
+func (r *CacheRepository) MSet(ctx context.Context, entries map[string]any, ttl time.Duration) error {
+	return r.cache.MSet(ctx, entries, ttl)
+}
+
 func (r *CacheRepository) Delete(ctx context.Context, keys ...string) error {
 	return r.cache.Delete(ctx, keys...)
 }

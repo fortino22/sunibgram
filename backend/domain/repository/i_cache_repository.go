@@ -9,6 +9,8 @@ type ICacheRepository interface {
 	ClearAll() error
 	Get(ctx context.Context, key string, dest any) error
 	Set(ctx context.Context, key string, value any, ttl time.Duration) error
+	MGet(ctx context.Context, keys []string) (map[string][]byte, error)
+	MSet(ctx context.Context, entries map[string]any, ttl time.Duration) error
 	Delete(ctx context.Context, keys ...string) error
 	DeleteByPattern(ctx context.Context, pattern string) error
 	DeleteByPatterns(ctx context.Context, patterns ...string) error
