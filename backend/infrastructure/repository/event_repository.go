@@ -531,6 +531,15 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 	r.invalidateInteractionUserCaches(ctx, "likes", threadIDs)
 	r.invalidateInteractionUserCaches(ctx, "bookmarks", threadIDs)
 	r.invalidateInteractionUserCaches(ctx, "reposts", threadIDs)
+	_ = r.cache.Delete(ctx, "feed:trending:global")
+	_ = r.cache.DeleteByPatterns(ctx,
+		"feed:foryou:*",
+		"thread:roots:*",
+		"thread:all-communities:*",
+		"thread:my-communities:*",
+		"community:threads:top:*",
+		"community:threads:latest:*",
+	)
 	invalidateExploreCache(ctx, r.cache)
 }
 

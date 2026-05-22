@@ -15,6 +15,7 @@ type BookmarkController struct {
 	threadService   service.IThreadService
 	mediaService    service.IThreadMediaService
 	pollService     service.IThreadPollService
+	profileService  service.IUserProfileService
 }
 
 func NewBookmarkController(
@@ -23,6 +24,7 @@ func NewBookmarkController(
 	threadService service.IThreadService,
 	mediaService service.IThreadMediaService,
 	pollService service.IThreadPollService,
+	profileService service.IUserProfileService,
 ) *BookmarkController {
 	return &BookmarkController{
 		bookmarkService: bookmarkService,
@@ -30,6 +32,7 @@ func NewBookmarkController(
 		threadService:   threadService,
 		mediaService:    mediaService,
 		pollService:     pollService,
+		profileService:  profileService,
 	}
 }
 
@@ -102,9 +105,11 @@ func (c *BookmarkController) GetMyBookmarks(ctx *fiber.Ctx) error {
 		BookmarkSvc: c.bookmarkService,
 		ThreadSvc:   c.threadService,
 		PollSvc:     c.pollService,
+		ProfileSvc:  c.profileService,
 		Cache:       feedBuilderCache,
 		ViewerID:    &claims.UserID,
 	}
+	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	fb.LoadViewerFlagsForThreads(threads)
 	fb.LoadPollsForThreads(threads)
 	for i, t := range threads {

@@ -149,6 +149,7 @@ func (r *facultyRepository) invalidateFacultyUpdate(id uint) {
 		"faculty:list:*",
 		"profile:user:*",
 		"userfaculty:user:*",
+		"user:meta:*",
 	)
 	invalidateNotificationSenderCachePattern(ctx, r.cache)
 	invalidateExploreCache(ctx, r.cache)

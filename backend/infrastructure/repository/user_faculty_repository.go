@@ -107,7 +107,7 @@ func (r *userFacultyRepository) invalidateThreadCaches() {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.Delete(ctx, "feed:trending:global")
+	_ = r.cache.Delete(ctx, "feed:trending:global", "reports:all")
 	_ = r.cache.DeleteByPatterns(ctx,
 		"event:threads:*",
 		"thread:following:*",
@@ -120,5 +120,6 @@ func (r *userFacultyRepository) invalidateThreadCaches() {
 		"community:threads:top:*",
 		"community:threads:latest:*",
 		"feed:foryou:*",
+		"reports:id:*",
 	)
 }
