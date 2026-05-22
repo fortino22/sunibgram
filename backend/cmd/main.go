@@ -96,7 +96,43 @@ import (
 	"github.com/sunibgram/infrastructure/scheduler"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
 	"github.com/sunibgram/infrastructure/storage"
-	"github.com/sunibgram/webapi/controller"
+	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
+	authctrl "github.com/sunibgram/webapi/controller/auth"
+	bookmarkctrl "github.com/sunibgram/webapi/controller/bookmark"
+	cachectrl "github.com/sunibgram/webapi/controller/cache"
+	categoryctrl "github.com/sunibgram/webapi/controller/category"
+	chatctrl "github.com/sunibgram/webapi/controller/chat"
+	chatroomctrl "github.com/sunibgram/webapi/controller/chat_room"
+	communityctrl "github.com/sunibgram/webapi/controller/community"
+	communitypinctrl "github.com/sunibgram/webapi/controller/community_pin"
+	communityrequestctrl "github.com/sunibgram/webapi/controller/community_request"
+	communityrulectrl "github.com/sunibgram/webapi/controller/community_rule"
+	communitythreadpinctrl "github.com/sunibgram/webapi/controller/community_thread_pin"
+	emailctrl "github.com/sunibgram/webapi/controller/email"
+	eventctrl "github.com/sunibgram/webapi/controller/event"
+	eventparticipantctrl "github.com/sunibgram/webapi/controller/event_participant"
+	eventpinctrl "github.com/sunibgram/webapi/controller/event_pin"
+	eventthreadpinctrl "github.com/sunibgram/webapi/controller/event_thread_pin"
+	explorectrl "github.com/sunibgram/webapi/controller/explore"
+	facultyctrl "github.com/sunibgram/webapi/controller/faculty"
+	followctrl "github.com/sunibgram/webapi/controller/follow"
+	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
+	likectrl "github.com/sunibgram/webapi/controller/like"
+	notificationctrl "github.com/sunibgram/webapi/controller/notification"
+	orderctrl "github.com/sunibgram/webapi/controller/order"
+	premiumsubscriptionctrl "github.com/sunibgram/webapi/controller/premium_subscription"
+	reportctrl "github.com/sunibgram/webapi/controller/report"
+	repostctrl "github.com/sunibgram/webapi/controller/repost"
+	rolectrl "github.com/sunibgram/webapi/controller/role"
+	threadctrl "github.com/sunibgram/webapi/controller/thread"
+	threadpinctrl "github.com/sunibgram/webapi/controller/thread_pin"
+	threadpollctrl "github.com/sunibgram/webapi/controller/thread_poll"
+	threadsummaryctrl "github.com/sunibgram/webapi/controller/thread_summary"
+	userctrl "github.com/sunibgram/webapi/controller/user"
+	userprofilectrl "github.com/sunibgram/webapi/controller/user_profile"
+	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
+	verificationctrl "github.com/sunibgram/webapi/controller/verification"
+	violationctrl "github.com/sunibgram/webapi/controller/violation"
 	"github.com/sunibgram/webapi/middleware"
 	"github.com/sunibgram/webapi/router"
 	webapisocket "github.com/sunibgram/webapi/socket"
@@ -116,7 +152,7 @@ func main() {
 		log.Printf("community members cache startup flush error: %v", err)
 	}
 	middleware.Init(redisCache)
-	controller.SetFeedBuilderCache(redisCache)
+	ctrlshared.SetFeedBuilderCache(redisCache)
 	scheduler.NewFeedScoreScheduler(writeDB, redisCache).Start()
 
 	// --- Repositories ---
@@ -211,37 +247,37 @@ func main() {
 	eventThreadPinService := eventthreadpinuc.NewEventThreadPinService(eventThreadPinRepo, eventRepo, threadRepo)
 
 	// --- Controllers ---
-	cacheCtrl := controller.NewCacheController(cacheService)
-	authCtrl := controller.NewAuthController(authService, profileService, facultyService)
-	roleCtrl := controller.NewRoleController(roleService)
-	userCtrl := controller.NewUserController(userService, profileService)
-	userSettingsCtrl := controller.NewUserSettingsController(userSettingsService)
-	profileCtrl := controller.NewUserProfileController(profileService, facultyService, socketHub, chatRoomService)
-	emailCtrl := controller.NewEmailController(emailService)
-	verificationCtrl := controller.NewVerificationController(verificationService)
-	followCtrl := controller.NewFollowController(followService, profileService)
-	threadCtrl := controller.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
-	eventCtrl := controller.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService, threadPollService, eventThreadPinService)
-	eventThreadPinCtrl := controller.NewEventThreadPinController(eventThreadPinService)
-	hashtagCtrl := controller.NewHashtagController(hashtagService)
-	exploreCtrl := controller.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService, threadPollService)
-	likeCtrl := controller.NewLikeController(likeService, bookmarkService, threadService, threadMediaService, threadPollService, profileService)
-	bookmarkCtrl := controller.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService, threadPollService, profileService)
-	threadPinCtrl := controller.NewThreadPinController(threadPinService)
-	repostCtrl := controller.NewRepostController(threadService, threadMediaService)
-	summaryCtrl := controller.NewThreadSummaryController(summaryService)
-	categoryCtrl := controller.NewCategoryController(categoryService)
-	violationCtrl := controller.NewViolationController(violationService)
-	reportCtrl := controller.NewReportController(reportService)
-	communityCtrl := controller.NewCommunityController(communityService, communityRuleService, profileService)
-	communityMemberCtrl := controller.NewCommunityMemberController(communityMemberService, profileService)
-	communityRequestCtrl := controller.NewCommunityRequestController(communityRequestService, profileService)
-	communityRuleCtrl := controller.NewCommunityRuleController(communityRuleService)
-	communityThreadPinCtrl := controller.NewCommunityThreadPinController(communityThreadPinService)
-	communityPinCtrl := controller.NewCommunityPinController(communityPinService, communityService)
-	eventPinCtrl := controller.NewEventPinController(eventPinService, eventService)
-	eventParticipantCtrl := controller.NewEventParticipantController(eventParticipantService, eventService)
-	communityThreadCtrl := controller.NewCommunityThreadController(
+	cacheCtrl := cachectrl.NewCacheController(cacheService)
+	authCtrl := authctrl.NewAuthController(authService, profileService, facultyService)
+	roleCtrl := rolectrl.NewRoleController(roleService)
+	userCtrl := userctrl.NewUserController(userService, profileService)
+	userSettingsCtrl := usersettingsctrl.NewUserSettingsController(userSettingsService)
+	profileCtrl := userprofilectrl.NewUserProfileController(profileService, facultyService, socketHub, chatRoomService)
+	emailCtrl := emailctrl.NewEmailController(emailService)
+	verificationCtrl := verificationctrl.NewVerificationController(verificationService)
+	followCtrl := followctrl.NewFollowController(followService, profileService)
+	threadCtrl := threadctrl.NewThreadController(threadService, threadMediaService, communityMemberService, likeService, bookmarkService, threadPinService, profileService, threadPollService)
+	eventCtrl := eventctrl.NewEventController(eventService, threadService, threadMediaService, likeService, bookmarkService, threadPinService, profileService, threadPollService, eventThreadPinService)
+	eventThreadPinCtrl := eventthreadpinctrl.NewEventThreadPinController(eventThreadPinService)
+	hashtagCtrl := hashtagctrl.NewHashtagController(hashtagService)
+	exploreCtrl := explorectrl.NewExploreController(exploreService, profileService, threadMediaService, likeService, bookmarkService, threadService, communityService, threadPollService)
+	likeCtrl := likectrl.NewLikeController(likeService, bookmarkService, threadService, threadMediaService, threadPollService, profileService)
+	bookmarkCtrl := bookmarkctrl.NewBookmarkController(bookmarkService, likeService, threadService, threadMediaService, threadPollService, profileService)
+	threadPinCtrl := threadpinctrl.NewThreadPinController(threadPinService)
+	repostCtrl := repostctrl.NewRepostController(threadService, threadMediaService)
+	summaryCtrl := threadsummaryctrl.NewThreadSummaryController(summaryService)
+	categoryCtrl := categoryctrl.NewCategoryController(categoryService)
+	violationCtrl := violationctrl.NewViolationController(violationService)
+	reportCtrl := reportctrl.NewReportController(reportService)
+	communityCtrl := communityctrl.NewCommunityController(communityService, communityRuleService, profileService)
+	communityMemberCtrl := communityctrl.NewCommunityMemberController(communityMemberService, profileService)
+	communityRequestCtrl := communityrequestctrl.NewCommunityRequestController(communityRequestService, profileService)
+	communityRuleCtrl := communityrulectrl.NewCommunityRuleController(communityRuleService)
+	communityThreadPinCtrl := communitythreadpinctrl.NewCommunityThreadPinController(communityThreadPinService)
+	communityPinCtrl := communitypinctrl.NewCommunityPinController(communityPinService, communityService)
+	eventPinCtrl := eventpinctrl.NewEventPinController(eventPinService, eventService)
+	eventParticipantCtrl := eventparticipantctrl.NewEventParticipantController(eventParticipantService, eventService)
+	communityThreadCtrl := communityctrl.NewCommunityThreadController(
 		threadService,
 		threadMediaService,
 		likeService,
@@ -251,14 +287,14 @@ func main() {
 		threadPollService,
 		communityThreadPinService,
 	)
-	facultyCtrl := controller.NewFacultyController(facultyService)
-	orderCtrl := controller.NewOrderController(orderService)
-	premiumSubscriptionCtrl := controller.NewPremiumSubscriptionController(premiumSubscriptionService)
-	devSubscriptionCtrl := controller.NewDevSubscriptionController(premiumSubscriptionService)
-	chatRoomCtrl := controller.NewChatRoomController(chatRoomService, socketHub)
-	chatCtrl := controller.NewChatController(chatService, chatMediaService, chatReactionService, socketHub)
-	notificationCtrl := controller.NewNotificationController(notificationService)
-	threadPollCtrl := controller.NewThreadPollController(threadPollService)
+	facultyCtrl := facultyctrl.NewFacultyController(facultyService)
+	orderCtrl := orderctrl.NewOrderController(orderService)
+	premiumSubscriptionCtrl := premiumsubscriptionctrl.NewPremiumSubscriptionController(premiumSubscriptionService)
+	devSubscriptionCtrl := premiumsubscriptionctrl.NewDevSubscriptionController(premiumSubscriptionService)
+	chatRoomCtrl := chatroomctrl.NewChatRoomController(chatRoomService, socketHub)
+	chatCtrl := chatctrl.NewChatController(chatService, chatMediaService, chatReactionService, socketHub)
+	notificationCtrl := notificationctrl.NewNotificationController(notificationService)
+	threadPollCtrl := threadpollctrl.NewThreadPollController(threadPollService)
 	notificationHandler := webapisocket.NewNotificationHandler(socketHub, notificationService)
 
 	// --- Server ---
