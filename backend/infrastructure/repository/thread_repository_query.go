@@ -23,45 +23,59 @@ func (r *threadCached) FindByID(id uint) (*model.Thread, error) {
 }
 
 func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]model.Thread, int64, error) {
-	type cached struct {
-		Threads []model.Thread
-		Total   int64
-	}
 	ctx := context.Background()
-	var result cached
 	key := fmt.Sprintf("%s:viewer:%s", threadRootsKey(page, limit), threadVisibilityCachePart(requesterID))
-	if err := r.cache.Get(ctx, key, &result); err != nil {
-		var threads []model.Thread
-		var total int64
-		rootTypes := forYouFeedTypes(true)
-		countQuery := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
-			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-			Where("threads.type IN ?", rootTypes).
-			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
-		countQuery = applyMainFeedReplyInteractionFilter(countQuery)
+	rootTypes := forYouFeedTypes(true)
+
+	if entry, ok := r.loadFeedIDs(ctx, key); ok {
+		threads, err := r.hydrateThreads(ctx, entry.IDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		total, ok := r.getCachedCount(ctx, key)
+		if !ok {
+			countQuery := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
+				Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+				Where("threads.type IN ?", rootTypes).
+				Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+			countQuery = applyMainFeedReplyInteractionFilter(countQuery)
+			if err := countQuery.Count(&total).Error; err != nil {
+				return nil, 0, err
+			}
+			r.setCachedCount(ctx, key, total)
+		}
+		return threads, total, nil
+	}
+
+	var threads []model.Thread
+	var total int64
+	countQuery := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.type IN ?", rootTypes).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+	countQuery = applyMainFeedReplyInteractionFilter(countQuery)
+	if cachedTotal, ok := r.getCachedCount(ctx, key); ok {
+		total = cachedTotal
+	} else {
 		if err := countQuery.Count(&total).Error; err != nil {
 			return nil, 0, err
 		}
-		offset := (page - 1) * limit
-		query := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
-			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-			Where("threads.type IN ?", rootTypes).
-			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
-		query = applyMainFeedReplyInteractionFilter(query)
-		if err := query.
-			Order("threads.created_at DESC").
-			Offset(offset).Limit(limit).
-			Find(&threads).Error; err != nil {
-			return nil, 0, err
-		}
-		result = cached{Threads: threads, Total: total}
-		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
-			for _, t := range result.Threads {
-				r.trackFeedCacheKey(ctx, t.ThreadID, key)
-			}
-		}
+		r.setCachedCount(ctx, key, total)
 	}
-	return result.Threads, result.Total, nil
+	offset := (page - 1) * limit
+	query := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.type IN ?", rootTypes).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+	query = applyMainFeedReplyInteractionFilter(query)
+	if err := query.
+		Order("threads.created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&threads).Error; err != nil {
+		return nil, 0, err
+	}
+	r.storeFeedIDs(ctx, key, threads, nil, threadFeedTTL)
+	return threads, total, nil
 }
 
 func (r *threadCached) FindChain(anchorID uint) (model.Thread, []model.Thread, []model.Thread, error) {
@@ -145,39 +159,63 @@ func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]model.Threa
 		limit = maxFindByRootIDRows
 	}
 
-	type cached struct {
-		Threads []model.Thread
-		Total   int64
-	}
 	ctx := context.Background()
-	var result cached
 	key := threadChainKey(rootID, page, limit)
-	if err := r.cache.Get(ctx, key, &result); err != nil {
-		var threads []model.Thread
+
+	countLoader := func() (int64, error) {
 		var total int64
-		r.db.readDB.Model(&model.Thread{}).
+		if err := r.db.readDB.Model(&model.Thread{}).
 			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
 			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-			Count(&total)
-		offset := (page - 1) * limit
-		if err := preloadThreadParentDetails(r.db.readDB).
-			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-			Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
-			Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
-			Order("threads.like_count DESC, threads.created_at DESC").
-			Offset(offset).Limit(limit).
-			Find(&threads).Error; err != nil {
+			Count(&total).Error; err != nil {
+			return 0, err
+		}
+		return total, nil
+	}
+
+	if entry, ok := r.loadFeedIDs(ctx, key); ok {
+		// FindByRootID hydrates via preloadThreadParentDetails, lighter than
+		// the default preloadThreadDetails used by hydrateThreads. Load missing
+		// rows ourselves through the parent-detail preload and fall back to
+		// per-thread cache otherwise.
+		threads, err := r.hydrateChainThreads(ctx, entry.IDs)
+		if err != nil {
 			return nil, 0, err
 		}
-		result = cached{Threads: threads, Total: total}
-		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
-			for _, t := range result.Threads {
-				r.trackFeedCacheKey(ctx, t.ThreadID, key)
+		total, ok := r.getCachedCount(ctx, key)
+		if !ok {
+			total, err = countLoader()
+			if err != nil {
+				return nil, 0, err
 			}
+			r.setCachedCount(ctx, key, total)
 		}
+		return threads, total, nil
 	}
-	return result.Threads, result.Total, nil
+
+	var threads []model.Thread
+	total, ok := r.getCachedCount(ctx, key)
+	if !ok {
+		var err error
+		total, err = countLoader()
+		if err != nil {
+			return nil, 0, err
+		}
+		r.setCachedCount(ctx, key, total)
+	}
+	offset := (page - 1) * limit
+	if err := preloadThreadParentDetails(r.db.readDB).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.thread_id = ? OR threads.root_id = ?", rootID, rootID).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Order("threads.like_count DESC, threads.created_at DESC").
+		Offset(offset).Limit(limit).
+		Find(&threads).Error; err != nil {
+		return nil, 0, err
+	}
+	r.storeChainFeedIDs(ctx, key, threads)
+	return threads, total, nil
 }
 
 func (r *threadCached) FindCommunityTop(communityID, requesterUserID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
@@ -207,28 +245,52 @@ func communitySortClause(sort string) (string, string) {
 }
 
 func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, page, limit int, keySuffix, orderClause string) ([]model.Thread, []*model.Thread, int64, error) {
-	type cached struct {
-		Threads []model.Thread
-		Parents []*model.Thread
-		Total   int64
-	}
 	ctx := context.Background()
-	var result cached
 	key := fmt.Sprintf("%s:viewer:%d", threadCommunityKey(communityID, page, limit, keySuffix), requesterUserID)
-	if err := r.cache.Get(ctx, key, &result); err == nil && len(result.Parents) == len(result.Threads) {
-		return result.Threads, result.Parents, result.Total, nil
+	requesterID := &requesterUserID
+	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
+
+	countLoader := func() (int64, error) {
+		var total int64
+		if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
+			Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+			Where("COALESCE(threads.community_id, original.community_id) = ?", communityID).
+			Where("threads.type IN ?", threadTypes).
+			Count(&total).Error; err != nil {
+			return 0, err
+		}
+		return total, nil
+	}
+
+	if entry, ok := r.loadFeedIDs(ctx, key); ok && len(entry.ParentIDs) == len(entry.IDs) {
+		threads, err := r.hydrateThreads(ctx, entry.IDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		parents, err := r.hydrateParents(ctx, entry.ParentIDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		total, ok := r.getCachedCount(ctx, key)
+		if !ok {
+			total, err = countLoader()
+			if err != nil {
+				return nil, nil, 0, err
+			}
+			r.setCachedCount(ctx, key, total)
+		}
+		return threads, parents, total, nil
 	}
 
 	var threads []model.Thread
-	var total int64
-	requesterID := &requesterUserID
-	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
-	if err := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
-		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
-		Where("COALESCE(threads.community_id, original.community_id) = ?", communityID).
-		Where("threads.type IN ?", threadTypes).
-		Count(&total).Error; err != nil {
-		return nil, nil, 0, err
+	total, ok := r.getCachedCount(ctx, key)
+	if !ok {
+		var err error
+		total, err = countLoader()
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		r.setCachedCount(ctx, key, total)
 	}
 	offset := (page - 1) * limit
 	if err := applyThreadVisibility(preloadThreadDetails(r.db.readDB), requesterID).
@@ -246,13 +308,8 @@ func (r *threadCached) findCommunityThreads(communityID, requesterUserID uint, p
 		return nil, nil, 0, err
 	}
 
-	result = cached{Threads: threads, Parents: parents, Total: total}
-	if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
-		for _, t := range result.Threads {
-			r.trackFeedCacheKey(ctx, t.ThreadID, key)
-		}
-	}
-	return result.Threads, result.Parents, result.Total, nil
+	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	return threads, parents, total, nil
 }
 
 func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]model.CommunityThreadMedia, error) {
@@ -285,33 +342,55 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 }
 
 func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
-	type cached struct {
-		Threads []model.Thread
-		Parents []*model.Thread
-		Total   int64
-	}
 	ctx := context.Background()
-	var result cached
 	key := fmt.Sprintf("thread:my-communities:user:%d:page:%d:limit:%d", userID, page, limit)
-	if err := r.cache.Get(ctx, key, &result); err == nil && len(result.Parents) == len(result.Threads) {
-		return result.Threads, result.Parents, result.Total, nil
+	requesterID := &userID
+	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
+
+	countLoader := func() (int64, error) {
+		var total int64
+		base := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
+			Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+			Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
+			Joins("JOIN community_members cm ON cm.community_id = COALESCE(threads.community_id, original.community_id) AND cm.user_id = ?", userID).
+			Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
+			Where("threads.type IN ?", threadTypes).
+			Where("communities.is_active = ?", true)
+		if err := base.Count(&total).Error; err != nil {
+			return 0, err
+		}
+		return total, nil
+	}
+
+	if entry, ok := r.loadFeedIDs(ctx, key); ok && len(entry.ParentIDs) == len(entry.IDs) {
+		threads, err := r.hydrateThreads(ctx, entry.IDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		parents, err := r.hydrateParents(ctx, entry.ParentIDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		total, ok := r.getCachedCount(ctx, key)
+		if !ok {
+			total, err = countLoader()
+			if err != nil {
+				return nil, nil, 0, err
+			}
+			r.setCachedCount(ctx, key, total)
+		}
+		return threads, parents, total, nil
 	}
 
 	var threads []model.Thread
-	var total int64
-
-	requesterID := &userID
-	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
-	base := applyThreadVisibility(r.db.readDB.Model(&model.Thread{}), requesterID).
-		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
-		Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
-		Joins("JOIN community_members cm ON cm.community_id = COALESCE(threads.community_id, original.community_id) AND cm.user_id = ?", userID).
-		Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
-		Where("threads.type IN ?", threadTypes).
-		Where("communities.is_active = ?", true)
-
-	if err := base.Count(&total).Error; err != nil {
-		return nil, nil, 0, err
+	total, ok := r.getCachedCount(ctx, key)
+	if !ok {
+		var err error
+		total, err = countLoader()
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		r.setCachedCount(ctx, key, total)
 	}
 
 	offset := (page - 1) * limit
@@ -333,53 +412,69 @@ func (r *threadCached) FindMyCommunityThreads(userID uint, page, limit int) ([]m
 		return nil, nil, 0, err
 	}
 
-	result = cached{Threads: threads, Parents: parents, Total: total}
-	if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
-		for _, t := range result.Threads {
-			r.trackFeedCacheKey(ctx, t.ThreadID, key)
-		}
-	}
-	return result.Threads, result.Parents, result.Total, nil
+	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	return threads, parents, total, nil
 }
 
 func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
-	type cached struct {
-		Threads []model.Thread
-		Parents []*model.Thread
-		Total   int64
-	}
 	ctx := context.Background()
-	var result cached
 	catStr := "all"
 	if categoryID != nil {
 		catStr = categoryID.String()
 	}
 	key := fmt.Sprintf("thread:all-communities:user:%d:cat:%s:page:%d:limit:%d", userID, catStr, page, limit)
-	if err := r.cache.Get(ctx, key, &result); err == nil {
-		return result.Threads, result.Parents, result.Total, nil
+
+	countLoader := func() (int64, error) {
+		var total int64
+		base := r.db.readDB.Model(&model.Thread{}).
+			Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+			Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
+			Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
+			Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
+			Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}).
+			Where("communities.is_active = ?", true).
+			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
+				model.CommunityVisibilityPublic, userID).
+			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
+		if categoryID != nil {
+			base = base.Where("communities.category_id = ?", categoryID)
+		}
+		if err := base.Count(&total).Error; err != nil {
+			return 0, err
+		}
+		return total, nil
+	}
+
+	if entry, ok := r.loadFeedIDs(ctx, key); ok && len(entry.ParentIDs) == len(entry.IDs) {
+		threads, err := r.hydrateThreads(ctx, entry.IDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		parents, err := r.hydrateParents(ctx, entry.ParentIDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		total, ok := r.getCachedCount(ctx, key)
+		if !ok {
+			total, err = countLoader()
+			if err != nil {
+				return nil, nil, 0, err
+			}
+			r.setCachedCount(ctx, key, total)
+		}
+		return threads, parents, total, nil
 	}
 
 	var threads []model.Thread
-	var total int64
-
-	base := r.db.readDB.Model(&model.Thread{}).
-		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
-		Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
-		Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
-		Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
-		Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}).
-		Where("communities.is_active = ?", true).
-		Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
-			model.CommunityVisibilityPublic, userID).
-		Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
-
-	if categoryID != nil {
-		base = base.Where("communities.category_id = ?", categoryID)
-	}
-
-	if err := base.Count(&total).Error; err != nil {
-		return nil, nil, 0, err
+	total, ok := r.getCachedCount(ctx, key)
+	if !ok {
+		var err error
+		total, err = countLoader()
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		r.setCachedCount(ctx, key, total)
 	}
 
 	offset := (page - 1) * limit
@@ -409,13 +504,8 @@ func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUI
 		return nil, nil, 0, err
 	}
 
-	result = cached{Threads: threads, Parents: parents, Total: total}
-	if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
-		for _, t := range result.Threads {
-			r.trackFeedCacheKey(ctx, t.ThreadID, key)
-		}
-	}
-	return result.Threads, result.Parents, result.Total, nil
+	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	return threads, parents, total, nil
 }
 
 func (r *threadCached) FindAllCommunityThreadsByQueryTop(userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
@@ -434,38 +524,60 @@ func (r *threadCached) FindAllCommunityThreadsByQueryLatest(userID uint, query s
 }
 
 func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string, page, limit int, keySuffix, orderClause string) ([]model.Thread, []*model.Thread, int64, error) {
-	type cached struct {
-		Threads []model.Thread
-		Parents []*model.Thread
-		Total   int64
-	}
 	ctx := context.Background()
-	var result cached
 	query = strings.TrimSpace(query)
 	queryLike := "%" + query + "%"
 	key := communityThreadsQueryKey(keySuffix, strings.ToLower(query), userID, page, limit)
-	if err := r.cache.Get(ctx, key, &result); err == nil {
-		return result.Threads, result.Parents, result.Total, nil
+
+	countLoader := func() (int64, error) {
+		var total int64
+		base := r.db.readDB.Model(&model.Thread{}).
+			Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
+			Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
+			Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
+			Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
+			Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
+			Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}).
+			Where("communities.is_active = ?", true).
+			Where("(communities.name ILIKE ? OR COALESCE(NULLIF(threads.content, ''), original.content) ILIKE ?)", queryLike, queryLike).
+			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
+				model.CommunityVisibilityPublic, userID).
+			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
+		if err := base.Count(&total).Error; err != nil {
+			return 0, err
+		}
+		return total, nil
+	}
+
+	if entry, ok := r.loadFeedIDs(ctx, key); ok && len(entry.ParentIDs) == len(entry.IDs) {
+		threads, err := r.hydrateThreads(ctx, entry.IDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		parents, err := r.hydrateParents(ctx, entry.ParentIDs)
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		total, ok := r.getCachedCount(ctx, key)
+		if !ok {
+			total, err = countLoader()
+			if err != nil {
+				return nil, nil, 0, err
+			}
+			r.setCachedCount(ctx, key, total)
+		}
+		return threads, parents, total, nil
 	}
 
 	var threads []model.Thread
-	var total int64
-
-	base := r.db.readDB.Model(&model.Thread{}).
-		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
-		Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
-		Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
-		Joins("LEFT JOIN user_relationships ur ON ur.follower_id = ? AND ur.following_id = threads.user_id", userID).
-		Where("COALESCE(threads.community_id, original.community_id) IS NOT NULL").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}).
-		Where("communities.is_active = ?", true).
-		Where("(communities.name ILIKE ? OR COALESCE(NULLIF(threads.content, ''), original.content) ILIKE ?)", queryLike, queryLike).
-		Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
-			model.CommunityVisibilityPublic, userID).
-		Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
-
-	if err := base.Count(&total).Error; err != nil {
-		return nil, nil, 0, err
+	total, ok := r.getCachedCount(ctx, key)
+	if !ok {
+		var err error
+		total, err = countLoader()
+		if err != nil {
+			return nil, nil, 0, err
+		}
+		r.setCachedCount(ctx, key, total)
 	}
 
 	offset := (page - 1) * limit
@@ -492,11 +604,6 @@ func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string,
 		return nil, nil, 0, err
 	}
 
-	result = cached{Threads: threads, Parents: parents, Total: total}
-	if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
-		for _, t := range result.Threads {
-			r.trackFeedCacheKey(ctx, t.ThreadID, key)
-		}
-	}
-	return result.Threads, result.Parents, result.Total, nil
+	r.storeFeedIDs(ctx, key, threads, parents, threadFeedTTL)
+	return threads, parents, total, nil
 }

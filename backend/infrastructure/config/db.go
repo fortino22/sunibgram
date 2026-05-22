@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -17,14 +18,13 @@ func NewPostgresRead() *gorm.DB {
 }
 
 func newPostgres(role string) *gorm.DB {
-	
+
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
 	user := os.Getenv("DB_USER")
 	pass := os.Getenv("DB_PASSWORD")
 	name := os.Getenv("DB_NAME")
 	sslmode := os.Getenv("DB_SSLMODE")
-	
 
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
@@ -35,6 +35,15 @@ func newPostgres(role string) *gorm.DB {
 	if err != nil {
 		panic(fmt.Sprintf("failed to connect to postgres (%s): %v", role, err))
 	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get sql.DB handle (%s): %v", role, err))
+	}
+	sqlDB.SetMaxOpenConns(50)
+	sqlDB.SetMaxIdleConns(25)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 
 	return db
 }

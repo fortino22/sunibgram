@@ -479,7 +479,7 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 	threadIDs := make([]uint, 0, len(threads))
 	for _, thread := range threads {
 		threadIDs = append(threadIDs, thread.ThreadID)
-		_ = r.cache.Delete(ctx, threadKey(thread.ThreadID))
+		_ = r.cache.Delete(ctx, threadKey(thread.ThreadID), parentThreadKey(thread.ThreadID))
 		deleteTrackedCacheKeys(ctx, r.cache, threadFeedKeysKey(thread.ThreadID))
 		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("likes", thread.ThreadID))
 		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("bookmarks", thread.ThreadID))

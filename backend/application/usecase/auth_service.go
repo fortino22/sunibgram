@@ -13,7 +13,6 @@ import (
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/cache"
-	"github.com/sunibgram/infrastructure/config"
 	"github.com/sunibgram/infrastructure/ratelimit"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -44,6 +43,7 @@ type AuthService struct {
 	userRepo         repository.IUserRepository
 	roleRepo         repository.IRoleRepository
 	verificationRepo repository.IVerificationRepository
+	userSettingsRepo repository.IUserSettingsRepository
 	cache            *cache.Cache
 	otpFailLimiter   *ratelimit.RateLimiter
 }
@@ -52,12 +52,14 @@ func NewAuthService(
 	userRepo repository.IUserRepository,
 	roleRepo repository.IRoleRepository,
 	verificationRepo repository.IVerificationRepository,
+	userSettingsRepo repository.IUserSettingsRepository,
 	c *cache.Cache,
 ) service.IAuthService {
 	return &AuthService{
 		userRepo:         userRepo,
 		roleRepo:         roleRepo,
 		verificationRepo: verificationRepo,
+		userSettingsRepo: userSettingsRepo,
 		cache:            c,
 		otpFailLimiter:   ratelimit.New(5, 10*time.Minute),
 	}
@@ -120,7 +122,7 @@ func (s *AuthService) Register(user *model.User, profile *model.UserProfile, con
 	if err := s.userRepo.SaveWithProfile(user, profile); err != nil {
 		return err
 	}
-	return config.NewPostgresWrite().Create(&model.UserSettings{UserID: user.UserID}).Error
+	return s.userSettingsRepo.Create(context.Background(), &model.UserSettings{UserID: user.UserID})
 }
 
 func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword string) error {

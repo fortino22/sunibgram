@@ -78,7 +78,7 @@ func (c *Cache) FlushDB(ctx context.Context) error {
 func (c *Cache) DeleteByPattern(ctx context.Context, pattern string) error {
 	var cursor uint64
 	for {
-		keys, nextCursor, err := c.client.Scan(ctx, cursor, pattern, 100).Result()
+		keys, nextCursor, err := c.client.Scan(ctx, cursor, pattern, 1000).Result()
 		if err != nil {
 			return fmt.Errorf("cache scan: %w", err)
 		}

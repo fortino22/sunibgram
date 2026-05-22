@@ -11,4 +11,5 @@ type IUserSettingsRepository interface {
 	IsUserPrivate(ctx context.Context, userID uint) (bool, error)
 	GetPrivacyMapByUserIDs(ctx context.Context, userIDs []uint) (map[uint]bool, error)
 	UpdateUserSetting(ctx context.Context, setting *model.UserSettings) error
+	Create(ctx context.Context, setting *model.UserSettings) error
 }
