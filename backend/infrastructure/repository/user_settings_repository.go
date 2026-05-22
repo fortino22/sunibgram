@@ -127,16 +127,18 @@ func (r *UserSettingsRepository) invalidateVisibilityDependentCaches(ctx context
 	if r.cache == nil {
 		return
 	}
-	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	_ = r.cache.DeleteByPattern(ctx, "feed:foryou:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
+	_ = r.cache.DeleteByPatterns(ctx,
+		"thread:userfeed:*",
+		"thread:usermedia:*",
+		"thread:following:*",
+		"thread:roots:*",
+		"thread:community:*",
+		"thread:all-communities:*",
+		"thread:my-communities:*",
+		"community:threads:top:*",
+		"community:threads:latest:*",
+		"feed:foryou:*",
+		"event:threads:*",
+	)
 	_ = r.cache.Delete(ctx, "feed:trending:global")
 }

@@ -159,10 +159,12 @@ func (r *UserRepository) invalidateUserPremiumCaches() {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, "reports:all")
-	_ = r.cache.DeleteByPattern(ctx, "reports:id:*")
-	_ = r.cache.DeleteByPattern(ctx, "follows:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	_ = r.cache.DeleteByPatterns(ctx,
+		"reports:id:*",
+		"follows:user:*",
+		"community:threads:top:*",
+		"community:threads:latest:*",
+	)
 }
 
 func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
@@ -170,20 +172,27 @@ func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("bookmarks:user:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("likes:user:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
 	_ = r.cache.Delete(ctx, "feed:trending:global")
+	// User-scoped: reverse-index tag (O(set size), no SCAN). Covers
+	// thread:userfeed/usermedia/following:%d and feed:foryou:user:%d:*.
+	_ = r.cache.InvalidateTags(ctx,
+		userFeedsTag(userID),
+		userForYouTag(userID),
+	)
+	// Remaining patterns: viewer-scoped + global. Set sites not yet
+	// tagged — keep on SCAN-batched until migration extends to them.
+	_ = r.cache.DeleteByPatterns(ctx,
+		fmt.Sprintf("bookmarks:user:%d:*", userID),
+		fmt.Sprintf("likes:user:%d:*", userID),
+		fmt.Sprintf("thread:my-communities:user:%d:*", userID),
+		"thread:following:*",
+		"thread:roots:*",
+		"thread:community:*",
+		"thread:all-communities:*",
+		"community:threads:top:*",
+		"community:threads:latest:*",
+		"event:threads:*",
+	)
 }
 
 func (r *UserRepository) FindAllPaginated(page, limit int) ([]model.User, int64, error) {

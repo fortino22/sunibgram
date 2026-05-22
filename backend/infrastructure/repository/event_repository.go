@@ -352,7 +352,7 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 		if err := r.cache.Set(ctx, key, result, threadFeedTTL); err == nil {
 			for _, t := range result.Threads {
 				if t.ThreadID != 0 {
-					r.cache.SAdd(ctx, threadFeedKeysKey(t.ThreadID), key, 24*time.Hour)
+					r.cache.RegisterCacheKey(ctx, threadFeedsTag(t.ThreadID), key)
 				}
 			}
 		}
@@ -437,9 +437,11 @@ func (r *eventRepository) invalidateLists() {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, "event:list:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:approved:list:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:pending:list:*")
+	_ = r.cache.DeleteByPatterns(ctx,
+		"event:list:*",
+		"event:approved:list:*",
+		"event:pending:list:*",
+	)
 }
 
 func (r *eventRepository) invalidateEvent(id string) {
@@ -448,10 +450,12 @@ func (r *eventRepository) invalidateEvent(id string) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, eventIDKey(id))
-	_ = r.cache.DeleteByPattern(ctx, "event:list:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:approved:list:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:pending:list:*")
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:%s:*", id))
+	_ = r.cache.DeleteByPatterns(ctx,
+		"event:list:*",
+		"event:approved:list:*",
+		"event:pending:list:*",
+		fmt.Sprintf("event:threads:%s:*", id),
+	)
 }
 
 func (r *eventRepository) invalidateEventThreadCaches(id string) {
@@ -480,10 +484,12 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 	for _, thread := range threads {
 		threadIDs = append(threadIDs, thread.ThreadID)
 		_ = r.cache.Delete(ctx, threadKey(thread.ThreadID), parentThreadKey(thread.ThreadID))
-		deleteTrackedCacheKeys(ctx, r.cache, threadFeedKeysKey(thread.ThreadID))
-		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("likes", thread.ThreadID))
-		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("bookmarks", thread.ThreadID))
-		deleteTrackedCacheKeys(ctx, r.cache, interactionThreadCacheKeysKey("reposts", thread.ThreadID))
+		_ = r.cache.InvalidateTags(ctx,
+			threadFeedsTag(thread.ThreadID),
+			interactionThreadCacheKeysKey("likes", thread.ThreadID),
+			interactionThreadCacheKeysKey("bookmarks", thread.ThreadID),
+			interactionThreadCacheKeysKey("reposts", thread.ThreadID),
+		)
 
 		if thread.UserID != 0 {
 			userIDSet[thread.UserID] = struct{}{}
@@ -542,13 +548,6 @@ func (r *eventRepository) invalidateInteractionUserCaches(ctx context.Context, t
 	for _, userID := range userIDs {
 		_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("%s:user:%d:*", table, userID))
 	}
-}
-
-func deleteTrackedCacheKeys(ctx context.Context, c *cache.Cache, setKey string) {
-	if cacheKeys, err := c.SMembers(ctx, setKey); err == nil && len(cacheKeys) > 0 {
-		_ = c.Delete(ctx, cacheKeys...)
-	}
-	_ = c.Delete(ctx, setKey)
 }
 
 func interactionThreadCacheKeysKey(table string, threadID uint) string {

@@ -145,9 +145,11 @@ func (r *facultyRepository) invalidateFacultyUpdate(id uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, facultyIDKey(id))
-	_ = r.cache.DeleteByPattern(ctx, "faculty:list:*")
-	_ = r.cache.DeleteByPattern(ctx, "profile:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "userfaculty:user:*")
+	_ = r.cache.DeleteByPatterns(ctx,
+		"faculty:list:*",
+		"profile:user:*",
+		"userfaculty:user:*",
+	)
 	invalidateNotificationSenderCachePattern(ctx, r.cache)
 	invalidateExploreCache(ctx, r.cache)
 }
@@ -157,23 +159,24 @@ func (r *facultyRepository) invalidateFacultyAuthorResponses() {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, "thread:id:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:chain:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:community:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
-	_ = r.cache.DeleteByPattern(ctx, "feed:foryou:*")
-	_ = r.cache.Delete(ctx, "feed:trending:global")
-	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "reposts:user:*")
-	_ = r.cache.Delete(ctx, "reports:all")
-	_ = r.cache.DeleteByPattern(ctx, "reports:id:*")
+	_ = r.cache.Delete(ctx, "feed:trending:global", "reports:all")
+	_ = r.cache.DeleteByPatterns(ctx,
+		"thread:id:*",
+		"thread:roots:*",
+		"thread:chain:*",
+		"thread:userfeed:*",
+		"thread:usermedia:*",
+		"thread:following:*",
+		"thread:community:*",
+		"thread:all-communities:*",
+		"thread:my-communities:*",
+		"community:threads:top:*",
+		"community:threads:latest:*",
+		"event:threads:*",
+		"feed:foryou:*",
+		"bookmarks:user:*",
+		"likes:user:*",
+		"reposts:user:*",
+		"reports:id:*",
+	)
 }

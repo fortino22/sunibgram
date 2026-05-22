@@ -34,9 +34,11 @@ func (r *LikeRepository) Save(like *model.Like) error {
 	r.base.invalidateUser(ctx, like.UserID)
 	r.patchCount(like.ThreadID, "like_count", 1)
 	ViewerFlagAdd(r.base.cache, like.UserID, "liked", like.ThreadID)
-	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	r.base.cache.DeleteByPattern(ctx, "thread:roots:*")
+	r.base.cache.DeleteByPatterns(ctx,
+		"community:threads:top:*",
+		"community:threads:latest:*",
+		"thread:roots:*",
+	)
 	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }
@@ -53,8 +55,10 @@ func (r *LikeRepository) Delete(userID, threadID uint) error {
 	r.base.invalidateUser(ctx, userID)
 	r.patchCount(threadID, "like_count", -1)
 	ViewerFlagRemove(r.base.cache, userID, "liked", threadID)
-	r.base.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	r.base.cache.DeleteByPattern(ctx, "community:threads:latest:*")
+	r.base.cache.DeleteByPatterns(ctx,
+		"community:threads:top:*",
+		"community:threads:latest:*",
+	)
 	invalidateExploreTopCache(ctx, r.base.cache)
 	return nil
 }

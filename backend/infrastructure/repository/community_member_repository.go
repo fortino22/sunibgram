@@ -231,8 +231,7 @@ func (r *communityMemberRepository) UpdateMemberCount(communityID uint, delta in
 	if r.cache != nil {
 		ctx := context.Background()
 		_ = r.cache.Delete(ctx, communityIDKey(communityID))
-		_ = r.cache.DeleteByPattern(ctx, "community:joined:*")
-		_ = r.cache.DeleteByPattern(ctx, "community:created:*")
+		_ = r.cache.DeleteByPatterns(ctx, "community:joined:*", "community:created:*")
 		invalidateExploreCache(ctx, r.cache)
 	}
 	return nil
@@ -243,21 +242,22 @@ func (r *communityMemberRepository) invalidateCommunityMemberChange(communityID,
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:members:%d:*", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:users:%d:*", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:joined:%d:*", userID))
-	_ = r.cache.Delete(ctx, communityIDKey(communityID))
-	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:*:req:%d", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:*:req:%d", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:all-communities:user:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:threads:*:user:%d:*", userID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:*:viewer:%d:*", userID))
+	_ = r.cache.Delete(ctx, communityIDKey(communityID), fmt.Sprintf("community:about:admins:%d", communityID))
+	_ = r.cache.DeleteByPatterns(ctx,
+		fmt.Sprintf("community:members:%d:*", communityID),
+		fmt.Sprintf("community:users:%d:*", communityID),
+		fmt.Sprintf("community:joined:%d:*", userID),
+		fmt.Sprintf("community:about:topmembers:%d:*", communityID),
+		fmt.Sprintf("community:about:%d:*", communityID),
+		fmt.Sprintf("feed:foryou:%d:*", userID),
+		fmt.Sprintf("thread:following:%d:*", userID),
+		fmt.Sprintf("thread:userfeed:*:req:%d", userID),
+		fmt.Sprintf("thread:usermedia:*:req:%d", userID),
+		fmt.Sprintf("thread:my-communities:user:%d:*", userID),
+		fmt.Sprintf("thread:all-communities:user:%d:*", userID),
+		fmt.Sprintf("community:threads:*:user:%d:*", userID),
+		fmt.Sprintf("event:threads:*:viewer:%d:*", userID),
+	)
 	invalidateExploreCache(ctx, r.cache)
 }
 
@@ -271,9 +271,11 @@ func (r *communityMemberRepository) invalidateCommunityMemberRole(communityID ui
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:members:%d:*", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:users:%d:*", communityID))
 	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", communityID))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", communityID))
+	_ = r.cache.DeleteByPatterns(ctx,
+		fmt.Sprintf("community:members:%d:*", communityID),
+		fmt.Sprintf("community:users:%d:*", communityID),
+		fmt.Sprintf("community:about:topmembers:%d:*", communityID),
+		fmt.Sprintf("community:about:%d:*", communityID),
+	)
 }

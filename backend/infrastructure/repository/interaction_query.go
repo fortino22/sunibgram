@@ -39,8 +39,12 @@ func (r *interactionRepo) listKey(userID uint, page, limit int) string {
 	return fmt.Sprintf("%s:user:%d:page:%d:limit:%d", r.table, userID, page, limit)
 }
 
-func (r *interactionRepo) threadCacheKeysKey(threadID uint) string {
-	return fmt.Sprintf("%s:thread:%d:cache_keys", r.table, threadID)
+// interactionThreadTag returns the reverse-index tag for cache keys whose
+// invalidation is keyed on (table, threadID). Shared with event_repository.go
+// via interactionThreadCacheKeysKey — kept symmetric so a key registered here
+// is invalidatable from there.
+func (r *interactionRepo) interactionThreadTag(threadID uint) string {
+	return interactionThreadCacheKeysKey(r.table, threadID)
 }
 
 func (r *interactionRepo) invalidateUser(ctx context.Context, userID uint) {
@@ -48,11 +52,7 @@ func (r *interactionRepo) invalidateUser(ctx context.Context, userID uint) {
 }
 
 func (r *interactionRepo) invalidateByThreadID(ctx context.Context, threadID uint) {
-	setKey := r.threadCacheKeysKey(threadID)
-	if cacheKeys, err := r.cache.SMembers(ctx, setKey); err == nil && len(cacheKeys) > 0 {
-		r.cache.Delete(ctx, cacheKeys...)
-	}
-	r.cache.Delete(ctx, setKey)
+	_ = r.cache.InvalidateTag(ctx, r.interactionThreadTag(threadID))
 }
 
 func (r *interactionRepo) deleteByThreadID(threadID uint) error {
@@ -163,7 +163,7 @@ func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Th
 	}, r.ttl); err == nil {
 		for _, threadID := range ids {
 			if threadID != 0 {
-				r.cache.SAdd(ctx, r.threadCacheKeysKey(threadID), key, 24*time.Hour)
+				r.cache.RegisterCacheKey(ctx, r.interactionThreadTag(threadID), key)
 			}
 		}
 	}

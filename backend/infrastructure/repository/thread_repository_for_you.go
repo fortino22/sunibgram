@@ -258,7 +258,9 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 	if count > 1000 {
 		count = 1000
 	}
-	_ = r.cache.Set(ctx, key, count, 30*time.Second)
+	if err := r.cache.Set(ctx, key, count, 30*time.Second); err == nil {
+		r.trackForYouKey(ctx, userID, key)
+	}
 	return count, nil
 }
 
@@ -280,7 +282,9 @@ func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]model.
 		Find(&threads).Error; err != nil {
 		return nil, err
 	}
-	_ = r.cache.Set(ctx, key, threads, forYouOwnTTL)
+	if err := r.cache.Set(ctx, key, threads, forYouOwnTTL); err == nil {
+		r.trackForYouKey(ctx, userID, key)
+	}
 	return threads, nil
 }
 
@@ -306,7 +310,9 @@ func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]
 		Find(&threads).Error; err != nil {
 		return nil, err
 	}
-	_ = r.cache.Set(ctx, key, threads, forYouSourceTTL)
+	if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
+		r.trackForYouKey(ctx, userID, key)
+	}
 	return threads, nil
 }
 
@@ -329,7 +335,9 @@ func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]
 		Find(&threads).Error; err != nil {
 		return nil, err
 	}
-	_ = r.cache.Set(ctx, key, threads, forYouSourceTTL)
+	if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
+		r.trackForYouKey(ctx, userID, key)
+	}
 	return threads, nil
 }
 

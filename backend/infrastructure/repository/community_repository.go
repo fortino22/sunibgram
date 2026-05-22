@@ -450,11 +450,12 @@ func (r *communityRepository) invalidateCommunityUpdate(id, creatorID uint) {
 		return
 	}
 	ctx := context.Background()
-	_ = r.cache.Delete(ctx, communityIDKey(id))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:created:%d:*", creatorID))
-	_ = r.cache.Delete(ctx, fmt.Sprintf("community:about:admins:%d", id))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:topmembers:%d:*", id))
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:about:%d:*", id))
+	_ = r.cache.Delete(ctx, communityIDKey(id), fmt.Sprintf("community:about:admins:%d", id))
+	_ = r.cache.DeleteByPatterns(ctx,
+		fmt.Sprintf("community:created:%d:*", creatorID),
+		fmt.Sprintf("community:about:topmembers:%d:*", id),
+		fmt.Sprintf("community:about:%d:*", id),
+	)
 	r.invalidateCommunityThreadCaches(ctx, id)
 	invalidateExploreCache(ctx, r.cache)
 }
@@ -470,20 +471,22 @@ func (r *communityRepository) invalidateCommunityDelete(id, creatorID uint) {
 }
 
 func (r *communityRepository) invalidateCommunityThreadCaches(ctx context.Context, communityID uint) {
-	_ = r.cache.DeleteByPattern(ctx, "thread:id:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:chain:*")
-	_ = r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:community:%d:*", communityID))
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	_ = r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:userfeed:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:usermedia:*")
-	_ = r.cache.DeleteByPattern(ctx, "thread:following:*")
-	_ = r.cache.DeleteByPattern(ctx, "feed:foryou:*")
 	_ = r.cache.Delete(ctx, "feed:trending:global")
-	_ = r.cache.DeleteByPattern(ctx, "bookmarks:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "likes:user:*")
-	_ = r.cache.DeleteByPattern(ctx, "event:threads:*")
+	_ = r.cache.DeleteByPatterns(ctx,
+		"thread:id:*",
+		"thread:roots:*",
+		"thread:chain:*",
+		fmt.Sprintf("thread:community:%d:*", communityID),
+		"community:threads:top:*",
+		"community:threads:latest:*",
+		"thread:all-communities:*",
+		"thread:my-communities:*",
+		"thread:userfeed:*",
+		"thread:usermedia:*",
+		"thread:following:*",
+		"feed:foryou:*",
+		"bookmarks:user:*",
+		"likes:user:*",
+		"event:threads:*",
+	)
 }

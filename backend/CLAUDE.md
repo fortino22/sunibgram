@@ -59,6 +59,22 @@ Wire in:
 
 **Redis cache** — `cache.Get → readDB → cache.Set`. Invalidate on mutations. Keys: `entity:id`, `entity:list:page:limit`.
 
+**Cache invalidation tiers** — pick the right one for the access pattern:
+
+| Tier | When | API |
+|---|---|---|
+| Direct delete | Key is deterministic (one cached value per `entity:id`) | `cache.Delete(ctx, key1, key2...)` |
+| Reverse-index tag | Many parametric keys share an entity (pagination, query variants) | `cache.RegisterCacheKey(ctx, tag, key)` on Set + `cache.InvalidateTag(ctx, tag)` on mutation |
+| Pattern SCAN (batched) | Global low-cardinality families with no registry, or legacy paths | `cache.DeleteByPatterns(ctx, patterns...)` |
+
+Prefer tags over SCAN. Tags are O(set size), SCAN is O(keyspace). Add tag builders to `infrastructure/repository/tag_keys.go` — never inline `"tag:..."` strings. Tag set TTL = 24h (`cache.TagTTL`); any cached value with longer TTL must register under a different mechanism.
+
+**Tag invariant** — every Set of a key that should be tag-invalidatable must register under the tag. Half-migration = permanent stale (until cache TTL). Migrate one entity surface at a time: change all Set sites first, then switch invalidate path. Existing tagged surfaces:
+- `userFeedsTag(uid)` — `thread:userfeed/usermedia/following:<uid>:*` (Set sites in `thread_repository_user_feed.go`)
+- `userForYouTag(uid)` — `feed:foryou:user:<uid>:src/newcount:*` (Set sites in `thread_repository_for_you.go`)
+- `threadFeedsTag(tid)` — feed caches containing thread (Set sites in `thread_repository_*.go`)
+- `interactionThreadCacheKeysKey(table, tid)` — like/bookmark/repost listings containing thread (Set in `interaction_query.go`)
+
 **File validation** — lives in `domain/model/`. `model.ValidateImageExt` (jpg/jpeg/png/webp) in `media.go`. `model.ValidateThreadMediaExt` in `thread_media.go`. Never in application layer.
 
 **File upload** — endpoints accepting files use `ctx.FormValue` + `ctx.FormFile` (multipart). No-file endpoints use `ctx.BodyParser` (JSON).

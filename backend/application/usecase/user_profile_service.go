@@ -150,16 +150,17 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			return err
 		}
 		if s.cacheRepo != nil {
-			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:top:*")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "community:threads:latest:*")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-
-			// Invalidate all feed caches that embed the user's name inside thread objects.
-			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
-			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
-			_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
+			_ = s.cacheRepo.DeleteByPatterns(ctx,
+				"community:threads:top:*",
+				"community:threads:latest:*",
+				"thread:all-communities:*",
+				// Invalidate all feed caches that embed the user's name inside thread objects.
+				fmt.Sprintf("thread:userfeed:%d:*", userID),
+				fmt.Sprintf("thread:usermedia:%d:*", userID),
+				fmt.Sprintf("feed:foryou:%d:*", userID),
+				"thread:following:*",
+			)
 			_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
-			_ = s.cacheRepo.DeleteByPattern(ctx, "thread:following:*")
 		}
 		s.invalidateUserProfileCaches(ctx, userID)
 	}
@@ -243,22 +244,23 @@ func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, us
 		fmt.Sprintf("notification:sender:%d", userID),
 		fmt.Sprintf("userfaculty:user:%d", userID),
 	)
-	_ = s.cacheRepo.Delete(ctx, "reports:all")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "reports:id:*")
-	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
-	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
-	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:%d:*", userID))
-	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("bookmarks:user:%d:*", userID))
-	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("likes:user:%d:*", userID))
-	_ = s.cacheRepo.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", userID))
-	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:roots:*")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:following:*")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:community:*")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "thread:all-communities:*")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "event:threads:*")
-	_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "community:requests:*")
-	_ = s.cacheRepo.DeleteByPattern(ctx, "community:users:*")
+	_ = s.cacheRepo.Delete(ctx, "reports:all", "feed:trending:global")
+	_ = s.cacheRepo.DeleteByPatterns(ctx,
+		"reports:id:*",
+		fmt.Sprintf("thread:userfeed:%d:*", userID),
+		fmt.Sprintf("thread:usermedia:%d:*", userID),
+		fmt.Sprintf("feed:foryou:%d:*", userID),
+		fmt.Sprintf("bookmarks:user:%d:*", userID),
+		fmt.Sprintf("likes:user:%d:*", userID),
+		fmt.Sprintf("thread:my-communities:user:%d:*", userID),
+		"thread:roots:*",
+		"thread:following:*",
+		"thread:community:*",
+		"thread:all-communities:*",
+		"event:threads:*",
+		"community:requests:*",
+		"community:users:*",
+	)
 }
 
 func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {

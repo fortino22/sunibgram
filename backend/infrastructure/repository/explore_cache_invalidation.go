@@ -19,8 +19,7 @@ func invalidateExplorePostCaches(ctx context.Context, c *cache.Cache) {
 	if c == nil {
 		return
 	}
-	_ = c.DeleteByPattern(ctx, "explore:top:*")
-	_ = c.DeleteByPattern(ctx, "explore:latest:*")
+	_ = c.DeleteByPatterns(ctx, "explore:top:*", "explore:latest:*")
 }
 
 func invalidateExploreTopCache(ctx context.Context, c *cache.Cache) {

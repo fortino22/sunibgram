@@ -105,15 +105,17 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 }
 
 func (r *followRepository) invalidateVisibilityFeedsForViewer(ctx context.Context, viewerID uint) {
-	r.cache.DeleteByPattern(ctx, threadForYouFeedPattern(viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:following:%d:*", viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:roots:*:viewer:%d", viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:*:req:%d", viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:*:req:%d", viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:my-communities:user:%d:*", viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:all-communities:user:%d:*", viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("community:threads:*:user:%d:*", viewerID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("event:threads:*:viewer:%d:*", viewerID))
+	r.cache.DeleteByPatterns(ctx,
+		threadForYouFeedPattern(viewerID),
+		fmt.Sprintf("thread:following:%d:*", viewerID),
+		fmt.Sprintf("thread:roots:*:viewer:%d", viewerID),
+		fmt.Sprintf("thread:userfeed:*:req:%d", viewerID),
+		fmt.Sprintf("thread:usermedia:*:req:%d", viewerID),
+		fmt.Sprintf("thread:my-communities:user:%d:*", viewerID),
+		fmt.Sprintf("thread:all-communities:user:%d:*", viewerID),
+		fmt.Sprintf("community:threads:*:user:%d:*", viewerID),
+		fmt.Sprintf("event:threads:*:viewer:%d:*", viewerID),
+	)
 }
 
 func (r *followRepository) Exists(followerID, followingID uint) (bool, error) {

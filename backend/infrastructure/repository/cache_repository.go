@@ -35,3 +35,23 @@ func (r *CacheRepository) Delete(ctx context.Context, keys ...string) error {
 func (r *CacheRepository) DeleteByPattern(ctx context.Context, pattern string) error {
 	return r.cache.DeleteByPattern(ctx, pattern)
 }
+
+func (r *CacheRepository) DeleteByPatterns(ctx context.Context, patterns ...string) error {
+	return r.cache.DeleteByPatterns(ctx, patterns...)
+}
+
+func (r *CacheRepository) RegisterCacheKey(ctx context.Context, tag, cacheKey string) error {
+	return r.cache.RegisterCacheKey(ctx, tag, cacheKey)
+}
+
+func (r *CacheRepository) RegisterCacheKeyMany(ctx context.Context, tags []string, cacheKey string) error {
+	return r.cache.RegisterCacheKeyMany(ctx, tags, cacheKey)
+}
+
+func (r *CacheRepository) InvalidateTag(ctx context.Context, tag string) error {
+	return r.cache.InvalidateTag(ctx, tag)
+}
+
+func (r *CacheRepository) InvalidateTags(ctx context.Context, tags ...string) error {
+	return r.cache.InvalidateTags(ctx, tags...)
+}

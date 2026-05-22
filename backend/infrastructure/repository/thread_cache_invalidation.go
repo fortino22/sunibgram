@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/sunibgram/domain/model"
 )
@@ -45,29 +44,46 @@ func communityThreadsQueryKey(sort, query string, userID uint, page, limit int) 
 }
 
 func (r *threadCached) invalidateCommunityThreadQueryCaches(ctx context.Context) {
-	r.cache.DeleteByPattern(ctx, "community:threads:top:*")
-	r.cache.DeleteByPattern(ctx, "community:threads:latest:*")
-	r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
-	r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
+	r.cache.DeleteByPatterns(ctx,
+		"community:threads:top:*",
+		"community:threads:latest:*",
+		"thread:all-communities:*",
+		"thread:my-communities:*",
+	)
 }
 
-func threadFeedKeysKey(threadID uint) string {
-	return fmt.Sprintf("thread:feed_keys:%d", threadID)
-}
-
+// trackFeedCacheKey registers a cache key under a thread's feed tag so
+// invalidateFeedCachesByThreadID can drop every feed that contains the thread
+// in one O(set size) sweep — no SCAN. Pure delegation to the generic tag API.
 func (r *threadCached) trackFeedCacheKey(ctx context.Context, threadID uint, key string) {
 	if threadID == 0 {
 		return
 	}
-	r.cache.SAdd(ctx, threadFeedKeysKey(threadID), key, 24*time.Hour)
+	r.cache.RegisterCacheKey(ctx, threadFeedsTag(threadID), key)
+}
+
+// trackUserFeedKey registers a cache key under a user's feed tag.
+// Use for thread:userfeed:<uid>:*, thread:usermedia:<uid>:*, thread:following:<uid>:* —
+// all user-scoped feed cache families. Lets invalidateUserFeedCache drop them
+// without SCAN.
+func (r *threadCached) trackUserFeedKey(ctx context.Context, userID uint, key string) {
+	if userID == 0 {
+		return
+	}
+	r.cache.RegisterCacheKey(ctx, userFeedsTag(userID), key)
+}
+
+// trackForYouKey registers a foryou source/newcount cache key under the user's
+// foryou tag.
+func (r *threadCached) trackForYouKey(ctx context.Context, userID uint, key string) {
+	if userID == 0 {
+		return
+	}
+	r.cache.RegisterCacheKey(ctx, userForYouTag(userID), key)
 }
 
 func (r *threadCached) invalidateFeedCachesByThreadID(ctx context.Context, threadID uint) {
-	setKey := threadFeedKeysKey(threadID)
-	if cacheKeys, err := r.cache.SMembers(ctx, setKey); err == nil && len(cacheKeys) > 0 {
-		r.cache.Delete(ctx, cacheKeys...)
-	}
-	r.cache.Delete(ctx, setKey)
+	_ = r.cache.InvalidateTag(ctx, threadFeedsTag(threadID))
 }
 
 func (r *threadCached) invalidate(ctx context.Context, threadID uint, rootID *uint, communityID *uint) {
@@ -90,12 +106,16 @@ func (r *threadCached) invalidateInteractions(ctx context.Context, threadID uint
 	r.reposts.invalidateByThreadID(ctx, threadID)
 }
 
+// invalidateUserFeedCache drops thread:userfeed/usermedia/following entries
+// for the user via reverse-index tag — no SCAN. Coarser blast radius than the
+// legacy per-pattern call (also nukes media + following) but each Set site
+// re-registers cheaply on miss, so the over-invalidation is harmless.
 func (r *threadCached) invalidateUserFeedCache(ctx context.Context, userID uint) {
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:userfeed:%d:*", userID))
+	_ = r.cache.InvalidateTag(ctx, userFeedsTag(userID))
 }
 
 func (r *threadCached) invalidateUserMediaCache(ctx context.Context, userID uint) {
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("thread:usermedia:%d:*", userID))
+	_ = r.cache.InvalidateTag(ctx, userFeedsTag(userID))
 }
 
 func (r *threadCached) invalidateFollowingFeedCache(ctx context.Context) {
@@ -109,8 +129,7 @@ func (r *threadCached) invalidateFollowingFeedCache(ctx context.Context) {
 // Seed invalidation only happens via InvalidateForYouSeed, called from the
 // explicit refresh endpoint.
 func (r *threadCached) invalidateForYouFeedCacheForUser(ctx context.Context, userID uint) {
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:user:%d:src:*", userID))
-	r.cache.DeleteByPattern(ctx, fmt.Sprintf("feed:foryou:user:%d:newcount:*", userID))
+	_ = r.cache.InvalidateTag(ctx, userForYouTag(userID))
 }
 
 func (r *threadCached) invalidateForYouFeedCachesForFollowers(ctx context.Context, userID uint) {
@@ -144,16 +163,19 @@ func (r *threadCached) invalidateTrendingFeed(ctx context.Context) {
 }
 
 func (r *threadCached) InvalidateUserFeedCaches(ctx context.Context, userID uint) {
-	r.invalidateUserFeedCache(ctx, userID)
-	r.invalidateUserMediaCache(ctx, userID)
+	// User-scoped: reverse-index tag (O(set size), no SCAN).
+	_ = r.cache.InvalidateTag(ctx, userFeedsTag(userID))
+	// Global feed families: low-cardinality pagination variants, SCAN is fine.
+	r.cache.DeleteByPatterns(ctx,
+		"thread:following:*",
+		"thread:roots:*",
+		"thread:my-communities:*",
+		"thread:all-communities:*",
+		"community:threads:*",
+		"event:threads:*",
+	)
 	r.invalidateTrendingFeed(ctx)
 	r.invalidateForYouFeedCacheForUser(ctx, userID)
 	r.invalidateForYouFeedCachesForFollowers(ctx, userID)
-	r.invalidateFollowingFeedCache(ctx)
-	r.cache.DeleteByPattern(ctx, "thread:roots:*")
-	r.cache.DeleteByPattern(ctx, "thread:my-communities:*")
-	r.cache.DeleteByPattern(ctx, "thread:all-communities:*")
-	r.cache.DeleteByPattern(ctx, "community:threads:*")
-	r.cache.DeleteByPattern(ctx, "event:threads:*")
 	invalidateExploreCache(ctx, r.cache)
 }

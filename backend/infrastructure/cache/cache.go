@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -95,6 +96,52 @@ func (c *Cache) DeleteByPattern(ctx context.Context, pattern string) error {
 	return nil
 }
 
+// DeleteByPatterns fans SCAN across all patterns in parallel and pipelines the
+// resulting DELs. Use when an invalidation path needs to drop multiple
+// patterns at once — equivalent to N serial DeleteByPattern calls but much
+// faster (parallel SCAN + single DEL pipeline per scan batch). Returns the
+// first error encountered; other goroutines still complete.
+func (c *Cache) DeleteByPatterns(ctx context.Context, patterns ...string) error {
+	if len(patterns) == 0 {
+		return nil
+	}
+	if len(patterns) == 1 {
+		return c.DeleteByPattern(ctx, patterns[0])
+	}
+
+	var (
+		wg      sync.WaitGroup
+		errOnce sync.Once
+		firstErr error
+	)
+	for _, pattern := range patterns {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+			var cursor uint64
+			for {
+				keys, nextCursor, err := c.client.Scan(ctx, cursor, p, 1000).Result()
+				if err != nil {
+					errOnce.Do(func() { firstErr = fmt.Errorf("cache scan %q: %w", p, err) })
+					return
+				}
+				if len(keys) > 0 {
+					if err := c.client.Del(ctx, keys...).Err(); err != nil {
+						errOnce.Do(func() { firstErr = fmt.Errorf("cache delete %q: %w", p, err) })
+						return
+					}
+				}
+				cursor = nextCursor
+				if cursor == 0 {
+					return
+				}
+			}
+		}(pattern)
+	}
+	wg.Wait()
+	return firstErr
+}
+
 func (c *Cache) SAdd(ctx context.Context, key string, member string, ttl time.Duration) error {
 	if err := c.client.SAdd(ctx, key, member).Err(); err != nil {
 		return err
@@ -153,4 +200,89 @@ func (c *Cache) Exists(ctx context.Context, key string) (bool, error) {
 
 func (c *Cache) Miss(err error) bool {
 	return err == redis.Nil
+}
+
+// TagTTL controls how long a reverse-index tag set survives. Must be >= the
+// TTL of any cache key registered under it; otherwise InvalidateTag will miss
+// keys that should be dropped.
+const TagTTL = 24 * time.Hour
+
+// RegisterCacheKey adds a cache key to a tag set. Tag sets are used by
+// InvalidateTag for O(set size) invalidation instead of O(keyspace) SCAN.
+//
+// Convention: tag string starts with "tag:" — see tag_keys.go in the
+// infrastructure/repository package for the canonical builders.
+//
+// Side effects: SADD member + refresh TTL on the tag set. Safe to call
+// repeatedly for the same (tag, key) pair.
+func (c *Cache) RegisterCacheKey(ctx context.Context, tag, cacheKey string) error {
+	return c.SAdd(ctx, tag, cacheKey, TagTTL)
+}
+
+// RegisterCacheKeyMany registers a cache key under multiple tags in one shot.
+// Each tag receives the same key as a member; useful when one cached value
+// must be invalidatable by several entity tags (e.g. user feed keyed by
+// (user, requester) — register under both).
+func (c *Cache) RegisterCacheKeyMany(ctx context.Context, tags []string, cacheKey string) error {
+	for _, tag := range tags {
+		if tag == "" {
+			continue
+		}
+		if err := c.SAdd(ctx, tag, cacheKey, TagTTL); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// InvalidateTag drops every cache key registered under the tag, then drops
+// the tag set itself. O(members), not O(keyspace) — the win over SCAN.
+//
+// Pipelined DEL: all members deleted in one round-trip. Returns first error;
+// keys not deleted on error remain reachable via SMEMBERS, so re-invalidation
+// is idempotent.
+func (c *Cache) InvalidateTag(ctx context.Context, tag string) error {
+	members, err := c.client.SMembers(ctx, tag).Result()
+	if err != nil {
+		return fmt.Errorf("cache smembers %q: %w", tag, err)
+	}
+	if len(members) > 0 {
+		if err := c.client.Del(ctx, members...).Err(); err != nil {
+			return fmt.Errorf("cache del tag %q: %w", tag, err)
+		}
+	}
+	if err := c.client.Del(ctx, tag).Err(); err != nil {
+		return fmt.Errorf("cache del tag set %q: %w", tag, err)
+	}
+	return nil
+}
+
+// InvalidateTags fans InvalidateTag across many tags in parallel. Returns
+// first error encountered; other goroutines still complete.
+func (c *Cache) InvalidateTags(ctx context.Context, tags ...string) error {
+	if len(tags) == 0 {
+		return nil
+	}
+	if len(tags) == 1 {
+		return c.InvalidateTag(ctx, tags[0])
+	}
+	var (
+		wg       sync.WaitGroup
+		errOnce  sync.Once
+		firstErr error
+	)
+	for _, tag := range tags {
+		if tag == "" {
+			continue
+		}
+		wg.Add(1)
+		go func(t string) {
+			defer wg.Done()
+			if err := c.InvalidateTag(ctx, t); err != nil {
+				errOnce.Do(func() { firstErr = err })
+			}
+		}(tag)
+	}
+	wg.Wait()
+	return firstErr
 }
