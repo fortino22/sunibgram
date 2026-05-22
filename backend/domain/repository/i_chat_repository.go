@@ -1,12 +1,12 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import chatmodel "github.com/sunibgram/domain/model/chat"
 
 type IChatRepository interface {
-	Save(chat *model.Chat) error
-	FindByRoomID(roomID uint, page, limit int) ([]model.Chat, int64, error)
-	FindByID(id uint) (*model.Chat, error)
-	FindByIDs(ids []uint) ([]model.Chat, error)
+	Save(chat *chatmodel.Chat) error
+	FindByRoomID(roomID uint, page, limit int) ([]chatmodel.Chat, int64, error)
+	FindByID(id uint) (*chatmodel.Chat, error)
+	FindByIDs(ids []uint) ([]chatmodel.Chat, error)
 	SoftDelete(id uint) error
 	Delete(id uint) error
 	MarkRoomRead(roomID, userID uint) ([]uint, error)

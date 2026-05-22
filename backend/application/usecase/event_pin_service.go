@@ -6,7 +6,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	eventpinmodel "github.com/sunibgram/domain/model/event_pin"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -41,7 +42,7 @@ func (s *EventPinService) Pin(userID uint, eventID string) error {
 	if count >= maxEventPinsPerUser {
 		return errors.New("maximum of 3 pinned events reached")
 	}
-	return s.pinRepo.Pin(&model.UserEventPin{UserID: userID, EventID: eventID})
+	return s.pinRepo.Pin(&eventpinmodel.UserEventPin{UserID: userID, EventID: eventID})
 }
 
 const maxEventPinsPerUser = 3
@@ -60,7 +61,7 @@ func (s *EventPinService) Unpin(userID uint, eventID string) error {
 	return s.pinRepo.Unpin(userID, eventID)
 }
 
-func (s *EventPinService) GetMyPins(userID uint, page, limit int) ([]model.Event, int64, error) {
+func (s *EventPinService) GetMyPins(userID uint, page, limit int) ([]threadmodel.Event, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.pinRepo.FindMyPins(userID, page, limit)
 }

@@ -6,7 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	bookmarkmodel "github.com/sunibgram/domain/model/bookmark"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -23,11 +24,11 @@ func NewBookmarkRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount 
 	}
 }
 
-func (r *BookmarkRepository) Save(bookmark *model.Bookmark) error {
+func (r *BookmarkRepository) Save(bookmark *bookmarkmodel.Bookmark) error {
 	if err := r.base.saveRecord(bookmark); err != nil {
 		return err
 	}
-	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", bookmark.ThreadID).
+	r.base.writeDB.Model(&threadmodel.Thread{}).Where("thread_id = ?", bookmark.ThreadID).
 		UpdateColumn("bookmark_count", gorm.Expr("bookmark_count + 1"))
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, bookmark.UserID)
@@ -42,10 +43,10 @@ func (r *BookmarkRepository) Save(bookmark *model.Bookmark) error {
 }
 
 func (r *BookmarkRepository) Delete(userID, threadID uint) error {
-	if err := r.base.deleteRecord(userID, threadID, &model.Bookmark{}); err != nil {
+	if err := r.base.deleteRecord(userID, threadID, &bookmarkmodel.Bookmark{}); err != nil {
 		return err
 	}
-	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
+	r.base.writeDB.Model(&threadmodel.Thread{}).Where("thread_id = ?", threadID).
 		UpdateColumn("bookmark_count", gorm.Expr("GREATEST(bookmark_count - 1, 0)"))
 	ctx := context.Background()
 	r.base.invalidateUser(ctx, userID)
@@ -57,7 +58,7 @@ func (r *BookmarkRepository) Delete(userID, threadID uint) error {
 }
 
 func (r *BookmarkRepository) Exists(userID, threadID uint) (bool, error) {
-	return r.base.exists(userID, threadID, &model.Bookmark{})
+	return r.base.exists(userID, threadID, &bookmarkmodel.Bookmark{})
 }
 
 func (r *BookmarkRepository) AreThreadsBookmarked(userID uint, threadIDs []uint) (map[uint]bool, error) {
@@ -68,6 +69,6 @@ func (r *BookmarkRepository) AllBookmarkedThreadIDs(userID uint) ([]uint, error)
 	return r.base.allUserThreadIDs(userID)
 }
 
-func (r *BookmarkRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
+func (r *BookmarkRepository) FindByUserID(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	return r.base.findByUserID(userID, page, limit)
 }

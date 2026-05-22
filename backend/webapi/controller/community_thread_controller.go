@@ -6,7 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	"github.com/sunibgram/domain/service"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
@@ -94,8 +95,8 @@ func (c *CommunityThreadController) GetCommunityThreadsBySort(ctx *fiber.Ctx) er
 				}
 			}
 			if pinned, ferr := c.threadService.GetByID(pin.ThreadID); ferr == nil && pinned != nil {
-				threads = append([]model.Thread{*pinned}, threads...)
-				parents = append([]*model.Thread{nil}, parents...)
+				threads = append([]threadmodel.Thread{*pinned}, threads...)
+				parents = append([]*threadmodel.Thread{nil}, parents...)
 			} else {
 				pinnedThreadID = 0
 			}
@@ -139,7 +140,7 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 	}
 
 	files := threadMediaFiles(ctx)
-	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+	if err := threadmediamodel.ValidateThreadMediaCount(len(files)); err != nil {
 		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -190,7 +191,7 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 
 func (c *CommunityThreadController) getCommunityThreads(
 	ctx *fiber.Ctx,
-	load func(communityID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error),
+	load func(communityID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error),
 ) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {
@@ -224,8 +225,8 @@ func (c *CommunityThreadController) getCommunityThreads(
 				}
 			}
 			if pinned, ferr := c.threadService.GetByID(pin.ThreadID); ferr == nil && pinned != nil {
-				threads = append([]model.Thread{*pinned}, threads...)
-				parents = append([]*model.Thread{nil}, parents...)
+				threads = append([]threadmodel.Thread{*pinned}, threads...)
+				parents = append([]*threadmodel.Thread{nil}, parents...)
 			} else {
 				pinnedThreadID = 0
 			}
@@ -265,7 +266,7 @@ func (c *CommunityThreadController) threadCtrl() *ThreadController {
 
 func (c *CommunityThreadController) getCommunityThreadsByQuery(
 	ctx *fiber.Ctx,
-	load func(context.Context, uint, string, int, int) ([]model.Thread, []*model.Thread, int64, error),
+	load func(context.Context, uint, string, int, int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error),
 ) error {
 	claims, ok := RequireAuth(ctx)
 	if !ok {

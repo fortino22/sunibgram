@@ -5,10 +5,10 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	violationmodel "github.com/sunibgram/domain/model/violation"
 )
 
-var violationSeeds = []model.Violation{
+var violationSeeds = []violationmodel.Violation{
 	{Name: "Spam", Description: "Repetitive, misleading, or unwanted promotional content."},
 	{Name: "Harassment", Description: "Bullying, intimidation, threats, or targeted abusive behavior."},
 	{Name: "Hate Speech", Description: "Content attacking people based on protected characteristics."},
@@ -22,7 +22,7 @@ var violationSeeds = []model.Violation{
 func SeedViolation(db *gorm.DB) {
 	for _, seed := range violationSeeds {
 		violation := seed
-		if err := db.Where(model.Violation{Name: seed.Name}).FirstOrCreate(&violation).Error; err != nil {
+		if err := db.Where(violationmodel.Violation{Name: seed.Name}).FirstOrCreate(&violation).Error; err != nil {
 			log.Printf("violation seeder: failed to seed violation %s: %v", seed.Name, err)
 			continue
 		}

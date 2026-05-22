@@ -12,7 +12,8 @@ import (
 	"github.com/midtrans/midtrans-go/snap"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	ordermodel "github.com/sunibgram/domain/model/order"
+	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -77,7 +78,7 @@ func (s *OrderService) CreateOrder(userID uint, amount int64, purpose, itemID, i
 		return nil, fmt.Errorf("failed to create midtrans transaction: %w", err)
 	}
 
-	order := &model.Order{
+	order := &ordermodel.Order{
 		OrderID: orderID,
 		UserID:  userID,
 		Amount:  amount,
@@ -111,7 +112,7 @@ func (s *OrderService) BuyPremium(userID uint) (*service.CreateOrderResult, erro
 	return s.CreateOrder(userID, PremiumAmount, "PREMIUM", "SUNIBGRAM-PREMIUM", "Sunibgram Premium")
 }
 
-func (s *OrderService) GetByID(id uint) (*model.Order, error) {
+func (s *OrderService) GetByID(id uint) (*ordermodel.Order, error) {
 	order, err := s.orderRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("order not found")
@@ -119,7 +120,7 @@ func (s *OrderService) GetByID(id uint) (*model.Order, error) {
 	return order, nil
 }
 
-func (s *OrderService) GetByOrderID(orderID string) (*model.Order, error) {
+func (s *OrderService) GetByOrderID(orderID string) (*ordermodel.Order, error) {
 	order, err := s.orderRepo.FindByOrderID(orderID)
 	if err != nil {
 		return nil, errors.New("order not found")
@@ -127,12 +128,12 @@ func (s *OrderService) GetByOrderID(orderID string) (*model.Order, error) {
 	return order, nil
 }
 
-func (s *OrderService) GetByUserID(userID uint, page, limit int) ([]model.Order, int64, error) {
+func (s *OrderService) GetByUserID(userID uint, page, limit int) ([]ordermodel.Order, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 10)
 	return s.orderRepo.FindByUserID(userID, page, limit)
 }
 
-func (s *OrderService) GetAll(page, limit int) ([]model.Order, int64, error) {
+func (s *OrderService) GetAll(page, limit int) ([]ordermodel.Order, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 10)
 	return s.orderRepo.FindAll(page, limit)
 }
@@ -166,7 +167,7 @@ func (s *OrderService) HandleNotification(payload map[string]interface{}) error 
 			return fmt.Errorf("failed to set user premium: %w", err)
 		}
 		now := time.Now()
-		subscription := &model.PremiumSubscription{
+		subscription := &premiumsubscriptionmodel.PremiumSubscription{
 			UserID:                order.UserID,
 			IsTrial:               false,
 			SubscriptionStartDate: now,

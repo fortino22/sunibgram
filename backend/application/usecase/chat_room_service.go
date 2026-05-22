@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -24,7 +24,7 @@ func NewChatRoomService(roomRepo repository.IChatRoomRepository, userRepo reposi
 	return &ChatRoomService{roomRepo: roomRepo, userRepo: userRepo, storageUsecase: storageUsecase}
 }
 
-func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, targetUserID uint) (*model.ChatRoom, error) {
+func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, targetUserID uint) (*chatroommodel.ChatRoom, error) {
 	if initiatorID == targetUserID {
 		return nil, errors.New("cannot create private room with yourself")
 	}
@@ -38,7 +38,7 @@ func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, target
 		return room, nil
 	}
 
-	room := &model.ChatRoom{Type: model.ChatRoomTypePrivate}
+	room := &chatroommodel.ChatRoom{Type: chatroommodel.ChatRoomTypePrivate}
 	if err := s.assignRoomKey(room); err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, target
 	return room, nil
 }
 
-func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name string, description *string, memberIDs []uint) (*model.ChatRoom, error) {
+func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name string, description *string, memberIDs []uint) (*chatroommodel.ChatRoom, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("name is required")
@@ -70,7 +70,7 @@ func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name 
 		*description = trimmed
 	}
 
-	room := &model.ChatRoom{Name: &name, Description: description, Type: model.ChatRoomTypeGroup}
+	room := &chatroommodel.ChatRoom{Name: &name, Description: description, Type: chatroommodel.ChatRoomTypeGroup}
 	if err := s.assignRoomKey(room); err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name 
 	return room, nil
 }
 
-func (s *ChatRoomService) AddMemberToGroup(ctx context.Context, roomID, requesterID uint, newUserIDs []uint) (*model.ChatRoom, []uint, error) {
+func (s *ChatRoomService) AddMemberToGroup(ctx context.Context, roomID, requesterID uint, newUserIDs []uint) (*chatroommodel.ChatRoom, []uint, error) {
 	if len(newUserIDs) == 0 {
 		return nil, []uint{}, errors.New("user_ids required")
 	}
@@ -108,7 +108,7 @@ func (s *ChatRoomService) AddMemberToGroup(ctx context.Context, roomID, requeste
 	if err != nil {
 		return nil, []uint{}, errors.New("chat room not found")
 	}
-	if room.Type != model.ChatRoomTypeGroup {
+	if room.Type != chatroommodel.ChatRoomTypeGroup {
 		return nil, []uint{}, errors.New("room is not a group")
 	}
 
@@ -145,7 +145,7 @@ func (s *ChatRoomService) UpdateGroup(ctx context.Context, roomID, requesterID u
 	if err != nil {
 		return errors.New("chat room not found")
 	}
-	if room.Type != model.ChatRoomTypeGroup {
+	if room.Type != chatroommodel.ChatRoomTypeGroup {
 		return errors.New("room is not a group")
 	}
 	trimmedName := strings.TrimSpace(name)
@@ -184,7 +184,7 @@ func (s *ChatRoomService) LeaveGroup(ctx context.Context, roomID, userID uint) e
 	if err != nil {
 		return errors.New("chat room not found")
 	}
-	if room.Type != model.ChatRoomTypeGroup {
+	if room.Type != chatroommodel.ChatRoomTypeGroup {
 		return errors.New("room is not a group")
 	}
 	return s.roomRepo.RemoveMember(roomID, userID)
@@ -198,7 +198,7 @@ func (s *ChatRoomService) GetGroupMembers(ctx context.Context, roomID, requester
 	if err != nil {
 		return nil, errors.New("chat room not found")
 	}
-	if room.Type != model.ChatRoomTypeGroup {
+	if room.Type != chatroommodel.ChatRoomTypeGroup {
 		return nil, errors.New("room is not a group")
 	}
 	members, err := s.roomRepo.FindMembers(roomID)
@@ -230,13 +230,13 @@ func (s *ChatRoomService) DeleteGroup(ctx context.Context, roomID, requesterID u
 	if err != nil {
 		return errors.New("chat room not found")
 	}
-	if room.Type != model.ChatRoomTypeGroup {
+	if room.Type != chatroommodel.ChatRoomTypeGroup {
 		return errors.New("room is not a group")
 	}
 	return s.roomRepo.DeleteGroup(roomID)
 }
 
-func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]model.ChatRoom, int64, error) {
+func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]chatroommodel.ChatRoom, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.roomRepo.FindByUserID(userID, page, limit)
 }
@@ -252,7 +252,7 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 	privateIDs := make([]uint, 0)
 	for i, r := range rooms {
 		allIDs[i] = r.RoomID
-		if r.Type == model.ChatRoomTypePrivate {
+		if r.Type == chatroommodel.ChatRoomTypePrivate {
 			privateIDs = append(privateIDs, r.RoomID)
 		}
 	}
@@ -320,7 +320,7 @@ func (s *ChatRoomService) GetRoomForUser(roomID, viewingUserID uint) (*service.C
 		return nil, errors.New("forbidden")
 	}
 	result := &service.ChatRoomWithParticipant{ChatRoom: *room}
-	if room.Type == model.ChatRoomTypePrivate {
+	if room.Type == chatroommodel.ChatRoomTypePrivate {
 		memberMap, err := s.roomRepo.FindOtherMemberInfo([]uint{roomID}, viewingUserID)
 		if err == nil {
 			if info, ok := memberMap[roomID]; ok {
@@ -352,7 +352,7 @@ func (s *ChatRoomService) ToggleMute(ctx context.Context, roomID, userID uint) (
 	return s.roomRepo.ToggleMute(roomID, userID)
 }
 
-func (s *ChatRoomService) GetByID(roomID, userID uint) (*model.ChatRoom, error) {
+func (s *ChatRoomService) GetByID(roomID, userID uint) (*chatroommodel.ChatRoom, error) {
 	room, err := s.roomRepo.FindByID(roomID)
 	if err != nil {
 		return nil, errors.New("chat room not found")
@@ -363,7 +363,7 @@ func (s *ChatRoomService) GetByID(roomID, userID uint) (*model.ChatRoom, error) 
 	return room, nil
 }
 
-func (s *ChatRoomService) assignRoomKey(room *model.ChatRoom) error {
+func (s *ChatRoomService) assignRoomKey(room *chatroommodel.ChatRoom) error {
 	masterKey, err := helper.ChatMasterKeyFromEnv("CHAT_MASTER_KEY")
 	if err != nil {
 		return err
@@ -380,7 +380,7 @@ func (s *ChatRoomService) assignRoomKey(room *model.ChatRoom) error {
 	return nil
 }
 
-func (s *ChatRoomService) roomKey(room *model.ChatRoom) ([]byte, error) {
+func (s *ChatRoomService) roomKey(room *chatroommodel.ChatRoom) ([]byte, error) {
 	if room == nil {
 		return nil, errors.New("chat room not found")
 	}
@@ -406,7 +406,7 @@ func (s *ChatRoomService) roomKey(room *model.ChatRoom) ([]byte, error) {
 	return roomKey, nil
 }
 
-func (s *ChatRoomService) decryptLastMessage(room *model.ChatRoom, message *repository.LastMessageInfo) {
+func (s *ChatRoomService) decryptLastMessage(room *chatroommodel.ChatRoom, message *repository.LastMessageInfo) {
 	if room == nil || message == nil || message.Message == nil || strings.TrimSpace(*message.Message) == "" {
 		return
 	}

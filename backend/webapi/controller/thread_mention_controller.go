@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	exploremodel "github.com/sunibgram/domain/model/explore"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
@@ -29,7 +29,7 @@ func (c *ThreadController) Mention(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toMentionUserResponses(users)})
 }
 
-func (c *ThreadController) toMentionUserResponses(users []model.ExploreUserResult) []threaddto.MentionUserResponse {
+func (c *ThreadController) toMentionUserResponses(users []exploremodel.ExploreUserResult) []threaddto.MentionUserResponse {
 	responses := make([]threaddto.MentionUserResponse, len(users))
 	for i, user := range users {
 		avatarURL := BuildMediaURL(user.AvatarObjectName, user.AvatarBucket, c.profileService.GetURL)

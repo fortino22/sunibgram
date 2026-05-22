@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/cache"
@@ -26,14 +26,14 @@ func NewHashtagService(hashtagRepo repository.IHashtagRepository, c *cache.Cache
 	return &HashtagService{hashtagRepo: hashtagRepo, cache: c}
 }
 
-func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]model.TrendingHashtag, error) {
+func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]hashtagmodel.TrendingHashtag, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, trendingHashtagLimit)
 	if limit > trendingHashtagLimit {
 		limit = trendingHashtagLimit
 	}
 
 	key := fmt.Sprintf("trending_hashtags:%d", limit)
-	var cached []model.TrendingHashtag
+	var cached []hashtagmodel.TrendingHashtag
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, key, &cached); err == nil {
 			return cached, nil

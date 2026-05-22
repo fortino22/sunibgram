@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	"github.com/sunibgram/domain/service"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -269,7 +269,7 @@ func (c *ChatRoomController) GetByID(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(toChatRoomResponse(room))
 }
 
-func toChatRoomResponse(room *model.ChatRoom) chatdto.ChatRoomResponse {
+func toChatRoomResponse(room *chatroommodel.ChatRoom) chatdto.ChatRoomResponse {
 	return chatdto.ChatRoomResponse{
 		RoomID:      room.RoomID,
 		Name:        room.Name,

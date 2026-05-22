@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	"github.com/sunibgram/domain/service"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	hashtagdto "github.com/sunibgram/webapi/dto/hashtag"
@@ -29,7 +29,7 @@ func (c *HashtagController) GetTrending(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toTrendingHashtagResponses(hashtags)})
 }
 
-func toTrendingHashtagResponses(hashtags []model.TrendingHashtag) []hashtagdto.TrendingHashtagResponse {
+func toTrendingHashtagResponses(hashtags []hashtagmodel.TrendingHashtag) []hashtagdto.TrendingHashtagResponse {
 	responses := make([]hashtagdto.TrendingHashtagResponse, len(hashtags))
 	for i, hashtag := range hashtags {
 		responses[i] = hashtagdto.TrendingHashtagResponse{

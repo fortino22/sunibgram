@@ -6,7 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	usermodel "github.com/sunibgram/domain/model/user"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -37,7 +37,7 @@ func preloadThreadUser(db *gorm.DB) *gorm.DB {
 // the DB, never loaded into Go memory). Mirrors preloadThreadUser column set.
 func userJoinSelect(db *gorm.DB) *gorm.DB {
 	return db.Session(&gorm.Session{NewDB: true}).
-		Model(&model.User{}).
+		Model(&usermodel.User{}).
 		Select("user_id", "name", "user_name", "is_premium")
 }
 

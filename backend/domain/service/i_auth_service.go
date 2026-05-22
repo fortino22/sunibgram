@@ -3,15 +3,16 @@ package service
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 )
 
 type IAuthService interface {
-	Register(user *model.User, profile *model.UserProfile, confirmPassword string) error
-	Login(email, password string) (model.TokenPair, error)
-	LoginWithOTP(email, password, otp string) (model.TokenPair, error)
-	LoginProd(email, password string) (*model.User, model.TokenPair, error)
-	RefreshToken(ctx context.Context, sid string) (model.TokenPair, error)
+	Register(user *usermodel.User, profile *userprofilemodel.UserProfile, confirmPassword string) error
+	Login(email, password string) (usermodel.TokenPair, error)
+	LoginWithOTP(email, password, otp string) (usermodel.TokenPair, error)
+	LoginProd(email, password string) (*usermodel.User, usermodel.TokenPair, error)
+	RefreshToken(ctx context.Context, sid string) (usermodel.TokenPair, error)
 	Logout(ctx context.Context, sid string) error
 	ChangePassword(userID uint, oldPassword, newPassword string) error
 	ForgotPassword(email, newPassword string) error

@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	categorymodel "github.com/sunibgram/domain/model/category"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -28,10 +28,10 @@ func (s *CategoryService) Create(name string) error {
 	if utf8.RuneCountInString(name) > 100 {
 		return errors.New("name must be 100 characters or less")
 	}
-	return s.categoryRepo.Save(&model.Category{Name: name})
+	return s.categoryRepo.Save(&categorymodel.Category{Name: name})
 }
 
-func (s *CategoryService) GetAll() ([]model.Category, error) {
+func (s *CategoryService) GetAll() ([]categorymodel.Category, error) {
 	return s.categoryRepo.FindAll()
 }
 

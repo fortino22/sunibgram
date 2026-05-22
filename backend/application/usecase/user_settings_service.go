@@ -6,7 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -20,7 +20,7 @@ func NewUserSettingsService(settingsRepo repository.IUserSettingsRepository, thr
 	return &UserSettingsService{settingsRepo: settingsRepo, threadRepo: threadRepo}
 }
 
-func (s *UserSettingsService) GetUserSettingByUserID(ctx context.Context, userID uint) (*model.UserSettings, error) {
+func (s *UserSettingsService) GetUserSettingByUserID(ctx context.Context, userID uint) (*usersettingsmodel.UserSettings, error) {
 	setting, err := s.settingsRepo.GetUserSettingByUserID(ctx, userID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, errors.New("user settings not found")
@@ -36,7 +36,7 @@ func (s *UserSettingsService) UpdateUserSetting(ctx context.Context, userID uint
 	if existing != nil && existing.UserID != userID {
 		return errors.New("only the owner can update this setting")
 	}
-	if err := s.settingsRepo.UpdateUserSetting(ctx, &model.UserSettings{
+	if err := s.settingsRepo.UpdateUserSetting(ctx, &usersettingsmodel.UserSettings{
 		UserID:    userID,
 		IsPrivate: isPrivate,
 	}); err != nil {

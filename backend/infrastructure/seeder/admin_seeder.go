@@ -9,11 +9,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	rolemodel "github.com/sunibgram/domain/model/role"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 )
 
 func SeedAdmin(db *gorm.DB) {
-	var adminRole model.Role
+	var adminRole rolemodel.Role
 	if err := db.Where("name = ?", "admin").First(&adminRole).Error; err != nil {
 		log.Println("admin role not found, skipping admin seeder")
 		return
@@ -24,20 +27,20 @@ func SeedAdmin(db *gorm.DB) {
 	name := strings.TrimSpace(os.Getenv("ADMIN_NAME"))
 	username := strings.TrimSpace(os.Getenv("ADMIN_USERNAME"))
 
-	var existing model.User
+	var existing usermodel.User
 	if err := db.Where("email = ?", email).First(&existing).Error; err == nil {
-		var existingProfile model.UserProfile
+		var existingProfile userprofilemodel.UserProfile
 		if err := db.Where("user_id = ?", existing.UserID).First(&existingProfile).Error; err != nil {
-			profile := model.UserProfile{
+			profile := userprofilemodel.UserProfile{
 				UserID:       existing.UserID,
-				Gender:       model.GenderPreferNotToSay,
+				Gender:       userprofilemodel.GenderPreferNotToSay,
 				BirthdayDate: defaultSeedBirthdayDate(),
 			}
 			db.Create(&profile)
 		}
-		var existingSettings model.UserSettings
+		var existingSettings usersettingsmodel.UserSettings
 		if err := db.Where("user_id = ?", existing.UserID).First(&existingSettings).Error; err != nil {
-			settings := model.UserSettings{UserID: existing.UserID}
+			settings := usersettingsmodel.UserSettings{UserID: existing.UserID}
 			db.Create(&settings)
 		}
 		return
@@ -49,7 +52,7 @@ func SeedAdmin(db *gorm.DB) {
 		return
 	}
 
-	admin := model.User{
+	admin := usermodel.User{
 		Name:      name,
 		UserName:  username,
 		Email:     email,
@@ -63,16 +66,16 @@ func SeedAdmin(db *gorm.DB) {
 		return
 	}
 
-	profile := model.UserProfile{
+	profile := userprofilemodel.UserProfile{
 		UserID:       admin.UserID,
-		Gender:       model.GenderPreferNotToSay,
+		Gender:       userprofilemodel.GenderPreferNotToSay,
 		BirthdayDate: defaultSeedBirthdayDate(),
 	}
 	if err := db.Create(&profile).Error; err != nil {
 		log.Printf("admin seeder: failed to create admin profile: %v", err)
 	}
 
-	settings := model.UserSettings{UserID: admin.UserID}
+	settings := usersettingsmodel.UserSettings{UserID: admin.UserID}
 	if err := db.Create(&settings).Error; err != nil {
 		log.Printf("admin seeder: failed to create admin settings: %v", err)
 	}

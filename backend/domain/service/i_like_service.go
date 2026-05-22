@@ -3,7 +3,7 @@ package service
 import (
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
 type ILikeService interface {
@@ -12,5 +12,5 @@ type ILikeService interface {
 	IsLiked(userID, threadID uint) bool
 	AreThreadsLiked(userID uint, threadIDs []uint) (map[uint]bool, error)
 	AllLikedThreadIDs(userID uint) ([]uint, error)
-	GetMyLikes(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error)
+	GetMyLikes(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error)
 }

@@ -6,7 +6,8 @@ import (
 	"mime/multipart"
 	"sync"
 
-	"github.com/sunibgram/domain/model"
+	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
+	mediamodel "github.com/sunibgram/domain/model/media"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -21,8 +22,8 @@ func NewChatMediaService(chatRepo repository.IChatRepository, mediaRepo reposito
 	return &ChatMediaService{chatRepo: chatRepo, mediaRepo: mediaRepo, storage: storage}
 }
 
-func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, files []*multipart.FileHeader) ([]model.ChatMedia, error) {
-	if err := model.ValidateChatMediaCount(len(files)); err != nil {
+func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, files []*multipart.FileHeader) ([]chatmediamodel.ChatMedia, error) {
+	if err := chatmediamodel.ValidateChatMediaCount(len(files)); err != nil {
 		return nil, err
 	}
 	chat, err := s.chatRepo.FindByID(chatID)
@@ -39,10 +40,10 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 	}
 
 	for _, header := range files {
-		if err := model.ValidateUploadSize(header, model.MaxChatMediaUploadSize); err != nil {
+		if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxChatMediaUploadSize); err != nil {
 			return nil, err
 		}
-		if err := model.ValidateChatMediaExt(header.Filename); err != nil {
+		if err := chatmediamodel.ValidateChatMediaExt(header.Filename); err != nil {
 			return nil, err
 		}
 	}
@@ -64,8 +65,8 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 	return media, nil
 }
 
-func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket string, files []*multipart.FileHeader) ([]model.ChatMedia, error) {
-	media := make([]model.ChatMedia, len(files))
+func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket string, files []*multipart.FileHeader) ([]chatmediamodel.ChatMedia, error) {
+	media := make([]chatmediamodel.ChatMedia, len(files))
 	errCh := make(chan error, len(files))
 	var wg sync.WaitGroup
 
@@ -82,7 +83,7 @@ func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket 
 			}
 			defer file.Close()
 
-			mediaType, err := model.ValidateChatMediaFile(file)
+			mediaType, err := chatmediamodel.ValidateChatMediaFile(file)
 			if err != nil {
 				errCh <- err
 				return
@@ -94,7 +95,7 @@ func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket 
 				return
 			}
 
-			media[i] = model.ChatMedia{
+			media[i] = chatmediamodel.ChatMedia{
 				ChatID:     chatID,
 				ObjectName: objectName,
 				Bucket:     bucket,
@@ -114,7 +115,7 @@ func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket 
 	return media, nil
 }
 
-func (s *ChatMediaService) rollbackUploaded(ctx context.Context, chatID uint, media []model.ChatMedia) {
+func (s *ChatMediaService) rollbackUploaded(ctx context.Context, chatID uint, media []chatmediamodel.ChatMedia) {
 	_ = s.mediaRepo.DeleteByChatID(chatID)
 	for _, item := range media {
 		if item.ObjectName == "" {
@@ -124,11 +125,11 @@ func (s *ChatMediaService) rollbackUploaded(ctx context.Context, chatID uint, me
 	}
 }
 
-func (s *ChatMediaService) GetByChatID(chatID uint) ([]model.ChatMedia, error) {
+func (s *ChatMediaService) GetByChatID(chatID uint) ([]chatmediamodel.ChatMedia, error) {
 	return s.mediaRepo.FindByChatID(chatID)
 }
 
-func (s *ChatMediaService) GetByChatIDs(chatIDs []uint) ([]model.ChatMedia, error) {
+func (s *ChatMediaService) GetByChatIDs(chatIDs []uint) ([]chatmediamodel.ChatMedia, error) {
 	return s.mediaRepo.FindByChatIDs(chatIDs)
 }
 

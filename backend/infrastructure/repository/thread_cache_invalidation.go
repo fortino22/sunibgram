@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sunibgram/domain/model"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
+	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
 )
 
 func threadKey(id uint) string {
@@ -142,7 +143,7 @@ func (r *threadCached) invalidateForYouFeedCacheForUser(ctx context.Context, use
 func (r *threadCached) invalidateForYouFeedCachesForFollowers(ctx context.Context, userID uint) {
 	var followerIDs []uint
 	if err := r.db.readDB.WithContext(ctx).
-		Model(&model.UserRelationship{}).
+		Model(&userrelationshipmodel.UserRelationship{}).
 		Where("following_id = ?", userID).
 		Pluck("follower_id", &followerIDs).Error; err != nil {
 		return
@@ -155,7 +156,7 @@ func (r *threadCached) invalidateForYouFeedCachesForFollowers(ctx context.Contex
 func (r *threadCached) invalidateForYouFeedCachesForCommunity(ctx context.Context, communityID uint) {
 	var memberIDs []uint
 	if err := r.db.readDB.WithContext(ctx).
-		Model(&model.CommunityMember{}).
+		Model(&communitymembermodel.CommunityMember{}).
 		Where("community_id = ?", communityID).
 		Pluck("user_id", &memberIDs).Error; err != nil {
 		return

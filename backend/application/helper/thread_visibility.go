@@ -3,11 +3,11 @@ package helper
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 )
 
-func FilterViewableThreads(ctx context.Context, settingsRepo repository.IUserSettingsRepository, followRepo repository.IFollowRepository, requesterID *uint, threads []model.Thread) ([]model.Thread, error) {
+func FilterViewableThreads(ctx context.Context, settingsRepo repository.IUserSettingsRepository, followRepo repository.IFollowRepository, requesterID *uint, threads []threadmodel.Thread) ([]threadmodel.Thread, error) {
 	targetIDs := make([]uint, 0, len(threads))
 	seen := make(map[uint]struct{}, len(threads))
 	for _, thread := range threads {
@@ -41,7 +41,7 @@ func FilterViewableThreads(ctx context.Context, settingsRepo repository.IUserSet
 		}
 	}
 
-	filtered := make([]model.Thread, 0, len(threads))
+	filtered := make([]threadmodel.Thread, 0, len(threads))
 	for _, thread := range threads {
 		if requesterID != nil && thread.UserID == *requesterID {
 			filtered = append(filtered, thread)

@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	rolemodel "github.com/sunibgram/domain/model/role"
 	"github.com/sunibgram/domain/service"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	roledto "github.com/sunibgram/webapi/dto/role"
@@ -23,7 +23,7 @@ func (c *RoleController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	role := &model.Role{Name: req.Name}
+	role := &rolemodel.Role{Name: req.Name}
 	if err := c.roleService.Create(role); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
@@ -70,7 +70,7 @@ func (c *RoleController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	role := &model.Role{RoleID: id, Name: req.Name}
+	role := &rolemodel.Role{RoleID: id, Name: req.Name}
 	if err := c.roleService.Update(role); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}

@@ -10,7 +10,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
 const (
@@ -30,21 +31,21 @@ const (
 const mainFeedReplyInteractionSQL = "(threads.like_count + threads.repost_count + threads.comment_count)"
 
 type forYouCandidate struct {
-	thread model.Thread
+	thread threadmodel.Thread
 	score  float64
 }
 
 func forYouFeedTypes(includeReposts bool) []string {
 	if includeReposts {
 		return []string{
-			string(model.ThreadTypePost),
-			string(model.ThreadTypeRepost),
-			string(model.ThreadTypeReply),
+			string(threadmodel.ThreadTypePost),
+			string(threadmodel.ThreadTypeRepost),
+			string(threadmodel.ThreadTypeReply),
 		}
 	}
 	return []string{
-		string(model.ThreadTypePost),
-		string(model.ThreadTypeReply),
+		string(threadmodel.ThreadTypePost),
+		string(threadmodel.ThreadTypeReply),
 	}
 }
 
@@ -97,14 +98,14 @@ func (r *threadCached) InvalidateForYouSeed(ctx context.Context, userID uint) {
 	_ = r.cache.Delete(ctx, forYouSeedKey(userID))
 }
 
-func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	seed := r.resolveForYouSeed(ctx, userID)
 
 	merged := make(map[uint]forYouCandidate)
 	now := time.Now()
-	addCandidates := func(threads []model.Thread, sourceWeight float64, includeReposts, forceKeep bool) {
+	addCandidates := func(threads []threadmodel.Thread, sourceWeight float64, includeReposts, forceKeep bool) {
 		for _, thread := range threads {
-			if thread.Type == model.ThreadTypeRepost && !includeReposts {
+			if thread.Type == threadmodel.ThreadTypeRepost && !includeReposts {
 				continue
 			}
 			ageHours := now.Sub(thread.CreatedAt).Hours()
@@ -197,7 +198,7 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 	total := int64(len(capped))
 	offset := (page - 1) * limit
 	if offset >= len(capped) {
-		return []model.Thread{}, []*model.Thread{}, total, nil
+		return []threadmodel.Thread{}, []*threadmodel.Thread{}, total, nil
 	}
 	end := offset + limit
 	if end > len(capped) {
@@ -234,12 +235,12 @@ func shuffleWithinBands(candidates []forYouCandidate, rng *rand.Rand) []forYouCa
 	return shuffled
 }
 
-func applyAuthorCap(candidates []forYouCandidate, maxPerAuthor int) []model.Thread {
-	out := make([]model.Thread, 0, len(candidates))
+func applyAuthorCap(candidates []forYouCandidate, maxPerAuthor int) []threadmodel.Thread {
+	out := make([]threadmodel.Thread, 0, len(candidates))
 	counts := make(map[uint]int, len(candidates))
 	for _, candidate := range candidates {
 		authorID := candidate.thread.UserID
-		if candidate.thread.Type == model.ThreadTypeRepost && candidate.thread.OriginalThread != nil {
+		if candidate.thread.Type == threadmodel.ThreadTypeRepost && candidate.thread.OriginalThread != nil {
 			authorID = candidate.thread.OriginalThread.UserID
 		}
 		if counts[authorID] >= maxPerAuthor {
@@ -261,12 +262,12 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 	}
 	var count int64
 	requester := userID
-	query := applyThreadVisibility(r.db.readDB.WithContext(ctx).Model(&model.Thread{}), &requester).
+	query := applyThreadVisibility(r.db.readDB.WithContext(ctx).Model(&threadmodel.Thread{}), &requester).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN community_members count_new_members ON count_new_members.community_id = threads.community_id AND count_new_members.user_id = ?", userID).
 		Where("threads.thread_id > ?", sinceID).
 		Where("threads.type IN ?", forYouFeedTypes(true)).
-		Where("threads.community_id IS NULL OR communities.visibility = ? OR count_new_members.user_id = ?", model.CommunityVisibilityPublic, userID)
+		Where("threads.community_id IS NULL OR communities.visibility = ? OR count_new_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
 	query = applyMainFeedReplyInteractionFilter(query)
 	if err := query.Limit(1001).Count(&count).Error; err != nil {
 		return 0, err
@@ -280,13 +281,13 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 	return count, nil
 }
 
-func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]model.Thread, error) {
+func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
 	key := forYouSourceOwnKey(userID)
-	var cached []model.Thread
+	var cached []threadmodel.Thread
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	query := preloadThreadDetails(r.db.readDB.WithContext(ctx)).
 		Where("threads.user_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
@@ -304,13 +305,13 @@ func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]model.
 	return threads, nil
 }
 
-func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]model.Thread, error) {
+func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
 	key := forYouSourceFollowingKey(userID)
-	var cached []model.Thread
+	var cached []threadmodel.Thread
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	query := preloadThreadDetails(r.db.readDB.WithContext(ctx)).
 		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
@@ -318,7 +319,7 @@ func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]
 		Where("user_relationships.follower_id = ?", userID).
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
 		Where("threads.type IN ?", forYouFeedTypes(true)).
-		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", model.CommunityVisibilityPublic, userID)
+		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
 	query = applyMainFeedReplyInteractionFilter(query)
 	if err := query.
 		Order("threads.feed_score DESC").
@@ -332,13 +333,13 @@ func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]
 	return threads, nil
 }
 
-func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]model.Thread, error) {
+func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
 	key := forYouSourceCommunityKey(userID)
-	var cached []model.Thread
+	var cached []threadmodel.Thread
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	query := preloadThreadDetails(r.db.readDB.WithContext(ctx)).
 		Joins("JOIN community_members ON community_members.community_id = threads.community_id").
 		Where("community_members.user_id = ?", userID).
@@ -357,8 +358,8 @@ func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]
 	return threads, nil
 }
 
-func (r *threadCached) findForYouGlobal(ctx context.Context) ([]model.Thread, error) {
-	var threads []model.Thread
+func (r *threadCached) findForYouGlobal(ctx context.Context) ([]threadmodel.Thread, error) {
+	var threads []threadmodel.Thread
 	if err := r.cache.Get(ctx, forYouSourceGlobalKey, &threads); err == nil {
 		return threads, nil
 	}
@@ -367,7 +368,7 @@ func (r *threadCached) findForYouGlobal(ctx context.Context) ([]model.Thread, er
 		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
 		Where("threads.type IN ?", forYouFeedTypes(false)).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false)
 	query = applyMainFeedReplyInteractionFilter(query)
 	if err := query.

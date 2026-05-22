@@ -10,7 +10,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
+	mediamodel "github.com/sunibgram/domain/model/media"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -237,8 +239,8 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 				}
 			}
 			if pinned, ferr := c.threadService.GetByID(pin.ThreadID); ferr == nil && pinned != nil {
-				threads = append([]model.Thread{*pinned}, threads...)
-				parents = append([]*model.Thread{nil}, parents...)
+				threads = append([]threadmodel.Thread{*pinned}, threads...)
+				parents = append([]*threadmodel.Thread{nil}, parents...)
 			} else {
 				pinnedThreadID = 0
 			}
@@ -262,7 +264,7 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *EventController) toResponse(ctx context.Context, event *model.Event) eventdto.EventResponse {
+func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Event) eventdto.EventResponse {
 	bannerURL := BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL)
 	var attachmentURL string
 	if event.AttachmentObjectName != "" {
@@ -291,7 +293,7 @@ func (c *EventController) toResponse(ctx context.Context, event *model.Event) ev
 	}
 }
 
-func (c *EventController) toResponses(ctx context.Context, events []model.Event) []eventdto.EventResponse {
+func (c *EventController) toResponses(ctx context.Context, events []threadmodel.Event) []eventdto.EventResponse {
 	out := make([]eventdto.EventResponse, len(events))
 	for i := range events {
 		out[i] = c.toResponse(ctx, &events[i])
@@ -299,7 +301,7 @@ func (c *EventController) toResponses(ctx context.Context, events []model.Event)
 	return out
 }
 
-func (c *EventController) toListResponse(event *model.Event) eventdto.EventListResponse {
+func (c *EventController) toListResponse(event *threadmodel.Event) eventdto.EventListResponse {
 	return eventdto.EventListResponse{
 		ID:          event.ID,
 		UserID:      event.UserID,
@@ -315,7 +317,7 @@ func (c *EventController) toListResponse(event *model.Event) eventdto.EventListR
 	}
 }
 
-func (c *EventController) toListResponses(events []model.Event) []eventdto.EventListResponse {
+func (c *EventController) toListResponses(events []threadmodel.Event) []eventdto.EventListResponse {
 	out := make([]eventdto.EventListResponse, len(events))
 	for i := range events {
 		out[i] = c.toListResponse(&events[i])
@@ -323,7 +325,7 @@ func (c *EventController) toListResponses(events []model.Event) []eventdto.Event
 	return out
 }
 
-func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []eventdto.EventWithReviewHistoryResponse {
+func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, events []threadmodel.Event, reviews map[string][]eventreviewmodel.EventReview) []eventdto.EventWithReviewHistoryResponse {
 	out := make([]eventdto.EventWithReviewHistoryResponse, len(events))
 	for i := range events {
 		out[i] = eventdto.EventWithReviewHistoryResponse{
@@ -334,7 +336,7 @@ func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, eve
 	return out
 }
 
-func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context, events []model.Event, reviews map[string][]model.EventReview) []eventdto.AdminEventWithReviewHistoryResponse {
+func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context, events []threadmodel.Event, reviews map[string][]eventreviewmodel.EventReview) []eventdto.AdminEventWithReviewHistoryResponse {
 	out := make([]eventdto.AdminEventWithReviewHistoryResponse, len(events))
 	for i := range events {
 		out[i] = eventdto.AdminEventWithReviewHistoryResponse{
@@ -345,7 +347,7 @@ func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context
 	return out
 }
 
-func (c *EventController) toEventReviewNoteResponses(reviews []model.EventReview) []eventreviewdto.EventReviewNoteResponse {
+func (c *EventController) toEventReviewNoteResponses(reviews []eventreviewmodel.EventReview) []eventreviewdto.EventReviewNoteResponse {
 	out := make([]eventreviewdto.EventReviewNoteResponse, len(reviews))
 	for i := range reviews {
 		out[i] = eventreviewdto.EventReviewNoteResponse{
@@ -357,7 +359,7 @@ func (c *EventController) toEventReviewNoteResponses(reviews []model.EventReview
 	return out
 }
 
-func (c *EventController) toEventAdminReviewNoteResponses(reviews []model.EventReview) []eventreviewdto.EventAdminReviewNoteResponse {
+func (c *EventController) toEventAdminReviewNoteResponses(reviews []eventreviewmodel.EventReview) []eventreviewdto.EventAdminReviewNoteResponse {
 	out := make([]eventreviewdto.EventAdminReviewNoteResponse, len(reviews))
 	for i := range reviews {
 		out[i] = eventreviewdto.EventAdminReviewNoteResponse{
@@ -370,10 +372,10 @@ func (c *EventController) toEventAdminReviewNoteResponses(reviews []model.EventR
 	return out
 }
 
-func (c *EventController) eventPDFURLs(ctx context.Context, event *model.Event) []string {
+func (c *EventController) eventPDFURLs(ctx context.Context, event *threadmodel.Event) []string {
 	pdfs := event.PDFs
 	if len(pdfs) == 0 && event.AttachmentObjectName != "" {
-		pdfs = model.EventPDFs{{ObjectName: event.AttachmentObjectName, Bucket: event.AttachmentBucket}}
+		pdfs = threadmodel.EventPDFs{{ObjectName: event.AttachmentObjectName, Bucket: event.AttachmentBucket}}
 	}
 	if len(pdfs) == 0 {
 		return nil
@@ -421,14 +423,14 @@ func eventPDFFiles(ctx *fiber.Ctx) []*multipart.FileHeader {
 }
 
 func validateEventPDFHeaders(files []*multipart.FileHeader) error {
-	if err := model.ValidateEventPDFCount(len(files)); err != nil {
+	if err := threadmodel.ValidateEventPDFCount(len(files)); err != nil {
 		return err
 	}
 	for _, file := range files {
-		if err := model.ValidateUploadSize(file, model.MaxDocumentUploadSize); err != nil {
+		if err := mediamodel.ValidateUploadSize(file, mediamodel.MaxDocumentUploadSize); err != nil {
 			return err
 		}
-		if err := model.ValidateEventAttachmentExt(file.Filename); err != nil {
+		if err := threadmodel.ValidateEventAttachmentExt(file.Filename); err != nil {
 			return err
 		}
 	}

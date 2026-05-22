@@ -1,9 +1,9 @@
 package service
 
-import "github.com/sunibgram/domain/model"
+import premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 
 type IPremiumSubscriptionService interface {
-	ActivateTrial(userID uint) (*model.PremiumSubscription, error)
+	ActivateTrial(userID uint) (*premiumsubscriptionmodel.PremiumSubscription, error)
 	ExpireSubscriptions() error
 	ExpireForDev(userID uint) error
 }

@@ -6,7 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitypinmodel "github.com/sunibgram/domain/model/community_pin"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -22,7 +23,7 @@ func NewCommunityPinRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainr
 }
 
 type cachedCommunityPins struct {
-	Communities []model.Community
+	Communities []communitymodel.Community
 	Total       int64
 }
 
@@ -30,7 +31,7 @@ func communityPinListKey(userID uint, page, limit int) string {
 	return fmt.Sprintf("community:pins:user:%d:page:%d:limit:%d", userID, page, limit)
 }
 
-func (r *CommunityPinRepository) Pin(pin *model.UserCommunityPin) error {
+func (r *CommunityPinRepository) Pin(pin *communitypinmodel.UserCommunityPin) error {
 	if err := r.writeDB.Create(pin).Error; err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (r *CommunityPinRepository) Pin(pin *model.UserCommunityPin) error {
 func (r *CommunityPinRepository) Unpin(userID, communityID uint) error {
 	if err := r.writeDB.
 		Where("user_id = ? AND community_id = ?", userID, communityID).
-		Delete(&model.UserCommunityPin{}).Error; err != nil {
+		Delete(&communitypinmodel.UserCommunityPin{}).Error; err != nil {
 		return err
 	}
 	r.InvalidateUser(userID)
@@ -50,7 +51,7 @@ func (r *CommunityPinRepository) Unpin(userID, communityID uint) error {
 
 func (r *CommunityPinRepository) Exists(userID, communityID uint) (bool, error) {
 	var count int64
-	err := r.readDB.Model(&model.UserCommunityPin{}).
+	err := r.readDB.Model(&communitypinmodel.UserCommunityPin{}).
 		Where("user_id = ? AND community_id = ?", userID, communityID).
 		Count(&count).Error
 	return count > 0, err
@@ -58,13 +59,13 @@ func (r *CommunityPinRepository) Exists(userID, communityID uint) (bool, error) 
 
 func (r *CommunityPinRepository) CountByUser(userID uint) (int64, error) {
 	var count int64
-	err := r.readDB.Model(&model.UserCommunityPin{}).
+	err := r.readDB.Model(&communitypinmodel.UserCommunityPin{}).
 		Where("user_id = ?", userID).
 		Count(&count).Error
 	return count, err
 }
 
-func (r *CommunityPinRepository) FindMyPins(userID uint, page, limit int) ([]model.Community, int64, error) {
+func (r *CommunityPinRepository) FindMyPins(userID uint, page, limit int) ([]communitymodel.Community, int64, error) {
 	ctx := context.Background()
 	key := communityPinListKey(userID, page, limit)
 	var result cachedCommunityPins
@@ -75,12 +76,12 @@ func (r *CommunityPinRepository) FindMyPins(userID uint, page, limit int) ([]mod
 	}
 
 	var total int64
-	r.readDB.Model(&model.Community{}).
+	r.readDB.Model(&communitymodel.Community{}).
 		Joins("JOIN user_community_pins ON user_community_pins.community_id = communities.community_id").
 		Where("user_community_pins.user_id = ?", userID).
 		Count(&total)
 
-	var communities []model.Community
+	var communities []communitymodel.Community
 	offset := (page - 1) * limit
 	if err := r.readDB.
 		Preload("User").Preload("Category").
@@ -115,7 +116,7 @@ func (r *CommunityPinRepository) InvalidateByCommunity(communityID uint) {
 	}
 	ctx := context.Background()
 	var userIDs []uint
-	if err := r.readDB.Model(&model.UserCommunityPin{}).
+	if err := r.readDB.Model(&communitypinmodel.UserCommunityPin{}).
 		Where("community_id = ?", communityID).
 		Distinct("user_id").
 		Pluck("user_id", &userIDs).Error; err != nil {

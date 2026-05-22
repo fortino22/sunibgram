@@ -3,7 +3,7 @@ package repository
 import (
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 )
 
 // ChatRoomMemberInfo holds basic public info about a room participant.
@@ -28,9 +28,9 @@ type LastMessageInfo struct {
 }
 
 type IChatRoomRepository interface {
-	Save(room *model.ChatRoom) error
-	FindByID(id uint) (*model.ChatRoom, error)
-	FindByUserID(userID uint, page, limit int) ([]model.ChatRoom, int64, error)
+	Save(room *chatroommodel.ChatRoom) error
+	FindByID(id uint) (*chatroommodel.ChatRoom, error)
+	FindByUserID(userID uint, page, limit int) ([]chatroommodel.ChatRoom, int64, error)
 	// FindOtherMemberInfo returns the other participant's info for private rooms,
 	// keyed by room_id. Rooms without a counterpart are omitted from the map.
 	FindOtherMemberInfo(roomIDs []uint, excludeUserID uint) (map[uint]ChatRoomMemberInfo, error)
@@ -42,7 +42,7 @@ type IChatRoomRepository interface {
 	RemoveMember(roomID, userID uint) error
 	UpdateGroup(roomID uint, name string, description *string, avatarURL *string) error
 	DeleteGroup(roomID uint) error
-	FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error)
+	FindPrivateRoom(userA, userB uint) (*chatroommodel.ChatRoom, error)
 	ToggleMute(roomID, userID uint) (bool, error)
 	GetMuteStatuses(userID uint, roomIDs []uint) (map[uint]bool, error)
 	TouchUpdatedAt(roomID uint) error

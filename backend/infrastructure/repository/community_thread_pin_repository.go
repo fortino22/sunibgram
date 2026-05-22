@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -18,25 +18,25 @@ func NewCommunityThreadPinRepository(writeDB, readDB *gorm.DB) domainrepo.ICommu
 	return &CommunityThreadPinRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *CommunityThreadPinRepository) Pin(pin *model.CommunityThreadPin) error {
+func (r *CommunityThreadPinRepository) Pin(pin *communitythreadpinmodel.CommunityThreadPin) error {
 	return r.writeDB.Create(pin).Error
 }
 
 func (r *CommunityThreadPinRepository) Unpin(communityID, threadID uint) error {
 	return r.writeDB.Where("community_id = ? AND thread_id = ?", communityID, threadID).
-		Delete(&model.CommunityThreadPin{}).Error
+		Delete(&communitythreadpinmodel.CommunityThreadPin{}).Error
 }
 
 func (r *CommunityThreadPinRepository) Exists(communityID, threadID uint) (bool, error) {
 	var count int64
-	err := r.readDB.Model(&model.CommunityThreadPin{}).
+	err := r.readDB.Model(&communitythreadpinmodel.CommunityThreadPin{}).
 		Where("community_id = ? AND thread_id = ?", communityID, threadID).
 		Count(&count).Error
 	return count > 0, err
 }
 
-func (r *CommunityThreadPinRepository) FindByCommunityID(communityID uint) (*model.CommunityThreadPin, error) {
-	var pin model.CommunityThreadPin
+func (r *CommunityThreadPinRepository) FindByCommunityID(communityID uint) (*communitythreadpinmodel.CommunityThreadPin, error) {
+	var pin communitythreadpinmodel.CommunityThreadPin
 	err := r.readDB.Where("community_id = ?", communityID).First(&pin).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil

@@ -4,7 +4,7 @@ import (
 	"context"
 	"mime/multipart"
 
-	"github.com/sunibgram/domain/model"
+	mediamodel "github.com/sunibgram/domain/model/media"
 )
 
 type StorageUploader interface {
@@ -13,10 +13,10 @@ type StorageUploader interface {
 }
 
 func UploadImage(ctx context.Context, storage StorageUploader, header *multipart.FileHeader, uploadType string) (string, string, error) {
-	if err := model.ValidateUploadSize(header, model.MaxImageUploadSize(uploadType)); err != nil {
+	if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxImageUploadSize(uploadType)); err != nil {
 		return "", "", err
 	}
-	if err := model.ValidateImageExt(header.Filename); err != nil {
+	if err := mediamodel.ValidateImageExt(header.Filename); err != nil {
 		return "", "", err
 	}
 	bucket, err := storage.ResolveBucket(uploadType)
@@ -28,7 +28,7 @@ func UploadImage(ctx context.Context, storage StorageUploader, header *multipart
 		return "", "", err
 	}
 	defer f.Close()
-	if err := model.ValidateImageFile(f); err != nil {
+	if err := mediamodel.ValidateImageFile(f); err != nil {
 		return "", "", err
 	}
 	objName, err := storage.Upload(ctx, bucket, f, header)

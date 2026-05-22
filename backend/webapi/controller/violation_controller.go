@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	violationmodel "github.com/sunibgram/domain/model/violation"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -76,7 +76,7 @@ func (c *ViolationController) Delete(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "violation deleted successfully"})
 }
 
-func toViolationResponse(violation *model.Violation) violationdto.ViolationResponse {
+func toViolationResponse(violation *violationmodel.Violation) violationdto.ViolationResponse {
 	return violationdto.ViolationResponse{
 		ID:          violation.ID.String(),
 		Name:        violation.Name,
@@ -86,7 +86,7 @@ func toViolationResponse(violation *model.Violation) violationdto.ViolationRespo
 	}
 }
 
-func toViolationResponses(violations []model.Violation) []violationdto.ViolationResponse {
+func toViolationResponses(violations []violationmodel.Violation) []violationdto.ViolationResponse {
 	responses := make([]violationdto.ViolationResponse, len(violations))
 	for i := range violations {
 		responses[i] = toViolationResponse(&violations[i])

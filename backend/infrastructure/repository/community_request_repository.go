@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -27,11 +27,11 @@ func communityRequestsKey(communityID uint, page, limit int) string {
 }
 
 type cachedCommunityRequests struct {
-	Requests []model.CommunityRequest
+	Requests []communityrequestmodel.CommunityRequest
 	Total    int64
 }
 
-func (r *communityRequestRepository) Save(req *model.CommunityRequest) error {
+func (r *communityRequestRepository) Save(req *communityrequestmodel.CommunityRequest) error {
 	if err := r.writeDB.Save(req).Error; err != nil {
 		return err
 	}
@@ -39,16 +39,16 @@ func (r *communityRequestRepository) Save(req *model.CommunityRequest) error {
 	return nil
 }
 
-func (r *communityRequestRepository) FindRequest(communityID, userID uint) (*model.CommunityRequest, error) {
-	var req model.CommunityRequest
+func (r *communityRequestRepository) FindRequest(communityID, userID uint) (*communityrequestmodel.CommunityRequest, error) {
+	var req communityrequestmodel.CommunityRequest
 	if err := r.readDB.Where("community_id = ? AND user_id = ?", communityID, userID).First(&req).Error; err != nil {
 		return nil, err
 	}
 	return &req, nil
 }
 
-func (r *communityRequestRepository) UpdateStatus(communityID, userID uint, status model.CommunityRequestStatus) error {
-	if err := r.writeDB.Model(&model.CommunityRequest{}).
+func (r *communityRequestRepository) UpdateStatus(communityID, userID uint, status communityrequestmodel.CommunityRequestStatus) error {
+	if err := r.writeDB.Model(&communityrequestmodel.CommunityRequest{}).
 		Where("community_id = ? AND user_id = ?", communityID, userID).
 		UpdateColumn("status", status).Error; err != nil {
 		return err
@@ -58,7 +58,7 @@ func (r *communityRequestRepository) UpdateStatus(communityID, userID uint, stat
 }
 
 func (r *communityRequestRepository) Delete(communityID, userID uint) error {
-	result := r.writeDB.Delete(&model.CommunityRequest{}, "community_id = ? AND user_id = ?", communityID, userID)
+	result := r.writeDB.Delete(&communityrequestmodel.CommunityRequest{}, "community_id = ? AND user_id = ?", communityID, userID)
 	if result.RowsAffected == 0 {
 		return errors.New("request not found")
 	}
@@ -69,7 +69,7 @@ func (r *communityRequestRepository) Delete(communityID, userID uint) error {
 	return nil
 }
 
-func (r *communityRequestRepository) FindPending(communityID uint, page, limit int) ([]model.CommunityRequest, int64, error) {
+func (r *communityRequestRepository) FindPending(communityID uint, page, limit int) ([]communityrequestmodel.CommunityRequest, int64, error) {
 	ctx := context.Background()
 	key := communityRequestsKey(communityID, page, limit)
 	var result cachedCommunityRequests
@@ -79,14 +79,14 @@ func (r *communityRequestRepository) FindPending(communityID uint, page, limit i
 		}
 	}
 
-	var requests []model.CommunityRequest
+	var requests []communityrequestmodel.CommunityRequest
 	var total int64
-	r.readDB.Model(&model.CommunityRequest{}).
-		Where("community_id = ? AND status = ?", communityID, model.CommunityRequestStatusPending).
+	r.readDB.Model(&communityrequestmodel.CommunityRequest{}).
+		Where("community_id = ? AND status = ?", communityID, communityrequestmodel.CommunityRequestStatusPending).
 		Count(&total)
 	offset := (page - 1) * limit
 	if err := r.readDB.Preload("User").
-		Where("community_id = ? AND status = ?", communityID, model.CommunityRequestStatusPending).
+		Where("community_id = ? AND status = ?", communityID, communityrequestmodel.CommunityRequestStatusPending).
 		Order("created_at ASC").
 		Offset(offset).Limit(limit).
 		Find(&requests).Error; err != nil {

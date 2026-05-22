@@ -9,7 +9,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitydiscovermodel "github.com/sunibgram/domain/model/community_discover"
+	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -42,7 +44,7 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	visibility := model.CommunityVisibility(ctx.FormValue("visibility"))
+	visibility := communitymodel.CommunityVisibility(ctx.FormValue("visibility"))
 
 	var banner *multipart.FileHeader
 	if f, err := ctx.FormFile("banner"); err == nil {
@@ -82,7 +84,7 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	visibility := model.CommunityVisibility(ctx.FormValue("visibility"))
+	visibility := communitymodel.CommunityVisibility(ctx.FormValue("visibility"))
 	clearBanner := ctx.FormValue("clear_banner") == "true"
 
 	var banner *multipart.FileHeader
@@ -245,7 +247,7 @@ func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) 
 	postingPolicy := "Only members can post."
 	visibilityPolicy := "All Communities are publicly visible."
 	joinPolicy := "Anyone can join this Community."
-	if comm.Visibility == model.CommunityVisibilityPrivate {
+	if comm.Visibility == communitymodel.CommunityVisibilityPrivate {
 		visibilityPolicy = "This Community is private."
 		joinPolicy = "Membership requires an approved join request."
 	}
@@ -310,15 +312,15 @@ func (c *CommunityController) toAboutMemberResponses(users []service.CommunityAb
 	return out
 }
 
-func (c *CommunityController) toResponse(comm *model.Community) communitydto.CommunityResponse {
+func (c *CommunityController) toResponse(comm *communitymodel.Community) communitydto.CommunityResponse {
 	return c.buildResponse(comm, nil)
 }
 
-func (c *CommunityController) toResponseWithRules(comm *model.Community, rules []model.CommunityRule) communitydto.CommunityResponse {
+func (c *CommunityController) toResponseWithRules(comm *communitymodel.Community, rules []communityrulemodel.CommunityRule) communitydto.CommunityResponse {
 	return c.buildResponse(comm, toRuleMiniResponses(rules))
 }
 
-func toRuleMiniResponses(rules []model.CommunityRule) []communityruledto.CommunityRuleMiniResponse {
+func toRuleMiniResponses(rules []communityrulemodel.CommunityRule) []communityruledto.CommunityRuleMiniResponse {
 	out := make([]communityruledto.CommunityRuleMiniResponse, len(rules))
 	for i := range rules {
 		out[i] = communityruledto.CommunityRuleMiniResponse{
@@ -329,7 +331,7 @@ func toRuleMiniResponses(rules []model.CommunityRule) []communityruledto.Communi
 	return out
 }
 
-func (c *CommunityController) buildResponse(comm *model.Community, rules []communityruledto.CommunityRuleMiniResponse) communitydto.CommunityResponse {
+func (c *CommunityController) buildResponse(comm *communitymodel.Community, rules []communityruledto.CommunityRuleMiniResponse) communitydto.CommunityResponse {
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 	topMembers := c.toTopMemberResponses(comm.TopMembers)
 	var categoryName string
@@ -353,7 +355,7 @@ func (c *CommunityController) buildResponse(comm *model.Community, rules []commu
 	}
 }
 
-func (c *CommunityController) toResponses(communities []model.Community) []communitydto.CommunityResponse {
+func (c *CommunityController) toResponses(communities []communitymodel.Community) []communitydto.CommunityResponse {
 	out := make([]communitydto.CommunityResponse, len(communities))
 	for i := range communities {
 		out[i] = c.toResponse(&communities[i])
@@ -408,7 +410,7 @@ func parseKeepRuleIDs(ctx *fiber.Ctx) ([]uint, error) {
 	return ids, nil
 }
 
-func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) communitydto.DiscoverCommunityResponse {
+func (c *CommunityController) toDiscoverResponse(comm *communitydiscovermodel.DiscoverCommunity) communitydto.DiscoverCommunityResponse {
 	members := make([]communitydto.DiscoverCommunityMemberResponse, len(comm.TopMembers))
 	for i := range comm.TopMembers {
 		members[i] = communitydto.DiscoverCommunityMemberResponse{
@@ -435,7 +437,7 @@ func (c *CommunityController) toDiscoverResponse(comm *model.DiscoverCommunity) 
 	}
 }
 
-func (c *CommunityController) toTopMemberResponses(members []model.DiscoverCommunityMember) []communitydto.CommunityTopMemberResponse {
+func (c *CommunityController) toTopMemberResponses(members []communitydiscovermodel.DiscoverCommunityMember) []communitydto.CommunityTopMemberResponse {
 	out := make([]communitydto.CommunityTopMemberResponse, len(members))
 	for i := range members {
 		out[i] = communitydto.CommunityTopMemberResponse{
@@ -450,7 +452,7 @@ func (c *CommunityController) toTopMemberResponses(members []model.DiscoverCommu
 	return out
 }
 
-func (c *CommunityController) toDiscoverResponses(communities []model.DiscoverCommunity) []communitydto.DiscoverCommunityResponse {
+func (c *CommunityController) toDiscoverResponses(communities []communitydiscovermodel.DiscoverCommunity) []communitydto.DiscoverCommunityResponse {
 	out := make([]communitydto.DiscoverCommunityResponse, len(communities))
 	for i := range communities {
 		out[i] = c.toDiscoverResponse(&communities[i])

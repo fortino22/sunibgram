@@ -6,7 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	likemodel "github.com/sunibgram/domain/model/like"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -23,11 +24,11 @@ func NewLikeRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func
 	}
 }
 
-func (r *LikeRepository) Save(like *model.Like) error {
+func (r *LikeRepository) Save(like *likemodel.Like) error {
 	if err := r.base.saveRecord(like); err != nil {
 		return err
 	}
-	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", like.ThreadID).
+	r.base.writeDB.Model(&threadmodel.Thread{}).Where("thread_id = ?", like.ThreadID).
 		UpdateColumn("like_count", gorm.Expr("like_count + 1"))
 	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, like.ThreadID, "like_count", 1)
 	patchHashtagCounterByThreadID(r.base.writeDB, r.base.cache, like.ThreadID, "like_count", 1)
@@ -44,10 +45,10 @@ func (r *LikeRepository) Save(like *model.Like) error {
 }
 
 func (r *LikeRepository) Delete(userID, threadID uint) error {
-	if err := r.base.deleteRecord(userID, threadID, &model.Like{}); err != nil {
+	if err := r.base.deleteRecord(userID, threadID, &likemodel.Like{}); err != nil {
 		return err
 	}
-	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
+	r.base.writeDB.Model(&threadmodel.Thread{}).Where("thread_id = ?", threadID).
 		UpdateColumn("like_count", gorm.Expr("GREATEST(like_count - 1, 0)"))
 	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, threadID, "like_count", -1)
 	patchHashtagCounterByThreadID(r.base.writeDB, r.base.cache, threadID, "like_count", -1)
@@ -61,7 +62,7 @@ func (r *LikeRepository) Delete(userID, threadID uint) error {
 }
 
 func (r *LikeRepository) Exists(userID, threadID uint) (bool, error) {
-	return r.base.exists(userID, threadID, &model.Like{})
+	return r.base.exists(userID, threadID, &likemodel.Like{})
 }
 
 func (r *LikeRepository) AreThreadsLiked(userID uint, threadIDs []uint) (map[uint]bool, error) {
@@ -72,6 +73,6 @@ func (r *LikeRepository) AllLikedThreadIDs(userID uint) ([]uint, error) {
 	return r.base.allUserThreadIDs(userID)
 }
 
-func (r *LikeRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
+func (r *LikeRepository) FindByUserID(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	return r.base.findByUserID(userID, page, limit)
 }

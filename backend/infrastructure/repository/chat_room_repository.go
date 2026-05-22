@@ -8,7 +8,11 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/sunibgram/domain/model"
+	chatmodel "github.com/sunibgram/domain/model/chat"
+	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
+	chatreadmodel "github.com/sunibgram/domain/model/chat_read"
+	chatroommodel "github.com/sunibgram/domain/model/chat_room"
+	chatroommembermodel "github.com/sunibgram/domain/model/chat_room_member"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -23,12 +27,12 @@ func NewChatRoomRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.
 	return &ChatRoomRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 
-func (r *ChatRoomRepository) Save(room *model.ChatRoom) error {
+func (r *ChatRoomRepository) Save(room *chatroommodel.ChatRoom) error {
 	return r.writeDB.Create(room).Error
 }
 
-func (r *ChatRoomRepository) FindByID(id uint) (*model.ChatRoom, error) {
-	var room model.ChatRoom
+func (r *ChatRoomRepository) FindByID(id uint) (*chatroommodel.ChatRoom, error) {
+	var room chatroommodel.ChatRoom
 	ctx := context.Background()
 	key := fmt.Sprintf("chat:room:%d", id)
 	if err := r.cache.Get(ctx, key, &room); err == nil {
@@ -42,15 +46,15 @@ func (r *ChatRoomRepository) FindByID(id uint) (*model.ChatRoom, error) {
 	return &room, err
 }
 
-func (r *ChatRoomRepository) FindByUserID(userID uint, page, limit int) ([]model.ChatRoom, int64, error) {
+func (r *ChatRoomRepository) FindByUserID(userID uint, page, limit int) ([]chatroommodel.ChatRoom, int64, error) {
 	var total int64
-	if err := r.readDB.Model(&model.ChatRoomMember{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
+	if err := r.readDB.Model(&chatroommembermodel.ChatRoomMember{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	var rooms []model.ChatRoom
+	var rooms []chatroommodel.ChatRoom
 	offset := (page - 1) * limit
-	err := r.readDB.Model(&model.ChatRoom{}).
+	err := r.readDB.Model(&chatroommodel.ChatRoom{}).
 		Joins("JOIN chat_room_members ON chat_room_members.room_id = chat_rooms.room_id").
 		Where("chat_room_members.user_id = ?", userID).
 		Order("chat_rooms.updated_at DESC").
@@ -68,7 +72,7 @@ func (r *ChatRoomRepository) IsMember(roomID, userID uint) bool {
 	}
 
 	var count int64
-	if err := r.readDB.Model(&model.ChatRoomMember{}).
+	if err := r.readDB.Model(&chatroommembermodel.ChatRoomMember{}).
 		Where("room_id = ? AND user_id = ?", roomID, userID).
 		Count(&count).Error; err != nil {
 		return false
@@ -89,13 +93,13 @@ func (r *ChatRoomRepository) CountMembers(roomID uint) int64 {
 }
 
 func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
-	member := model.ChatRoomMember{RoomID: roomID, UserID: userID, JoinedAt: time.Now()}
+	member := chatroommembermodel.ChatRoomMember{RoomID: roomID, UserID: userID, JoinedAt: time.Now()}
 	result := r.writeDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&member)
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected > 0 {
-		r.writeDB.Model(&model.ChatRoom{}).Where("room_id = ?", roomID).UpdateColumn("member_count", gorm.Expr("member_count + 1"))
+		r.writeDB.Model(&chatroommodel.ChatRoom{}).Where("room_id = ?", roomID).UpdateColumn("member_count", gorm.Expr("member_count + 1"))
 		_ = r.cache.Delete(context.Background(),
 			fmt.Sprintf("chat:member:%d:%d", roomID, userID),
 			fmt.Sprintf("chat:room:%d", roomID),
@@ -105,7 +109,7 @@ func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 }
 
 func (r *ChatRoomRepository) UpdateEncryptedKey(roomID uint, encryptedKey string) error {
-	err := r.writeDB.Model(&model.ChatRoom{}).
+	err := r.writeDB.Model(&chatroommodel.ChatRoom{}).
 		Where("room_id = ?", roomID).
 		Update("encrypted_key", encryptedKey).Error
 	if err != nil {
@@ -116,12 +120,12 @@ func (r *ChatRoomRepository) UpdateEncryptedKey(roomID uint, encryptedKey string
 
 func (r *ChatRoomRepository) RemoveMember(roomID, userID uint) error {
 	ctx := context.Background()
-	result := r.writeDB.Where("room_id = ? AND user_id = ?", roomID, userID).Delete(&model.ChatRoomMember{})
+	result := r.writeDB.Where("room_id = ? AND user_id = ?", roomID, userID).Delete(&chatroommembermodel.ChatRoomMember{})
 	if result.Error != nil {
 		return result.Error
 	}
 	if result.RowsAffected > 0 {
-		r.writeDB.Model(&model.ChatRoom{}).Where("room_id = ?", roomID).
+		r.writeDB.Model(&chatroommodel.ChatRoom{}).Where("room_id = ?", roomID).
 			UpdateColumn("member_count", gorm.Expr("GREATEST(member_count - 1, 0)"))
 		_ = r.cache.Delete(ctx,
 			fmt.Sprintf("chat:member:%d:%d", roomID, userID),
@@ -139,7 +143,7 @@ func (r *ChatRoomRepository) UpdateGroup(roomID uint, name string, description *
 	if avatarURL != nil {
 		updates["avatar_url"] = *avatarURL
 	}
-	err := r.writeDB.Model(&model.ChatRoom{}).
+	err := r.writeDB.Model(&chatroommodel.ChatRoom{}).
 		Where("room_id = ?", roomID).
 		Updates(updates).Error
 	if err != nil {
@@ -151,27 +155,27 @@ func (r *ChatRoomRepository) UpdateGroup(roomID uint, name string, description *
 func (r *ChatRoomRepository) DeleteGroup(roomID uint) error {
 	ctx := context.Background()
 	var userIDs []uint
-	if err := r.readDB.Model(&model.ChatRoomMember{}).
+	if err := r.readDB.Model(&chatroommembermodel.ChatRoomMember{}).
 		Where("room_id = ?", roomID).
 		Pluck("user_id", &userIDs).Error; err != nil {
 		return err
 	}
 
 	err := r.writeDB.Transaction(func(tx *gorm.DB) error {
-		chatIDs := tx.Model(&model.Chat{}).Select("chat_id").Where("room_id = ?", roomID)
-		if err := tx.Where("chat_id IN (?)", chatIDs).Delete(&model.ChatRead{}).Error; err != nil {
+		chatIDs := tx.Model(&chatmodel.Chat{}).Select("chat_id").Where("room_id = ?", roomID)
+		if err := tx.Where("chat_id IN (?)", chatIDs).Delete(&chatreadmodel.ChatRead{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("chat_id IN (?)", chatIDs).Delete(&model.ChatMedia{}).Error; err != nil {
+		if err := tx.Where("chat_id IN (?)", chatIDs).Delete(&chatmediamodel.ChatMedia{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("room_id = ?", roomID).Delete(&model.Chat{}).Error; err != nil {
+		if err := tx.Where("room_id = ?", roomID).Delete(&chatmodel.Chat{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("room_id = ?", roomID).Delete(&model.ChatRoomMember{}).Error; err != nil {
+		if err := tx.Where("room_id = ?", roomID).Delete(&chatroommembermodel.ChatRoomMember{}).Error; err != nil {
 			return err
 		}
-		return tx.Delete(&model.ChatRoom{}, "room_id = ? AND type = ?", roomID, model.ChatRoomTypeGroup).Error
+		return tx.Delete(&chatroommodel.ChatRoom{}, "room_id = ? AND type = ?", roomID, chatroommodel.ChatRoomTypeGroup).Error
 	})
 	if err != nil {
 		return err
@@ -352,19 +356,19 @@ func (r *ChatRoomRepository) FindUnreadCounts(userID uint, roomIDs []uint) (map[
 
 func (r *ChatRoomRepository) GetUserRoomIDs(userID uint) ([]uint, error) {
 	var ids []uint
-	err := r.readDB.Model(&model.ChatRoomMember{}).
+	err := r.readDB.Model(&chatroommembermodel.ChatRoomMember{}).
 		Where("user_id = ?", userID).
 		Pluck("room_id", &ids).Error
 	return ids, err
 }
 
 func (r *ChatRoomRepository) ToggleMute(roomID, userID uint) (bool, error) {
-	var member model.ChatRoomMember
+	var member chatroommembermodel.ChatRoomMember
 	if err := r.readDB.Where("room_id = ? AND user_id = ?", roomID, userID).First(&member).Error; err != nil {
 		return false, err
 	}
 	newState := !member.IsMuted
-	err := r.writeDB.Model(&model.ChatRoomMember{}).
+	err := r.writeDB.Model(&chatroommembermodel.ChatRoomMember{}).
 		Where("room_id = ? AND user_id = ?", roomID, userID).
 		UpdateColumn("is_muted", newState).Error
 	return newState, err
@@ -379,7 +383,7 @@ func (r *ChatRoomRepository) GetMuteStatuses(userID uint, roomIDs []uint) (map[u
 		IsMuted bool
 	}
 	var rows []row
-	err := r.readDB.Model(&model.ChatRoomMember{}).
+	err := r.readDB.Model(&chatroommembermodel.ChatRoomMember{}).
 		Where("user_id = ? AND room_id IN ?", userID, roomIDs).
 		Select("room_id, is_muted").
 		Find(&rows).Error
@@ -394,18 +398,18 @@ func (r *ChatRoomRepository) GetMuteStatuses(userID uint, roomIDs []uint) (map[u
 }
 
 func (r *ChatRoomRepository) TouchUpdatedAt(roomID uint) error {
-	return r.writeDB.Model(&model.ChatRoom{}).
+	return r.writeDB.Model(&chatroommodel.ChatRoom{}).
 		Where("room_id = ?", roomID).
 		UpdateColumn("updated_at", gorm.Expr("NOW()")).Error
 }
 
-func (r *ChatRoomRepository) FindPrivateRoom(userA, userB uint) (*model.ChatRoom, error) {
-	var room model.ChatRoom
+func (r *ChatRoomRepository) FindPrivateRoom(userA, userB uint) (*chatroommodel.ChatRoom, error) {
+	var room chatroommodel.ChatRoom
 	err := r.readDB.Table("chat_rooms").
 		Select("chat_rooms.*").
 		Joins("JOIN chat_room_members m1 ON m1.room_id = chat_rooms.room_id AND m1.user_id = ?", userA).
 		Joins("JOIN chat_room_members m2 ON m2.room_id = chat_rooms.room_id AND m2.user_id = ?", userB).
-		Where("chat_rooms.type = ?", model.ChatRoomTypePrivate).
+		Where("chat_rooms.type = ?", chatroommodel.ChatRoomTypePrivate).
 		First(&room).Error
 	return &room, err
 }

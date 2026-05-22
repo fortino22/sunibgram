@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/sunibgram/domain/model"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -30,7 +30,7 @@ func userProfileKey(userID uint) string {
 	return fmt.Sprintf("profile:user:%d", userID)
 }
 
-func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
+func (r *UserProfileRepository) Upsert(profile *userprofilemodel.UserProfile) error {
 	if profile.ProfileID != 0 {
 		if err := r.writeDB.Model(profile).Updates(map[string]any{
 			"avatar_object_name": profile.AvatarObjectName,
@@ -74,10 +74,10 @@ func (r *UserProfileRepository) Upsert(profile *model.UserProfile) error {
 	return nil
 }
 
-func (r *UserProfileRepository) FindByUserID(userID uint) (*model.UserProfile, error) {
+func (r *UserProfileRepository) FindByUserID(userID uint) (*userprofilemodel.UserProfile, error) {
 	ctx := context.Background()
 	key := userProfileKey(userID)
-	var profile model.UserProfile
+	var profile userprofilemodel.UserProfile
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &profile); err == nil {
 			return &profile, nil
@@ -92,18 +92,18 @@ func (r *UserProfileRepository) FindByUserID(userID uint) (*model.UserProfile, e
 	return &profile, nil
 }
 
-func (r *UserProfileRepository) FindByUserIDs(ids []uint) ([]model.UserProfile, error) {
+func (r *UserProfileRepository) FindByUserIDs(ids []uint) ([]userprofilemodel.UserProfile, error) {
 	if len(ids) == 0 {
-		return []model.UserProfile{}, nil
+		return []userprofilemodel.UserProfile{}, nil
 	}
-	var profiles []model.UserProfile
+	var profiles []userprofilemodel.UserProfile
 	err := r.readDB.Where("user_id IN ?", ids).Find(&profiles).Error
 	return profiles, err
 }
 
 func (r *UserProfileRepository) ExistsByUserID(userID uint) (bool, error) {
 	var count int64
-	err := r.readDB.Model(&model.UserProfile{}).Where("user_id = ?", userID).Count(&count).Error
+	err := r.readDB.Model(&userprofilemodel.UserProfile{}).Where("user_id = ?", userID).Count(&count).Error
 	return count > 0, err
 }
 

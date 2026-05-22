@@ -9,7 +9,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	mediamodel "github.com/sunibgram/domain/model/media"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -55,7 +57,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	}
 	existing, _ := s.profileRepo.FindByUserID(userID)
 	if existing == nil {
-		existing = &model.UserProfile{UserID: userID}
+		existing = &userprofilemodel.UserProfile{UserID: userID}
 	}
 
 	if input.Avatar != nil {
@@ -190,7 +192,7 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 	}
 
 	if input.BirthdayDate != nil {
-		if err := model.ValidateBirthdayDate(*input.BirthdayDate); err != nil {
+		if err := userprofilemodel.ValidateBirthdayDate(*input.BirthdayDate); err != nil {
 			return err
 		}
 		existing, _ := s.profileRepo.FindByUserID(userID)
@@ -216,10 +218,10 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 }
 
 func validateProfileImage(header *multipart.FileHeader, uploadType string) error {
-	if err := model.ValidateUploadSize(header, model.MaxImageUploadSize(uploadType)); err != nil {
+	if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxImageUploadSize(uploadType)); err != nil {
 		return err
 	}
-	if err := model.ValidateImageExt(header.Filename); err != nil {
+	if err := mediamodel.ValidateImageExt(header.Filename); err != nil {
 		return err
 	}
 	f, err := header.Open()
@@ -227,7 +229,7 @@ func validateProfileImage(header *multipart.FileHeader, uploadType string) error
 		return err
 	}
 	defer f.Close()
-	return model.ValidateImageFile(f)
+	return mediamodel.ValidateImageFile(f)
 }
 
 func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, userID uint) {
@@ -273,7 +275,7 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.F
 	}
 	profile, _ := s.profileRepo.FindByUserID(userID)
 	if profile == nil {
-		profile = &model.UserProfile{UserID: userID}
+		profile = &userprofilemodel.UserProfile{UserID: userID}
 	}
 	userFaculty, _ := s.userFacultyRepo.FindByUserID(userID)
 	isFollowing := false
@@ -292,15 +294,15 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.F
 	}, nil
 }
 
-func (s *UserProfileService) GetProfiles(userIDs []uint) ([]model.UserProfile, error) {
+func (s *UserProfileService) GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error) {
 	return s.profileRepo.FindByUserIDs(userIDs)
 }
 
-func (s *UserProfileService) GetUsers(userIDs []uint) ([]model.User, error) {
+func (s *UserProfileService) GetUsers(userIDs []uint) ([]usermodel.User, error) {
 	return s.userRepo.FindByIDs(userIDs)
 }
 
-func (s *UserProfileService) GetUserFaculties(userIDs []uint) ([]model.UserFaculty, error) {
+func (s *UserProfileService) GetUserFaculties(userIDs []uint) ([]usermodel.UserFaculty, error) {
 	return s.userFacultyRepo.FindByUserIDs(userIDs)
 }
 

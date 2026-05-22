@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -108,9 +108,9 @@ func (r *interactionRepo) allUserThreadIDs(userID uint) ([]uint, error) {
 	return ids, err
 }
 
-func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
+func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	type cachedResult struct {
-		Threads    []model.Thread
+		Threads    []threadmodel.Thread
 		Timestamps []time.Time
 		Total      int64
 	}
@@ -143,16 +143,16 @@ func (r *interactionRepo) findByUserID(userID uint, page, limit int) ([]model.Th
 		orderMap[row.ThreadID] = row.InteractedAt
 	}
 
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	if err := preloadThreadDetails(r.readDB).Where("threads.thread_id IN ?", ids).Find(&threads).Error; err != nil {
 		return nil, nil, total, err
 	}
 
-	threadMap := make(map[uint]model.Thread, len(threads))
+	threadMap := make(map[uint]threadmodel.Thread, len(threads))
 	for _, t := range threads {
 		threadMap[t.ThreadID] = t
 	}
-	sorted := make([]model.Thread, len(ids))
+	sorted := make([]threadmodel.Thread, len(ids))
 	timestamps := make([]time.Time, len(ids))
 	for i, id := range ids {
 		sorted[i] = threadMap[id]

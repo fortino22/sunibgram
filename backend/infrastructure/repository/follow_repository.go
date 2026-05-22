@@ -8,7 +8,10 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	exploremodel "github.com/sunibgram/domain/model/explore"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
+	userstatmodel "github.com/sunibgram/domain/model/user_stat"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -52,7 +55,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 		return errors.New("cannot follow yourself")
 	}
 
-	rel := model.UserRelationship{FollowerID: followerID, FollowingID: followingID}
+	rel := userrelationshipmodel.UserRelationship{FollowerID: followerID, FollowingID: followingID}
 	if err := r.writeDB.Create(&rel).Error; err != nil {
 		return errors.New("already following")
 	}
@@ -82,7 +85,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 }
 
 func (r *followRepository) Unfollow(followerID, followingID uint) error {
-	result := r.writeDB.Delete(&model.UserRelationship{}, "follower_id = ? AND following_id = ?", followerID, followingID)
+	result := r.writeDB.Delete(&userrelationshipmodel.UserRelationship{}, "follower_id = ? AND following_id = ?", followerID, followingID)
 	if result.RowsAffected == 0 {
 		return errors.New("not following")
 	}
@@ -129,7 +132,7 @@ func (r *followRepository) Exists(followerID, followingID uint) (bool, error) {
 		return exists, nil
 	}
 	var count int64
-	r.readDB.Model(&model.UserRelationship{}).
+	r.readDB.Model(&userrelationshipmodel.UserRelationship{}).
 		Where("follower_id = ? AND following_id = ?", followerID, followingID).
 		Count(&count)
 	exists = count > 0
@@ -157,7 +160,7 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 
 	var followingIDs []uint
 	if err := r.readDB.WithContext(ctx).
-		Model(&model.UserRelationship{}).
+		Model(&userrelationshipmodel.UserRelationship{}).
 		Where("follower_id = ?", followerID).
 		Pluck("following_id", &followingIDs).Error; err != nil {
 		return nil, err
@@ -177,7 +180,7 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 	return result, nil
 }
 
-func (r *followRepository) GetMentionFollowing(ctx context.Context, userID uint, limit int) ([]model.ExploreUserResult, error) {
+func (r *followRepository) GetMentionFollowing(ctx context.Context, userID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
 	if limit < 1 || limit > 100 {
 		limit = defaultRepositoryExploreLimit
 	}
@@ -208,7 +211,7 @@ func (r *followRepository) GetMentionFollowing(ctx context.Context, userID uint,
 	return mentionRowsToResults(rows), nil
 }
 
-func (r *followRepository) SearchMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error) {
+func (r *followRepository) SearchMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]exploremodel.ExploreUserResult, error) {
 	if limit < 1 || limit > 100 {
 		limit = defaultRepositoryExploreLimit
 	}
@@ -240,10 +243,10 @@ func (r *followRepository) SearchMentionUsers(ctx context.Context, userID uint, 
 	return mentionRowsToResults(rows), nil
 }
 
-func mentionRowsToResults(rows []exploreUserRow) []model.ExploreUserResult {
-	users := make([]model.ExploreUserResult, len(rows))
+func mentionRowsToResults(rows []exploreUserRow) []exploremodel.ExploreUserResult {
+	users := make([]exploremodel.ExploreUserResult, len(rows))
 	for i, row := range rows {
-		users[i] = model.ExploreUserResult{
+		users[i] = exploremodel.ExploreUserResult{
 			UserID:           row.UserID,
 			Name:             row.Name,
 			Username:         row.Username,
@@ -256,12 +259,12 @@ func mentionRowsToResults(rows []exploreUserRow) []model.ExploreUserResult {
 	return users
 }
 
-func (r *followRepository) GetStat(userID uint) (*model.UserStat, error) {
+func (r *followRepository) GetStat(userID uint) (*userstatmodel.UserStat, error) {
 	ctx := context.Background()
 	key := userStatKey(userID)
-	var stat model.UserStat
+	var stat userstatmodel.UserStat
 	if err := r.cache.Get(ctx, key, &stat); err != nil {
-		if err := r.readDB.FirstOrCreate(&stat, model.UserStat{UserID: userID}).Error; err != nil {
+		if err := r.readDB.FirstOrCreate(&stat, userstatmodel.UserStat{UserID: userID}).Error; err != nil {
 			return nil, err
 		}
 		r.cache.Set(ctx, key, stat, r.ttl)
@@ -269,9 +272,9 @@ func (r *followRepository) GetStat(userID uint) (*model.UserStat, error) {
 	return &stat, nil
 }
 
-func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]model.User, int64, error) {
+func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]usermodel.User, int64, error) {
 	type cached struct {
-		Users []model.User
+		Users []usermodel.User
 		Total int64
 	}
 
@@ -280,15 +283,15 @@ func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]model.U
 	key := followListKey(userID, "following", page, limit)
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var total int64
-		if err := r.readDB.Model(&model.UserRelationship{}).
+		if err := r.readDB.Model(&userrelationshipmodel.UserRelationship{}).
 			Where("follower_id = ?", userID).
 			Count(&total).Error; err != nil {
 			return nil, 0, err
 		}
 
-		var users []model.User
+		var users []usermodel.User
 		offset := (page - 1) * limit
-		if err := r.readDB.Model(&model.User{}).
+		if err := r.readDB.Model(&usermodel.User{}).
 			Joins("JOIN user_relationships ON user_relationships.following_id = users.user_id").
 			Where("user_relationships.follower_id = ?", userID).
 			Preload("Role").
@@ -306,9 +309,9 @@ func (r *followRepository) GetFollowing(userID uint, page, limit int) ([]model.U
 	return result.Users, result.Total, nil
 }
 
-func (r *followRepository) GetFollowers(userID uint, page, limit int) ([]model.User, int64, error) {
+func (r *followRepository) GetFollowers(userID uint, page, limit int) ([]usermodel.User, int64, error) {
 	type cached struct {
-		Users []model.User
+		Users []usermodel.User
 		Total int64
 	}
 
@@ -317,15 +320,15 @@ func (r *followRepository) GetFollowers(userID uint, page, limit int) ([]model.U
 	key := followListKey(userID, "followers", page, limit)
 	if err := r.cache.Get(ctx, key, &result); err != nil {
 		var total int64
-		if err := r.readDB.Model(&model.UserRelationship{}).
+		if err := r.readDB.Model(&userrelationshipmodel.UserRelationship{}).
 			Where("following_id = ?", userID).
 			Count(&total).Error; err != nil {
 			return nil, 0, err
 		}
 
-		var users []model.User
+		var users []usermodel.User
 		offset := (page - 1) * limit
-		if err := r.readDB.Model(&model.User{}).
+		if err := r.readDB.Model(&usermodel.User{}).
 			Joins("JOIN user_relationships ON user_relationships.follower_id = users.user_id").
 			Where("user_relationships.following_id = ?", userID).
 			Preload("Role").
@@ -354,9 +357,9 @@ func (r *followRepository) invalidateFollowLists(followerID, followingID uint) {
 func (r *followRepository) patchStatCache(userID uint, followerDelta, followingDelta int) {
 	ctx := context.Background()
 	key := userStatKey(userID)
-	var stat model.UserStat
+	var stat userstatmodel.UserStat
 	if err := r.cache.Get(ctx, key, &stat); err != nil {
-		if err := r.readDB.FirstOrCreate(&stat, model.UserStat{UserID: userID}).Error; err != nil {
+		if err := r.readDB.FirstOrCreate(&stat, userstatmodel.UserStat{UserID: userID}).Error; err != nil {
 			return
 		}
 	}

@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	categorymodel "github.com/sunibgram/domain/model/category"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -75,7 +75,7 @@ func ParseUUIDParam(ctx *fiber.Ctx, paramName string, entityName string) (uuid.U
 	return id, true
 }
 
-func toCategoryResponse(category *model.Category) categorydto.CategoryResponse {
+func toCategoryResponse(category *categorymodel.Category) categorydto.CategoryResponse {
 	return categorydto.CategoryResponse{
 		ID:        category.ID.String(),
 		Name:      category.Name,
@@ -83,7 +83,7 @@ func toCategoryResponse(category *model.Category) categorydto.CategoryResponse {
 	}
 }
 
-func toCategoryResponses(categories []model.Category) []categorydto.CategoryResponse {
+func toCategoryResponses(categories []categorymodel.Category) []categorydto.CategoryResponse {
 	responses := make([]categorydto.CategoryResponse, len(categories))
 	for i := range categories {
 		responses[i] = toCategoryResponse(&categories[i])

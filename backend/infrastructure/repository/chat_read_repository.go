@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/sunibgram/domain/model"
+	chatreadmodel "github.com/sunibgram/domain/model/chat_read"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -21,7 +21,7 @@ func NewChatReadRepository(writeDB, readDB *gorm.DB) domainrepo.IChatReadReposit
 }
 
 func (r *ChatReadRepository) MarkRead(chatID, userID uint) error {
-	read := model.ChatRead{ChatID: chatID, UserID: userID, ReadAt: time.Now()}
+	read := chatreadmodel.ChatRead{ChatID: chatID, UserID: userID, ReadAt: time.Now()}
 	return r.writeDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&read).Error
 }
 
@@ -42,7 +42,7 @@ func (r *ChatReadRepository) BatchMarkRead(roomID, userID uint) ([]uint, error) 
 
 func (r *ChatReadRepository) HasRead(chatID, userID uint) bool {
 	var count int64
-	if err := r.readDB.Model(&model.ChatRead{}).
+	if err := r.readDB.Model(&chatreadmodel.ChatRead{}).
 		Where("chat_id = ? AND user_id = ?", chatID, userID).
 		Count(&count).Error; err != nil {
 		return false

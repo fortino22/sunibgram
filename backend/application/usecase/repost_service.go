@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	repostmodel "github.com/sunibgram/domain/model/repost"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -36,7 +37,7 @@ func (s *RepostService) Repost(userID, threadID uint) error {
 	if exists {
 		return errors.New("already reposted")
 	}
-	if err := s.repostRepo.Save(&model.Repost{UserID: userID, ThreadID: threadID}); err != nil {
+	if err := s.repostRepo.Save(&repostmodel.Repost{UserID: userID, ThreadID: threadID}); err != nil {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
@@ -63,7 +64,7 @@ func (s *RepostService) AreThreadsReposted(userID uint, threadIDs []uint) (map[u
 	return s.repostRepo.AreThreadsReposted(userID, threadIDs)
 }
 
-func (s *RepostService) GetMyReposts(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
+func (s *RepostService) GetMyReposts(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.repostRepo.FindByUserID(userID, page, limit)
 }

@@ -12,7 +12,11 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitydiscovermodel "github.com/sunibgram/domain/model/community_discover"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
+	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -56,7 +60,7 @@ func NewCommunityService(
 	}
 }
 
-func (s *CommunityService) Create(ctx context.Context, userID uint, name, description string, rules []string, categoryID *uuid.UUID, visibility model.CommunityVisibility, banner *multipart.FileHeader) (*model.Community, []model.CommunityRule, error) {
+func (s *CommunityService) Create(ctx context.Context, userID uint, name, description string, rules []string, categoryID *uuid.UUID, visibility communitymodel.CommunityVisibility, banner *multipart.FileHeader) (*communitymodel.Community, []communityrulemodel.CommunityRule, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil, errors.New("name is required")
@@ -71,8 +75,8 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 	if err := s.ensureCommunityNameAvailable(name, nil); err != nil {
 		return nil, nil, err
 	}
-	if visibility != model.CommunityVisibilityPublic && visibility != model.CommunityVisibilityPrivate {
-		visibility = model.CommunityVisibilityPublic
+	if visibility != communitymodel.CommunityVisibilityPublic && visibility != communitymodel.CommunityVisibilityPrivate {
+		visibility = communitymodel.CommunityVisibilityPublic
 	}
 	if err := s.validateCategoryID(categoryID); err != nil {
 		return nil, nil, err
@@ -82,7 +86,7 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 		return nil, nil, err
 	}
 
-	community := &model.Community{
+	community := &communitymodel.Community{
 		UserID:      userID,
 		Name:        name,
 		Description: description,
@@ -100,16 +104,16 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 		community.BannerBucket = bucket
 	}
 
-	var savedRules []model.CommunityRule
+	var savedRules []communityrulemodel.CommunityRule
 	if err := s.communityRepo.Transaction(func(tx *gorm.DB) error {
 		if err := s.communityRepo.SaveWithTx(tx, community); err != nil {
 			return err
 		}
 
-		member := &model.CommunityMember{
+		member := &communitymembermodel.CommunityMember{
 			CommunityID: community.CommunityID,
 			UserID:      userID,
-			Role:        model.CommunityMemberRoleAdmin,
+			Role:        communitymembermodel.CommunityMemberRoleAdmin,
 		}
 		if err := s.memberRepo.SaveWithTx(tx, member); err != nil {
 			return err
@@ -126,7 +130,7 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 	return community, savedRules, nil
 }
 
-func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, description string, keepRuleIDs []uint, newRules []string, categoryID *uuid.UUID, visibility model.CommunityVisibility, banner *multipart.FileHeader, clearBanner bool) (*model.Community, []model.CommunityRule, error) {
+func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, description string, keepRuleIDs []uint, newRules []string, categoryID *uuid.UUID, visibility communitymodel.CommunityVisibility, banner *multipart.FileHeader, clearBanner bool) (*communitymodel.Community, []communityrulemodel.CommunityRule, error) {
 	community, err := s.communityRepo.FindByID(id)
 	if err != nil {
 		return nil, nil, errors.New("community not found")
@@ -152,8 +156,8 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	if err := s.ensureCommunityNameAvailable(name, &id); err != nil {
 		return nil, nil, err
 	}
-	if visibility != model.CommunityVisibilityPublic && visibility != model.CommunityVisibilityPrivate {
-		visibility = model.CommunityVisibilityPublic
+	if visibility != communitymodel.CommunityVisibilityPublic && visibility != communitymodel.CommunityVisibilityPrivate {
+		visibility = communitymodel.CommunityVisibilityPublic
 	}
 	if err := s.validateCategoryID(categoryID); err != nil {
 		return nil, nil, err
@@ -197,7 +201,7 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 		community.BannerBucket = bucket
 	}
 
-	var savedRules []model.CommunityRule
+	var savedRules []communityrulemodel.CommunityRule
 	if err := s.communityRepo.Transaction(func(tx *gorm.DB) error {
 		if err := s.communityRepo.UpdateWithTx(tx, community); err != nil {
 			return err
@@ -216,9 +220,9 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 				return err
 			}
 		}
-		newRuleRecords := make([]model.CommunityRule, len(cleanedNewRules))
+		newRuleRecords := make([]communityrulemodel.CommunityRule, len(cleanedNewRules))
 		for i, text := range cleanedNewRules {
-			newRuleRecords[i] = model.CommunityRule{
+			newRuleRecords[i] = communityrulemodel.CommunityRule{
 				CommunityID: community.CommunityID,
 				OrderNum:    len(dedupedKeepIDs) + i + 1,
 				Text:        text,
@@ -264,14 +268,14 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	return nil
 }
 
-func (s *CommunityService) Discover(ctx context.Context, categoryID *uuid.UUID) ([]model.DiscoverCommunity, error) {
+func (s *CommunityService) Discover(ctx context.Context, categoryID *uuid.UUID) ([]communitydiscovermodel.DiscoverCommunity, error) {
 	if categoryID != nil && *categoryID != uuid.Nil {
 		if _, err := s.categoryRepo.FindByID(*categoryID); err != nil {
 			return nil, errors.New("categoryId doesn't exist")
 		}
 	}
 
-	var cached []model.DiscoverCommunity
+	var cached []communitydiscovermodel.DiscoverCommunity
 	if s.cacheRepo != nil {
 		if err := s.cacheRepo.Get(ctx, discoverCommunitiesCacheKey, &cached); err == nil {
 			return filterDiscoverByCategory(cached, categoryID), nil
@@ -288,12 +292,12 @@ func (s *CommunityService) Discover(ctx context.Context, categoryID *uuid.UUID) 
 	return filterDiscoverByCategory(communities, categoryID), nil
 }
 
-func (s *CommunityService) SearchByName(ctx context.Context, name string) ([]model.DiscoverCommunity, error) {
+func (s *CommunityService) SearchByName(ctx context.Context, name string) ([]communitydiscovermodel.DiscoverCommunity, error) {
 	name = strings.TrimSpace(name)
 	if utf8.RuneCountInString(name) > 100 {
 		name = string([]rune(name)[:100])
 	}
-	var cached []model.DiscoverCommunity
+	var cached []communitydiscovermodel.DiscoverCommunity
 	if s.cacheRepo != nil {
 		if err := s.cacheRepo.Get(ctx, communitySearchCacheKey(name), &cached); err == nil {
 			return cached, nil
@@ -310,7 +314,7 @@ func (s *CommunityService) SearchByName(ctx context.Context, name string) ([]mod
 	return communities, nil
 }
 
-func filterDiscoverByCategory(communities []model.DiscoverCommunity, categoryID *uuid.UUID) []model.DiscoverCommunity {
+func filterDiscoverByCategory(communities []communitydiscovermodel.DiscoverCommunity, categoryID *uuid.UUID) []communitydiscovermodel.DiscoverCommunity {
 	if categoryID == nil || *categoryID == uuid.Nil {
 		return communities
 	}
@@ -323,7 +327,7 @@ func filterDiscoverByCategory(communities []model.DiscoverCommunity, categoryID 
 	return out
 }
 
-func (s *CommunityService) GetByID(id uint) (*model.Community, error) {
+func (s *CommunityService) GetByID(id uint) (*communitymodel.Community, error) {
 	community, err := s.communityRepo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -397,12 +401,12 @@ func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewe
 	}, nil
 }
 
-func (s *CommunityService) buildAboutUsers(members []model.CommunityMember, viewerID *uint, followSet map[uint]bool) []service.CommunityAboutUser {
+func (s *CommunityService) buildAboutUsers(members []communitymembermodel.CommunityMember, viewerID *uint, followSet map[uint]bool) []service.CommunityAboutUser {
 	out := make([]service.CommunityAboutUser, 0, len(members))
 	for i := range members {
 		m := &members[i]
 		user := m.User
-		var profile *model.UserProfile
+		var profile *userprofilemodel.UserProfile
 		if m.Profile != nil {
 			profile = m.Profile
 		}
@@ -419,7 +423,7 @@ func (s *CommunityService) buildAboutUsers(members []model.CommunityMember, view
 	return out
 }
 
-func (s *CommunityService) GetMyCreated(userID uint, page, limit int) ([]model.Community, int64, error) {
+func (s *CommunityService) GetMyCreated(userID uint, page, limit int) ([]communitymodel.Community, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	communities, total, err := s.communityRepo.FindByCreatorID(userID, page, limit)
 	if err != nil {
@@ -429,7 +433,7 @@ func (s *CommunityService) GetMyCreated(userID uint, page, limit int) ([]model.C
 	return communities, total, nil
 }
 
-func (s *CommunityService) GetMyJoined(userID uint, page, limit int) ([]model.Community, int64, error) {
+func (s *CommunityService) GetMyJoined(userID uint, page, limit int) ([]communitymodel.Community, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	communities, total, err := s.communityRepo.FindJoinedByUserID(userID, page, limit)
 	if err != nil {
@@ -468,13 +472,13 @@ func (s *CommunityService) ensureCommunityNameAvailable(name string, excludeID *
 	return nil
 }
 
-func (s *CommunityService) hydrateCommunityCategories(communities []model.Community) {
+func (s *CommunityService) hydrateCommunityCategories(communities []communitymodel.Community) {
 	for i := range communities {
 		s.hydrateCommunityCategory(&communities[i])
 	}
 }
 
-func (s *CommunityService) hydrateCommunityCategory(community *model.Community) {
+func (s *CommunityService) hydrateCommunityCategory(community *communitymodel.Community) {
 	if community == nil || community.CategoryID == nil {
 		if community != nil {
 			community.Category = nil

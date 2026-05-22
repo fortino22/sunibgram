@@ -3,7 +3,7 @@ package repository
 import (
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -16,17 +16,17 @@ func NewEventReviewRepository(writeDB, readDB *gorm.DB) domainrepo.IEventReviewR
 	return &eventReviewRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *eventReviewRepository) Create(review *model.EventReview) error {
+func (r *eventReviewRepository) Create(review *eventreviewmodel.EventReview) error {
 	return r.writeDB.Create(review).Error
 }
 
-func (r *eventReviewRepository) FindByEventIDs(eventIDs []string) (map[string][]model.EventReview, error) {
-	reviewMap := make(map[string][]model.EventReview)
+func (r *eventReviewRepository) FindByEventIDs(eventIDs []string) (map[string][]eventreviewmodel.EventReview, error) {
+	reviewMap := make(map[string][]eventreviewmodel.EventReview)
 	if len(eventIDs) == 0 {
 		return reviewMap, nil
 	}
 
-	var reviews []model.EventReview
+	var reviews []eventreviewmodel.EventReview
 	err := r.readDB.
 		Preload("Admin").
 		Where("event_id IN ?", eventIDs).

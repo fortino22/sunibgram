@@ -3,18 +3,18 @@ package repository
 import (
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 )
 
 type ICommunityMemberRepository interface {
-	Save(member *model.CommunityMember) error
-	SaveWithTx(tx *gorm.DB, member *model.CommunityMember) error
-	FindMember(communityID, userID uint) (*model.CommunityMember, error)
-	FindByCommunityID(communityID uint, page, limit int) ([]model.CommunityMember, int64, error)
-	FindCommunityUsers(communityID uint, role *model.CommunityMemberRole, query string, page, limit int) ([]model.CommunityMember, int64, error)
-	FindAdmins(communityID uint) ([]model.CommunityMember, error)
-	FindTopMembers(communityID uint, limit int) ([]model.CommunityMember, error)
+	Save(member *communitymembermodel.CommunityMember) error
+	SaveWithTx(tx *gorm.DB, member *communitymembermodel.CommunityMember) error
+	FindMember(communityID, userID uint) (*communitymembermodel.CommunityMember, error)
+	FindByCommunityID(communityID uint, page, limit int) ([]communitymembermodel.CommunityMember, int64, error)
+	FindCommunityUsers(communityID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) ([]communitymembermodel.CommunityMember, int64, error)
+	FindAdmins(communityID uint) ([]communitymembermodel.CommunityMember, error)
+	FindTopMembers(communityID uint, limit int) ([]communitymembermodel.CommunityMember, error)
 	Delete(communityID, userID uint) error
 	UpdateMemberCount(communityID uint, delta int) error
-	UpdateRole(communityID, userID uint, role model.CommunityMemberRole) error
+	UpdateRole(communityID, userID uint, role communitymembermodel.CommunityMemberRole) error
 }

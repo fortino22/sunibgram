@@ -3,10 +3,10 @@ package service
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
+	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 )
 
 type IHashtagService interface {
-	GetTrending(ctx context.Context, limit int) ([]model.TrendingHashtag, error)
+	GetTrending(ctx context.Context, limit int) ([]hashtagmodel.TrendingHashtag, error)
 	InvalidateTrendingCache(ctx context.Context)
 }

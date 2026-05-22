@@ -7,7 +7,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	usermodel "github.com/sunibgram/domain/model/user"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -53,13 +55,13 @@ func (s *FeedScoreScheduler) run() {
 		return
 	}
 
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	if err := preloadSchedulerThreadDetails(s.db).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("threads.type IN ?", []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply)}).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false).
 		Where("threads.parent_id IS NULL OR (threads.like_count + threads.repost_count + threads.comment_count) > 0").
 		Order("threads.feed_score DESC").
@@ -90,7 +92,7 @@ func preloadSchedulerThreadUser(db *gorm.DB) *gorm.DB {
 // to public fields.
 func schedulerUserJoinSelect(db *gorm.DB) *gorm.DB {
 	return db.Session(&gorm.Session{NewDB: true}).
-		Model(&model.User{}).
+		Model(&usermodel.User{}).
 		Select("user_id", "name", "user_name", "is_premium")
 }
 

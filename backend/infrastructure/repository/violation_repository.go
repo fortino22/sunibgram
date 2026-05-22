@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	violationmodel "github.com/sunibgram/domain/model/violation"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -19,28 +19,28 @@ func NewViolationRepository(writeDB, readDB *gorm.DB) domainrepo.IViolationRepos
 	return &violationRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *violationRepository) Save(violation *model.Violation) error {
+func (r *violationRepository) Save(violation *violationmodel.Violation) error {
 	return r.writeDB.Create(violation).Error
 }
 
-func (r *violationRepository) FindAll() ([]model.Violation, error) {
-	var violations []model.Violation
+func (r *violationRepository) FindAll() ([]violationmodel.Violation, error) {
+	var violations []violationmodel.Violation
 	if err := r.readDB.Order("name ASC").Find(&violations).Error; err != nil {
 		return nil, err
 	}
 	return violations, nil
 }
 
-func (r *violationRepository) FindByID(id uuid.UUID) (*model.Violation, error) {
-	var violation model.Violation
+func (r *violationRepository) FindByID(id uuid.UUID) (*violationmodel.Violation, error) {
+	var violation violationmodel.Violation
 	if err := r.readDB.First(&violation, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &violation, nil
 }
 
-func (r *violationRepository) Update(violation *model.Violation) error {
-	result := r.writeDB.Model(&model.Violation{}).
+func (r *violationRepository) Update(violation *violationmodel.Violation) error {
+	result := r.writeDB.Model(&violationmodel.Violation{}).
 		Where("id = ?", violation.ID).
 		Updates(map[string]any{
 			"name":        violation.Name,
@@ -56,7 +56,7 @@ func (r *violationRepository) Update(violation *model.Violation) error {
 }
 
 func (r *violationRepository) Delete(id uuid.UUID) error {
-	result := r.writeDB.Delete(&model.Violation{}, "id = ?", id)
+	result := r.writeDB.Delete(&violationmodel.Violation{}, "id = ?", id)
 	if result.Error != nil {
 		return result.Error
 	}

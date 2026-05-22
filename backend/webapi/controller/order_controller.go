@@ -7,7 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	ordermodel "github.com/sunibgram/domain/model/order"
 	"github.com/sunibgram/domain/service"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	orderdto "github.com/sunibgram/webapi/dto/order"
@@ -157,7 +157,7 @@ func verifyMidtransSignature(payload map[string]interface{}) error {
 	return nil
 }
 
-func toOrderResponse(o *model.Order) orderdto.OrderResponse {
+func toOrderResponse(o *ordermodel.Order) orderdto.OrderResponse {
 	return orderdto.OrderResponse{
 		ID:          o.ID,
 		OrderID:     o.OrderID,

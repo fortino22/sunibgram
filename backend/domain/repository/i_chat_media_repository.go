@@ -1,10 +1,10 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import chatmediamodel "github.com/sunibgram/domain/model/chat_media"
 
 type IChatMediaRepository interface {
-	Save(media *model.ChatMedia) error
-	FindByChatID(chatID uint) ([]model.ChatMedia, error)
-	FindByChatIDs(chatIDs []uint) ([]model.ChatMedia, error)
+	Save(media *chatmediamodel.ChatMedia) error
+	FindByChatID(chatID uint) ([]chatmediamodel.ChatMedia, error)
+	FindByChatIDs(chatIDs []uint) ([]chatmediamodel.ChatMedia, error)
 	DeleteByChatID(chatID uint) error
 }

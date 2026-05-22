@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -24,7 +24,7 @@ func NewThreadMediaRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domai
 	return &ThreadMediaRepository{writeDB: writeDB, readDB: readDB, cache: redisCache}
 }
 
-func (r *ThreadMediaRepository) SaveAll(media []model.ThreadMedia) error {
+func (r *ThreadMediaRepository) SaveAll(media []threadmediamodel.ThreadMedia) error {
 	if err := r.writeDB.Create(&media).Error; err != nil {
 		return err
 	}
@@ -32,14 +32,14 @@ func (r *ThreadMediaRepository) SaveAll(media []model.ThreadMedia) error {
 	return nil
 }
 
-func (r *ThreadMediaRepository) FindByThreadID(threadID uint) ([]model.ThreadMedia, error) {
-	var media []model.ThreadMedia
+func (r *ThreadMediaRepository) FindByThreadID(threadID uint) ([]threadmediamodel.ThreadMedia, error) {
+	var media []threadmediamodel.ThreadMedia
 	err := r.readDB.Where("thread_id = ?", threadID).Find(&media).Error
 	return media, err
 }
 
-func (r *ThreadMediaRepository) FindByThreadIDs(threadIDs []uint) ([]model.ThreadMedia, error) {
-	var media []model.ThreadMedia
+func (r *ThreadMediaRepository) FindByThreadIDs(threadIDs []uint) ([]threadmediamodel.ThreadMedia, error) {
+	var media []threadmediamodel.ThreadMedia
 	if len(threadIDs) == 0 {
 		return media, nil
 	}
@@ -48,19 +48,19 @@ func (r *ThreadMediaRepository) FindByThreadIDs(threadIDs []uint) ([]model.Threa
 }
 
 func (r *ThreadMediaRepository) DeleteByThreadID(threadID uint) error {
-	if err := r.writeDB.Where("thread_id = ?", threadID).Delete(&model.ThreadMedia{}).Error; err != nil {
+	if err := r.writeDB.Where("thread_id = ?", threadID).Delete(&threadmediamodel.ThreadMedia{}).Error; err != nil {
 		return err
 	}
 	invalidateExploreCache(context.Background(), r.cache)
 	return nil
 }
 
-func (r *ThreadMediaRepository) DeleteByIDs(ids []uint) ([]model.ThreadMedia, error) {
-	var media []model.ThreadMedia
+func (r *ThreadMediaRepository) DeleteByIDs(ids []uint) ([]threadmediamodel.ThreadMedia, error) {
+	var media []threadmediamodel.ThreadMedia
 	if err := r.readDB.Where("media_id IN ?", ids).Find(&media).Error; err != nil {
 		return nil, err
 	}
-	if err := r.writeDB.Where("media_id IN ?", ids).Delete(&model.ThreadMedia{}).Error; err != nil {
+	if err := r.writeDB.Where("media_id IN ?", ids).Delete(&threadmediamodel.ThreadMedia{}).Error; err != nil {
 		return nil, err
 	}
 	invalidateExploreCache(context.Background(), r.cache)

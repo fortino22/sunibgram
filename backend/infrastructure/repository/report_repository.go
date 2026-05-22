@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	reportmodel "github.com/sunibgram/domain/model/report"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -19,12 +19,12 @@ func NewReportRepository(writeDB, readDB *gorm.DB) domainrepo.IReportRepository 
 	return &reportRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *reportRepository) Save(report *model.Report) error {
+func (r *reportRepository) Save(report *reportmodel.Report) error {
 	return r.writeDB.Create(report).Error
 }
 
-func (r *reportRepository) FindAll() ([]model.Report, error) {
-	var reports []model.Report
+func (r *reportRepository) FindAll() ([]reportmodel.Report, error) {
+	var reports []reportmodel.Report
 	if err := r.readDB.
 		Preload("Violation").
 		Order("created_at DESC").
@@ -34,8 +34,8 @@ func (r *reportRepository) FindAll() ([]model.Report, error) {
 	return reports, nil
 }
 
-func (r *reportRepository) FindByID(id uuid.UUID) (*model.Report, error) {
-	var report model.Report
+func (r *reportRepository) FindByID(id uuid.UUID) (*reportmodel.Report, error) {
+	var report reportmodel.Report
 	if err := r.readDB.
 		Preload("Violation").
 		First(&report, "id = ?", id).Error; err != nil {
@@ -45,7 +45,7 @@ func (r *reportRepository) FindByID(id uuid.UUID) (*model.Report, error) {
 }
 
 func (r *reportRepository) UpdateStatus(id uuid.UUID, status string) error {
-	result := r.writeDB.Model(&model.Report{}).
+	result := r.writeDB.Model(&reportmodel.Report{}).
 		Where("id = ?", id).
 		Update("status", status)
 	if result.Error != nil {
@@ -58,7 +58,7 @@ func (r *reportRepository) UpdateStatus(id uuid.UUID, status string) error {
 }
 
 func (r *reportRepository) Delete(id uuid.UUID) error {
-	result := r.writeDB.Delete(&model.Report{}, "id = ?", id)
+	result := r.writeDB.Delete(&reportmodel.Report{}, "id = ?", id)
 	if result.Error != nil {
 		return result.Error
 	}

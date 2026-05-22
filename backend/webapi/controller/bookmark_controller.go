@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	"github.com/sunibgram/domain/service"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -95,7 +95,7 @@ func (c *BookmarkController) GetMyBookmarks(ctx *fiber.Ctx) error {
 		ids[i] = t.ThreadID
 	}
 	allMedia, _ := c.mediaService.GetByThreadIDs(ids)
-	mediaByThread := make(map[uint][]model.ThreadMedia, len(ids))
+	mediaByThread := make(map[uint][]threadmediamodel.ThreadMedia, len(ids))
 	for _, m := range allMedia {
 		mediaByThread[m.ThreadID] = append(mediaByThread[m.ThreadID], m)
 	}

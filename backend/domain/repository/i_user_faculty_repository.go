@@ -1,11 +1,11 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import usermodel "github.com/sunibgram/domain/model/user"
 
 type IUserFacultyRepository interface {
-	Save(uf *model.UserFaculty) error
-	FindByUserID(userID uint) (*model.UserFaculty, error)
-	FindByUserIDs(ids []uint) ([]model.UserFaculty, error)
-	FindByFacultyID(facultyID uint, page, limit int) ([]model.UserFaculty, int64, error)
+	Save(uf *usermodel.UserFaculty) error
+	FindByUserID(userID uint) (*usermodel.UserFaculty, error)
+	FindByUserIDs(ids []uint) ([]usermodel.UserFaculty, error)
+	FindByFacultyID(facultyID uint, page, limit int) ([]usermodel.UserFaculty, int64, error)
 	Delete(userID, facultyID uint) error
 }

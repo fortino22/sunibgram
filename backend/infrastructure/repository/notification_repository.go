@@ -6,7 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	notificationmodel "github.com/sunibgram/domain/model/notification"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -21,12 +21,12 @@ func NewNotificationRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainr
 	return &notificationRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 
-func (r *notificationRepository) Save(notification *model.Notification) error {
+func (r *notificationRepository) Save(notification *notificationmodel.Notification) error {
 	return r.writeDB.Create(notification).Error
 }
 
-func (r *notificationRepository) FindByID(id uint) (*model.Notification, error) {
-	var notification model.Notification
+func (r *notificationRepository) FindByID(id uint) (*notificationmodel.Notification, error) {
+	var notification notificationmodel.Notification
 	if err := r.readDB.First(&notification, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
@@ -34,15 +34,15 @@ func (r *notificationRepository) FindByID(id uint) (*model.Notification, error) 
 }
 
 func (r *notificationRepository) Delete(id uint) error {
-	result := r.writeDB.Delete(&model.Notification{}, "id = ?", id)
+	result := r.writeDB.Delete(&notificationmodel.Notification{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		return errors.New("notification not found")
 	}
 	return result.Error
 }
 
-func (r *notificationRepository) GetNotificationsByRecipientUserID(ctx context.Context, recipientUserID string, limit, offset int) ([]model.Notification, error) {
-	var notifications []model.Notification
+func (r *notificationRepository) GetNotificationsByRecipientUserID(ctx context.Context, recipientUserID string, limit, offset int) ([]notificationmodel.Notification, error) {
+	var notifications []notificationmodel.Notification
 	err := r.readDB.WithContext(ctx).
 		Select("id", "type", "message", "sender_user_id", "reference_id", "created_at").
 		Where("recipient_user_id = ?", recipientUserID).
@@ -53,18 +53,18 @@ func (r *notificationRepository) GetNotificationsByRecipientUserID(ctx context.C
 	return notifications, err
 }
 
-func (r *notificationRepository) GetSenderCache(userID uint) (*model.NotificationSender, error) {
+func (r *notificationRepository) GetSenderCache(userID uint) (*notificationmodel.NotificationSender, error) {
 	if r.cache == nil {
 		return nil, errors.New("cache unavailable")
 	}
-	var sender model.NotificationSender
+	var sender notificationmodel.NotificationSender
 	if err := r.cache.Get(context.Background(), notificationSenderKey(userID), &sender); err != nil {
 		return nil, err
 	}
 	return &sender, nil
 }
 
-func (r *notificationRepository) SetSenderCache(sender *model.NotificationSender) error {
+func (r *notificationRepository) SetSenderCache(sender *notificationmodel.NotificationSender) error {
 	if r.cache == nil || sender == nil {
 		return nil
 	}

@@ -3,13 +3,13 @@ package repository
 import (
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	violationmodel "github.com/sunibgram/domain/model/violation"
 )
 
 type IViolationRepository interface {
-	Save(violation *model.Violation) error
-	FindAll() ([]model.Violation, error)
-	FindByID(id uuid.UUID) (*model.Violation, error)
-	Update(violation *model.Violation) error
+	Save(violation *violationmodel.Violation) error
+	FindAll() ([]violationmodel.Violation, error)
+	FindByID(id uuid.UUID) (*violationmodel.Violation, error)
+	Update(violation *violationmodel.Violation) error
 	Delete(id uuid.UUID) error
 }

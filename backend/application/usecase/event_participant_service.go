@@ -7,7 +7,8 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	eventparticipantmodel "github.com/sunibgram/domain/model/event_participant"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -42,7 +43,7 @@ func (s *EventParticipantService) Join(userID uint, eventID string) error {
 	if exists {
 		return errors.New("already joined")
 	}
-	return s.partRepo.Join(&model.EventParticipant{UserID: userID, EventID: eventID})
+	return s.partRepo.Join(&eventparticipantmodel.EventParticipant{UserID: userID, EventID: eventID})
 }
 
 func (s *EventParticipantService) Leave(userID uint, eventID string) error {
@@ -59,7 +60,7 @@ func (s *EventParticipantService) Leave(userID uint, eventID string) error {
 	return s.partRepo.Leave(userID, eventID)
 }
 
-func (s *EventParticipantService) GetMyJoined(userID uint, page, limit int) ([]model.Event, int64, error) {
+func (s *EventParticipantService) GetMyJoined(userID uint, page, limit int) ([]threadmodel.Event, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.partRepo.FindMyJoined(userID, page, limit)
 }

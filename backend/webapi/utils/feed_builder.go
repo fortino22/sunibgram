@@ -7,7 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
+	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
+	usermodel "github.com/sunibgram/domain/model/user"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/cache"
@@ -42,7 +45,7 @@ type FeedBuilder struct {
 	reposted       map[uint]bool
 	pinned         map[uint]bool
 	pollsLoaded    bool
-	pollsByThread  map[uint]*model.ThreadPoll
+	pollsByThread  map[uint]*threadpollmodel.ThreadPoll
 	pollUserVotes  map[uint]uint
 }
 
@@ -50,7 +53,7 @@ func avatarCacheKey(userID uint) string {
 	return fmt.Sprintf("user:%d:avatar", userID)
 }
 
-func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []threadmediadto.ThreadMediaResponse {
+func (fb FeedBuilder) ToMediaResponses(media []threadmediamodel.ThreadMedia) []threadmediadto.ThreadMediaResponse {
 	result := make([]threadmediadto.ThreadMediaResponse, len(media))
 	for i, m := range media {
 		result[i] = threadmediadto.ThreadMediaResponse{MediaID: m.MediaID, URL: fb.Media.GetURL(m.Bucket, m.ObjectName)}
@@ -58,14 +61,14 @@ func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []threadmediad
 	return result
 }
 
-func CommunityField(t *model.Thread) *threaddto.FeedCommunity {
+func CommunityField(t *threadmodel.Thread) *threaddto.FeedCommunity {
 	if t.CommunityID != nil && t.Community != nil {
 		return &threaddto.FeedCommunity{ID: t.Community.CommunityID, Name: t.Community.Name}
 	}
 	return nil
 }
 
-func EventFields(t *model.Thread) (*string, *string) {
+func EventFields(t *threadmodel.Thread) (*string, *string) {
 	if len(t.ThreadEvents) == 0 {
 		return nil, nil
 	}
@@ -306,7 +309,7 @@ func (fb *FeedBuilder) writeProfileMetaToCache(userIDs []uint) {
 // AuthorField builds a FeedAuthor from a User.
 // is_premium and faculty come from FeedBuilder caches (loaded fresh from DB via LoadAvatarsForUserIDs)
 // rather than the embedded User struct, which may be stale from a thread list cache.
-func (fb FeedBuilder) AuthorField(u model.User) threaddto.FeedAuthor {
+func (fb FeedBuilder) AuthorField(u usermodel.User) threaddto.FeedAuthor {
 	isPremium := u.IsPremium
 	if v, ok := fb.isPremiumCache[u.UserID]; ok {
 		isPremium = v
@@ -330,8 +333,8 @@ func (fb FeedBuilder) AuthorField(u model.User) threaddto.FeedAuthor {
 	return a
 }
 
-func feedFlagThreadID(t *model.Thread) uint {
-	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+func feedFlagThreadID(t *threadmodel.Thread) uint {
+	if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 		return t.OriginalThread.ThreadID
 	}
 	return t.ThreadID
@@ -339,7 +342,7 @@ func feedFlagThreadID(t *model.Thread) uint {
 
 // LoadPollsForThreads batch-fetches polls and the viewer's votes for the given threads.
 // Uses the effective thread id (resolves repost -> original).
-func (fb *FeedBuilder) LoadPollsForThreads(threads []model.Thread) {
+func (fb *FeedBuilder) LoadPollsForThreads(threads []threadmodel.Thread) {
 	if fb.PollSvc == nil {
 		return
 	}
@@ -372,7 +375,7 @@ func (fb *FeedBuilder) LoadPollsForThreads(threads []model.Thread) {
 	fb.pollUserVotes = votes
 }
 
-func (fb FeedBuilder) pollFor(t *model.Thread) *threadpolldto.PollResponse {
+func (fb FeedBuilder) pollFor(t *threadmodel.Thread) *threadpolldto.PollResponse {
 	if !fb.pollsLoaded || fb.PollSvc == nil || len(fb.pollsByThread) == 0 {
 		return nil
 	}
@@ -390,7 +393,7 @@ func (fb FeedBuilder) pollFor(t *model.Thread) *threadpolldto.PollResponse {
 
 // PollForParent returns the poll response for a parent thread, used in parent_context.
 // Parent threads are not reposts, so direct ThreadID lookup is sufficient.
-func (fb FeedBuilder) PollForParent(parent *model.Thread) *threadpolldto.PollResponse {
+func (fb FeedBuilder) PollForParent(parent *threadmodel.Thread) *threadpolldto.PollResponse {
 	if parent == nil {
 		return nil
 	}
@@ -433,7 +436,7 @@ func (fb *FeedBuilder) LoadPollsForThreadIDs(threadIDs []uint) {
 
 // LoadViewerFlagsForThreads batch-fetches viewer flags for the feed's effective thread IDs.
 // Uses Redis viewer-flag sets when available; falls back to DB and hydrates the set on miss.
-func (fb *FeedBuilder) LoadViewerFlagsForThreads(threads []model.Thread) {
+func (fb *FeedBuilder) LoadViewerFlagsForThreads(threads []threadmodel.Thread) {
 	if fb.ViewerID == nil {
 		return
 	}
@@ -630,14 +633,14 @@ func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isRepos
 	return
 }
 
-func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) threaddto.FeedItemResponse {
-	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+func (fb FeedBuilder) ToFeedItem(t *threadmodel.Thread, media []threadmediamodel.ThreadMedia) threaddto.FeedItemResponse {
+	if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 		orig := t.OriginalThread
 		repostedAt := dtoutils.Wrap(t.CreatedAt)
 		isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(orig.ThreadID)
 		eventID, eventName := EventFields(orig)
 		return threaddto.FeedItemResponse{
-			Type:               string(model.ThreadTypeRepost),
+			Type:               string(threadmodel.ThreadTypeRepost),
 			ID:                 t.ThreadID,
 			ParentID:           orig.ParentID,
 			RootID:             orig.RootID,

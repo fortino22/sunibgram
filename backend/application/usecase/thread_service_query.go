@@ -8,14 +8,16 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	exploremodel "github.com/sunibgram/domain/model/explore"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 )
 
-func (s *ThreadService) GetByID(id uint) (*model.Thread, error) {
+func (s *ThreadService) GetByID(id uint) (*threadmodel.Thread, error) {
 	return s.threadRepo.FindByID(id)
 }
 
-func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, total, err := s.threadRepo.FindRoots(requesterID, page, limit)
 	if err != nil {
@@ -24,7 +26,7 @@ func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, l
 	return threads, total, nil
 }
 
-func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.threadRepo.FindForYouFeed(ctx, userID, page, limit)
 }
@@ -37,14 +39,14 @@ func (s *ThreadService) CountNewForYouSinceID(ctx context.Context, userID, since
 	return s.threadRepo.CountNewSinceID(ctx, userID, sinceID)
 }
 
-func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	anchor, ancestors, children, err := s.threadRepo.FindChain(anchorID)
 	if err != nil {
 		return nil, 0, errors.New("thread not found")
 	}
 
 	// For repost threads, redirect the chain to the original thread so replies are visible.
-	if anchor.Type == model.ThreadTypeRepost && anchor.OriginalThreadID != nil {
+	if anchor.Type == threadmodel.ThreadTypeRepost && anchor.OriginalThreadID != nil {
 		anchor, ancestors, children, err = s.threadRepo.FindChain(*anchor.OriginalThreadID)
 		if err != nil {
 			return nil, 0, errors.New("thread not found")
@@ -56,7 +58,7 @@ func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 
-	chain := make([]model.Thread, 0, len(ancestors)+1+len(children))
+	chain := make([]threadmodel.Thread, 0, len(ancestors)+1+len(children))
 	chain = append(chain, ancestors...)
 	chain = append(chain, anchor)
 	chain = append(chain, children...)
@@ -83,7 +85,7 @@ func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, tar
 	return canViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, targetUserID)
 }
 
-func (s *ThreadService) GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, _, err := s.threadRepo.FindPostsByUserID(requesterID, userID, page, limit)
 	if err != nil {
@@ -92,7 +94,7 @@ func (s *ThreadService) GetMyPosts(ctx context.Context, requesterID, userID uint
 	return s.filterUserFeed(ctx, requesterID, threads, parents)
 }
 
-func (s *ThreadService) GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, _, err := s.threadRepo.FindReplyTabByUserID(requesterID, userID, page, limit)
 	if err != nil {
@@ -101,7 +103,7 @@ func (s *ThreadService) GetMyReplies(ctx context.Context, requesterID, userID ui
 	return s.filterUserFeed(ctx, requesterID, threads, parents)
 }
 
-func (s *ThreadService) GetMyMediaThread(ctx context.Context, requesterID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetMyMediaThread(ctx context.Context, requesterID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	if requesterID != userID {
 		isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, userID)
 		if err != nil {
@@ -119,7 +121,7 @@ func (s *ThreadService) GetMyMediaThread(ctx context.Context, requesterID, userI
 	return s.filterCommunityMemberFeed(requesterID, threads, parents)
 }
 
-func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]model.ExploreUserResult, error) {
+func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]exploremodel.ExploreUserResult, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 20)
 
 	query = strings.TrimSpace(query)
@@ -129,14 +131,14 @@ func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query 
 	return s.followRepo.SearchMentionUsers(ctx, userID, query, limit)
 }
 
-func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []model.Thread, parents []*model.Thread) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []threadmodel.Thread, parents []*threadmodel.Thread) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	return threads, parents, int64(len(threads)), nil
 }
 
-func (s *ThreadService) filterCommunityMemberFeed(requesterID uint, threads []model.Thread, parents []*model.Thread) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) filterCommunityMemberFeed(requesterID uint, threads []threadmodel.Thread, parents []*threadmodel.Thread) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	membership := make(map[uint]bool)
-	outThreads := make([]model.Thread, 0, len(threads))
-	outParents := make([]*model.Thread, 0, len(parents))
+	outThreads := make([]threadmodel.Thread, 0, len(threads))
+	outParents := make([]*threadmodel.Thread, 0, len(parents))
 	for i, thread := range threads {
 		if thread.CommunityID != nil {
 			allowed, ok := membership[*thread.CommunityID]
@@ -165,7 +167,7 @@ func (s *ThreadService) ensureCommunityThreadAccess(communityID, userID uint) er
 	return nil
 }
 
-func (s *ThreadService) GetCommunityThreadTop(communityID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetCommunityThreadTop(communityID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
 		return nil, nil, 0, err
 	}
@@ -173,7 +175,7 @@ func (s *ThreadService) GetCommunityThreadTop(communityID, userID uint, page, li
 	return s.threadRepo.FindCommunityTop(communityID, userID, page, limit)
 }
 
-func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
 		return nil, nil, 0, err
 	}
@@ -181,7 +183,7 @@ func (s *ThreadService) GetCommunityThreadLatest(communityID, userID uint, page,
 	return s.threadRepo.FindCommunityLatest(communityID, userID, page, limit)
 }
 
-func (s *ThreadService) GetCommunityThreadsBySort(communityID, userID uint, sort string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetCommunityThreadsBySort(communityID, userID uint, sort string, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
 		return nil, nil, 0, err
 	}
@@ -189,14 +191,14 @@ func (s *ThreadService) GetCommunityThreadsBySort(communityID, userID uint, sort
 	return s.threadRepo.FindCommunityThreadsBySort(communityID, userID, sort, page, limit)
 }
 
-func (s *ThreadService) GetCommunityThreadMedia(communityID, userID uint) ([]model.CommunityThreadMedia, error) {
+func (s *ThreadService) GetCommunityThreadMedia(communityID, userID uint) ([]threadmediamodel.CommunityThreadMedia, error) {
 	if err := s.ensureCommunityThreadAccess(communityID, userID); err != nil {
 		return nil, err
 	}
 	return s.threadRepo.FindCommunityMedia(communityID, userID)
 }
 
-func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, _, err := s.threadRepo.FindFollowingFeed(userID, page, limit)
 	if err != nil {
@@ -205,12 +207,12 @@ func (s *ThreadService) GetFollowingFeed(userID uint, page, limit int) ([]model.
 	return s.filterUserFeed(context.Background(), userID, threads, parents)
 }
 
-func (s *ThreadService) GetMyCommunityThreads(ctx context.Context, userID uint, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetMyCommunityThreads(ctx context.Context, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.threadRepo.FindMyCommunityThreads(userID, page, limit)
 }
 
-func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint, categoryID *uuid.UUID, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, parents, total, err := s.threadRepo.FindAllCommunityThreads(userID, categoryID, page, limit)
 	if err != nil {
@@ -219,11 +221,11 @@ func (s *ThreadService) GetAllCommunityThreads(ctx context.Context, userID uint,
 	return threads, parents, total, nil
 }
 
-func (s *ThreadService) GetAllCommunityThreadsByQueryTop(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetAllCommunityThreadsByQueryTop(ctx context.Context, userID uint, query string, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	return s.getAllCommunityThreadsByQuery(ctx, userID, query, page, limit, s.threadRepo.FindAllCommunityThreadsByQueryTop)
 }
 
-func (s *ThreadService) GetAllCommunityThreadsByQueryLatest(ctx context.Context, userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ThreadService) GetAllCommunityThreadsByQueryLatest(ctx context.Context, userID uint, query string, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	return s.getAllCommunityThreadsByQuery(ctx, userID, query, page, limit, s.threadRepo.FindAllCommunityThreadsByQueryLatest)
 }
 
@@ -232,8 +234,8 @@ func (s *ThreadService) getAllCommunityThreadsByQuery(
 	userID uint,
 	query string,
 	page, limit int,
-	load func(userID uint, query string, page, limit int) ([]model.Thread, []*model.Thread, int64, error),
-) ([]model.Thread, []*model.Thread, int64, error) {
+	load func(userID uint, query string, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error),
+) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, nil, 0, errors.New("query is required")

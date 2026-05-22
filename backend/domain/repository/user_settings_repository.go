@@ -3,13 +3,13 @@ package repository
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
+	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 )
 
 type IUserSettingsRepository interface {
-	GetUserSettingByUserID(ctx context.Context, userID uint) (*model.UserSettings, error)
+	GetUserSettingByUserID(ctx context.Context, userID uint) (*usersettingsmodel.UserSettings, error)
 	IsUserPrivate(ctx context.Context, userID uint) (bool, error)
 	GetPrivacyMapByUserIDs(ctx context.Context, userIDs []uint) (map[uint]bool, error)
-	UpdateUserSetting(ctx context.Context, setting *model.UserSettings) error
-	Create(ctx context.Context, setting *model.UserSettings) error
+	UpdateUserSetting(ctx context.Context, setting *usersettingsmodel.UserSettings) error
+	Create(ctx context.Context, setting *usersettingsmodel.UserSettings) error
 }

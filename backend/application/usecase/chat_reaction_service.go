@@ -6,7 +6,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/sunibgram/domain/model"
+	chatmodel "github.com/sunibgram/domain/model/chat"
+	chatreactionmodel "github.com/sunibgram/domain/model/chat_reaction"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -21,7 +22,7 @@ func NewChatReactionService(chatRepo repository.IChatRepository, reactionRepo re
 	return &ChatReactionService{chatRepo: chatRepo, reactionRepo: reactionRepo, roomRepo: roomRepo}
 }
 
-func (s *ChatReactionService) Add(ctx context.Context, chatID, userID uint, emoji string) (*model.Chat, error) {
+func (s *ChatReactionService) Add(ctx context.Context, chatID, userID uint, emoji string) (*chatmodel.Chat, error) {
 	emoji = strings.TrimSpace(emoji)
 	if emoji == "" {
 		return nil, errors.New("emoji is required")
@@ -36,14 +37,14 @@ func (s *ChatReactionService) Add(ctx context.Context, chatID, userID uint, emoj
 	if !s.roomRepo.IsMember(chat.RoomID, userID) {
 		return nil, errors.New("forbidden")
 	}
-	reaction := &model.ChatReaction{ChatID: chatID, UserID: userID, Emoji: emoji}
+	reaction := &chatreactionmodel.ChatReaction{ChatID: chatID, UserID: userID, Emoji: emoji}
 	if err := s.reactionRepo.Save(reaction); err != nil {
 		return nil, err
 	}
 	return chat, nil
 }
 
-func (s *ChatReactionService) Remove(ctx context.Context, chatID, userID uint, emoji string) (*model.Chat, error) {
+func (s *ChatReactionService) Remove(ctx context.Context, chatID, userID uint, emoji string) (*chatmodel.Chat, error) {
 	chat, err := s.chatRepo.FindByID(chatID)
 	if err != nil {
 		return nil, errors.New("chat not found")
@@ -57,6 +58,6 @@ func (s *ChatReactionService) Remove(ctx context.Context, chatID, userID uint, e
 	return chat, nil
 }
 
-func (s *ChatReactionService) GetByChatIDs(chatIDs []uint) ([]model.ChatReaction, error) {
+func (s *ChatReactionService) GetByChatIDs(chatIDs []uint) ([]chatreactionmodel.ChatReaction, error) {
 	return s.reactionRepo.FindByChatIDs(chatIDs)
 }

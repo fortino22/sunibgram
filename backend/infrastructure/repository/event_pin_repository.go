@@ -6,7 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	eventpinmodel "github.com/sunibgram/domain/model/event_pin"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -22,7 +23,7 @@ func NewEventPinRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.
 }
 
 type cachedEventPins struct {
-	Events []model.Event
+	Events []threadmodel.Event
 	Total  int64
 }
 
@@ -30,7 +31,7 @@ func eventPinListKey(userID uint, page, limit int) string {
 	return fmt.Sprintf("event:pins:user:%d:page:%d:limit:%d", userID, page, limit)
 }
 
-func (r *EventPinRepository) Pin(pin *model.UserEventPin) error {
+func (r *EventPinRepository) Pin(pin *eventpinmodel.UserEventPin) error {
 	if err := r.writeDB.Create(pin).Error; err != nil {
 		return err
 	}
@@ -41,7 +42,7 @@ func (r *EventPinRepository) Pin(pin *model.UserEventPin) error {
 func (r *EventPinRepository) Unpin(userID uint, eventID string) error {
 	if err := r.writeDB.
 		Where("user_id = ? AND event_id = ?", userID, eventID).
-		Delete(&model.UserEventPin{}).Error; err != nil {
+		Delete(&eventpinmodel.UserEventPin{}).Error; err != nil {
 		return err
 	}
 	r.InvalidateUser(userID)
@@ -50,7 +51,7 @@ func (r *EventPinRepository) Unpin(userID uint, eventID string) error {
 
 func (r *EventPinRepository) Exists(userID uint, eventID string) (bool, error) {
 	var count int64
-	err := r.readDB.Model(&model.UserEventPin{}).
+	err := r.readDB.Model(&eventpinmodel.UserEventPin{}).
 		Where("user_id = ? AND event_id = ?", userID, eventID).
 		Count(&count).Error
 	return count > 0, err
@@ -58,13 +59,13 @@ func (r *EventPinRepository) Exists(userID uint, eventID string) (bool, error) {
 
 func (r *EventPinRepository) CountByUser(userID uint) (int64, error) {
 	var count int64
-	err := r.readDB.Model(&model.UserEventPin{}).
+	err := r.readDB.Model(&eventpinmodel.UserEventPin{}).
 		Where("user_id = ?", userID).
 		Count(&count).Error
 	return count, err
 }
 
-func (r *EventPinRepository) FindMyPins(userID uint, page, limit int) ([]model.Event, int64, error) {
+func (r *EventPinRepository) FindMyPins(userID uint, page, limit int) ([]threadmodel.Event, int64, error) {
 	ctx := context.Background()
 	key := eventPinListKey(userID, page, limit)
 	var result cachedEventPins
@@ -75,12 +76,12 @@ func (r *EventPinRepository) FindMyPins(userID uint, page, limit int) ([]model.E
 	}
 
 	var total int64
-	r.readDB.Model(&model.Event{}).
+	r.readDB.Model(&threadmodel.Event{}).
 		Joins("JOIN user_event_pins ON user_event_pins.event_id = events.id").
 		Where("user_event_pins.user_id = ?", userID).
 		Count(&total)
 
-	var events []model.Event
+	var events []threadmodel.Event
 	offset := (page - 1) * limit
 	if err := r.readDB.
 		Joins("JOIN user_event_pins ON user_event_pins.event_id = events.id").
@@ -114,7 +115,7 @@ func (r *EventPinRepository) InvalidateByEvent(eventID string) {
 	}
 	ctx := context.Background()
 	var userIDs []uint
-	if err := r.readDB.Model(&model.UserEventPin{}).
+	if err := r.readDB.Model(&eventpinmodel.UserEventPin{}).
 		Where("event_id = ?", eventID).
 		Distinct("user_id").
 		Pluck("user_id", &userIDs).Error; err != nil {

@@ -5,7 +5,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -50,14 +51,14 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 	facultyID := &v
 
-	user := &model.User{
+	user := &usermodel.User{
 		Name:     req.Name,
 		UserName: req.UserName,
 		Email:    req.Email,
 		Password: req.Password,
 	}
-	profile := &model.UserProfile{
-		Gender:       model.ParseGender(req.Gender),
+	profile := &userprofilemodel.UserProfile{
+		Gender:       userprofilemodel.ParseGender(req.Gender),
 		BirthdayDate: birthdayDate,
 	}
 

@@ -6,7 +6,8 @@ import (
 	"mime/multipart"
 	"sync"
 
-	"github.com/sunibgram/domain/model"
+	mediamodel "github.com/sunibgram/domain/model/media"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -25,8 +26,8 @@ func NewThreadMediaService(
 	return &ThreadMediaService{threadRepo: threadRepo, mediaRepo: mediaRepo, storage: storage}
 }
 
-func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) ([]model.ThreadMedia, error) {
-	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) ([]threadmediamodel.ThreadMedia, error) {
+	if err := threadmediamodel.ValidateThreadMediaCount(len(files)); err != nil {
 		return nil, err
 	}
 
@@ -56,7 +57,7 @@ func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, 
 
 // Update deletes all existing media for the thread and uploads the new set.
 func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, files []*multipart.FileHeader) error {
-	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+	if err := threadmediamodel.ValidateThreadMediaCount(len(files)); err != nil {
 		return err
 	}
 
@@ -88,7 +89,7 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 }
 
 func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userID uint, keepIDs []uint, files []*multipart.FileHeader) error {
-	if err := model.ValidateThreadMediaCount(len(keepIDs) + len(files)); err != nil {
+	if err := threadmediamodel.ValidateThreadMediaCount(len(keepIDs) + len(files)); err != nil {
 		return err
 	}
 
@@ -110,7 +111,7 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 		keepSet[id] = struct{}{}
 	}
 
-	existingSet := make(map[uint]model.ThreadMedia, len(existing))
+	existingSet := make(map[uint]threadmediamodel.ThreadMedia, len(existing))
 	for _, m := range existing {
 		existingSet[m.MediaID] = m
 	}
@@ -154,17 +155,17 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 	return s.mediaRepo.SaveAll(media)
 }
 
-func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, bucket string, files []*multipart.FileHeader) ([]model.ThreadMedia, error) {
+func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, bucket string, files []*multipart.FileHeader) ([]threadmediamodel.ThreadMedia, error) {
 	for _, header := range files {
-		if err := model.ValidateUploadSize(header, model.MaxPostUploadSize); err != nil {
+		if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxPostUploadSize); err != nil {
 			return nil, err
 		}
-		if err := model.ValidateThreadMediaExt(header.Filename); err != nil {
+		if err := threadmediamodel.ValidateThreadMediaExt(header.Filename); err != nil {
 			return nil, err
 		}
 	}
 
-	media := make([]model.ThreadMedia, len(files))
+	media := make([]threadmediamodel.ThreadMedia, len(files))
 	errCh := make(chan error, len(files))
 	var wg sync.WaitGroup
 
@@ -181,7 +182,7 @@ func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, buc
 			}
 			defer file.Close()
 
-			if _, err := model.ValidateThreadMediaFile(file); err != nil {
+			if _, err := threadmediamodel.ValidateThreadMediaFile(file); err != nil {
 				errCh <- err
 				return
 			}
@@ -192,7 +193,7 @@ func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, buc
 				return
 			}
 
-			media[i] = model.ThreadMedia{
+			media[i] = threadmediamodel.ThreadMedia{
 				ThreadID:   threadID,
 				ObjectName: objectName,
 				Bucket:     bucket,
@@ -221,11 +222,11 @@ func (s *ThreadMediaService) DeleteByThread(ctx context.Context, threadID uint) 
 	return s.mediaRepo.DeleteByThreadID(threadID)
 }
 
-func (s *ThreadMediaService) GetByThreadID(threadID uint) ([]model.ThreadMedia, error) {
+func (s *ThreadMediaService) GetByThreadID(threadID uint) ([]threadmediamodel.ThreadMedia, error) {
 	return s.mediaRepo.FindByThreadID(threadID)
 }
 
-func (s *ThreadMediaService) GetByThreadIDs(threadIDs []uint) ([]model.ThreadMedia, error) {
+func (s *ThreadMediaService) GetByThreadIDs(threadIDs []uint) ([]threadmediamodel.ThreadMedia, error) {
 	return s.mediaRepo.FindByThreadIDs(threadIDs)
 }
 

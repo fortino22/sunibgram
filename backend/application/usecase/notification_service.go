@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	facultymodel "github.com/sunibgram/domain/model/faculty"
+	notificationmodel "github.com/sunibgram/domain/model/notification"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -59,7 +61,7 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 		return err
 	}
 
-	notification := &model.Notification{
+	notification := &notificationmodel.Notification{
 		Type:            input.Type,
 		Message:         input.Message,
 		SenderUserID:    input.SenderUserID,
@@ -119,7 +121,7 @@ func (s *NotificationService) DeleteNotification(id, requesterID uint, isAdmin b
 	return s.notificationRepo.Delete(id)
 }
 
-func (s *NotificationService) senderProfilesByUserID(notifications []model.Notification) (map[uint]*model.NotificationSender, error) {
+func (s *NotificationService) senderProfilesByUserID(notifications []notificationmodel.Notification) (map[uint]*notificationmodel.NotificationSender, error) {
 	ids := make([]uint, 0, len(notifications))
 	seen := make(map[uint]struct{}, len(notifications))
 	for i := range notifications {
@@ -131,7 +133,7 @@ func (s *NotificationService) senderProfilesByUserID(notifications []model.Notif
 		ids = append(ids, userID)
 	}
 	if len(ids) == 0 {
-		return map[uint]*model.NotificationSender{}, nil
+		return map[uint]*notificationmodel.NotificationSender{}, nil
 	}
 
 	users, err := s.userRepo.FindByIDs(ids)
@@ -147,24 +149,24 @@ func (s *NotificationService) senderProfilesByUserID(notifications []model.Notif
 		return nil, err
 	}
 
-	profilesByUserID := make(map[uint]model.UserProfile, len(profiles))
+	profilesByUserID := make(map[uint]userprofilemodel.UserProfile, len(profiles))
 	for i := range profiles {
 		profilesByUserID[profiles[i].UserID] = profiles[i]
 	}
 
-	facultiesByUserID := make(map[uint]*model.Faculty, len(userFaculties))
+	facultiesByUserID := make(map[uint]*facultymodel.Faculty, len(userFaculties))
 	for i := range userFaculties {
 		facultiesByUserID[userFaculties[i].UserID] = &userFaculties[i].Faculty
 	}
 
-	senders := make(map[uint]*model.NotificationSender, len(users))
+	senders := make(map[uint]*notificationmodel.NotificationSender, len(users))
 	for i := range users {
 		var avatarURL string
 		if profile, ok := profilesByUserID[users[i].UserID]; ok && profile.AvatarBucket != "" && profile.AvatarObjectName != "" {
 			avatarURL = s.storageUsecase.GetURL(profile.AvatarBucket, profile.AvatarObjectName)
 		}
 
-		sender := &model.NotificationSender{
+		sender := &notificationmodel.NotificationSender{
 			UserID:    users[i].UserID,
 			Username:  users[i].UserName,
 			Name:      users[i].Name,
@@ -184,7 +186,7 @@ func (s *NotificationService) senderProfilesByUserID(notifications []model.Notif
 	return senders, nil
 }
 
-func (s *NotificationService) senderProfile(userID uint) (*model.NotificationSender, error) {
+func (s *NotificationService) senderProfile(userID uint) (*notificationmodel.NotificationSender, error) {
 	if sender, err := s.notificationRepo.GetSenderCache(userID); err == nil {
 		return sender, nil
 	}
@@ -200,13 +202,13 @@ func (s *NotificationService) senderProfile(userID uint) (*model.NotificationSen
 		avatarURL = s.storageUsecase.GetURL(profile.AvatarBucket, profile.AvatarObjectName)
 	}
 
-	var faculty *model.Faculty
+	var faculty *facultymodel.Faculty
 	userFaculty, _ := s.userFacultyRepo.FindByUserID(userID)
 	if userFaculty != nil {
 		faculty = &userFaculty.Faculty
 	}
 
-	sender := &model.NotificationSender{
+	sender := &notificationmodel.NotificationSender{
 		UserID:    user.UserID,
 		Username:  user.UserName,
 		Name:      user.Name,

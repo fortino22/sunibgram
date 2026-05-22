@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -27,7 +28,7 @@ func NewThreadPollService(
 	return &ThreadPollService{threadRepo: threadRepo, pollRepo: pollRepo, storage: storage}
 }
 
-func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, input service.CreatePollInput) (*model.ThreadPoll, error) {
+func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, input service.CreatePollInput) (*threadpollmodel.ThreadPoll, error) {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return nil, errors.New("thread not found")
@@ -35,7 +36,7 @@ func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, i
 	if thread.UserID != userID {
 		return nil, errors.New("forbidden")
 	}
-	if err := model.ValidatePollAllowed(thread.Type); err != nil {
+	if err := threadpollmodel.ValidatePollAllowed(thread.Type); err != nil {
 		return nil, err
 	}
 	if existing, _ := s.pollRepo.FindByThreadID(threadID); existing != nil {
@@ -43,23 +44,23 @@ func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, i
 	}
 
 	question := strings.TrimSpace(input.Question)
-	if err := model.ValidatePollQuestion(question); err != nil {
+	if err := threadpollmodel.ValidatePollQuestion(question); err != nil {
 		return nil, err
 	}
-	if err := model.ValidatePollOptionsCount(len(input.Labels)); err != nil {
+	if err := threadpollmodel.ValidatePollOptionsCount(len(input.Labels)); err != nil {
 		return nil, err
 	}
 	if len(input.Images) > 0 && len(input.Images) != len(input.Labels) {
 		return nil, errors.New("poll option images must align with labels")
 	}
-	if err := model.ValidatePollDuration(input.DurationSeconds); err != nil {
+	if err := threadpollmodel.ValidatePollDuration(input.DurationSeconds); err != nil {
 		return nil, err
 	}
 
 	labels := make([]string, len(input.Labels))
 	for i, raw := range input.Labels {
 		label := strings.TrimSpace(raw)
-		if err := model.ValidatePollLabel(label); err != nil {
+		if err := threadpollmodel.ValidatePollLabel(label); err != nil {
 			return nil, err
 		}
 		labels[i] = label
@@ -77,14 +78,14 @@ func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, i
 	}
 
 	endsAt := time.Now().Add(time.Duration(input.DurationSeconds) * time.Second)
-	poll := &model.ThreadPoll{
+	poll := &threadpollmodel.ThreadPoll{
 		ThreadID: threadID,
 		Question: question,
 		EndsAt:   endsAt,
 	}
-	options := make([]model.ThreadPollOption, len(labels))
+	options := make([]threadpollmodel.ThreadPollOption, len(labels))
 	for i, label := range labels {
-		opt := model.ThreadPollOption{
+		opt := threadpollmodel.ThreadPollOption{
 			Label:    label,
 			Position: int16(i),
 		}
@@ -102,7 +103,7 @@ func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, i
 	return poll, nil
 }
 
-func (s *ThreadPollService) GetByThreadID(threadID, requesterID uint) (*model.ThreadPoll, *uint, error) {
+func (s *ThreadPollService) GetByThreadID(threadID, requesterID uint) (*threadpollmodel.ThreadPoll, *uint, error) {
 	poll, err := s.pollRepo.FindByThreadID(threadID)
 	if err != nil {
 		return nil, nil, err
@@ -120,7 +121,7 @@ func (s *ThreadPollService) GetByThreadID(threadID, requesterID uint) (*model.Th
 	return poll, nil, nil
 }
 
-func (s *ThreadPollService) GetForThreads(threadIDs []uint, requesterID uint) (map[uint]*model.ThreadPoll, map[uint]uint, error) {
+func (s *ThreadPollService) GetForThreads(threadIDs []uint, requesterID uint) (map[uint]*threadpollmodel.ThreadPoll, map[uint]uint, error) {
 	polls, err := s.pollRepo.FindByThreadIDs(threadIDs)
 	if err != nil {
 		return nil, nil, err
@@ -139,14 +140,14 @@ func (s *ThreadPollService) GetForThreads(threadIDs []uint, requesterID uint) (m
 	return polls, votes, nil
 }
 
-func (s *ThreadPollService) Vote(ctx context.Context, threadID, optionID, userID uint) (*model.ThreadPoll, *uint, error) {
+func (s *ThreadPollService) Vote(ctx context.Context, threadID, optionID, userID uint) (*threadpollmodel.ThreadPoll, *uint, error) {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return nil, nil, errors.New("thread not found")
 	}
 	resolvedThreadID := threadID
 	resolvedOwnerID := thread.UserID
-	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
+	if thread.Type == threadmodel.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		resolvedThreadID = *thread.OriginalThreadID
 		if original, err := s.threadRepo.FindByID(resolvedThreadID); err == nil {
 			resolvedOwnerID = original.UserID
@@ -227,7 +228,7 @@ func (s *ThreadPollService) uploadOptionImages(ctx context.Context, bucket strin
 				return
 			}
 			defer file.Close()
-			if err := model.ValidatePollImage(header, file); err != nil {
+			if err := threadpollmodel.ValidatePollImage(header, file); err != nil {
 				errCh <- err
 				return
 			}

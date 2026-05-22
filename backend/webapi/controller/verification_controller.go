@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
 	"github.com/sunibgram/domain/service"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	verificationdto "github.com/sunibgram/webapi/dto/verification"
@@ -27,7 +27,7 @@ func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
 
 	req.Email = strings.TrimSpace(req.Email)
 
-	if err := c.verificationService.SendCode(req.Email, model.VerificationTypeLogin); err != nil {
+	if err := c.verificationService.SendCode(req.Email, verificationcodemodel.VerificationTypeLogin); err != nil {
 		return HandleServiceError(ctx, err)
 	}
 
@@ -43,7 +43,7 @@ func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
 	req.Email = strings.TrimSpace(req.Email)
 	req.Type = strings.TrimSpace(strings.ToUpper(req.Type))
 
-	if err := c.verificationService.SendCode(req.Email, model.VerificationType(req.Type)); err != nil {
+	if err := c.verificationService.SendCode(req.Email, verificationcodemodel.VerificationType(req.Type)); err != nil {
 		return HandleServiceError(ctx, err)
 	}
 
@@ -60,7 +60,7 @@ func (c *VerificationController) VerifyCode(ctx *fiber.Ctx) error {
 	req.Code = strings.TrimSpace(req.Code)
 	req.Type = strings.TrimSpace(strings.ToUpper(req.Type))
 
-	if err := c.verificationService.VerifyCode(req.Email, req.Code, model.VerificationType(req.Type)); err != nil {
+	if err := c.verificationService.VerifyCode(req.Email, req.Code, verificationcodemodel.VerificationType(req.Type)); err != nil {
 		return HandleServiceError(ctx, err)
 	}
 

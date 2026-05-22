@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	facultymodel "github.com/sunibgram/domain/model/faculty"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -19,7 +19,7 @@ type facultyRepository struct {
 }
 
 type cachedFaculties struct {
-	Faculties []model.Faculty
+	Faculties []facultymodel.Faculty
 	Total     int64
 }
 
@@ -39,7 +39,7 @@ func facultyListKey(page, limit int) string {
 	return fmt.Sprintf("faculty:list:page:%d:limit:%d", page, limit)
 }
 
-func (r *facultyRepository) Save(faculty *model.Faculty) error {
+func (r *facultyRepository) Save(faculty *facultymodel.Faculty) error {
 	if err := r.writeDB.Create(faculty).Error; err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (r *facultyRepository) Save(faculty *model.Faculty) error {
 	return nil
 }
 
-func (r *facultyRepository) FindAll(page, limit int) ([]model.Faculty, int64, error) {
+func (r *facultyRepository) FindAll(page, limit int) ([]facultymodel.Faculty, int64, error) {
 	ctx := context.Background()
 	key := facultyListKey(page, limit)
 	var cached cachedFaculties
@@ -57,9 +57,9 @@ func (r *facultyRepository) FindAll(page, limit int) ([]model.Faculty, int64, er
 		}
 	}
 
-	var faculties []model.Faculty
+	var faculties []facultymodel.Faculty
 	var total int64
-	r.readDB.Model(&model.Faculty{}).Count(&total)
+	r.readDB.Model(&facultymodel.Faculty{}).Count(&total)
 	offset := (page - 1) * limit
 	if err := r.readDB.Offset(offset).Limit(limit).Find(&faculties).Error; err != nil {
 		return nil, 0, err
@@ -75,10 +75,10 @@ func (r *facultyRepository) FindAll(page, limit int) ([]model.Faculty, int64, er
 	return faculties, total, nil
 }
 
-func (r *facultyRepository) FindByID(id uint) (*model.Faculty, error) {
+func (r *facultyRepository) FindByID(id uint) (*facultymodel.Faculty, error) {
 	ctx := context.Background()
 	key := facultyIDKey(id)
-	var faculty model.Faculty
+	var faculty facultymodel.Faculty
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &faculty); err == nil {
 			return &faculty, nil
@@ -93,7 +93,7 @@ func (r *facultyRepository) FindByID(id uint) (*model.Faculty, error) {
 	return &faculty, nil
 }
 
-func (r *facultyRepository) Update(faculty *model.Faculty) error {
+func (r *facultyRepository) Update(faculty *facultymodel.Faculty) error {
 	result := r.writeDB.Model(faculty).Where("faculty_id = ?", faculty.FacultyID).
 		UpdateColumn("faculty_name", faculty.FacultyName)
 	if result.RowsAffected == 0 {
@@ -108,7 +108,7 @@ func (r *facultyRepository) Update(faculty *model.Faculty) error {
 }
 
 func (r *facultyRepository) Delete(id uint) error {
-	result := r.writeDB.Delete(&model.Faculty{}, "faculty_id = ?", id)
+	result := r.writeDB.Delete(&facultymodel.Faculty{}, "faculty_id = ?", id)
 	if result.RowsAffected == 0 {
 		return errors.New("faculty not found")
 	}
@@ -127,7 +127,7 @@ func (r *facultyRepository) UpdateTotalUsers(facultyID uint, delta int) error {
 	} else {
 		expr = gorm.Expr("GREATEST(total_users + ?, 0)", delta)
 	}
-	if err := r.writeDB.Model(&model.Faculty{}).
+	if err := r.writeDB.Model(&facultymodel.Faculty{}).
 		Where("faculty_id = ?", facultyID).
 		UpdateColumn("total_users", expr).Error; err != nil {
 		return err

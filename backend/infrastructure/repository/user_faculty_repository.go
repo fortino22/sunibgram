@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	usermodel "github.com/sunibgram/domain/model/user"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -26,7 +26,7 @@ func userFacultyKey(userID uint) string {
 	return fmt.Sprintf("userfaculty:user:%d", userID)
 }
 
-func (r *userFacultyRepository) Save(uf *model.UserFaculty) error {
+func (r *userFacultyRepository) Save(uf *usermodel.UserFaculty) error {
 	if err := r.writeDB.Create(uf).Error; err != nil {
 		return err
 	}
@@ -37,10 +37,10 @@ func (r *userFacultyRepository) Save(uf *model.UserFaculty) error {
 	return nil
 }
 
-func (r *userFacultyRepository) FindByUserID(userID uint) (*model.UserFaculty, error) {
+func (r *userFacultyRepository) FindByUserID(userID uint) (*usermodel.UserFaculty, error) {
 	ctx := context.Background()
 	key := userFacultyKey(userID)
-	var uf model.UserFaculty
+	var uf usermodel.UserFaculty
 	if err := r.cache.Get(ctx, key, &uf); err == nil {
 		return &uf, nil
 	}
@@ -51,19 +51,19 @@ func (r *userFacultyRepository) FindByUserID(userID uint) (*model.UserFaculty, e
 	return &uf, nil
 }
 
-func (r *userFacultyRepository) FindByUserIDs(ids []uint) ([]model.UserFaculty, error) {
+func (r *userFacultyRepository) FindByUserIDs(ids []uint) ([]usermodel.UserFaculty, error) {
 	if len(ids) == 0 {
-		return []model.UserFaculty{}, nil
+		return []usermodel.UserFaculty{}, nil
 	}
-	var rows []model.UserFaculty
+	var rows []usermodel.UserFaculty
 	err := r.readDB.Preload("Faculty").Where("user_id IN ?", ids).Find(&rows).Error
 	return rows, err
 }
 
-func (r *userFacultyRepository) FindByFacultyID(facultyID uint, page, limit int) ([]model.UserFaculty, int64, error) {
-	var rows []model.UserFaculty
+func (r *userFacultyRepository) FindByFacultyID(facultyID uint, page, limit int) ([]usermodel.UserFaculty, int64, error) {
+	var rows []usermodel.UserFaculty
 	var total int64
-	r.readDB.Model(&model.UserFaculty{}).Where("faculty_id = ?", facultyID).Count(&total)
+	r.readDB.Model(&usermodel.UserFaculty{}).Where("faculty_id = ?", facultyID).Count(&total)
 	offset := (page - 1) * limit
 	if err := r.readDB.Preload("User").
 		Where("faculty_id = ?", facultyID).
@@ -75,7 +75,7 @@ func (r *userFacultyRepository) FindByFacultyID(facultyID uint, page, limit int)
 }
 
 func (r *userFacultyRepository) Delete(userID, facultyID uint) error {
-	result := r.writeDB.Delete(&model.UserFaculty{}, "user_id = ? AND faculty_id = ?", userID, facultyID)
+	result := r.writeDB.Delete(&usermodel.UserFaculty{}, "user_id = ? AND faculty_id = ?", userID, facultyID)
 	if result.RowsAffected == 0 {
 		return errors.New("assignment not found")
 	}

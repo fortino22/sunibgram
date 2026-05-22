@@ -7,7 +7,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	chatmodel "github.com/sunibgram/domain/model/chat"
+	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -37,7 +38,7 @@ func NewChatService(
 	}
 }
 
-func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string, gifURL *string, replyToID *uint) (*model.Chat, error) {
+func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string, gifURL *string, replyToID *uint) (*chatmodel.Chat, error) {
 	if !s.roomRepo.IsMember(roomID, senderID) {
 		return nil, errors.New("forbidden")
 	}
@@ -74,7 +75,7 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 		}
 		message = &encrypted
 	}
-	chat := &model.Chat{RoomID: roomID, SenderID: senderID, Message: message, GifURL: gifURL, ReplyToID: replyToID}
+	chat := &chatmodel.Chat{RoomID: roomID, SenderID: senderID, Message: message, GifURL: gifURL, ReplyToID: replyToID}
 	if err := s.chatRepo.Save(chat); err != nil {
 		return nil, err
 	}
@@ -84,7 +85,7 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 	return chat, nil
 }
 
-func (s *ChatService) sendMessageNotifications(room *model.ChatRoom, chat *model.Chat) {
+func (s *ChatService) sendMessageNotifications(room *chatroommodel.ChatRoom, chat *chatmodel.Chat) {
 	if s.notificationService == nil || room == nil || chat == nil {
 		return
 	}
@@ -130,7 +131,7 @@ func (s *ChatService) sendMessageNotifications(room *model.ChatRoom, chat *model
 	}
 }
 
-func chatMessagePreview(chat *model.Chat) string {
+func chatMessagePreview(chat *chatmodel.Chat) string {
 	if chat == nil {
 		return "sent a message"
 	}
@@ -146,7 +147,7 @@ func chatMessagePreview(chat *model.Chat) string {
 	return "sent an attachment"
 }
 
-func chatNotificationMessage(chat *model.Chat) string {
+func chatNotificationMessage(chat *chatmodel.Chat) string {
 	if chat == nil {
 		return "sent a message"
 	}
@@ -156,7 +157,7 @@ func chatNotificationMessage(chat *model.Chat) string {
 	return "sent a message"
 }
 
-func (s *ChatService) GetByID(ctx context.Context, chatID uint) (*model.Chat, error) {
+func (s *ChatService) GetByID(ctx context.Context, chatID uint) (*chatmodel.Chat, error) {
 	chat, err := s.chatRepo.FindByID(chatID)
 	if err != nil {
 		return nil, errors.New("chat not found")
@@ -173,7 +174,7 @@ func (s *ChatService) GetByID(ctx context.Context, chatID uint) (*model.Chat, er
 	return chat, nil
 }
 
-func (s *ChatService) GetMessages(roomID, userID uint, page, limit int) ([]model.Chat, int64, error) {
+func (s *ChatService) GetMessages(roomID, userID uint, page, limit int) ([]chatmodel.Chat, int64, error) {
 	if !s.roomRepo.IsMember(roomID, userID) {
 		return nil, 0, errors.New("forbidden")
 	}
@@ -251,7 +252,7 @@ func (s *ChatService) MarkRead(roomID, userID uint) ([]uint, error) {
 	if err != nil {
 		return nil, errors.New("chat room not found")
 	}
-	if room.Type == model.ChatRoomTypePrivate {
+	if room.Type == chatroommodel.ChatRoomTypePrivate {
 		ids, err := s.chatRepo.MarkRoomRead(roomID, userID)
 		return ids, err
 	}
@@ -273,7 +274,7 @@ func (s *ChatService) MarkRead(roomID, userID uint) ([]uint, error) {
 	return inserted, nil
 }
 
-func (s *ChatService) roomKey(room *model.ChatRoom) ([]byte, error) {
+func (s *ChatService) roomKey(room *chatroommodel.ChatRoom) ([]byte, error) {
 	if room == nil {
 		return nil, errors.New("chat room not found")
 	}
@@ -299,7 +300,7 @@ func (s *ChatService) roomKey(room *model.ChatRoom) ([]byte, error) {
 	return roomKey, nil
 }
 
-func (s *ChatService) decryptChat(chat *model.Chat, roomKey []byte) {
+func (s *ChatService) decryptChat(chat *chatmodel.Chat, roomKey []byte) {
 	if chat == nil {
 		return
 	}
@@ -337,7 +338,7 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 		}
 		return results, nil
 	}
-	chatByID := make(map[uint]*model.Chat, len(chats))
+	chatByID := make(map[uint]*chatmodel.Chat, len(chats))
 	for i := range chats {
 		chatByID[chats[i].ChatID] = &chats[i]
 	}
@@ -355,7 +356,7 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 			results = append(results, service.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "already_read"})
 			continue
 		}
-		if room.Type == model.ChatRoomTypePrivate {
+		if room.Type == chatroommodel.ChatRoomTypePrivate {
 			if err := s.chatRepo.UpdateIsRead(chatID); err != nil {
 				return nil, err
 			}

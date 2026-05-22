@@ -1,7 +1,9 @@
 package controller
 
 import (
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	exploremodel "github.com/sunibgram/domain/model/explore"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	communitydto "github.com/sunibgram/webapi/dto/community"
 	exploredto "github.com/sunibgram/webapi/dto/explore"
@@ -12,14 +14,14 @@ import (
 
 const defaultExploreResponseLimit = 20
 
-func (c *ExploreController) toResponse(result *model.ExploreResult) exploredto.ExploreResponse {
+func (c *ExploreController) toResponse(result *exploremodel.ExploreResult) exploredto.ExploreResponse {
 	return exploredto.ExploreResponse{
 		Users:   c.toUserResponses(result.Users),
 		Threads: c.toThreadResponses(result.Threads),
 	}
 }
 
-func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []exploredto.ExploreUserResponse {
+func (c *ExploreController) toUserResponses(users []exploremodel.ExploreUserResult) []exploredto.ExploreUserResponse {
 	responses := make([]exploredto.ExploreUserResponse, len(users))
 	for i, item := range users {
 		avatarURL := BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
@@ -36,7 +38,7 @@ func (c *ExploreController) toUserResponses(users []model.ExploreUserResult) []e
 	return responses
 }
 
-func (c *ExploreController) toPeopleResponses(users []model.ExploreUserResult) []exploredto.ExplorePeopleResponse {
+func (c *ExploreController) toPeopleResponses(users []exploremodel.ExploreUserResult) []exploredto.ExplorePeopleResponse {
 	responses := make([]exploredto.ExplorePeopleResponse, len(users))
 	for i, item := range users {
 		avatarURL := BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
@@ -53,7 +55,7 @@ func (c *ExploreController) toPeopleResponses(users []model.ExploreUserResult) [
 	return responses
 }
 
-func (c *ExploreController) toThreadResponses(threads []model.ExploreThreadResult) []exploredto.ExploreThreadResponse {
+func (c *ExploreController) toThreadResponses(threads []exploremodel.ExploreThreadResult) []exploredto.ExploreThreadResponse {
 	responses := make([]exploredto.ExploreThreadResponse, len(threads))
 	for i, thread := range threads {
 		responses[i] = exploredto.ExploreThreadResponse{Content: thread.Content}
@@ -61,7 +63,7 @@ func (c *ExploreController) toThreadResponses(threads []model.ExploreThreadResul
 	return responses
 }
 
-func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*model.Thread, total int64, viewerID *uint) threaddto.PaginatedFeedResponse {
+func (c *ExploreController) toFeedResponse(threads []threadmodel.Thread, parents []*threadmodel.Thread, total int64, viewerID *uint) threaddto.PaginatedFeedResponse {
 	allIDs := make([]uint, 0, len(threads)*2)
 	for _, t := range threads {
 		allIDs = append(allIDs, t.ThreadID)
@@ -90,7 +92,7 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 	pollIDs := make([]uint, 0, len(threads)+len(parents))
 	for i := range threads {
 		t := &threads[i]
-		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+		if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 			pollIDs = append(pollIDs, t.OriginalThread.ThreadID)
 		} else {
 			pollIDs = append(pollIDs, t.ThreadID)
@@ -106,7 +108,7 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 	data := make([]threaddto.FeedItemResponse, len(threads))
 	for i, t := range threads {
 		mediaID := t.ThreadID
-		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+		if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 			mediaID = t.OriginalThread.ThreadID
 		}
 		item := fb.ToFeedItem(&t, mediaByThread[mediaID])
@@ -139,7 +141,7 @@ func (c *ExploreController) toFeedResponse(threads []model.Thread, parents []*mo
 	}
 }
 
-func (c *ExploreController) toMediaResponse(threads []model.Thread, total int64) exploredto.PaginatedExploreMediaResponse {
+func (c *ExploreController) toMediaResponse(threads []threadmodel.Thread, total int64) exploredto.PaginatedExploreMediaResponse {
 	mediaByThread := loadThreadMediaByThread(c.mediaService, threads)
 	data := make([]exploredto.ExploreMediaResponse, len(threads))
 	for i, thread := range threads {
@@ -162,7 +164,7 @@ func (c *ExploreController) toMediaResponse(threads []model.Thread, total int64)
 	}
 }
 
-func (c *ExploreController) toCommunityResponses(communities []model.Community) []communitydto.CommunityResponse {
+func (c *ExploreController) toCommunityResponses(communities []communitymodel.Community) []communitydto.CommunityResponse {
 	responses := make([]communitydto.CommunityResponse, len(communities))
 	for i := range communities {
 		responses[i] = c.toCommunityResponse(&communities[i])
@@ -170,7 +172,7 @@ func (c *ExploreController) toCommunityResponses(communities []model.Community) 
 	return responses
 }
 
-func (c *ExploreController) toExploreCommunityResponses(communities []model.ExploreCommunityResult) []exploredto.ExploreCommunityResponse {
+func (c *ExploreController) toExploreCommunityResponses(communities []exploremodel.ExploreCommunityResult) []exploredto.ExploreCommunityResponse {
 	responses := make([]exploredto.ExploreCommunityResponse, len(communities))
 	for i, comm := range communities {
 		responses[i] = exploredto.ExploreCommunityResponse{
@@ -183,7 +185,7 @@ func (c *ExploreController) toExploreCommunityResponses(communities []model.Expl
 	return responses
 }
 
-func (c *ExploreController) toCommunityResponse(comm *model.Community) communitydto.CommunityResponse {
+func (c *ExploreController) toCommunityResponse(comm *communitymodel.Community) communitydto.CommunityResponse {
 	bannerURL := BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
 	var categoryName string
 	if comm.Category != nil {

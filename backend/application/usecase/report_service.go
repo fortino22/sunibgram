@@ -10,7 +10,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	reportmodel "github.com/sunibgram/domain/model/report"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -75,13 +77,13 @@ func (s *ReportService) Create(reporterID uint, reportedUserID, reportedPostID *
 		}
 		reportedOwnerID = &thread.UserID
 	}
-	if err := s.reportRepo.Save(&model.Report{
+	if err := s.reportRepo.Save(&reportmodel.Report{
 		ReporterID:     reporterID,
 		ReportedUserID: reportedUserID,
 		ReportedPostID: reportedPostID,
 		ViolationID:    violationID,
 		Explanation:    explanation,
-		Status:         model.ReportStatusPending,
+		Status:         reportmodel.ReportStatusPending,
 	}); err != nil {
 		return err
 	}
@@ -89,10 +91,10 @@ func (s *ReportService) Create(reporterID uint, reportedUserID, reportedPostID *
 	return nil
 }
 
-func (s *ReportService) GetAll() ([]model.ReportDetail, error) {
+func (s *ReportService) GetAll() ([]reportmodel.ReportDetail, error) {
 	ctx := context.Background()
 	key := "reports:all"
-	var cached []model.ReportDetail
+	var cached []reportmodel.ReportDetail
 	if s.cacheRepo != nil {
 		if err := s.cacheRepo.Get(ctx, key, &cached); err == nil {
 			return cached, nil
@@ -112,10 +114,10 @@ func (s *ReportService) GetAll() ([]model.ReportDetail, error) {
 	return details, nil
 }
 
-func (s *ReportService) GetByID(id uuid.UUID) (*model.ReportDetail, error) {
+func (s *ReportService) GetByID(id uuid.UUID) (*reportmodel.ReportDetail, error) {
 	ctx := context.Background()
 	key := reportIDKey(id)
-	var cached model.ReportDetail
+	var cached reportmodel.ReportDetail
 	if s.cacheRepo != nil {
 		if err := s.cacheRepo.Get(ctx, key, &cached); err == nil {
 			return &cached, nil
@@ -125,7 +127,7 @@ func (s *ReportService) GetByID(id uuid.UUID) (*model.ReportDetail, error) {
 	if err != nil {
 		return nil, errors.New("report not found")
 	}
-	details, err := s.enrichReports([]model.Report{*report})
+	details, err := s.enrichReports([]reportmodel.Report{*report})
 	if err != nil {
 		return nil, err
 	}
@@ -170,15 +172,15 @@ func (s *ReportService) Delete(id uuid.UUID) error {
 
 func isValidReportStatus(status string) bool {
 	switch status {
-	case model.ReportStatusPending, model.ReportStatusReviewed, model.ReportStatusResolved, model.ReportStatusRejected:
+	case reportmodel.ReportStatusPending, reportmodel.ReportStatusReviewed, reportmodel.ReportStatusResolved, reportmodel.ReportStatusRejected:
 		return true
 	default:
 		return false
 	}
 }
 
-func (s *ReportService) enrichReports(reports []model.Report) ([]model.ReportDetail, error) {
-	details := make([]model.ReportDetail, len(reports))
+func (s *ReportService) enrichReports(reports []reportmodel.Report) ([]reportmodel.ReportDetail, error) {
+	details := make([]reportmodel.ReportDetail, len(reports))
 	if len(reports) == 0 {
 		return details, nil
 	}
@@ -187,7 +189,7 @@ func (s *ReportService) enrichReports(reports []model.Report) ([]model.ReportDet
 	reportedByReportID := make(map[uuid.UUID]uint, len(reports))
 	for i := range reports {
 		report := reports[i]
-		details[i] = model.ReportDetail{Report: report}
+		details[i] = reportmodel.ReportDetail{Report: report}
 		userIDs = addReportUserID(userIDs, seen, report.ReporterID)
 		if report.ReportedUserID != nil {
 			reportedByReportID[report.ID] = *report.ReportedUserID
@@ -234,18 +236,18 @@ func addReportUserID(ids []uint, seen map[uint]struct{}, id uint) []uint {
 	return append(ids, id)
 }
 
-func (s *ReportService) buildReportUserInfo(users []model.User, profiles []model.UserProfile, faculties []model.UserFaculty) map[uint]*model.ReportUserInfo {
-	profileByUser := make(map[uint]model.UserProfile, len(profiles))
+func (s *ReportService) buildReportUserInfo(users []usermodel.User, profiles []userprofilemodel.UserProfile, faculties []usermodel.UserFaculty) map[uint]*reportmodel.ReportUserInfo {
+	profileByUser := make(map[uint]userprofilemodel.UserProfile, len(profiles))
 	for _, profile := range profiles {
 		profileByUser[profile.UserID] = profile
 	}
-	facultyByUser := make(map[uint]model.UserFaculty, len(faculties))
+	facultyByUser := make(map[uint]usermodel.UserFaculty, len(faculties))
 	for _, faculty := range faculties {
 		facultyByUser[faculty.UserID] = faculty
 	}
-	result := make(map[uint]*model.ReportUserInfo, len(users))
+	result := make(map[uint]*reportmodel.ReportUserInfo, len(users))
 	for _, user := range users {
-		info := &model.ReportUserInfo{
+		info := &reportmodel.ReportUserInfo{
 			UserID:    user.UserID,
 			Username:  user.UserName,
 			IsPremium: user.IsPremium,
@@ -254,7 +256,7 @@ func (s *ReportService) buildReportUserInfo(users []model.User, profiles []model
 			info.UserAvatar = buildReportAvatarURL(s.profileSvc, profile)
 		}
 		if uf, ok := facultyByUser[user.UserID]; ok {
-			info.Faculty = &model.ReportUserFaculty{
+			info.Faculty = &reportmodel.ReportUserFaculty{
 				FacultyID:   uf.FacultyID,
 				FacultyName: uf.Faculty.FacultyName,
 			}
@@ -264,7 +266,7 @@ func (s *ReportService) buildReportUserInfo(users []model.User, profiles []model
 	return result
 }
 
-func buildReportAvatarURL(profileSvc service.IUserProfileService, profile model.UserProfile) string {
+func buildReportAvatarURL(profileSvc service.IUserProfileService, profile userprofilemodel.UserProfile) string {
 	if profileSvc == nil || profile.AvatarBucket == "" || profile.AvatarObjectName == "" {
 		return ""
 	}
@@ -275,7 +277,7 @@ func reportIDKey(id uuid.UUID) string {
 	return fmt.Sprintf("reports:id:%s", id.String())
 }
 
-func (s *ReportService) invalidateReportCachesFromReport(report *model.Report) {
+func (s *ReportService) invalidateReportCachesFromReport(report *reportmodel.Report) {
 	if report == nil {
 		s.invalidateReportCaches(0, nil)
 		return

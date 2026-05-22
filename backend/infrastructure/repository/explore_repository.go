@@ -10,7 +10,9 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	exploremodel "github.com/sunibgram/domain/model/explore"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -43,12 +45,12 @@ type exploreThreadRow struct {
 }
 
 type cachedExploreThreads struct {
-	Threads []model.Thread
+	Threads []threadmodel.Thread
 	Total   int64
 }
 
 type cachedExploreCommunities struct {
-	Communities []model.ExploreCommunityResult
+	Communities []exploremodel.ExploreCommunityResult
 	Total       int64
 }
 
@@ -56,13 +58,13 @@ func NewExploreRepository(readDB *gorm.DB, c *cache.Cache) domainrepo.IExploreRe
 	return &exploreRepository{readDB: readDB, cache: c, ttl: exploreTTL}
 }
 
-func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, requesterID *uint, limit int) (*model.ExploreResult, error) {
+func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, requesterID *uint, limit int) (*exploremodel.ExploreResult, error) {
 	if limit < 1 || limit > 100 {
 		limit = defaultRepositoryExploreLimit
 	}
 
 	key := exploreSearchKey(query, requesterID, explorePage, limit)
-	var result model.ExploreResult
+	var result exploremodel.ExploreResult
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
 			return &result, nil
@@ -78,7 +80,7 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 		return nil, err
 	}
 
-	result = model.ExploreResult{Users: users, Threads: threads}
+	result = exploremodel.ExploreResult{Users: users, Threads: threads}
 	if r.cache != nil {
 		if err := r.cache.Set(ctx, key, result, exploreSearchTTL); err == nil {
 			r.cache.RegisterCacheKey(ctx, exploreGlobalTag(), key)
@@ -87,21 +89,21 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 	return &result, nil
 }
 
-func (r *exploreRepository) FindTopPosts(ctx context.Context, query string, requesterID uint, limit int) ([]model.Thread, int64, error) {
-	return r.findExploreThreads(ctx, "top", query, requesterID, []string{string(model.ThreadTypePost), string(model.ThreadTypeReply), string(model.ThreadTypeRepost)}, limit, false, "(threads.like_count + threads.comment_count + threads.repost_count) DESC, threads.created_at DESC")
+func (r *exploreRepository) FindTopPosts(ctx context.Context, query string, requesterID uint, limit int) ([]threadmodel.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "top", query, requesterID, []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply), string(threadmodel.ThreadTypeRepost)}, limit, false, "(threads.like_count + threads.comment_count + threads.repost_count) DESC, threads.created_at DESC")
 }
 
-func (r *exploreRepository) FindLatestPosts(ctx context.Context, query string, requesterID uint, limit int) ([]model.Thread, int64, error) {
-	return r.findExploreThreads(ctx, "latest", query, requesterID, []string{string(model.ThreadTypePost), string(model.ThreadTypeReply), string(model.ThreadTypeRepost)}, limit, false, "threads.created_at DESC")
+func (r *exploreRepository) FindLatestPosts(ctx context.Context, query string, requesterID uint, limit int) ([]threadmodel.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "latest", query, requesterID, []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply), string(threadmodel.ThreadTypeRepost)}, limit, false, "threads.created_at DESC")
 }
 
-func (r *exploreRepository) FindPeople(ctx context.Context, query string, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
+func (r *exploreRepository) FindPeople(ctx context.Context, query string, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
 	if limit < 1 || limit > 100 {
 		limit = defaultRepositoryExploreLimit
 	}
 
 	key := exploreSectionKey("people", query, fmt.Sprintf("%d", requesterID), limit)
-	var users []model.ExploreUserResult
+	var users []exploremodel.ExploreUserResult
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &users); err == nil {
 			return users, nil
@@ -120,11 +122,11 @@ func (r *exploreRepository) FindPeople(ctx context.Context, query string, reques
 	return users, nil
 }
 
-func (r *exploreRepository) FindMediaPosts(ctx context.Context, query string, requesterID uint, limit int) ([]model.Thread, int64, error) {
-	return r.findExploreThreads(ctx, "media", query, requesterID, []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}, limit, true, "MAX(threads.created_at) DESC")
+func (r *exploreRepository) FindMediaPosts(ctx context.Context, query string, requesterID uint, limit int) ([]threadmodel.Thread, int64, error) {
+	return r.findExploreThreads(ctx, "media", query, requesterID, []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply)}, limit, true, "MAX(threads.created_at) DESC")
 }
 
-func (r *exploreRepository) FindCommunities(ctx context.Context, query string, requesterID uint, limit int) ([]model.ExploreCommunityResult, int64, error) {
+func (r *exploreRepository) FindCommunities(ctx context.Context, query string, requesterID uint, limit int) ([]exploremodel.ExploreCommunityResult, int64, error) {
 	if limit < 1 || limit > 100 {
 		limit = defaultRepositoryExploreLimit
 	}
@@ -139,7 +141,7 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 
 	pattern := likePattern(query)
 	base := r.readDB.WithContext(ctx).
-		Model(&model.Community{}).
+		Model(&communitymodel.Community{}).
 		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
 		Where("communities.name ILIKE ? ESCAPE '\\' OR communities.description ILIKE ? ESCAPE '\\' OR categories.name ILIKE ? ESCAPE '\\'", pattern, pattern, pattern)
 
@@ -148,7 +150,7 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 		return nil, 0, err
 	}
 
-	var communities []model.ExploreCommunityResult
+	var communities []exploremodel.ExploreCommunityResult
 	if err := base.
 		Select(`
 			communities.community_id,
@@ -172,13 +174,13 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 	return communities, total, nil
 }
 
-func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
+func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
 	if limit < 1 || limit > 100 {
 		limit = defaultRepositoryExploreLimit
 	}
 
 	key := exploreSectionKey("suggested_people", "", fmt.Sprintf("%d", requesterID), limit)
-	var users []model.ExploreUserResult
+	var users []exploremodel.ExploreUserResult
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &users); err == nil {
 			return users, nil
@@ -213,9 +215,9 @@ func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID
 		return nil, err
 	}
 
-	users = make([]model.ExploreUserResult, len(rows))
+	users = make([]exploremodel.ExploreUserResult, len(rows))
 	for i, row := range rows {
-		users[i] = model.ExploreUserResult{
+		users[i] = exploremodel.ExploreUserResult{
 			UserID:           row.UserID,
 			Name:             row.Name,
 			Username:         row.Username,
@@ -233,7 +235,7 @@ func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID
 	return users, nil
 }
 
-func (r *exploreRepository) findExploreThreads(ctx context.Context, section, query string, requesterID uint, types []string, limit int, mediaOnly bool, order string) ([]model.Thread, int64, error) {
+func (r *exploreRepository) findExploreThreads(ctx context.Context, section, query string, requesterID uint, types []string, limit int, mediaOnly bool, order string) ([]threadmodel.Thread, int64, error) {
 	if limit < 1 || limit > 100 {
 		limit = defaultRepositoryExploreLimit
 	}
@@ -276,7 +278,7 @@ func (r *exploreRepository) findExploreThreads(ctx context.Context, section, que
 		return nil, 0, err
 	}
 	if len(ids) == 0 {
-		result = cachedExploreThreads{Threads: []model.Thread{}, Total: total}
+		result = cachedExploreThreads{Threads: []threadmodel.Thread{}, Total: total}
 		if r.cache != nil {
 			if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
 				r.registerExploreSectionTags(ctx, section, key)
@@ -285,7 +287,7 @@ func (r *exploreRepository) findExploreThreads(ctx context.Context, section, que
 		return result.Threads, result.Total, nil
 	}
 
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	var err error
 	if mediaOnly {
 		threads, err = r.loadThreadSummariesByIDs(ctx, ids)
@@ -320,29 +322,29 @@ func (r *exploreRepository) registerExploreSectionTags(ctx context.Context, sect
 func (r *exploreRepository) exploreThreadBase(ctx context.Context, query string, requesterID *uint, types []string) *gorm.DB {
 	pattern := likePattern(query)
 	db := r.readDB.WithContext(ctx).
-		Model(&model.Thread{}).
+		Model(&threadmodel.Thread{}).
 		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
 		Joins("LEFT JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
 		Where("threads.type IN ?", types).
-		Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(NULLIF(threads.content, ''), original.content) ILIKE ? ESCAPE '\\'", pattern)
 	return applyThreadVisibility(db, requesterID)
 }
 
-func (r *exploreRepository) loadThreadsByIDs(ctx context.Context, ids []uint) ([]model.Thread, error) {
-	var rows []model.Thread
+func (r *exploreRepository) loadThreadsByIDs(ctx context.Context, ids []uint) ([]threadmodel.Thread, error) {
+	var rows []threadmodel.Thread
 	if err := preloadThreadDetails(r.readDB.WithContext(ctx)).
 		Where("threads.thread_id IN ?", ids).
 		Find(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	byID := make(map[uint]model.Thread, len(rows))
+	byID := make(map[uint]threadmodel.Thread, len(rows))
 	for _, row := range rows {
 		byID[row.ThreadID] = row
 	}
 
-	threads := make([]model.Thread, 0, len(ids))
+	threads := make([]threadmodel.Thread, 0, len(ids))
 	for _, id := range ids {
 		if thread, ok := byID[id]; ok {
 			threads = append(threads, thread)
@@ -351,8 +353,8 @@ func (r *exploreRepository) loadThreadsByIDs(ctx context.Context, ids []uint) ([
 	return threads, nil
 }
 
-func (r *exploreRepository) loadThreadSummariesByIDs(ctx context.Context, ids []uint) ([]model.Thread, error) {
-	var rows []model.Thread
+func (r *exploreRepository) loadThreadSummariesByIDs(ctx context.Context, ids []uint) ([]threadmodel.Thread, error) {
+	var rows []threadmodel.Thread
 	if err := r.readDB.WithContext(ctx).
 		Select("thread_id", "user_id").
 		Where("threads.thread_id IN ?", ids).
@@ -360,12 +362,12 @@ func (r *exploreRepository) loadThreadSummariesByIDs(ctx context.Context, ids []
 		return nil, err
 	}
 
-	byID := make(map[uint]model.Thread, len(rows))
+	byID := make(map[uint]threadmodel.Thread, len(rows))
 	for _, row := range rows {
 		byID[row.ThreadID] = row
 	}
 
-	threads := make([]model.Thread, 0, len(ids))
+	threads := make([]threadmodel.Thread, 0, len(ids))
 	for _, id := range ids {
 		if thread, ok := byID[id]; ok {
 			threads = append(threads, thread)
@@ -376,7 +378,7 @@ func (r *exploreRepository) loadThreadSummariesByIDs(ctx context.Context, ids []
 
 const defaultRepositoryExploreLimit = 20
 
-func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requesterID *uint, limit int) ([]model.ExploreUserResult, error) {
+func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requesterID *uint, limit int) ([]exploremodel.ExploreUserResult, error) {
 	pattern := likePattern(query)
 	viewerID := uint(0)
 	if requesterID != nil {
@@ -406,9 +408,9 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 		return nil, err
 	}
 
-	users := make([]model.ExploreUserResult, len(rows))
+	users := make([]exploremodel.ExploreUserResult, len(rows))
 	for i, row := range rows {
-		users[i] = model.ExploreUserResult{
+		users[i] = exploremodel.ExploreUserResult{
 			UserID:           row.UserID,
 			Name:             row.Name,
 			Username:         row.Username,
@@ -421,7 +423,7 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 	return users, nil
 }
 
-func (r *exploreRepository) exploreThreads(ctx context.Context, query string, limit int) ([]model.ExploreThreadResult, error) {
+func (r *exploreRepository) exploreThreads(ctx context.Context, query string, limit int) ([]exploremodel.ExploreThreadResult, error) {
 	pattern := likePattern(query)
 	var rows []exploreThreadRow
 	if err := r.readDB.WithContext(ctx).
@@ -429,8 +431,8 @@ func (r *exploreRepository) exploreThreads(ctx context.Context, query string, li
 		Select("DISTINCT ON (threads.content) threads.user_id, threads.content").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN user_settings thread_visibility_settings ON thread_visibility_settings.user_id = threads.user_id").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("threads.type IN ?", []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply)}).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(thread_visibility_settings.is_private, false) = ?", false).
 		Where("threads.content ILIKE ? ESCAPE '\\'", pattern).
 		Order("threads.content, threads.created_at DESC").
@@ -439,9 +441,9 @@ func (r *exploreRepository) exploreThreads(ctx context.Context, query string, li
 		return nil, err
 	}
 
-	threads := make([]model.ExploreThreadResult, len(rows))
+	threads := make([]exploremodel.ExploreThreadResult, len(rows))
 	for i, row := range rows {
-		threads[i] = model.ExploreThreadResult{
+		threads[i] = exploremodel.ExploreThreadResult{
 			UserID:  row.UserID,
 			Content: row.Content,
 		}

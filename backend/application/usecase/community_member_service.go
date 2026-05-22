@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -17,8 +18,8 @@ type CommunityMemberService struct {
 	cacheRepo     repository.ICacheRepository
 }
 
-func isCommunityAdmin(role model.CommunityMemberRole) bool {
-	return role == model.CommunityMemberRoleAdmin
+func isCommunityAdmin(role communitymembermodel.CommunityMemberRole) bool {
+	return role == communitymembermodel.CommunityMemberRoleAdmin
 }
 
 func NewCommunityMemberService(
@@ -46,13 +47,13 @@ func (s *CommunityMemberService) Join(ctx context.Context, communityID, userID u
 	if _, err := s.memberRepo.FindMember(communityID, userID); err == nil {
 		return errors.New("already a member")
 	}
-	if community.Visibility == model.CommunityVisibilityPrivate {
+	if community.Visibility == communitymodel.CommunityVisibilityPrivate {
 		return errors.New("community is private, send a join request instead")
 	}
-	member := &model.CommunityMember{
+	member := &communitymembermodel.CommunityMember{
 		CommunityID: communityID,
 		UserID:      userID,
-		Role:        model.CommunityMemberRoleMember,
+		Role:        communitymembermodel.CommunityMemberRoleMember,
 	}
 	if err := s.memberRepo.Save(member); err != nil {
 		return err
@@ -85,7 +86,7 @@ func (s *CommunityMemberService) Leave(ctx context.Context, communityID, userID 
 	return nil
 }
 
-func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) ([]model.CommunityMember, int64, error) {
+func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) ([]communitymembermodel.CommunityMember, int64, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
 	}
@@ -93,7 +94,7 @@ func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) (
 	return s.memberRepo.FindByCommunityID(communityID, page, limit)
 }
 
-func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *model.CommunityMemberRole, query string, page, limit int) ([]service.CommunityUserItem, int64, error) {
+func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) ([]service.CommunityUserItem, int64, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
 	}
@@ -165,8 +166,8 @@ func (s *CommunityMemberService) IsMember(communityID, userID uint) bool {
 	return err == nil
 }
 
-func (s *CommunityMemberService) UpdateRole(ctx context.Context, communityID, actorUserID, targetUserID uint, role model.CommunityMemberRole) error {
-	if role != model.CommunityMemberRoleMember && role != model.CommunityMemberRoleAdmin {
+func (s *CommunityMemberService) UpdateRole(ctx context.Context, communityID, actorUserID, targetUserID uint, role communitymembermodel.CommunityMemberRole) error {
+	if role != communitymembermodel.CommunityMemberRoleMember && role != communitymembermodel.CommunityMemberRoleAdmin {
 		return errors.New("invalid role")
 	}
 	community, err := s.communityRepo.FindByID(communityID)

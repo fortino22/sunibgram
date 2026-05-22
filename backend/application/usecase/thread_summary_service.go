@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/ollama"
@@ -111,13 +111,13 @@ func (s *ThreadSummaryService) InvalidateCache(ctx context.Context, threadID uin
 	return s.cacheRepo.Delete(ctx, threadSummaryKey(threadID))
 }
 
-func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]model.Thread, error) {
+func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]threadmodel.Thread, error) {
 	threads, _, err := s.threadRepo.FindByRootID(threadID, 1, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	replies := make([]model.Thread, 0, len(threads))
+	replies := make([]threadmodel.Thread, 0, len(threads))
 	for _, thread := range threads {
 		if thread.ParentID != nil && *thread.ParentID == threadID {
 			replies = append(replies, thread)

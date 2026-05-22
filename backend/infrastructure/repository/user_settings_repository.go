@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/sunibgram/domain/model"
+	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -34,8 +34,8 @@ func NewUserSettingsRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Ca
 	return &UserSettingsRepository{writeDB: writeDB, readDB: readDB, cache: redisCache, ttl: privacySettingsTTL}
 }
 
-func (r *UserSettingsRepository) GetUserSettingByUserID(ctx context.Context, userID uint) (*model.UserSettings, error) {
-	var setting model.UserSettings
+func (r *UserSettingsRepository) GetUserSettingByUserID(ctx context.Context, userID uint) (*usersettingsmodel.UserSettings, error) {
+	var setting usersettingsmodel.UserSettings
 	err := r.readDB.WithContext(ctx).Where("user_id = ?", userID).First(&setting).Error
 	return &setting, err
 }
@@ -47,9 +47,9 @@ func (r *UserSettingsRepository) IsUserPrivate(ctx context.Context, userID uint)
 			return cached, nil
 		}
 	}
-	var setting model.UserSettings
+	var setting usersettingsmodel.UserSettings
 	err := r.readDB.WithContext(ctx).
-		Model(&model.UserSettings{}).
+		Model(&usersettingsmodel.UserSettings{}).
 		Select("is_private").
 		Where("user_id = ?", userID).
 		Scan(&setting).Error
@@ -82,9 +82,9 @@ func (r *UserSettingsRepository) GetPrivacyMapByUserIDs(ctx context.Context, use
 		return result, nil
 	}
 
-	var settings []model.UserSettings
+	var settings []usersettingsmodel.UserSettings
 	if err := r.readDB.WithContext(ctx).
-		Model(&model.UserSettings{}).
+		Model(&usersettingsmodel.UserSettings{}).
 		Select("user_id", "is_private").
 		Where("user_id IN ?", missingIDs).
 		Find(&settings).Error; err != nil {
@@ -101,11 +101,11 @@ func (r *UserSettingsRepository) GetPrivacyMapByUserIDs(ctx context.Context, use
 	return result, nil
 }
 
-func (r *UserSettingsRepository) Create(ctx context.Context, setting *model.UserSettings) error {
+func (r *UserSettingsRepository) Create(ctx context.Context, setting *usersettingsmodel.UserSettings) error {
 	return r.writeDB.WithContext(ctx).Create(setting).Error
 }
 
-func (r *UserSettingsRepository) UpdateUserSetting(ctx context.Context, setting *model.UserSettings) error {
+func (r *UserSettingsRepository) UpdateUserSetting(ctx context.Context, setting *usersettingsmodel.UserSettings) error {
 	if err := r.writeDB.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{"is_private"}),

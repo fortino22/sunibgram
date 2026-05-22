@@ -3,7 +3,7 @@ package service
 import (
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
 type IBookmarkService interface {
@@ -12,5 +12,5 @@ type IBookmarkService interface {
 	IsBookmarked(userID, threadID uint) bool
 	AreThreadsBookmarked(userID uint, threadIDs []uint) (map[uint]bool, error)
 	AllBookmarkedThreadIDs(userID uint) ([]uint, error)
-	GetMyBookmarks(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error)
+	GetMyBookmarks(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error)
 }

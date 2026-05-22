@@ -9,7 +9,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -22,13 +23,13 @@ type eventRepository struct {
 }
 
 type cachedEvents struct {
-	Trending []model.Event
-	Running  []model.Event
-	Future   []model.Event
+	Trending []threadmodel.Event
+	Running  []threadmodel.Event
+	Future   []threadmodel.Event
 }
 
 type cachedEventThreads struct {
-	Threads []model.Thread
+	Threads []threadmodel.Thread
 	Total   int64
 }
 
@@ -67,7 +68,7 @@ func eventThreadSortClause(sort string) string {
 	}
 }
 
-func (r *eventRepository) Save(event *model.Event) error {
+func (r *eventRepository) Save(event *threadmodel.Event) error {
 	if err := r.writeDB.Create(event).Error; err != nil {
 		return err
 	}
@@ -75,10 +76,10 @@ func (r *eventRepository) Save(event *model.Event) error {
 	return nil
 }
 
-func (r *eventRepository) FindByID(id string) (*model.Event, error) {
+func (r *eventRepository) FindByID(id string) (*threadmodel.Event, error) {
 	ctx := context.Background()
 	key := eventIDKey(id)
-	var event model.Event
+	var event threadmodel.Event
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &event); err == nil {
 			return &event, nil
@@ -93,7 +94,7 @@ func (r *eventRepository) FindByID(id string) (*model.Event, error) {
 	return &event, nil
 }
 
-func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, []model.Event, error) {
+func (r *eventRepository) FindGrouped(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	ctx := context.Background()
 	key := eventListKey(limit)
 	var result cachedEvents
@@ -103,7 +104,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 		}
 	}
 
-	var trending []model.Event
+	var trending []threadmodel.Event
 	if err := r.readDB.
 		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
 		Limit(limit).
@@ -112,7 +113,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 	}
 
 	now := time.Now().UTC()
-	var running []model.Event
+	var running []threadmodel.Event
 	if err := r.readDB.
 		Where("start_time <= ? AND end_time >= ?", now, now).
 		Order("start_time ASC").
@@ -121,7 +122,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 		return nil, nil, nil, err
 	}
 
-	var future []model.Event
+	var future []threadmodel.Event
 	if err := r.readDB.
 		Where("start_time > ?", now).
 		Order("start_time ASC").
@@ -139,7 +140,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]model.Event, []model.Event, 
 	return result.Trending, result.Running, result.Future, nil
 }
 
-func (r *eventRepository) FindGroupedApproved(limit int) ([]model.Event, []model.Event, []model.Event, error) {
+func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	ctx := context.Background()
 	key := eventApprovedListKey(limit)
 	var result cachedEvents
@@ -149,7 +150,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]model.Event, []model
 		}
 	}
 
-	var trending []model.Event
+	var trending []threadmodel.Event
 	if err := r.readDB.
 		Where("status = ?", "approved").
 		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
@@ -159,7 +160,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]model.Event, []model
 	}
 
 	now := time.Now().UTC()
-	var running []model.Event
+	var running []threadmodel.Event
 	if err := r.readDB.
 		Where("status = ?", "approved").
 		Where("start_time <= ? AND end_time >= ?", now, now).
@@ -169,7 +170,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]model.Event, []model
 		return nil, nil, nil, err
 	}
 
-	var future []model.Event
+	var future []threadmodel.Event
 	if err := r.readDB.
 		Where("status = ?", "approved").
 		Where("start_time > ?", now).
@@ -188,10 +189,10 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]model.Event, []model
 	return result.Trending, result.Running, result.Future, nil
 }
 
-func (r *eventRepository) FindPending(limit int) ([]model.Event, error) {
+func (r *eventRepository) FindPending(limit int) ([]threadmodel.Event, error) {
 	ctx := context.Background()
 	key := eventPendingListKey(limit)
-	var events []model.Event
+	var events []threadmodel.Event
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &events); err == nil {
 			return events, nil
@@ -214,8 +215,8 @@ func (r *eventRepository) FindPending(limit int) ([]model.Event, error) {
 	return events, nil
 }
 
-func (r *eventRepository) FindAdmin(status, name string, page, limit int) ([]model.Event, int64, error) {
-	q := r.readDB.Model(&model.Event{})
+func (r *eventRepository) FindAdmin(status, name string, page, limit int) ([]threadmodel.Event, int64, error) {
+	q := r.readDB.Model(&threadmodel.Event{})
 	if status != "" {
 		q = q.Where("status = ?", status)
 	}
@@ -228,7 +229,7 @@ func (r *eventRepository) FindAdmin(status, name string, page, limit int) ([]mod
 		return nil, 0, err
 	}
 
-	var events []model.Event
+	var events []threadmodel.Event
 	offset := (page - 1) * limit
 	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&events).Error; err != nil {
 		return nil, 0, err
@@ -236,8 +237,8 @@ func (r *eventRepository) FindAdmin(status, name string, page, limit int) ([]mod
 	return events, total, nil
 }
 
-func (r *eventRepository) FindByUserID(userID uint, status string, page, limit int) ([]model.Event, int64, error) {
-	q := r.readDB.Model(&model.Event{}).Where("user_id = ?", userID)
+func (r *eventRepository) FindByUserID(userID uint, status string, page, limit int) ([]threadmodel.Event, int64, error) {
+	q := r.readDB.Model(&threadmodel.Event{}).Where("user_id = ?", userID)
 	if status != "" {
 		q = q.Where("status = ?", status)
 	}
@@ -247,7 +248,7 @@ func (r *eventRepository) FindByUserID(userID uint, status string, page, limit i
 		return nil, 0, err
 	}
 
-	var events []model.Event
+	var events []threadmodel.Event
 	offset := (page - 1) * limit
 	if err := q.Order("created_at DESC").Offset(offset).Limit(limit).Find(&events).Error; err != nil {
 		return nil, 0, err
@@ -255,7 +256,7 @@ func (r *eventRepository) FindByUserID(userID uint, status string, page, limit i
 	return events, total, nil
 }
 
-func (r *eventRepository) Update(event *model.Event) error {
+func (r *eventRepository) Update(event *threadmodel.Event) error {
 	if err := r.writeDB.Model(event).UpdateColumns(map[string]any{
 		"user_id":                event.UserID,
 		"title":                  event.Title,
@@ -280,7 +281,7 @@ func (r *eventRepository) Update(event *model.Event) error {
 }
 
 func (r *eventRepository) UpdateStatus(id, status string) error {
-	if err := r.writeDB.Model(&model.Event{}).
+	if err := r.writeDB.Model(&threadmodel.Event{}).
 		Where("id = ?", id).
 		UpdateColumns(map[string]any{
 			"status":     status,
@@ -294,14 +295,14 @@ func (r *eventRepository) UpdateStatus(id, status string) error {
 
 func (r *eventRepository) Delete(id string) error {
 	r.invalidateEventThreadCaches(id)
-	if err := r.writeDB.Delete(&model.Event{}, "id = ?", id).Error; err != nil {
+	if err := r.writeDB.Delete(&threadmodel.Event{}, "id = ?", id).Error; err != nil {
 		return err
 	}
 	r.invalidateEvent(id)
 	return nil
 }
 
-func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter, sort string, page, limit int) ([]model.Thread, int64, error) {
+func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter, sort string, page, limit int) ([]threadmodel.Thread, int64, error) {
 	ctx := context.Background()
 	key := eventThreadsKey(eventID, filter, sort, threadVisibilityCachePart(requesterID), page, limit)
 	var result cachedEventThreads
@@ -311,7 +312,7 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 		}
 	}
 
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	var total int64
 	threadInEvent := `EXISTS (
 		SELECT 1 FROM thread_events te
@@ -326,19 +327,19 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 			COALESCE(original.parent_id, 0)
 		)
 	)`
-	threadTypes := []string{string(model.ThreadTypePost), string(model.ThreadTypeRepost), string(model.ThreadTypeReply)}
-	q := applyThreadVisibility(r.readDB.Model(&model.Thread{}), requesterID).
+	threadTypes := []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeRepost), string(threadmodel.ThreadTypeReply)}
+	q := applyThreadVisibility(r.readDB.Model(&threadmodel.Thread{}), requesterID).
 		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
 		Joins("LEFT JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
 		Where(threadInEvent, eventID).
 		Where("threads.type IN ?", threadTypes)
 	if requesterID == nil {
-		q = q.Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic)
+		q = q.Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic)
 	} else {
 		q = q.
 			Joins("LEFT JOIN community_members ON community_members.community_id = COALESCE(threads.community_id, original.community_id) AND community_members.user_id = ?", *requesterID).
 			Where("COALESCE(threads.community_id, original.community_id) IS NULL OR communities.visibility = ? OR community_members.user_id = ?",
-				model.CommunityVisibilityPublic, *requesterID)
+				communitymodel.CommunityVisibilityPublic, *requesterID)
 	}
 	switch filter {
 	case "official":
@@ -392,12 +393,12 @@ func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threa
 		return nil
 	}
 
-	var event model.ThreadEvent
+	var event threadmodel.ThreadEvent
 	if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
-		var thread model.Thread
+		var thread threadmodel.Thread
 		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return err
 		}
@@ -436,7 +437,7 @@ func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threa
 		return nil
 	}
 
-	if err := r.writeDB.WithContext(ctx).Model(&model.Event{}).
+	if err := r.writeDB.WithContext(ctx).Model(&threadmodel.Event{}).
 		Where("id = ?", event.EventID).
 		UpdateColumns(updates).Error; err != nil {
 		return err
@@ -471,7 +472,7 @@ func (r *eventRepository) invalidateEventThreadCaches(id string) {
 		return
 	}
 
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	if err := r.readDB.
 		Table("threads").
 		Select("DISTINCT threads.thread_id, threads.user_id, threads.root_id, threads.community_id").

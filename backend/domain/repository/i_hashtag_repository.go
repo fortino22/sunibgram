@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 )
 
 type IHashtagRepository interface {
@@ -13,6 +13,6 @@ type IHashtagRepository interface {
 	LinkHashtagsToThread(ctx context.Context, threadID uint, hashtagIDs []uuid.UUID) error
 	ReplaceHashtagsForThread(ctx context.Context, threadID uint, hashtagIDs []uuid.UUID) error
 	UnlinkHashtagsFromThread(ctx context.Context, threadID uint) error
-	GetTrending(ctx context.Context, limit int) ([]model.TrendingHashtag, error)
+	GetTrending(ctx context.Context, limit int) ([]hashtagmodel.TrendingHashtag, error)
 	PatchHashtagCounterByThreadID(ctx context.Context, threadID uint, column string, delta int) error
 }

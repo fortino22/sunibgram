@@ -4,7 +4,8 @@ import (
 	"errors"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitypinmodel "github.com/sunibgram/domain/model/community_pin"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -28,7 +29,7 @@ func (s *CommunityPinService) Pin(userID, communityID uint) error {
 	if err != nil {
 		return errors.New("community not found")
 	}
-	if community.Visibility == model.CommunityVisibilityPrivate {
+	if community.Visibility == communitymodel.CommunityVisibilityPrivate {
 		if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
 			return errors.New("you must be a member to pin this community")
 		}
@@ -47,7 +48,7 @@ func (s *CommunityPinService) Pin(userID, communityID uint) error {
 	if count >= maxCommunityPinsPerUser {
 		return errors.New("maximum of 3 pinned communities reached")
 	}
-	return s.pinRepo.Pin(&model.UserCommunityPin{UserID: userID, CommunityID: communityID})
+	return s.pinRepo.Pin(&communitypinmodel.UserCommunityPin{UserID: userID, CommunityID: communityID})
 }
 
 const maxCommunityPinsPerUser = 3
@@ -63,7 +64,7 @@ func (s *CommunityPinService) Unpin(userID, communityID uint) error {
 	return s.pinRepo.Unpin(userID, communityID)
 }
 
-func (s *CommunityPinService) GetMyPins(userID uint, page, limit int) ([]model.Community, int64, error) {
+func (s *CommunityPinService) GetMyPins(userID uint, page, limit int) ([]communitymodel.Community, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.pinRepo.FindMyPins(userID, page, limit)
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
 const threadFeedCountTTL = 5 * time.Minute
@@ -45,17 +45,17 @@ func (r *threadCached) setCachedCount(ctx context.Context, key string, total int
 // hydrateThreads returns threads in the order of ids, sourcing from the
 // per-thread cache first and batching DB lookups for misses. Missing rows are
 // silently dropped (matches FindByID semantics for evicted entries).
-func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]model.Thread, error) {
+func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]threadmodel.Thread, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	found := make(map[uint]model.Thread, len(ids))
+	found := make(map[uint]threadmodel.Thread, len(ids))
 	missing := make([]uint, 0)
 	for _, id := range ids {
 		if id == 0 {
 			continue
 		}
-		var t model.Thread
+		var t threadmodel.Thread
 		if err := r.cache.Get(ctx, threadKey(id), &t); err == nil {
 			found[id] = t
 			continue
@@ -63,7 +63,7 @@ func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]model.
 		missing = append(missing, id)
 	}
 	if len(missing) > 0 {
-		var rows []model.Thread
+		var rows []threadmodel.Thread
 		if err := preloadThreadDetails(r.db.readDB).
 			Where("threads.thread_id IN ?", missing).
 			Find(&rows).Error; err != nil {
@@ -74,7 +74,7 @@ func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]model.
 			_ = r.cache.Set(ctx, threadKey(rows[i].ThreadID), rows[i], r.ttl)
 		}
 	}
-	out := make([]model.Thread, 0, len(ids))
+	out := make([]threadmodel.Thread, 0, len(ids))
 	for _, id := range ids {
 		if t, ok := found[id]; ok {
 			out = append(out, t)
@@ -87,7 +87,7 @@ func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]model.
 // where parentIDs[i] == 0 stay nil. Sources from a separate per-parent cache
 // (parentThreadKey) since parents are loaded with the lighter
 // preloadThreadParentDetails set.
-func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]*model.Thread, error) {
+func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]*threadmodel.Thread, error) {
 	if len(parentIDs) == 0 {
 		return nil, nil
 	}
@@ -97,10 +97,10 @@ func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]
 			uniq[id] = struct{}{}
 		}
 	}
-	found := make(map[uint]*model.Thread, len(uniq))
+	found := make(map[uint]*threadmodel.Thread, len(uniq))
 	missing := make([]uint, 0, len(uniq))
 	for id := range uniq {
-		var t model.Thread
+		var t threadmodel.Thread
 		if err := r.cache.Get(ctx, parentThreadKey(id), &t); err == nil {
 			tc := t
 			found[id] = &tc
@@ -109,7 +109,7 @@ func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]
 		missing = append(missing, id)
 	}
 	if len(missing) > 0 {
-		var rows []model.Thread
+		var rows []threadmodel.Thread
 		if err := preloadThreadParentDetails(r.db.readDB).
 			Where("threads.thread_id IN ?", missing).
 			Find(&rows).Error; err != nil {
@@ -121,7 +121,7 @@ func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]
 			_ = r.cache.Set(ctx, parentThreadKey(rows[i].ThreadID), rows[i], r.ttl)
 		}
 	}
-	out := make([]*model.Thread, len(parentIDs))
+	out := make([]*threadmodel.Thread, len(parentIDs))
 	for i, id := range parentIDs {
 		if id == 0 {
 			continue
@@ -137,8 +137,8 @@ func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]
 func (r *threadCached) storeFeedIDs(
 	ctx context.Context,
 	key string,
-	threads []model.Thread,
-	parents []*model.Thread,
+	threads []threadmodel.Thread,
+	parents []*threadmodel.Thread,
 	ttl time.Duration,
 ) {
 	entry := feedIDsCache{IDs: make([]uint, len(threads))}
@@ -172,17 +172,17 @@ func (r *threadCached) loadFeedIDs(ctx context.Context, key string) (feedIDsCach
 // FindByRootID where rows are loaded with preloadThreadParentDetails (lighter
 // preload set). Stores into a distinct cache namespace (parentThreadKey) so
 // reads do not conflict with the full-detail per-thread cache.
-func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]model.Thread, error) {
+func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]threadmodel.Thread, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	found := make(map[uint]model.Thread, len(ids))
+	found := make(map[uint]threadmodel.Thread, len(ids))
 	missing := make([]uint, 0)
 	for _, id := range ids {
 		if id == 0 {
 			continue
 		}
-		var t model.Thread
+		var t threadmodel.Thread
 		if err := r.cache.Get(ctx, parentThreadKey(id), &t); err == nil {
 			found[id] = t
 			continue
@@ -190,7 +190,7 @@ func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]m
 		missing = append(missing, id)
 	}
 	if len(missing) > 0 {
-		var rows []model.Thread
+		var rows []threadmodel.Thread
 		if err := preloadThreadParentDetails(r.db.readDB).
 			Where("threads.thread_id IN ?", missing).
 			Find(&rows).Error; err != nil {
@@ -201,7 +201,7 @@ func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]m
 			_ = r.cache.Set(ctx, parentThreadKey(rows[i].ThreadID), rows[i], r.ttl)
 		}
 	}
-	out := make([]model.Thread, 0, len(ids))
+	out := make([]threadmodel.Thread, 0, len(ids))
 	for _, id := range ids {
 		if t, ok := found[id]; ok {
 			out = append(out, t)
@@ -210,7 +210,7 @@ func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]m
 	return out, nil
 }
 
-func (r *threadCached) storeChainFeedIDs(ctx context.Context, key string, threads []model.Thread) {
+func (r *threadCached) storeChainFeedIDs(ctx context.Context, key string, threads []threadmodel.Thread) {
 	entry := feedIDsCache{IDs: make([]uint, len(threads))}
 	for i, t := range threads {
 		entry.IDs[i] = t.ThreadID

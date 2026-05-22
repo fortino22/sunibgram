@@ -1,11 +1,11 @@
 package service
 
-import "github.com/sunibgram/domain/model"
+import rolemodel "github.com/sunibgram/domain/model/role"
 
 type IRoleService interface {
-	Create(role *model.Role) error
-	GetAll() ([]model.Role, error)
-	GetByID(id uint) (*model.Role, error)
-	Update(role *model.Role) error
+	Create(role *rolemodel.Role) error
+	GetAll() ([]rolemodel.Role, error)
+	GetByID(id uint) (*rolemodel.Role, error)
+	Update(role *rolemodel.Role) error
 	Delete(id uint) error
 }

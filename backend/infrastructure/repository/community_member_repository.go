@@ -9,7 +9,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -29,15 +30,15 @@ func communityMembersKey(communityID uint, page, limit int) string {
 }
 
 type cachedCommunityMembers struct {
-	Members []model.CommunityMember
+	Members []communitymembermodel.CommunityMember
 	Total   int64
 }
 
-func (r *communityMemberRepository) Save(member *model.CommunityMember) error {
+func (r *communityMemberRepository) Save(member *communitymembermodel.CommunityMember) error {
 	return r.SaveWithTx(r.writeDB, member)
 }
 
-func (r *communityMemberRepository) SaveWithTx(tx *gorm.DB, member *model.CommunityMember) error {
+func (r *communityMemberRepository) SaveWithTx(tx *gorm.DB, member *communitymembermodel.CommunityMember) error {
 	member.JoinedAt = time.Now()
 	if err := tx.Create(member).Error; err != nil {
 		return err
@@ -46,15 +47,15 @@ func (r *communityMemberRepository) SaveWithTx(tx *gorm.DB, member *model.Commun
 	return nil
 }
 
-func (r *communityMemberRepository) FindMember(communityID, userID uint) (*model.CommunityMember, error) {
-	var member model.CommunityMember
+func (r *communityMemberRepository) FindMember(communityID, userID uint) (*communitymembermodel.CommunityMember, error) {
+	var member communitymembermodel.CommunityMember
 	if err := r.readDB.Where("community_id = ? AND user_id = ?", communityID, userID).First(&member).Error; err != nil {
 		return nil, err
 	}
 	return &member, nil
 }
 
-func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, limit int) ([]model.CommunityMember, int64, error) {
+func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, limit int) ([]communitymembermodel.CommunityMember, int64, error) {
 	ctx := context.Background()
 	key := communityMembersKey(communityID, page, limit)
 	var result cachedCommunityMembers
@@ -64,9 +65,9 @@ func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, li
 		}
 	}
 
-	var members []model.CommunityMember
+	var members []communitymembermodel.CommunityMember
 	var total int64
-	r.readDB.Model(&model.CommunityMember{}).Where("community_id = ?", communityID).Count(&total)
+	r.readDB.Model(&communitymembermodel.CommunityMember{}).Where("community_id = ?", communityID).Count(&total)
 	offset := (page - 1) * limit
 	if err := r.readDB.Preload("User").Preload("Profile").
 		Where("community_id = ?", communityID).
@@ -85,7 +86,7 @@ func (r *communityMemberRepository) FindByCommunityID(communityID uint, page, li
 	return members, total, nil
 }
 
-func communityUsersKey(communityID uint, role *model.CommunityMemberRole, query string, page, limit int) string {
+func communityUsersKey(communityID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) string {
 	r := "ALL"
 	if role != nil {
 		r = string(*role)
@@ -94,11 +95,11 @@ func communityUsersKey(communityID uint, role *model.CommunityMemberRole, query 
 }
 
 type cachedCommunityUsers struct {
-	Members []model.CommunityMember
+	Members []communitymembermodel.CommunityMember
 	Total   int64
 }
 
-func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *model.CommunityMemberRole, query string, page, limit int) ([]model.CommunityMember, int64, error) {
+func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) ([]communitymembermodel.CommunityMember, int64, error) {
 	ctx := context.Background()
 	query = strings.TrimSpace(query)
 	key := communityUsersKey(communityID, role, query, page, limit)
@@ -109,7 +110,7 @@ func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *m
 		}
 	}
 
-	base := r.readDB.Model(&model.CommunityMember{}).
+	base := r.readDB.Model(&communitymembermodel.CommunityMember{}).
 		Joins("JOIN users ON users.user_id = community_members.user_id").
 		Where("community_members.community_id = ?", communityID)
 	if role != nil {
@@ -125,7 +126,7 @@ func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *m
 		return nil, 0, err
 	}
 
-	var members []model.CommunityMember
+	var members []communitymembermodel.CommunityMember
 	offset := (page - 1) * limit
 	q := r.readDB.Preload("User").Preload("Profile").
 		Joins("JOIN users ON users.user_id = community_members.user_id").
@@ -153,18 +154,18 @@ func (r *communityMemberRepository) FindCommunityUsers(communityID uint, role *m
 	return members, total, nil
 }
 
-func (r *communityMemberRepository) FindAdmins(communityID uint) ([]model.CommunityMember, error) {
+func (r *communityMemberRepository) FindAdmins(communityID uint) ([]communitymembermodel.CommunityMember, error) {
 	ctx := context.Background()
 	key := fmt.Sprintf("community:about:admins:%d", communityID)
-	var cached []model.CommunityMember
+	var cached []communitymembermodel.CommunityMember
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &cached); err == nil {
 			return cached, nil
 		}
 	}
-	var admins []model.CommunityMember
+	var admins []communitymembermodel.CommunityMember
 	if err := r.readDB.Preload("User").Preload("Profile").
-		Where("community_id = ? AND role = ?", communityID, model.CommunityMemberRoleAdmin).
+		Where("community_id = ? AND role = ?", communityID, communitymembermodel.CommunityMemberRoleAdmin).
 		Order("joined_at ASC").
 		Find(&admins).Error; err != nil {
 		return nil, err
@@ -175,21 +176,21 @@ func (r *communityMemberRepository) FindAdmins(communityID uint) ([]model.Commun
 	return admins, nil
 }
 
-func (r *communityMemberRepository) FindTopMembers(communityID uint, limit int) ([]model.CommunityMember, error) {
+func (r *communityMemberRepository) FindTopMembers(communityID uint, limit int) ([]communitymembermodel.CommunityMember, error) {
 	if limit <= 0 {
 		limit = 10
 	}
 	ctx := context.Background()
 	key := fmt.Sprintf("community:about:topmembers:%d:limit:%d", communityID, limit)
-	var cached []model.CommunityMember
+	var cached []communitymembermodel.CommunityMember
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &cached); err == nil {
 			return cached, nil
 		}
 	}
-	var members []model.CommunityMember
+	var members []communitymembermodel.CommunityMember
 	if err := r.readDB.Preload("User").Preload("Profile").
-		Where("community_id = ? AND role = ?", communityID, model.CommunityMemberRoleMember).
+		Where("community_id = ? AND role = ?", communityID, communitymembermodel.CommunityMemberRoleMember).
 		Order("joined_at ASC").
 		Limit(limit).
 		Find(&members).Error; err != nil {
@@ -205,7 +206,7 @@ func (r *communityMemberRepository) FindTopMembers(communityID uint, limit int) 
 }
 
 func (r *communityMemberRepository) Delete(communityID, userID uint) error {
-	result := r.writeDB.Delete(&model.CommunityMember{}, "community_id = ? AND user_id = ?", communityID, userID)
+	result := r.writeDB.Delete(&communitymembermodel.CommunityMember{}, "community_id = ? AND user_id = ?", communityID, userID)
 	if result.RowsAffected == 0 {
 		return errors.New("member not found")
 	}
@@ -216,8 +217,8 @@ func (r *communityMemberRepository) Delete(communityID, userID uint) error {
 	return nil
 }
 
-func (r *communityMemberRepository) UpdateRole(communityID, userID uint, role model.CommunityMemberRole) error {
-	if err := r.writeDB.Model(&model.CommunityMember{}).
+func (r *communityMemberRepository) UpdateRole(communityID, userID uint, role communitymembermodel.CommunityMemberRole) error {
+	if err := r.writeDB.Model(&communitymembermodel.CommunityMember{}).
 		Where("community_id = ? AND user_id = ?", communityID, userID).
 		UpdateColumn("role", role).Error; err != nil {
 		return err
@@ -233,7 +234,7 @@ func (r *communityMemberRepository) UpdateMemberCount(communityID uint, delta in
 	} else {
 		expr = gorm.Expr("GREATEST(member_count + ?, 0)", delta)
 	}
-	if err := r.writeDB.Model(&model.Community{}).
+	if err := r.writeDB.Model(&communitymodel.Community{}).
 		Where("community_id = ?", communityID).
 		UpdateColumn("member_count", expr).Error; err != nil {
 		return err

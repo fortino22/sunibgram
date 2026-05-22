@@ -3,7 +3,7 @@ package repository
 import (
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -16,18 +16,18 @@ func NewChatMediaRepository(writeDB, readDB *gorm.DB) domainrepo.IChatMediaRepos
 	return &ChatMediaRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *ChatMediaRepository) Save(media *model.ChatMedia) error {
+func (r *ChatMediaRepository) Save(media *chatmediamodel.ChatMedia) error {
 	return r.writeDB.Create(media).Error
 }
 
-func (r *ChatMediaRepository) FindByChatID(chatID uint) ([]model.ChatMedia, error) {
-	var media []model.ChatMedia
+func (r *ChatMediaRepository) FindByChatID(chatID uint) ([]chatmediamodel.ChatMedia, error) {
+	var media []chatmediamodel.ChatMedia
 	err := r.readDB.Where("chat_id = ?", chatID).Find(&media).Error
 	return media, err
 }
 
-func (r *ChatMediaRepository) FindByChatIDs(chatIDs []uint) ([]model.ChatMedia, error) {
-	var media []model.ChatMedia
+func (r *ChatMediaRepository) FindByChatIDs(chatIDs []uint) ([]chatmediamodel.ChatMedia, error) {
+	var media []chatmediamodel.ChatMedia
 	if len(chatIDs) == 0 {
 		return media, nil
 	}
@@ -36,5 +36,5 @@ func (r *ChatMediaRepository) FindByChatIDs(chatIDs []uint) ([]model.ChatMedia, 
 }
 
 func (r *ChatMediaRepository) DeleteByChatID(chatID uint) error {
-	return r.writeDB.Where("chat_id = ?", chatID).Delete(&model.ChatMedia{}).Error
+	return r.writeDB.Where("chat_id = ?", chatID).Delete(&chatmediamodel.ChatMedia{}).Error
 }

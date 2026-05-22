@@ -8,7 +8,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
-	"github.com/sunibgram/domain/model"
+	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -28,9 +29,9 @@ func (r *hashtagRepository) UpsertHashtags(ctx context.Context, names []string) 
 		return ids, nil
 	}
 
-	hashtags := make([]model.Hashtag, len(names))
+	hashtags := make([]hashtagmodel.Hashtag, len(names))
 	for i, name := range names {
-		hashtags[i] = model.Hashtag{Name: name}
+		hashtags[i] = hashtagmodel.Hashtag{Name: name}
 	}
 	if err := r.writeDB.WithContext(ctx).
 		Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "name"}}, DoNothing: true}).
@@ -38,7 +39,7 @@ func (r *hashtagRepository) UpsertHashtags(ctx context.Context, names []string) 
 		return nil, err
 	}
 
-	var rows []model.Hashtag
+	var rows []hashtagmodel.Hashtag
 	if err := r.writeDB.WithContext(ctx).
 		Where("name IN ?", names).
 		Find(&rows).Error; err != nil {
@@ -66,7 +67,7 @@ func (r *hashtagRepository) LinkHashtagsToThread(ctx context.Context, threadID u
 func (r *hashtagRepository) ReplaceHashtagsForThread(ctx context.Context, threadID uint, hashtagIDs []uuid.UUID) error {
 	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var existing []uuid.UUID
-		if err := tx.Model(&model.ThreadHashtag{}).
+		if err := tx.Model(&hashtagmodel.ThreadHashtag{}).
 			Where("thread_id = ?", threadID).
 			Pluck("hashtag_id", &existing).Error; err != nil {
 			return err
@@ -88,7 +89,7 @@ func (r *hashtagRepository) ReplaceHashtagsForThread(ctx context.Context, thread
 		}
 
 		if len(toRemove) > 0 {
-			if err := tx.Where("thread_id = ? AND hashtag_id IN ?", threadID, toRemove).Delete(&model.ThreadHashtag{}).Error; err != nil {
+			if err := tx.Where("thread_id = ? AND hashtag_id IN ?", threadID, toRemove).Delete(&hashtagmodel.ThreadHashtag{}).Error; err != nil {
 				return err
 			}
 			if err := patchHashtagThreadCounts(tx, toRemove, -1); err != nil {
@@ -106,7 +107,7 @@ func (r *hashtagRepository) ReplaceHashtagsForThread(ctx context.Context, thread
 func (r *hashtagRepository) UnlinkHashtagsFromThread(ctx context.Context, threadID uint) error {
 	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var existing []uuid.UUID
-		if err := tx.Model(&model.ThreadHashtag{}).
+		if err := tx.Model(&hashtagmodel.ThreadHashtag{}).
 			Where("thread_id = ?", threadID).
 			Pluck("hashtag_id", &existing).Error; err != nil {
 			return err
@@ -114,15 +115,15 @@ func (r *hashtagRepository) UnlinkHashtagsFromThread(ctx context.Context, thread
 		if len(existing) == 0 {
 			return nil
 		}
-		if err := tx.Where("thread_id = ?", threadID).Delete(&model.ThreadHashtag{}).Error; err != nil {
+		if err := tx.Where("thread_id = ?", threadID).Delete(&hashtagmodel.ThreadHashtag{}).Error; err != nil {
 			return err
 		}
 		return patchHashtagThreadCounts(tx, existing, -1)
 	})
 }
 
-func (r *hashtagRepository) GetTrending(ctx context.Context, limit int) ([]model.TrendingHashtag, error) {
-	var rows []model.Hashtag
+func (r *hashtagRepository) GetTrending(ctx context.Context, limit int) ([]hashtagmodel.TrendingHashtag, error) {
+	var rows []hashtagmodel.Hashtag
 	if err := r.readDB.WithContext(ctx).
 		Where("week_thread_count > 0 OR week_like_count > 0 OR week_repost_count > 0").
 		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, thread_count DESC, name ASC").
@@ -130,9 +131,9 @@ func (r *hashtagRepository) GetTrending(ctx context.Context, limit int) ([]model
 		return nil, err
 	}
 
-	result := make([]model.TrendingHashtag, len(rows))
+	result := make([]hashtagmodel.TrendingHashtag, len(rows))
 	for i, row := range rows {
-		result[i] = model.TrendingHashtag{
+		result[i] = hashtagmodel.TrendingHashtag{
 			Name:        row.Name,
 			ThreadCount: row.ThreadCount,
 		}
@@ -146,13 +147,13 @@ func (r *hashtagRepository) PatchHashtagCounterByThreadID(ctx context.Context, t
 	}
 
 	var hashtagIDs []uuid.UUID
-	if err := r.writeDB.WithContext(ctx).Model(&model.ThreadHashtag{}).
+	if err := r.writeDB.WithContext(ctx).Model(&hashtagmodel.ThreadHashtag{}).
 		Where("thread_id = ?", threadID).
 		Pluck("hashtag_id", &hashtagIDs).Error; err != nil {
 		return err
 	}
 	if len(hashtagIDs) == 0 {
-		var thread model.Thread
+		var thread threadmodel.Thread
 		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return err
 		}
@@ -165,7 +166,7 @@ func (r *hashtagRepository) PatchHashtagCounterByThreadID(ctx context.Context, t
 		} else {
 			return nil
 		}
-		if err := r.writeDB.WithContext(ctx).Model(&model.ThreadHashtag{}).
+		if err := r.writeDB.WithContext(ctx).Model(&hashtagmodel.ThreadHashtag{}).
 			Where("thread_id = ?", threadID).
 			Pluck("hashtag_id", &hashtagIDs).Error; err != nil {
 			return err
@@ -190,7 +191,7 @@ func (r *hashtagRepository) PatchHashtagCounterByThreadID(ctx context.Context, t
 		return nil
 	}
 
-	return r.writeDB.WithContext(ctx).Model(&model.Hashtag{}).
+	return r.writeDB.WithContext(ctx).Model(&hashtagmodel.Hashtag{}).
 		Where("id IN ?", hashtagIDs).
 		UpdateColumns(updates).Error
 }
@@ -223,7 +224,7 @@ func patchHashtagThreadCounts(tx *gorm.DB, hashtagIDs []uuid.UUID, delta int) er
 	if len(hashtagIDs) == 0 {
 		return nil
 	}
-	return tx.Model(&model.Hashtag{}).
+	return tx.Model(&hashtagmodel.Hashtag{}).
 		Where("id IN ?", hashtagIDs).
 		UpdateColumns(map[string]any{
 			"thread_count":      gorm.Expr("GREATEST(thread_count + ?, 0)", delta),
@@ -248,7 +249,7 @@ func patchHashtagCounters(db *gorm.DB, c *cache.Cache, hashtagIDs []uuid.UUID, c
 	default:
 		return
 	}
-	db.Model(&model.Hashtag{}).
+	db.Model(&hashtagmodel.Hashtag{}).
 		Where("id IN ?", hashtagIDs).
 		UpdateColumns(updates)
 	if c != nil {
@@ -258,13 +259,13 @@ func patchHashtagCounters(db *gorm.DB, c *cache.Cache, hashtagIDs []uuid.UUID, c
 
 func patchHashtagCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, column string, delta int) {
 	var hashtagIDs []uuid.UUID
-	if err := db.Model(&model.ThreadHashtag{}).
+	if err := db.Model(&hashtagmodel.ThreadHashtag{}).
 		Where("thread_id = ?", threadID).
 		Pluck("hashtag_id", &hashtagIDs).Error; err != nil {
 		return
 	}
 	if len(hashtagIDs) == 0 {
-		var thread model.Thread
+		var thread threadmodel.Thread
 		if err := db.Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return
 		}
@@ -277,7 +278,7 @@ func patchHashtagCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, c
 		} else {
 			return
 		}
-		if err := db.Model(&model.ThreadHashtag{}).
+		if err := db.Model(&hashtagmodel.ThreadHashtag{}).
 			Where("thread_id = ?", threadID).
 			Pluck("hashtag_id", &hashtagIDs).Error; err != nil {
 			return

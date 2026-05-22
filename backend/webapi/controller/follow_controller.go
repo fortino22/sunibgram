@@ -3,7 +3,8 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	"github.com/sunibgram/domain/service"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	followdto "github.com/sunibgram/webapi/dto/follow"
@@ -176,7 +177,7 @@ func (c *FollowController) GetMyFollowers(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *FollowController) toFollowUserResponses(users []model.User, profileMap map[uint]model.UserProfile) []followdto.FollowUserResponse {
+func (c *FollowController) toFollowUserResponses(users []usermodel.User, profileMap map[uint]userprofilemodel.UserProfile) []followdto.FollowUserResponse {
 	data := make([]followdto.FollowUserResponse, len(users))
 	for i, user := range users {
 		avatarURL := ""
@@ -195,7 +196,7 @@ func (c *FollowController) toFollowUserResponses(users []model.User, profileMap 
 	return data
 }
 
-func (c *FollowController) followUserProfileMap(users []model.User) (map[uint]model.UserProfile, error) {
+func (c *FollowController) followUserProfileMap(users []usermodel.User) (map[uint]userprofilemodel.UserProfile, error) {
 	userIDs := make([]uint, 0, len(users))
 	for _, user := range users {
 		userIDs = append(userIDs, user.UserID)
@@ -206,7 +207,7 @@ func (c *FollowController) followUserProfileMap(users []model.User) (map[uint]mo
 		return nil, err
 	}
 
-	profileMap := make(map[uint]model.UserProfile, len(profiles))
+	profileMap := make(map[uint]userprofilemodel.UserProfile, len(profiles))
 	for _, profile := range profiles {
 		profileMap[profile.UserID] = profile
 	}

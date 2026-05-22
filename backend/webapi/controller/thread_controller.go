@@ -7,7 +7,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	"github.com/sunibgram/domain/service"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
@@ -37,7 +39,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 
 	content := ctx.FormValue("content")
 	files := threadMediaFiles(ctx)
-	if err := model.ValidateThreadMediaCount(len(files)); err != nil {
+	if err := threadmediamodel.ValidateThreadMediaCount(len(files)); err != nil {
 		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
@@ -155,7 +157,7 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "thread not found"})
 	}
 
-	if thread.CommunityID != nil && thread.Community != nil && thread.Community.Visibility == model.CommunityVisibilityPrivate {
+	if thread.CommunityID != nil && thread.Community != nil && thread.Community.Visibility == communitymodel.CommunityVisibilityPrivate {
 		if !c.memberService.IsMember(*thread.CommunityID, claims.UserID) {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
@@ -169,8 +171,8 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 
 	media, _ := c.mediaService.GetByThreadID(id)
 	fb := c.fbNoPin(&claims.UserID)
-	fb.LoadAvatarsForUserIDs(threadUserIDs([]model.Thread{*thread}))
-	fb.LoadPollsForThreads([]model.Thread{*thread})
+	fb.LoadAvatarsForUserIDs(threadUserIDs([]threadmodel.Thread{*thread}))
+	fb.LoadPollsForThreads([]threadmodel.Thread{*thread})
 	return ctx.Status(fiber.StatusOK).JSON(fb.ToFeedItem(thread, media))
 }
 
@@ -190,7 +192,7 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "thread not found"})
 	}
 
-	if root.CommunityID != nil && root.Community != nil && root.Community.Visibility == model.CommunityVisibilityPrivate {
+	if root.CommunityID != nil && root.Community != nil && root.Community.Visibility == communitymodel.CommunityVisibilityPrivate {
 		if !c.memberService.IsMember(*root.CommunityID, claims.UserID) {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
@@ -214,7 +216,7 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 	}
 
 	// Fetch unique parent threads that are not already in the chain.
-	parentCache := make(map[uint]*model.Thread)
+	parentCache := make(map[uint]*threadmodel.Thread)
 	for _, t := range threads {
 		if t.ParentID == nil {
 			continue
@@ -232,7 +234,7 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 	}
 
 	// Build a parallel parents slice (nil where no external parent exists).
-	parents := make([]*model.Thread, len(threads))
+	parents := make([]*threadmodel.Thread, len(threads))
 	for i, t := range threads {
 		if t.ParentID != nil {
 			parents[i] = parentCache[*t.ParentID]
@@ -274,7 +276,7 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	files := threadMediaFiles(ctx)
-	if err := model.ValidateThreadMediaCount(len(keepIDs) + len(files)); err != nil {
+	if err := threadmediamodel.ValidateThreadMediaCount(len(keepIDs) + len(files)); err != nil {
 		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	if keepSent || len(files) > 0 {
@@ -461,10 +463,10 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 	})
 }
 
-func threadUserIDs(threads []model.Thread) []uint {
+func threadUserIDs(threads []threadmodel.Thread) []uint {
 	ids := make([]uint, 0, len(threads))
 	for _, t := range threads {
-		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+		if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 			ids = append(ids, t.OriginalThread.User.UserID, t.UserID)
 		} else {
 			ids = append(ids, t.User.UserID)

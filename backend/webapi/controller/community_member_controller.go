@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -114,10 +114,10 @@ func (c *CommunityMemberController) GetCommunityUsers(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	var rolePtr *model.CommunityMemberRole
+	var rolePtr *communitymembermodel.CommunityMemberRole
 	if raw := strings.TrimSpace(ctx.Query("role")); raw != "" {
-		role := model.CommunityMemberRole(strings.ToUpper(raw))
-		if role != model.CommunityMemberRoleAdmin && role != model.CommunityMemberRoleMember {
+		role := communitymembermodel.CommunityMemberRole(strings.ToUpper(raw))
+		if role != communitymembermodel.CommunityMemberRoleAdmin && role != communitymembermodel.CommunityMemberRoleMember {
 			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid role"})
 		}
 		rolePtr = &role
@@ -198,8 +198,8 @@ func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "role is required"})
 	}
 
-	role := model.CommunityMemberRole(body.Role)
-	if role != model.CommunityMemberRoleMember && role != model.CommunityMemberRoleAdmin {
+	role := communitymembermodel.CommunityMemberRole(body.Role)
+	if role != communitymembermodel.CommunityMemberRoleMember && role != communitymembermodel.CommunityMemberRoleAdmin {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid role"})
 	}
 
@@ -213,7 +213,7 @@ func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "role updated successfully"})
 }
 
-func (c *CommunityMemberController) toMemberResponse(m *model.CommunityMember) communitymemberdto.CommunityMemberResponse {
+func (c *CommunityMemberController) toMemberResponse(m *communitymembermodel.CommunityMember) communitymemberdto.CommunityMemberResponse {
 	avatarURL := ""
 	if m.Profile != nil {
 		avatarURL = BuildMediaURL(m.Profile.AvatarObjectName, m.Profile.AvatarBucket, c.profileService.GetURL)
@@ -228,7 +228,7 @@ func (c *CommunityMemberController) toMemberResponse(m *model.CommunityMember) c
 	}
 }
 
-func (c *CommunityMemberController) toMemberResponses(members []model.CommunityMember) []communitymemberdto.CommunityMemberResponse {
+func (c *CommunityMemberController) toMemberResponses(members []communitymembermodel.CommunityMember) []communitymemberdto.CommunityMemberResponse {
 	out := make([]communitymemberdto.CommunityMemberResponse, len(members))
 	for i := range members {
 		out[i] = c.toMemberResponse(&members[i])

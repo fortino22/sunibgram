@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/sunibgram/domain/model"
+	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -27,7 +27,7 @@ func NewCommunityRuleService(
 	return &CommunityRuleService{communityRepo: communityRepo, ruleRepo: ruleRepo}
 }
 
-func (s *CommunityRuleService) ListByCommunity(communityID uint) ([]model.CommunityRule, error) {
+func (s *CommunityRuleService) ListByCommunity(communityID uint) ([]communityrulemodel.CommunityRule, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, errors.New("community not found")
 	}
@@ -50,10 +50,10 @@ func dedupeRuleIDs(ids []uint) []uint {
 	return out
 }
 
-func buildCommunityRules(communityID uint, texts []string) []model.CommunityRule {
-	rules := make([]model.CommunityRule, len(texts))
+func buildCommunityRules(communityID uint, texts []string) []communityrulemodel.CommunityRule {
+	rules := make([]communityrulemodel.CommunityRule, len(texts))
 	for i, t := range texts {
-		rules[i] = model.CommunityRule{
+		rules[i] = communityrulemodel.CommunityRule{
 			CommunityID: communityID,
 			OrderNum:    i + 1,
 			Text:        t,

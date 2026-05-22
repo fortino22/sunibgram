@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	ordermodel "github.com/sunibgram/domain/model/order"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -18,28 +18,28 @@ func NewOrderRepository(writeDB, readDB *gorm.DB) domainrepo.IOrderRepository {
 	return &orderRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *orderRepository) Save(order *model.Order) error {
+func (r *orderRepository) Save(order *ordermodel.Order) error {
 	return r.writeDB.Create(order).Error
 }
 
-func (r *orderRepository) FindByID(id uint) (*model.Order, error) {
-	var order model.Order
+func (r *orderRepository) FindByID(id uint) (*ordermodel.Order, error) {
+	var order ordermodel.Order
 	if err := r.readDB.First(&order, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &order, nil
 }
 
-func (r *orderRepository) FindByOrderID(orderID string) (*model.Order, error) {
-	var order model.Order
+func (r *orderRepository) FindByOrderID(orderID string) (*ordermodel.Order, error) {
+	var order ordermodel.Order
 	if err := r.readDB.First(&order, "order_id = ?", orderID).Error; err != nil {
 		return nil, err
 	}
 	return &order, nil
 }
 
-func (r *orderRepository) FindPendingByUserIDAndPurpose(userID uint, purpose string) (*model.Order, error) {
-	var order model.Order
+func (r *orderRepository) FindPendingByUserIDAndPurpose(userID uint, purpose string) (*ordermodel.Order, error) {
+	var order ordermodel.Order
 	err := r.readDB.Where("user_id = ? AND purpose = ? AND status = 'PENDING'", userID, purpose).First(&order).Error
 	if err != nil {
 		return nil, err
@@ -47,10 +47,10 @@ func (r *orderRepository) FindPendingByUserIDAndPurpose(userID uint, purpose str
 	return &order, nil
 }
 
-func (r *orderRepository) FindByUserID(userID uint, page, limit int) ([]model.Order, int64, error) {
-	var orders []model.Order
+func (r *orderRepository) FindByUserID(userID uint, page, limit int) ([]ordermodel.Order, int64, error) {
+	var orders []ordermodel.Order
 	var total int64
-	r.readDB.Model(&model.Order{}).Where("user_id = ?", userID).Count(&total)
+	r.readDB.Model(&ordermodel.Order{}).Where("user_id = ?", userID).Count(&total)
 	offset := (page - 1) * limit
 	if err := r.readDB.Where("user_id = ?", userID).
 		Order("created_at DESC").
@@ -61,10 +61,10 @@ func (r *orderRepository) FindByUserID(userID uint, page, limit int) ([]model.Or
 	return orders, total, nil
 }
 
-func (r *orderRepository) FindAll(page, limit int) ([]model.Order, int64, error) {
-	var orders []model.Order
+func (r *orderRepository) FindAll(page, limit int) ([]ordermodel.Order, int64, error) {
+	var orders []ordermodel.Order
 	var total int64
-	r.readDB.Model(&model.Order{}).Count(&total)
+	r.readDB.Model(&ordermodel.Order{}).Count(&total)
 	offset := (page - 1) * limit
 	if err := r.readDB.Order("created_at DESC").
 		Offset(offset).Limit(limit).
@@ -75,7 +75,7 @@ func (r *orderRepository) FindAll(page, limit int) ([]model.Order, int64, error)
 }
 
 func (r *orderRepository) UpdateStatus(orderID, status, paymentType string) error {
-	result := r.writeDB.Model(&model.Order{}).
+	result := r.writeDB.Model(&ordermodel.Order{}).
 		Where("order_id = ?", orderID).
 		Updates(map[string]interface{}{
 			"status":       status,
@@ -88,7 +88,7 @@ func (r *orderRepository) UpdateStatus(orderID, status, paymentType string) erro
 }
 
 func (r *orderRepository) Delete(id uint) error {
-	result := r.writeDB.Delete(&model.Order{}, "id = ?", id)
+	result := r.writeDB.Delete(&ordermodel.Order{}, "id = ?", id)
 	if result.RowsAffected == 0 {
 		return errors.New("order not found")
 	}

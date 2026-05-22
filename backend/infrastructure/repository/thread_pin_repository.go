@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -28,7 +28,7 @@ func NewThreadPinRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domainr
 	}
 }
 
-func (r *ThreadPinRepository) Pin(pin *model.ThreadPin) error {
+func (r *ThreadPinRepository) Pin(pin *threadpinmodel.ThreadPin) error {
 	if err := r.writeDB.Create(pin).Error; err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (r *ThreadPinRepository) Pin(pin *model.ThreadPin) error {
 }
 
 func (r *ThreadPinRepository) Unpin(userID, threadID uint) error {
-	if err := r.writeDB.Where("user_id = ? AND thread_id = ?", userID, threadID).Delete(&model.ThreadPin{}).Error; err != nil {
+	if err := r.writeDB.Where("user_id = ? AND thread_id = ?", userID, threadID).Delete(&threadpinmodel.ThreadPin{}).Error; err != nil {
 		return err
 	}
 	ViewerFlagRemove(r.cache, userID, "pinned", threadID)
@@ -46,7 +46,7 @@ func (r *ThreadPinRepository) Unpin(userID, threadID uint) error {
 
 func (r *ThreadPinRepository) ExistsPin(userID, threadID uint) (bool, error) {
 	var count int64
-	err := r.readDB.Model(&model.ThreadPin{}).
+	err := r.readDB.Model(&threadpinmodel.ThreadPin{}).
 		Where("user_id = ? AND thread_id = ?", userID, threadID).
 		Count(&count).Error
 	return count > 0, err
@@ -59,7 +59,7 @@ func (r *ThreadPinRepository) ArePinnedFor(userID uint, threadIDs []uint) (map[u
 	}
 
 	var ids []uint
-	err := r.readDB.Model(&model.ThreadPin{}).
+	err := r.readDB.Model(&threadpinmodel.ThreadPin{}).
 		Select("thread_id").
 		Where("user_id = ? AND thread_id IN ?", userID, threadIDs).
 		Scan(&ids).Error
@@ -74,15 +74,15 @@ func (r *ThreadPinRepository) ArePinnedFor(userID uint, threadIDs []uint) (map[u
 
 func (r *ThreadPinRepository) AllPinnedThreadIDs(userID uint) ([]uint, error) {
 	var ids []uint
-	err := r.readDB.Model(&model.ThreadPin{}).
+	err := r.readDB.Model(&threadpinmodel.ThreadPin{}).
 		Select("thread_id").
 		Where("user_id = ?", userID).
 		Scan(&ids).Error
 	return ids, err
 }
 
-func (r *ThreadPinRepository) FindPinnedByUserID(userID uint) (*model.ThreadPin, error) {
-	var pin model.ThreadPin
+func (r *ThreadPinRepository) FindPinnedByUserID(userID uint) (*threadpinmodel.ThreadPin, error) {
+	var pin threadpinmodel.ThreadPin
 	err := r.readDB.Where("user_id = ?", userID).First(&pin).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil

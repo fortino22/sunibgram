@@ -1,7 +1,8 @@
 package controller
 
 import (
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/cache"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
@@ -40,7 +41,7 @@ func newFeedBuilder(
 	}
 }
 
-func loadThreadMediaByThread(mediaService service.IThreadMediaService, threads []model.Thread) map[uint][]model.ThreadMedia {
+func loadThreadMediaByThread(mediaService service.IThreadMediaService, threads []threadmodel.Thread) map[uint][]threadmediamodel.ThreadMedia {
 	ids := make([]uint, 0, len(threads))
 	for _, thread := range threads {
 		ids = append(ids, thread.ThreadID)
@@ -51,22 +52,22 @@ func loadThreadMediaByThread(mediaService service.IThreadMediaService, threads [
 	return loadThreadMediaByID(mediaService, ids)
 }
 
-func loadThreadMediaByID(mediaService service.IThreadMediaService, threadIDs []uint) map[uint][]model.ThreadMedia {
+func loadThreadMediaByID(mediaService service.IThreadMediaService, threadIDs []uint) map[uint][]threadmediamodel.ThreadMedia {
 	allMedia, _ := mediaService.GetByThreadIDs(threadIDs)
-	mediaByThread := make(map[uint][]model.ThreadMedia, len(threadIDs))
+	mediaByThread := make(map[uint][]threadmediamodel.ThreadMedia, len(threadIDs))
 	for _, media := range allMedia {
 		mediaByThread[media.ThreadID] = append(mediaByThread[media.ThreadID], media)
 	}
 	return mediaByThread
 }
 
-func buildFeedItemsFromThreads(threads []model.Thread, mediaByThread map[uint][]model.ThreadMedia, fb webapiutils.FeedBuilder) []threaddto.FeedItemResponse {
+func buildFeedItemsFromThreads(threads []threadmodel.Thread, mediaByThread map[uint][]threadmediamodel.ThreadMedia, fb webapiutils.FeedBuilder) []threaddto.FeedItemResponse {
 	fb.LoadViewerFlagsForThreads(threads)
 	fb.LoadPollsForThreads(threads)
 	data := make([]threaddto.FeedItemResponse, len(threads))
 	for i, thread := range threads {
 		mediaID := thread.ThreadID
-		if thread.Type == model.ThreadTypeRepost && thread.OriginalThread != nil {
+		if thread.Type == threadmodel.ThreadTypeRepost && thread.OriginalThread != nil {
 			mediaID = thread.OriginalThread.ThreadID
 		}
 		data[i] = fb.ToFeedItem(&thread, mediaByThread[mediaID])

@@ -3,16 +3,16 @@ package service
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 )
 
 type ICommunityMemberService interface {
 	Join(ctx context.Context, communityID, userID uint) error
 	Leave(ctx context.Context, communityID, userID uint) error
-	GetMembers(communityID uint, page, limit int) ([]model.CommunityMember, int64, error)
-	GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *model.CommunityMemberRole, query string, page, limit int) ([]CommunityUserItem, int64, error)
+	GetMembers(communityID uint, page, limit int) ([]communitymembermodel.CommunityMember, int64, error)
+	GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) ([]CommunityUserItem, int64, error)
 	RemoveMember(ctx context.Context, communityID, actorUserID, targetUserID uint) error
-	UpdateRole(ctx context.Context, communityID, actorUserID, targetUserID uint, role model.CommunityMemberRole) error
+	UpdateRole(ctx context.Context, communityID, actorUserID, targetUserID uint, role communitymembermodel.CommunityMemberRole) error
 	IsMember(communityID, userID uint) bool
 }
 
@@ -23,6 +23,6 @@ type CommunityUserItem struct {
 	AvatarObjectName string
 	AvatarBucket     string
 	IsPremium        bool
-	Role             model.CommunityMemberRole
+	Role             communitymembermodel.CommunityMemberRole
 	IsFollowing      bool
 }

@@ -1,6 +1,6 @@
 package service
 
-import "github.com/sunibgram/domain/model"
+import notificationmodel "github.com/sunibgram/domain/model/notification"
 
 type CreateNotificationInput struct {
 	Type            string
@@ -12,8 +12,8 @@ type CreateNotificationInput struct {
 }
 
 type NotificationListItem struct {
-	Notification *model.Notification
-	Actor        *model.NotificationSender
+	Notification *notificationmodel.Notification
+	Actor        *notificationmodel.NotificationSender
 	Data         any `json:"data,omitempty"`
 }
 

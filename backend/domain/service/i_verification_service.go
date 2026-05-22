@@ -1,8 +1,8 @@
 package service
 
-import "github.com/sunibgram/domain/model"
+import verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
 
 type IVerificationService interface {
-	SendCode(email string, t model.VerificationType) error
-	VerifyCode(email, code string, t model.VerificationType) error
+	SendCode(email string, t verificationcodemodel.VerificationType) error
+	VerifyCode(email, code string, t verificationcodemodel.VerificationType) error
 }

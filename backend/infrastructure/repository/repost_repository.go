@@ -6,7 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	repostmodel "github.com/sunibgram/domain/model/repost"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -23,11 +24,11 @@ func NewRepostRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount fu
 	}
 }
 
-func (r *RepostRepository) Save(repost *model.Repost) error {
+func (r *RepostRepository) Save(repost *repostmodel.Repost) error {
 	if err := r.base.saveRecord(repost); err != nil {
 		return err
 	}
-	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", repost.ThreadID).
+	r.base.writeDB.Model(&threadmodel.Thread{}).Where("thread_id = ?", repost.ThreadID).
 		UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, repost.ThreadID, "repost_count", 1)
 	patchHashtagCounterByThreadID(r.base.writeDB, r.base.cache, repost.ThreadID, "repost_count", 1)
@@ -43,10 +44,10 @@ func (r *RepostRepository) Save(repost *model.Repost) error {
 }
 
 func (r *RepostRepository) Delete(userID, threadID uint) error {
-	if err := r.base.deleteRecord(userID, threadID, &model.Repost{}); err != nil {
+	if err := r.base.deleteRecord(userID, threadID, &repostmodel.Repost{}); err != nil {
 		return err
 	}
-	r.base.writeDB.Model(&model.Thread{}).Where("thread_id = ?", threadID).
+	r.base.writeDB.Model(&threadmodel.Thread{}).Where("thread_id = ?", threadID).
 		UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 	patchEventCounterByThreadID(r.base.writeDB, r.base.cache, threadID, "repost_count", -1)
 	patchHashtagCounterByThreadID(r.base.writeDB, r.base.cache, threadID, "repost_count", -1)
@@ -59,13 +60,13 @@ func (r *RepostRepository) Delete(userID, threadID uint) error {
 }
 
 func (r *RepostRepository) Exists(userID, threadID uint) (bool, error) {
-	return r.base.exists(userID, threadID, &model.Repost{})
+	return r.base.exists(userID, threadID, &repostmodel.Repost{})
 }
 
 func (r *RepostRepository) AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error) {
 	return r.base.areThreadsInteracted(userID, threadIDs)
 }
 
-func (r *RepostRepository) FindByUserID(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
+func (r *RepostRepository) FindByUserID(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	return r.base.findByUserID(userID, page, limit)
 }

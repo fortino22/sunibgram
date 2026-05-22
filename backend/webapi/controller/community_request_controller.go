@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -140,7 +140,7 @@ func (c *CommunityRequestController) GetPending(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *CommunityRequestController) toCommunityRequestResponse(r *model.CommunityRequest, avatarMap map[uint]string) communityrequestdto.CommunityRequestResponse {
+func (c *CommunityRequestController) toCommunityRequestResponse(r *communityrequestmodel.CommunityRequest, avatarMap map[uint]string) communityrequestdto.CommunityRequestResponse {
 	return communityrequestdto.CommunityRequestResponse{
 		CommunityID: r.CommunityID,
 		UserID:      r.UserID,
@@ -153,7 +153,7 @@ func (c *CommunityRequestController) toCommunityRequestResponse(r *model.Communi
 	}
 }
 
-func (c *CommunityRequestController) toCommunityRequestResponses(requests []model.CommunityRequest, avatarMap map[uint]string) []communityrequestdto.CommunityRequestResponse {
+func (c *CommunityRequestController) toCommunityRequestResponses(requests []communityrequestmodel.CommunityRequest, avatarMap map[uint]string) []communityrequestdto.CommunityRequestResponse {
 	out := make([]communityrequestdto.CommunityRequestResponse, len(requests))
 	for i := range requests {
 		out[i] = c.toCommunityRequestResponse(&requests[i], avatarMap)
@@ -161,7 +161,7 @@ func (c *CommunityRequestController) toCommunityRequestResponses(requests []mode
 	return out
 }
 
-func (c *CommunityRequestController) requestAvatarMap(requests []model.CommunityRequest) (map[uint]string, error) {
+func (c *CommunityRequestController) requestAvatarMap(requests []communityrequestmodel.CommunityRequest) (map[uint]string, error) {
 	if len(requests) == 0 {
 		return map[uint]string{}, nil
 	}

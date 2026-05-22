@@ -1,10 +1,10 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 
 type IUserProfileRepository interface {
-	Upsert(profile *model.UserProfile) error
-	FindByUserID(userID uint) (*model.UserProfile, error)
-	FindByUserIDs(ids []uint) ([]model.UserProfile, error)
+	Upsert(profile *userprofilemodel.UserProfile) error
+	FindByUserID(userID uint) (*userprofilemodel.UserProfile, error)
+	FindByUserIDs(ids []uint) ([]userprofilemodel.UserProfile, error)
 	ExistsByUserID(userID uint) (bool, error)
 }

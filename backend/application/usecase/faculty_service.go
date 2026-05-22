@@ -6,7 +6,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	facultymodel "github.com/sunibgram/domain/model/faculty"
+	usermodel "github.com/sunibgram/domain/model/user"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -28,15 +29,15 @@ func (s *FacultyService) Create(name string) error {
 	if utf8.RuneCountInString(name) > 100 {
 		return errors.New("facultyName must be 100 characters or less")
 	}
-	return s.facultyRepo.Save(&model.Faculty{FacultyName: name})
+	return s.facultyRepo.Save(&facultymodel.Faculty{FacultyName: name})
 }
 
-func (s *FacultyService) GetAll(page, limit int) ([]model.Faculty, int64, error) {
+func (s *FacultyService) GetAll(page, limit int) ([]facultymodel.Faculty, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 10)
 	return s.facultyRepo.FindAll(page, limit)
 }
 
-func (s *FacultyService) GetByID(id uint) (*model.Faculty, error) {
+func (s *FacultyService) GetByID(id uint) (*facultymodel.Faculty, error) {
 	f, err := s.facultyRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("faculty not found")
@@ -67,7 +68,7 @@ func (s *FacultyService) Delete(id uint) error {
 	return s.facultyRepo.Delete(id)
 }
 
-func (s *FacultyService) GetUserFaculty(userID uint) (*model.UserFaculty, error) {
+func (s *FacultyService) GetUserFaculty(userID uint) (*usermodel.UserFaculty, error) {
 	uf, err := s.userFacultyRepo.FindByUserID(userID)
 	if err != nil {
 		return nil, errors.New("faculty not found")
@@ -102,7 +103,7 @@ func (s *FacultyService) SetUserFaculty(userID uint, facultyID *uint) error {
 		_ = s.facultyRepo.UpdateTotalUsers(existing.FacultyID, -1)
 	}
 
-	if err := s.userFacultyRepo.Save(&model.UserFaculty{UserID: userID, FacultyID: *facultyID}); err != nil {
+	if err := s.userFacultyRepo.Save(&usermodel.UserFaculty{UserID: userID, FacultyID: *facultyID}); err != nil {
 		return err
 	}
 	return s.facultyRepo.UpdateTotalUsers(*facultyID, 1)

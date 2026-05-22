@@ -3,7 +3,7 @@ package threadpolldto
 import (
 	"math"
 
-	"github.com/sunibgram/domain/model"
+	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 )
 
@@ -35,7 +35,7 @@ type CreatePollDTO struct {
 	DurationSeconds int
 }
 
-func BuildPollResponse(poll *model.ThreadPoll, votedOptionID *uint, urlFn func(bucket, object string) string) *PollResponse {
+func BuildPollResponse(poll *threadpollmodel.ThreadPoll, votedOptionID *uint, urlFn func(bucket, object string) string) *PollResponse {
 	if poll == nil {
 		return nil
 	}

@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	reportmodel "github.com/sunibgram/domain/model/report"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -86,7 +86,7 @@ func (c *ReportController) Delete(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "report deleted successfully"})
 }
 
-func toReportResponse(detail *model.ReportDetail) reportdto.ReportResponse {
+func toReportResponse(detail *reportmodel.ReportDetail) reportdto.ReportResponse {
 	report := &detail.Report
 	response := reportdto.ReportResponse{
 		ID:             report.ID.String(),
@@ -108,7 +108,7 @@ func toReportResponse(detail *model.ReportDetail) reportdto.ReportResponse {
 	return response
 }
 
-func toReportResponses(reports []model.ReportDetail) []reportdto.ReportResponse {
+func toReportResponses(reports []reportmodel.ReportDetail) []reportdto.ReportResponse {
 	responses := make([]reportdto.ReportResponse, len(reports))
 	for i := range reports {
 		responses[i] = toReportResponse(&reports[i])
@@ -116,7 +116,7 @@ func toReportResponses(reports []model.ReportDetail) []reportdto.ReportResponse 
 	return responses
 }
 
-func toReportUserResponse(user *model.ReportUserInfo) *reportdto.ReportUserResponse {
+func toReportUserResponse(user *reportmodel.ReportUserInfo) *reportdto.ReportUserResponse {
 	if user == nil {
 		return nil
 	}

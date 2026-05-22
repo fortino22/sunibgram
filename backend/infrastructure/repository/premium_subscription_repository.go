@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -18,14 +18,14 @@ func NewPremiumSubscriptionRepository(writeDB, readDB *gorm.DB) domainrepo.IPrem
 	return &premiumSubscriptionRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *premiumSubscriptionRepository) Create(subscription *model.PremiumSubscription) error {
+func (r *premiumSubscriptionRepository) Create(subscription *premiumsubscriptionmodel.PremiumSubscription) error {
 	return r.writeDB.Create(subscription).Error
 }
 
-func (r *premiumSubscriptionRepository) Upsert(subscription *model.PremiumSubscription) error {
-	return r.writeDB.Model(&model.PremiumSubscription{}).
+func (r *premiumSubscriptionRepository) Upsert(subscription *premiumsubscriptionmodel.PremiumSubscription) error {
+	return r.writeDB.Model(&premiumsubscriptionmodel.PremiumSubscription{}).
 		Where("user_id = ?", subscription.UserID).
-		Assign(model.PremiumSubscription{
+		Assign(premiumsubscriptionmodel.PremiumSubscription{
 			IsTrial:               subscription.IsTrial,
 			SubscriptionStartDate: subscription.SubscriptionStartDate,
 			SubscriptionEndDate:   subscription.SubscriptionEndDate,
@@ -35,7 +35,7 @@ func (r *premiumSubscriptionRepository) Upsert(subscription *model.PremiumSubscr
 
 func (r *premiumSubscriptionRepository) IsTrialActivated(userID uint) (bool, error) {
 	var count int64
-	if err := r.readDB.Model(&model.PremiumSubscription{}).
+	if err := r.readDB.Model(&premiumsubscriptionmodel.PremiumSubscription{}).
 		Where("user_id = ? AND is_trial = ?", userID, true).
 		Count(&count).Error; err != nil {
 		return false, err
@@ -45,7 +45,7 @@ func (r *premiumSubscriptionRepository) IsTrialActivated(userID uint) (bool, err
 
 func (r *premiumSubscriptionRepository) FindExpiredOwnerIDs() ([]uint, error) {
 	var userIDs []uint
-	err := r.readDB.Model(&model.PremiumSubscription{}).
+	err := r.readDB.Model(&premiumsubscriptionmodel.PremiumSubscription{}).
 		Joins("JOIN users ON users.user_id = premium_subscriptions.user_id").
 		Where("premium_subscriptions.subscription_end_date < ? AND users.is_premium = ?", time.Now(), true).
 		Distinct("premium_subscriptions.user_id").
@@ -54,7 +54,7 @@ func (r *premiumSubscriptionRepository) FindExpiredOwnerIDs() ([]uint, error) {
 }
 
 func (r *premiumSubscriptionRepository) ExpireForDev(userID uint) error {
-	return r.writeDB.Model(&model.PremiumSubscription{}).
+	return r.writeDB.Model(&premiumsubscriptionmodel.PremiumSubscription{}).
 		Where("user_id = ?", userID).
 		Updates(map[string]any{
 			"subscription_end_date": gorm.Expr("NOW() - INTERVAL '1 second'"),

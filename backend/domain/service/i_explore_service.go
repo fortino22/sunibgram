@@ -3,15 +3,16 @@ package service
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
+	exploremodel "github.com/sunibgram/domain/model/explore"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
 type IExploreService interface {
-	ExploreSearch(ctx context.Context, query string, requesterID *uint) (*model.ExploreResult, error)
-	GetTopPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, []*model.Thread, int64, error)
-	GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, []*model.Thread, int64, error)
-	GetPeople(ctx context.Context, query string, requesterID uint) ([]model.ExploreUserResult, error)
-	GetMediaPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, int64, error)
-	GetCommunities(ctx context.Context, query string, requesterID uint) ([]model.ExploreCommunityResult, int64, error)
-	GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]model.ExploreUserResult, error)
+	ExploreSearch(ctx context.Context, query string, requesterID *uint) (*exploremodel.ExploreResult, error)
+	GetTopPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
+	GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
+	GetPeople(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreUserResult, error)
+	GetMediaPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, int64, error)
+	GetCommunities(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreCommunityResult, int64, error)
+	GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error)
 }

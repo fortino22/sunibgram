@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	bookmarkmodel "github.com/sunibgram/domain/model/bookmark"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -54,7 +56,7 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 		if err != nil {
 			return errors.New("community not found")
 		}
-		if community.Visibility == model.CommunityVisibilityPrivate {
+		if community.Visibility == communitymodel.CommunityVisibilityPrivate {
 			if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
 				return errors.New("you must be a member of the community to bookmark this thread")
 			}
@@ -67,7 +69,7 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 	if exists {
 		return errors.New("already bookmarked")
 	}
-	if err := s.bookmarkRepo.Save(&model.Bookmark{UserID: userID, ThreadID: threadID}); err != nil {
+	if err := s.bookmarkRepo.Save(&bookmarkmodel.Bookmark{UserID: userID, ThreadID: threadID}); err != nil {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
@@ -110,7 +112,7 @@ func (s *BookmarkService) AllBookmarkedThreadIDs(userID uint) ([]uint, error) {
 	return s.bookmarkRepo.AllBookmarkedThreadIDs(userID)
 }
 
-func (s *BookmarkService) GetMyBookmarks(userID uint, page, limit int) ([]model.Thread, []time.Time, int64, error) {
+func (s *BookmarkService) GetMyBookmarks(userID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.bookmarkRepo.FindByUserID(userID, page, limit)
 }

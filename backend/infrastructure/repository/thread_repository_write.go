@@ -6,10 +6,10 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
-func (r *threadCached) Save(thread *model.Thread) error {
+func (r *threadCached) Save(thread *threadmodel.Thread) error {
 	if err := r.validateThreadEventExists(thread.EventID); err != nil {
 		return err
 	}
@@ -21,22 +21,22 @@ func (r *threadCached) Save(thread *model.Thread) error {
 	}
 	ctx := context.Background()
 	var repostInheritedCommunityID *uint
-	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
-		r.db.writeDB.Model(&model.Thread{}).
+	if thread.Type == threadmodel.ThreadTypeRepost && thread.OriginalThreadID != nil {
+		r.db.writeDB.Model(&threadmodel.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("repost_count + 1"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", 1)
 		patchEventCounterByThreadID(r.db.writeDB, r.cache, *thread.OriginalThreadID, "repost_count", 1)
 		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
 		ViewerFlagAdd(r.cache, thread.UserID, "reposted", *thread.OriginalThreadID)
-		var orig model.Thread
+		var orig threadmodel.Thread
 		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
 			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
 			repostInheritedCommunityID = orig.CommunityID
 		}
 	}
 	if thread.ParentID != nil {
-		r.db.writeDB.Model(&model.Thread{}).
+		r.db.writeDB.Model(&threadmodel.Thread{}).
 			Where("thread_id = ?", *thread.ParentID).
 			UpdateColumn("comment_count", gorm.Expr("comment_count + 1"))
 		r.patchCachedCount(*thread.ParentID, "comment_count", 1)
@@ -79,7 +79,7 @@ func (r *threadCached) InvalidateThread(threadID uint) {
 	invalidateExplorePostCaches(ctx, r.cache)
 }
 
-func (r *threadCached) Update(thread *model.Thread) error {
+func (r *threadCached) Update(thread *threadmodel.Thread) error {
 	if thread.EventIDUpdated {
 		if err := r.validateThreadEventExists(thread.EventID); err != nil {
 			return err
@@ -110,8 +110,8 @@ func (r *threadCached) Update(thread *model.Thread) error {
 	return nil
 }
 
-func (r *threadCached) UpdateReplyPermission(threadID uint, replyPermission model.ReplyPermission) error {
-	if err := r.db.writeDB.Model(&model.Thread{}).
+func (r *threadCached) UpdateReplyPermission(threadID uint, replyPermission threadmodel.ReplyPermission) error {
+	if err := r.db.writeDB.Model(&threadmodel.Thread{}).
 		Where("thread_id = ?", threadID).
 		UpdateColumns(map[string]any{
 			"reply_permission": replyPermission,
@@ -129,7 +129,7 @@ func (r *threadCached) validateThreadEventExists(eventID *string) error {
 		return nil
 	}
 	var count int64
-	if err := r.db.readDB.Model(&model.Event{}).Where("id = ?", *eventID).Count(&count).Error; err != nil {
+	if err := r.db.readDB.Model(&threadmodel.Event{}).Where("id = ?", *eventID).Count(&count).Error; err != nil {
 		return err
 	}
 	if count == 0 {
@@ -144,9 +144,9 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 	}
 	ctx := context.Background()
 	oldEventID, hadOldEvent := eventIDForThread(r.db.readDB, threadID)
-	var stats model.Thread
+	var stats threadmodel.Thread
 	_ = r.db.readDB.Select("like_count", "repost_count").First(&stats, threadID).Error
-	if err := r.db.writeDB.Where("thread_id = ?", threadID).Delete(&model.ThreadEvent{}).Error; err != nil {
+	if err := r.db.writeDB.Where("thread_id = ?", threadID).Delete(&threadmodel.ThreadEvent{}).Error; err != nil {
 		return err
 	}
 	if eventID == nil || *eventID == "" {
@@ -157,7 +157,7 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 		_ = r.cache.InvalidateTag(ctx, eventThreadsGlobalTag())
 		return nil
 	}
-	if err := r.db.writeDB.Create(&model.ThreadEvent{ThreadID: threadID, EventID: *eventID}).Error; err != nil {
+	if err := r.db.writeDB.Create(&threadmodel.ThreadEvent{ThreadID: threadID, EventID: *eventID}).Error; err != nil {
 		return err
 	}
 	if !hadOldEvent || oldEventID != *eventID {
@@ -175,7 +175,7 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 func (r *threadCached) patchCachedCount(threadID uint, column string, delta int) {
 	ctx := context.Background()
 	key := threadKey(threadID)
-	var thread model.Thread
+	var thread threadmodel.Thread
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
 		if err := preloadThreadDetails(r.db.readDB).Where("threads.thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return
@@ -204,24 +204,24 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 }
 
 func (r *threadCached) Delete(id uint) error {
-	var thread model.Thread
+	var thread threadmodel.Thread
 	r.db.readDB.Select("thread_id, user_id, parent_id, root_id, type, original_thread_id, community_id, like_count, repost_count").First(&thread, id)
 
 	ctx := context.Background()
-	if thread.Type == model.ThreadTypeRepost && thread.OriginalThreadID != nil {
-		r.db.writeDB.Model(&model.Thread{}).
+	if thread.Type == threadmodel.ThreadTypeRepost && thread.OriginalThreadID != nil {
+		r.db.writeDB.Model(&threadmodel.Thread{}).
 			Where("thread_id = ?", *thread.OriginalThreadID).
 			UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 		r.patchCachedCount(*thread.OriginalThreadID, "repost_count", -1)
 		patchEventCounterByThreadID(r.db.writeDB, r.cache, *thread.OriginalThreadID, "repost_count", -1)
 		r.invalidateInteractions(ctx, *thread.OriginalThreadID)
-		var orig model.Thread
+		var orig threadmodel.Thread
 		if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, *thread.OriginalThreadID).Error; err == nil {
 			r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
 		}
 	}
 	if thread.ParentID != nil {
-		r.db.writeDB.Model(&model.Thread{}).
+		r.db.writeDB.Model(&threadmodel.Thread{}).
 			Where("thread_id = ?", *thread.ParentID).
 			UpdateColumn("comment_count", gorm.Expr("GREATEST(comment_count - 1, 0)"))
 		r.patchCachedCount(*thread.ParentID, "comment_count", -1)
@@ -247,7 +247,7 @@ func (r *threadCached) Delete(id uint) error {
 		patchEventCounter(r.db.writeDB, r.cache, eventID, "repost_count", -thread.RepostCount)
 	}
 
-	if err := r.db.writeDB.Delete(&model.Thread{}, id).Error; err != nil {
+	if err := r.db.writeDB.Delete(&threadmodel.Thread{}, id).Error; err != nil {
 		return err
 	}
 	if hasEvent {

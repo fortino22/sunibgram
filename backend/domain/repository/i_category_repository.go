@@ -3,13 +3,13 @@ package repository
 import (
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	categorymodel "github.com/sunibgram/domain/model/category"
 )
 
 type ICategoryRepository interface {
-	Save(category *model.Category) error
-	FindAll() ([]model.Category, error)
-	FindByID(id uuid.UUID) (*model.Category, error)
-	Update(category *model.Category) error
+	Save(category *categorymodel.Category) error
+	FindAll() ([]categorymodel.Category, error)
+	FindByID(id uuid.UUID) (*categorymodel.Category, error)
+	Update(category *categorymodel.Category) error
 	Delete(id uuid.UUID) error
 }

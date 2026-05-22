@@ -5,13 +5,13 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
 func (r *threadCached) ExistsRepost(userID, originalThreadID uint) (bool, error) {
 	var count int64
-	err := r.db.readDB.Model(&model.Thread{}).
-		Where("user_id = ? AND type = ? AND original_thread_id = ?", userID, model.ThreadTypeRepost, originalThreadID).
+	err := r.db.readDB.Model(&threadmodel.Thread{}).
+		Where("user_id = ? AND type = ? AND original_thread_id = ?", userID, threadmodel.ThreadTypeRepost, originalThreadID).
 		Count(&count).Error
 	return count > 0, err
 }
@@ -23,9 +23,9 @@ func (r *threadCached) AreThreadsReposted(userID uint, threadIDs []uint) (map[ui
 	}
 
 	var ids []uint
-	err := r.db.readDB.Model(&model.Thread{}).
+	err := r.db.readDB.Model(&threadmodel.Thread{}).
 		Select("original_thread_id").
-		Where("user_id = ? AND type = ? AND original_thread_id IN ?", userID, model.ThreadTypeRepost, threadIDs).
+		Where("user_id = ? AND type = ? AND original_thread_id IN ?", userID, threadmodel.ThreadTypeRepost, threadIDs).
 		Scan(&ids).Error
 	if err != nil {
 		return nil, err
@@ -38,17 +38,17 @@ func (r *threadCached) AreThreadsReposted(userID uint, threadIDs []uint) (map[ui
 
 func (r *threadCached) AllRepostedOriginalIDs(userID uint) ([]uint, error) {
 	var ids []uint
-	err := r.db.readDB.Model(&model.Thread{}).
+	err := r.db.readDB.Model(&threadmodel.Thread{}).
 		Select("original_thread_id").
-		Where("user_id = ? AND type = ? AND original_thread_id IS NOT NULL", userID, model.ThreadTypeRepost).
+		Where("user_id = ? AND type = ? AND original_thread_id IS NOT NULL", userID, threadmodel.ThreadTypeRepost).
 		Scan(&ids).Error
 	return ids, err
 }
 
 func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
-	var repost model.Thread
+	var repost threadmodel.Thread
 	if err := r.db.readDB.
-		Where("user_id = ? AND type = ? AND original_thread_id = ?", userID, model.ThreadTypeRepost, originalThreadID).
+		Where("user_id = ? AND type = ? AND original_thread_id = ?", userID, threadmodel.ThreadTypeRepost, originalThreadID).
 		First(&repost).Error; err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 		return err
 	}
 
-	r.db.writeDB.Model(&model.Thread{}).
+	r.db.writeDB.Model(&threadmodel.Thread{}).
 		Where("thread_id = ?", originalThreadID).
 		UpdateColumn("repost_count", gorm.Expr("GREATEST(repost_count - 1, 0)"))
 	r.patchCachedCount(originalThreadID, "repost_count", -1)
@@ -74,7 +74,7 @@ func (r *threadCached) DeleteRepost(userID, originalThreadID uint) error {
 	r.invalidateForYouFeedCachesForFollowers(ctx, repost.UserID)
 	r.invalidateTrendingFeed(ctx)
 	_ = r.cache.InvalidateTag(ctx, threadRootsGlobalTag())
-	var orig model.Thread
+	var orig threadmodel.Thread
 	if err := r.db.readDB.Select("thread_id, root_id, community_id").First(&orig, originalThreadID).Error; err == nil {
 		r.invalidate(ctx, orig.ThreadID, orig.RootID, orig.CommunityID)
 	}

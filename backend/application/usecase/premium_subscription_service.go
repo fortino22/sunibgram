@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -30,7 +30,7 @@ func NewPremiumSubscriptionService(
 	}
 }
 
-func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*model.PremiumSubscription, error) {
+func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*premiumsubscriptionmodel.PremiumSubscription, error) {
 	isTrial, err := s.premiumSubscriptionRepo.IsTrialActivated(userID)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*model.PremiumS
 	}
 
 	now := time.Now()
-	subscription := &model.PremiumSubscription{
+	subscription := &premiumsubscriptionmodel.PremiumSubscription{
 		UserID:                userID,
 		IsTrial:               true,
 		SubscriptionStartDate: now,

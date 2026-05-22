@@ -1,17 +1,20 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import (
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+)
 
 type IUserRepository interface {
-	Save(user *model.User) error
-	SaveWithProfile(user *model.User, profile *model.UserProfile) error
-	FindByID(id uint) (*model.User, error)
-	FindByIDs(ids []uint) ([]model.User, error)
-	FindByEmail(email string) (*model.User, error)
-	FindByUserName(username string) (*model.User, error)
+	Save(user *usermodel.User) error
+	SaveWithProfile(user *usermodel.User, profile *userprofilemodel.UserProfile) error
+	FindByID(id uint) (*usermodel.User, error)
+	FindByIDs(ids []uint) ([]usermodel.User, error)
+	FindByEmail(email string) (*usermodel.User, error)
+	FindByUserName(username string) (*usermodel.User, error)
 	ExistsByEmail(email string) (bool, error)
 	ExistsByUserName(username string) (bool, error)
-	FindAllPaginated(page, limit int) ([]model.User, int64, error)
+	FindAllPaginated(page, limit int) ([]usermodel.User, int64, error)
 	UpdatePassword(userID uint, hashedPassword string) error
 	UpdateInfo(userID uint, name, username string) error
 	UpdatePremium(userID uint, premium bool) error

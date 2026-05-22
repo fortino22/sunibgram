@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	facultymodel "github.com/sunibgram/domain/model/faculty"
 )
 
 var facultyNames = []string{
@@ -22,8 +22,8 @@ var facultyNames = []string{
 
 func SeedFaculty(db *gorm.DB) {
 	for _, name := range facultyNames {
-		faculty := model.Faculty{FacultyName: name}
-		if err := db.Where(model.Faculty{FacultyName: name}).FirstOrCreate(&faculty).Error; err != nil {
+		faculty := facultymodel.Faculty{FacultyName: name}
+		if err := db.Where(facultymodel.Faculty{FacultyName: name}).FirstOrCreate(&faculty).Error; err != nil {
 			log.Printf("faculty seeder: failed to seed faculty %s: %v", name, err)
 			continue
 		}

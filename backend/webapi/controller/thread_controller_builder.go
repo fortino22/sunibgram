@@ -3,13 +3,14 @@ package controller
 import (
 	"sort"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
-func (c *ThreadController) loadMediaByThread(threads []model.Thread) map[uint][]model.ThreadMedia {
+func (c *ThreadController) loadMediaByThread(threads []threadmodel.Thread) map[uint][]threadmediamodel.ThreadMedia {
 	return loadThreadMediaByThread(c.mediaService, threads)
 }
 
@@ -25,40 +26,40 @@ func (c *ThreadController) fbNoPin(viewerID *uint) webapiutils.FeedBuilder {
 	return newFeedBuilder(c.mediaService, c.likeService, c.bookmarkService, c.threadService, nil, c.profileService, c.pollService, viewerID)
 }
 
-func (c *ThreadController) buildFeedItems(threads []model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
+func (c *ThreadController) buildFeedItems(threads []threadmodel.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	fb := c.fb(viewerID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
-func (c *ThreadController) buildFeedItemsNoPin(threads []model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
+func (c *ThreadController) buildFeedItemsNoPin(threads []threadmodel.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	fb := c.fbNoPin(viewerID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
-func (c *ThreadController) buildFeedItemsWithPin(threads []model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
+func (c *ThreadController) buildFeedItemsWithPin(threads []threadmodel.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	mediaByThread := c.loadMediaByThread(threads)
 	fb := c.fbWithPin(viewerID)
 	fb.LoadAvatarsForUserIDs(threadUserIDs(threads))
 	return buildFeedItemsFromThreads(threads, mediaByThread, fb)
 }
 
-func (c *ThreadController) buildUserFeedItems(threads []model.Thread, parents []*model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItems(threads []threadmodel.Thread, parents []*threadmodel.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fb(viewerID))
 }
 
-func (c *ThreadController) buildUserFeedItemsNoPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItemsNoPin(threads []threadmodel.Thread, parents []*threadmodel.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbNoPin(viewerID))
 }
 
-func (c *ThreadController) buildUserFeedItemsWithPin(threads []model.Thread, parents []*model.Thread, viewerID *uint) []threaddto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItemsWithPin(threads []threadmodel.Thread, parents []*threadmodel.Thread, viewerID *uint) []threaddto.FeedItemResponse {
 	return c.buildUserFeedItemsWithBuilder(threads, parents, c.fbWithPin(viewerID))
 }
 
-func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread, parents []*model.Thread, fb webapiutils.FeedBuilder) []threaddto.FeedItemResponse {
+func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []threadmodel.Thread, parents []*threadmodel.Thread, fb webapiutils.FeedBuilder) []threaddto.FeedItemResponse {
 	allIDs := make([]uint, 0, len(threads)*2)
 	for _, t := range threads {
 		allIDs = append(allIDs, t.ThreadID)
@@ -86,7 +87,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 	pollIDs := make([]uint, 0, len(threads)+len(parents))
 	for i := range threads {
 		t := &threads[i]
-		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+		if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 			pollIDs = append(pollIDs, t.OriginalThread.ThreadID)
 		} else {
 			pollIDs = append(pollIDs, t.ThreadID)
@@ -102,7 +103,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []model.Thread,
 	data := make([]threaddto.FeedItemResponse, len(threads))
 	for i, t := range threads {
 		mediaID := t.ThreadID
-		if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+		if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 			mediaID = t.OriginalThread.ThreadID
 		}
 		item := fb.ToFeedItem(&t, mediaByThread[mediaID])

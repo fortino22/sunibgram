@@ -1,10 +1,10 @@
 package repository
 
-import "github.com/sunibgram/domain/model"
+import communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
 
 type ICommunityThreadPinRepository interface {
-	Pin(pin *model.CommunityThreadPin) error
+	Pin(pin *communitythreadpinmodel.CommunityThreadPin) error
 	Unpin(communityID, threadID uint) error
 	Exists(communityID, threadID uint) (bool, error)
-	FindByCommunityID(communityID uint) (*model.CommunityThreadPin, error)
+	FindByCommunityID(communityID uint) (*communitythreadpinmodel.CommunityThreadPin, error)
 }

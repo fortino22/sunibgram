@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/model"
+	violationmodel "github.com/sunibgram/domain/model/violation"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -35,14 +35,14 @@ func (s *ViolationService) Create(name, description string) error {
 	if utf8.RuneCountInString(description) > 2000 {
 		return errors.New("description must be 2000 characters or less")
 	}
-	return s.violationRepo.Save(&model.Violation{Name: name, Description: description})
+	return s.violationRepo.Save(&violationmodel.Violation{Name: name, Description: description})
 }
 
-func (s *ViolationService) GetAll() ([]model.Violation, error) {
+func (s *ViolationService) GetAll() ([]violationmodel.Violation, error) {
 	return s.violationRepo.FindAll()
 }
 
-func (s *ViolationService) GetByID(id uuid.UUID) (*model.Violation, error) {
+func (s *ViolationService) GetByID(id uuid.UUID) (*violationmodel.Violation, error) {
 	violation, err := s.violationRepo.FindByID(id)
 	if err != nil {
 		return nil, errors.New("violation not found")

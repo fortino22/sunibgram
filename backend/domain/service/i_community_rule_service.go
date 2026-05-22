@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/sunibgram/domain/model"
+	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
 )
 
 type ICommunityRuleService interface {
-	ListByCommunity(communityID uint) ([]model.CommunityRule, error)
+	ListByCommunity(communityID uint) ([]communityrulemodel.CommunityRule, error)
 }

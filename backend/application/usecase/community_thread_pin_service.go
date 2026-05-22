@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/sunibgram/domain/model"
+	communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -59,7 +59,7 @@ func (s *CommunityThreadPinService) Pin(ctx context.Context, communityID, actorU
 		}
 	}
 
-	return s.pinRepo.Pin(&model.CommunityThreadPin{CommunityID: communityID, ThreadID: threadID})
+	return s.pinRepo.Pin(&communitythreadpinmodel.CommunityThreadPin{CommunityID: communityID, ThreadID: threadID})
 }
 
 func (s *CommunityThreadPinService) Unpin(ctx context.Context, communityID, actorUserID, threadID uint) error {
@@ -80,7 +80,7 @@ func (s *CommunityThreadPinService) Unpin(ctx context.Context, communityID, acto
 	return s.pinRepo.Unpin(communityID, threadID)
 }
 
-func (s *CommunityThreadPinService) GetPinned(communityID uint) (*model.CommunityThreadPin, error) {
+func (s *CommunityThreadPinService) GetPinned(communityID uint) (*communitythreadpinmodel.CommunityThreadPin, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, errors.New("community not found")
 	}

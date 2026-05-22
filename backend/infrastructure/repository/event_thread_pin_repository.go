@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	eventthreadpinmodel "github.com/sunibgram/domain/model/event_thread_pin"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -26,7 +26,7 @@ func eventThreadPinKey(eventID string) string {
 	return fmt.Sprintf("event:thread_pin:%s", eventID)
 }
 
-func (r *EventThreadPinRepository) Pin(pin *model.EventThreadPin) error {
+func (r *EventThreadPinRepository) Pin(pin *eventthreadpinmodel.EventThreadPin) error {
 	if err := r.writeDB.Create(pin).Error; err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (r *EventThreadPinRepository) Pin(pin *model.EventThreadPin) error {
 
 func (r *EventThreadPinRepository) Unpin(eventID string, threadID uint) error {
 	if err := r.writeDB.Where("event_id = ? AND thread_id = ?", eventID, threadID).
-		Delete(&model.EventThreadPin{}).Error; err != nil {
+		Delete(&eventthreadpinmodel.EventThreadPin{}).Error; err != nil {
 		return err
 	}
 	r.invalidate(eventID)
@@ -45,15 +45,15 @@ func (r *EventThreadPinRepository) Unpin(eventID string, threadID uint) error {
 
 func (r *EventThreadPinRepository) Exists(eventID string, threadID uint) (bool, error) {
 	var count int64
-	err := r.readDB.Model(&model.EventThreadPin{}).
+	err := r.readDB.Model(&eventthreadpinmodel.EventThreadPin{}).
 		Where("event_id = ? AND thread_id = ?", eventID, threadID).
 		Count(&count).Error
 	return count > 0, err
 }
 
-func (r *EventThreadPinRepository) FindByEventID(eventID string) (*model.EventThreadPin, error) {
+func (r *EventThreadPinRepository) FindByEventID(eventID string) (*eventthreadpinmodel.EventThreadPin, error) {
 	ctx := context.Background()
-	var pin model.EventThreadPin
+	var pin eventthreadpinmodel.EventThreadPin
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, eventThreadPinKey(eventID), &pin); err == nil {
 			if pin.ThreadID == 0 {
@@ -65,7 +65,7 @@ func (r *EventThreadPinRepository) FindByEventID(eventID string) (*model.EventTh
 	err := r.readDB.Where("event_id = ?", eventID).First(&pin).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		if r.cache != nil {
-			r.cache.Set(ctx, eventThreadPinKey(eventID), model.EventThreadPin{EventID: eventID}, cache.DefaultTTL)
+			r.cache.Set(ctx, eventThreadPinKey(eventID), eventthreadpinmodel.EventThreadPin{EventID: eventID}, cache.DefaultTTL)
 		}
 		return nil, nil
 	}

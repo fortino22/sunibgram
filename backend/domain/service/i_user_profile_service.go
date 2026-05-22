@@ -5,14 +5,16 @@ import (
 	"mime/multipart"
 	"time"
 
-	"github.com/sunibgram/domain/model"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+	userstatmodel "github.com/sunibgram/domain/model/user_stat"
 )
 
 type FullProfile struct {
-	User        *model.User
-	Stat        *model.UserStat
-	Profile     *model.UserProfile
-	UserFaculty *model.UserFaculty
+	User        *usermodel.User
+	Stat        *userstatmodel.UserStat
+	Profile     *userprofilemodel.UserProfile
+	UserFaculty *usermodel.UserFaculty
 	IsFollowing bool
 }
 
@@ -37,8 +39,8 @@ type IUserProfileService interface {
 	UpsertProfile(ctx context.Context, userID uint, input UpsertProfileInput) error
 	UpdateProfile(ctx context.Context, userID uint, input UpdateProfileInput) error
 	GetProfile(userID uint, viewerID *uint) (*FullProfile, error)
-	GetProfiles(userIDs []uint) ([]model.UserProfile, error)
-	GetUsers(userIDs []uint) ([]model.User, error)
-	GetUserFaculties(userIDs []uint) ([]model.UserFaculty, error)
+	GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error)
+	GetUsers(userIDs []uint) ([]usermodel.User, error)
+	GetUserFaculties(userIDs []uint) ([]usermodel.UserFaculty, error)
 	GetURL(bucket, objectName string) string
 }

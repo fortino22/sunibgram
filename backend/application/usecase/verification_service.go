@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/sunibgram/domain/model"
+	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 	"github.com/sunibgram/infrastructure/ratelimit"
@@ -82,11 +82,11 @@ func NewVerificationService(
 	}
 }
 
-func (s *VerificationService) SendCode(email string, t model.VerificationType) error {
-	if err := model.ValidateVerificationEmail(email); err != nil {
+func (s *VerificationService) SendCode(email string, t verificationcodemodel.VerificationType) error {
+	if err := verificationcodemodel.ValidateVerificationEmail(email); err != nil {
 		return err
 	}
-	if err := model.ValidateVerificationType(t); err != nil {
+	if err := verificationcodemodel.ValidateVerificationType(t); err != nil {
 		return err
 	}
 
@@ -95,11 +95,11 @@ func (s *VerificationService) SendCode(email string, t model.VerificationType) e
 		return err
 	}
 	switch t {
-	case model.VerificationTypeRegister:
+	case verificationcodemodel.VerificationTypeRegister:
 		if exists {
 			return errors.New("email already registered")
 		}
-	case model.VerificationTypeForgotPassword, model.VerificationTypeLogin:
+	case verificationcodemodel.VerificationTypeForgotPassword, verificationcodemodel.VerificationTypeLogin:
 		if !exists {
 			return errors.New("email not found")
 		}
@@ -113,7 +113,7 @@ func (s *VerificationService) SendCode(email string, t model.VerificationType) e
 	_ = s.verificationRepo.DeleteByEmailAndType(email, t)
 
 	plain := fmt.Sprintf("%06d", rand.Intn(1000000))
-	record := &model.VerificationCode{
+	record := &verificationcodemodel.VerificationCode{
 		Email:     email,
 		Code:      hashOTP(plain),
 		Type:      t,
@@ -124,19 +124,19 @@ func (s *VerificationService) SendCode(email string, t model.VerificationType) e
 	}
 
 	switch t {
-	case model.VerificationTypeRegister:
+	case verificationcodemodel.VerificationTypeRegister:
 		return s.emailService.SendWelcomeOTP(email, plain)
-	case model.VerificationTypeForgotPassword:
+	case verificationcodemodel.VerificationTypeForgotPassword:
 		return s.emailService.SendPasswordResetOTP(email, plain)
-	case model.VerificationTypeLogin:
+	case verificationcodemodel.VerificationTypeLogin:
 		return s.emailService.SendLoginOTP(email, plain)
 	default:
 		return errors.New("unsupported verification type")
 	}
 }
 
-func (s *VerificationService) VerifyCode(email, code string, t model.VerificationType) error {
-	if err := model.ValidateVerificationType(t); err != nil {
+func (s *VerificationService) VerifyCode(email, code string, t verificationcodemodel.VerificationType) error {
+	if err := verificationcodemodel.ValidateVerificationType(t); err != nil {
 		return err
 	}
 

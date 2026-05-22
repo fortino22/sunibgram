@@ -6,7 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
 	domainrepo "github.com/sunibgram/domain/repository"
 )
 
@@ -19,12 +19,12 @@ func NewVerificationRepository(writeDB, readDB *gorm.DB) domainrepo.IVerificatio
 	return &VerificationRepository{writeDB: writeDB, readDB: readDB}
 }
 
-func (r *VerificationRepository) Save(code *model.VerificationCode) error {
+func (r *VerificationRepository) Save(code *verificationcodemodel.VerificationCode) error {
 	return r.writeDB.Create(code).Error
 }
 
-func (r *VerificationRepository) FindLatestByEmailAndType(email string, t model.VerificationType) (*model.VerificationCode, error) {
-	var code model.VerificationCode
+func (r *VerificationRepository) FindLatestByEmailAndType(email string, t verificationcodemodel.VerificationType) (*verificationcodemodel.VerificationCode, error) {
+	var code verificationcodemodel.VerificationCode
 	err := r.readDB.Where("email = ? AND type = ? AND used = false", email, t).
 		Order("created_at DESC").
 		First(&code).Error
@@ -34,8 +34,8 @@ func (r *VerificationRepository) FindLatestByEmailAndType(email string, t model.
 	return &code, err
 }
 
-func (r *VerificationRepository) FindVerifiedByEmailAndType(email string, t model.VerificationType) (*model.VerificationCode, error) {
-	var code model.VerificationCode
+func (r *VerificationRepository) FindVerifiedByEmailAndType(email string, t verificationcodemodel.VerificationType) (*verificationcodemodel.VerificationCode, error) {
+	var code verificationcodemodel.VerificationCode
 	err := r.readDB.Where("email = ? AND type = ? AND used = true AND expires_at > ?", email, t, time.Now()).
 		Order("created_at DESC").
 		First(&code).Error
@@ -46,9 +46,9 @@ func (r *VerificationRepository) FindVerifiedByEmailAndType(email string, t mode
 }
 
 func (r *VerificationRepository) MarkUsed(id uint) error {
-	return r.writeDB.Model(&model.VerificationCode{}).Where("id = ?", id).Update("used", true).Error
+	return r.writeDB.Model(&verificationcodemodel.VerificationCode{}).Where("id = ?", id).Update("used", true).Error
 }
 
-func (r *VerificationRepository) DeleteByEmailAndType(email string, t model.VerificationType) error {
-	return r.writeDB.Where("email = ? AND type = ?", email, t).Delete(&model.VerificationCode{}).Error
+func (r *VerificationRepository) DeleteByEmailAndType(email string, t verificationcodemodel.VerificationType) error {
+	return r.writeDB.Where("email = ? AND type = ?", email, t).Delete(&verificationcodemodel.VerificationCode{}).Error
 }

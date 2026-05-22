@@ -6,7 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	usermodel "github.com/sunibgram/domain/model/user"
 )
 
 var sampleReplies = []string{
@@ -114,16 +115,16 @@ var sampleRepliesID = []string{
 	"Kita dukung penuh. Ubah diskusi jadi aksi nyata, jangan cuma berhenti di kolom komentar.",
 }
 
-func seedThread(db *gorm.DB, owner model.User, content, marker string, replies []string) {
-	var existing model.Thread
+func seedThread(db *gorm.DB, owner usermodel.User, content, marker string, replies []string) {
+	var existing threadmodel.Thread
 	if err := db.Where("content LIKE ? AND parent_id IS NULL", "%"+marker+"%").First(&existing).Error; err == nil {
 		log.Printf("thread summary seeder: seed thread '%s' already exists (id=%d), skipping", marker, existing.ThreadID)
 		return
 	}
 
-	root := model.Thread{
+	root := threadmodel.Thread{
 		UserID:       owner.UserID,
-		Type:         model.ThreadTypePost,
+		Type:         threadmodel.ThreadTypePost,
 		Content:      fmt.Sprintf("%s %s", content, marker),
 		CommentCount: len(replies),
 	}
@@ -133,9 +134,9 @@ func seedThread(db *gorm.DB, owner model.User, content, marker string, replies [
 	}
 
 	for i, text := range replies {
-		reply := model.Thread{
+		reply := threadmodel.Thread{
 			UserID:   owner.UserID,
-			Type:     model.ThreadTypeReply,
+			Type:     threadmodel.ThreadTypeReply,
 			Content:  text,
 			ParentID: &root.ThreadID,
 			RootID:   &root.ThreadID,
@@ -149,7 +150,7 @@ func seedThread(db *gorm.DB, owner model.User, content, marker string, replies [
 }
 
 func SeedThreadWithReplies(db *gorm.DB) {
-	var owner model.User
+	var owner usermodel.User
 	if err := db.Where("email = ?", "fortino@binus.ac.id").First(&owner).Error; err != nil {
 		log.Printf("thread summary seeder: user fortino@binus.ac.id not found, run SeedDummy first")
 		return

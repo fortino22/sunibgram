@@ -9,7 +9,8 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	categorymodel "github.com/sunibgram/domain/model/category"
+	communitymodel "github.com/sunibgram/domain/model/community"
 	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 )
@@ -34,7 +35,7 @@ func categoryIDKey(id uuid.UUID) string {
 	return fmt.Sprintf("category:id:%s", id.String())
 }
 
-func (r *categoryRepository) Save(category *model.Category) error {
+func (r *categoryRepository) Save(category *categorymodel.Category) error {
 	if err := r.writeDB.Create(category).Error; err != nil {
 		return err
 	}
@@ -42,9 +43,9 @@ func (r *categoryRepository) Save(category *model.Category) error {
 	return nil
 }
 
-func (r *categoryRepository) FindAll() ([]model.Category, error) {
+func (r *categoryRepository) FindAll() ([]categorymodel.Category, error) {
 	ctx := context.Background()
-	var categories []model.Category
+	var categories []categorymodel.Category
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, categoryAllKey(), &categories); err == nil {
 			return categories, nil
@@ -63,9 +64,9 @@ func (r *categoryRepository) FindAll() ([]model.Category, error) {
 	return categories, nil
 }
 
-func (r *categoryRepository) FindByID(id uuid.UUID) (*model.Category, error) {
+func (r *categoryRepository) FindByID(id uuid.UUID) (*categorymodel.Category, error) {
 	ctx := context.Background()
-	var category model.Category
+	var category categorymodel.Category
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, categoryIDKey(id), &category); err == nil {
 			return &category, nil
@@ -84,8 +85,8 @@ func (r *categoryRepository) FindByID(id uuid.UUID) (*model.Category, error) {
 	return nil, gorm.ErrRecordNotFound
 }
 
-func (r *categoryRepository) Update(category *model.Category) error {
-	result := r.writeDB.Model(&model.Category{}).
+func (r *categoryRepository) Update(category *categorymodel.Category) error {
+	result := r.writeDB.Model(&categorymodel.Category{}).
 		Where("id = ?", category.ID).
 		Updates(map[string]any{
 			"name": category.Name,
@@ -102,12 +103,12 @@ func (r *categoryRepository) Update(category *model.Category) error {
 
 func (r *categoryRepository) Delete(id uuid.UUID) error {
 	err := r.writeDB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&model.Community{}).
+		if err := tx.Model(&communitymodel.Community{}).
 			Where("category_id = ?", id).
 			UpdateColumns(map[string]any{"category_id": nil}).Error; err != nil {
 			return err
 		}
-		result := tx.Delete(&model.Category{}, "id = ?", id)
+		result := tx.Delete(&categorymodel.Category{}, "id = ?", id)
 		if result.Error != nil {
 			return result.Error
 		}

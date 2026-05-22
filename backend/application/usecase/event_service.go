@@ -14,7 +14,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
+	mediamodel "github.com/sunibgram/domain/model/media"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -61,7 +63,7 @@ func (s *EventService) invalidateUserScopedCaches(eventID string) {
 	}
 }
 
-func (s *EventService) Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*model.Event, error) {
+func (s *EventService) Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*threadmodel.Event, error) {
 	if err := validateEventInput(title, startTime, endTime); err != nil {
 		return nil, err
 	}
@@ -74,14 +76,14 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	if utf8.RuneCountInString(location) > 255 {
 		return nil, errors.New("location must be 255 characters or less")
 	}
-	if err := model.ValidateEventPDFCount(len(attachments)); err != nil {
+	if err := threadmodel.ValidateEventPDFCount(len(attachments)); err != nil {
 		return nil, err
 	}
 	eventType = strings.TrimSpace(eventType)
 	if eventType == "" {
 		eventType = "unofficial"
 	}
-	if err := model.ValidateEventType(eventType); err != nil {
+	if err := threadmodel.ValidateEventType(eventType); err != nil {
 		return nil, err
 	}
 	if eventType == "official" && len(attachments) == 0 {
@@ -90,7 +92,7 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	if err := validateEventPDFHeaders(attachments); err != nil {
 		return nil, err
 	}
-	event := &model.Event{
+	event := &threadmodel.Event{
 		UserID:      userID,
 		Title:       title,
 		Description: description,
@@ -128,7 +130,7 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	return event, nil
 }
 
-func (s *EventService) GetByID(id string) (*model.Event, error) {
+func (s *EventService) GetByID(id string) (*threadmodel.Event, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, err
 	}
@@ -139,17 +141,17 @@ func (s *EventService) GetByID(id string) (*model.Event, error) {
 	return event, nil
 }
 
-func (s *EventService) GetAll(limit int) ([]model.Event, []model.Event, []model.Event, error) {
+func (s *EventService) GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 10)
 	return s.eventRepo.FindGroupedApproved(limit)
 }
 
-func (s *EventService) GetPending(limit int) ([]model.Event, error) {
+func (s *EventService) GetPending(limit int) ([]threadmodel.Event, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 10)
 	return s.eventRepo.FindPending(limit)
 }
 
-func (s *EventService) GetAdminEvents(status, name string, page, limit int) ([]model.Event, map[string][]model.EventReview, int64, error) {
+func (s *EventService) GetAdminEvents(status, name string, page, limit int) ([]threadmodel.Event, map[string][]eventreviewmodel.EventReview, int64, error) {
 	status = strings.TrimSpace(status)
 	if err := validateEventStatusFilter(status); err != nil {
 		return nil, nil, 0, err
@@ -166,7 +168,7 @@ func (s *EventService) GetAdminEvents(status, name string, page, limit int) ([]m
 	return events, reviews, total, nil
 }
 
-func (s *EventService) GetMyEvents(userID uint, status string, page, limit int) ([]model.Event, map[string][]model.EventReview, int64, error) {
+func (s *EventService) GetMyEvents(userID uint, status string, page, limit int) ([]threadmodel.Event, map[string][]eventreviewmodel.EventReview, int64, error) {
 	status = strings.TrimSpace(status)
 	if err := validateEventStatusFilter(status); err != nil {
 		return nil, nil, 0, err
@@ -183,7 +185,7 @@ func (s *EventService) GetMyEvents(userID uint, status string, page, limit int) 
 	return events, reviews, total, nil
 }
 
-func (s *EventService) eventReviewsByEvents(events []model.Event) (map[string][]model.EventReview, error) {
+func (s *EventService) eventReviewsByEvents(events []threadmodel.Event) (map[string][]eventreviewmodel.EventReview, error) {
 	eventIDs := make([]string, 0, len(events))
 	for _, event := range events {
 		eventIDs = append(eventIDs, event.ID)
@@ -191,7 +193,7 @@ func (s *EventService) eventReviewsByEvents(events []model.Event) (map[string][]
 	return s.eventReviewRepo.FindByEventIDs(eventIDs)
 }
 
-func (s *EventService) Update(ctx context.Context, id, title, description, location, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool, attachments []*multipart.FileHeader) (*model.Event, error) {
+func (s *EventService) Update(ctx context.Context, id, title, description, location, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool, attachments []*multipart.FileHeader) (*threadmodel.Event, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, err
 	}
@@ -219,7 +221,7 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 		return nil, errors.New("cannot update event_type or attachments on an approved event")
 	}
 	if eventType != "" {
-		if err := model.ValidateEventType(eventType); err != nil {
+		if err := threadmodel.ValidateEventType(eventType); err != nil {
 			return nil, err
 		}
 		event.Type = eventType
@@ -353,7 +355,7 @@ func (s *EventService) createEventReview(eventID, adminID, action, note string) 
 	if err != nil {
 		return errors.New("invalid admin id")
 	}
-	review := &model.EventReview{
+	review := &eventreviewmodel.EventReview{
 		ID:        uuid.NewString(),
 		EventID:   eventID,
 		AdminID:   uint(adminIDUint),
@@ -364,7 +366,7 @@ func (s *EventService) createEventReview(eventID, adminID, action, note string) 
 	return s.eventReviewRepo.Create(review)
 }
 
-func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, filter, sort string, page, limit int) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *EventService) GetThreads(ctx context.Context, requesterID *uint, id, filter, sort string, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, nil, 0, err
 	}
@@ -440,10 +442,10 @@ func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHe
 }
 
 func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
-	if err := model.ValidateUploadSize(header, model.MaxDocumentUploadSize); err != nil {
+	if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxDocumentUploadSize); err != nil {
 		return "", "", err
 	}
-	if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+	if err := threadmodel.ValidateEventAttachmentExt(header.Filename); err != nil {
 		return "", "", err
 	}
 	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
@@ -455,7 +457,7 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 		return "", "", err
 	}
 	defer f.Close()
-	if err := model.ValidateEventAttachmentFile(f); err != nil {
+	if err := threadmodel.ValidateEventAttachmentFile(f); err != nil {
 		return "", "", err
 	}
 	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
@@ -465,12 +467,12 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 	return objName, bucket, nil
 }
 
-func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.FileHeader, uploadType string) (model.EventPDFs, error) {
+func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.FileHeader, uploadType string) (threadmodel.EventPDFs, error) {
 	if err := validateEventPDFHeaders(headers); err != nil {
 		return nil, err
 	}
 
-	pdfs := make(model.EventPDFs, len(headers))
+	pdfs := make(threadmodel.EventPDFs, len(headers))
 	errCh := make(chan error, len(headers))
 	var wg sync.WaitGroup
 
@@ -484,7 +486,7 @@ func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.File
 				errCh <- err
 				return
 			}
-			pdfs[i] = model.EventPDF{ObjectName: objName, Bucket: bucket}
+			pdfs[i] = threadmodel.EventPDF{ObjectName: objName, Bucket: bucket}
 		}()
 	}
 
@@ -500,21 +502,21 @@ func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.File
 }
 
 func validateEventPDFHeaders(headers []*multipart.FileHeader) error {
-	if err := model.ValidateEventPDFCount(len(headers)); err != nil {
+	if err := threadmodel.ValidateEventPDFCount(len(headers)); err != nil {
 		return err
 	}
 	for _, header := range headers {
-		if err := model.ValidateUploadSize(header, model.MaxDocumentUploadSize); err != nil {
+		if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxDocumentUploadSize); err != nil {
 			return err
 		}
-		if err := model.ValidateEventAttachmentExt(header.Filename); err != nil {
+		if err := threadmodel.ValidateEventAttachmentExt(header.Filename); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *EventService) deletePDFs(ctx context.Context, pdfs model.EventPDFs) {
+func (s *EventService) deletePDFs(ctx context.Context, pdfs threadmodel.EventPDFs) {
 	for _, pdf := range pdfs {
 		if pdf.ObjectName == "" {
 			continue

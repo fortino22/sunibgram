@@ -5,12 +5,12 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
 func eventIDForThread(db *gorm.DB, threadID uint) (string, bool) {
-	var event model.ThreadEvent
+	var event threadmodel.ThreadEvent
 	if err := db.Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
 		return "", false
 	}
@@ -32,7 +32,7 @@ func patchEventCounter(db *gorm.DB, c *cache.Cache, eventID, column string, delt
 	case "repost_count":
 		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
 	}
-	db.Model(&model.Event{}).
+	db.Model(&threadmodel.Event{}).
 		Where("id = ?", eventID).
 		UpdateColumns(updates)
 	invalidateEventCounterCaches(c, eventID)
@@ -55,7 +55,7 @@ func patchEventCounters(db *gorm.DB, c *cache.Cache, eventID string, threadDelta
 		updates["repost_count"] = gorm.Expr("GREATEST(repost_count + ?, 0)", repostDelta)
 		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", repostDelta)
 	}
-	db.Model(&model.Event{}).
+	db.Model(&threadmodel.Event{}).
 		Where("id = ?", eventID).
 		UpdateColumns(updates)
 	invalidateEventCounterCaches(c, eventID)
@@ -66,7 +66,7 @@ func patchEventCounterByThreadID(db *gorm.DB, c *cache.Cache, threadID uint, col
 		patchEventCounter(db, c, eventID, column, delta)
 		return
 	}
-	var thread model.Thread
+	var thread threadmodel.Thread
 	if err := db.Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 		return
 	}
@@ -97,7 +97,7 @@ func refreshEventParticipantCount(db *gorm.DB, c *cache.Cache, eventID string) {
 			WHERE thread_events.event_id = ? AND threads.type <> ?
 		)
 		WHERE id = ?
-	`, eventID, model.ThreadTypeRepost, eventID)
+	`, eventID, threadmodel.ThreadTypeRepost, eventID)
 	invalidateEventCounterCaches(c, eventID)
 }
 

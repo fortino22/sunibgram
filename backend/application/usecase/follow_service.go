@@ -5,7 +5,8 @@ import (
 	"errors"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userstatmodel "github.com/sunibgram/domain/model/user_stat"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -54,11 +55,11 @@ func (s *FollowService) Unfollow(followerID, followingID uint) error {
 	return nil
 }
 
-func (s *FollowService) GetStat(userID uint) (*model.UserStat, error) {
+func (s *FollowService) GetStat(userID uint) (*userstatmodel.UserStat, error) {
 	return s.followRepo.GetStat(userID)
 }
 
-func (s *FollowService) GetFollowing(userID uint, page, limit int) ([]model.User, int64, error) {
+func (s *FollowService) GetFollowing(userID uint, page, limit int) ([]usermodel.User, int64, error) {
 	if _, err := s.userRepo.FindByID(userID); err != nil {
 		return nil, 0, errors.New("user not found")
 	}
@@ -66,7 +67,7 @@ func (s *FollowService) GetFollowing(userID uint, page, limit int) ([]model.User
 	return s.followRepo.GetFollowing(userID, page, limit)
 }
 
-func (s *FollowService) GetFollowers(userID uint, page, limit int) ([]model.User, int64, error) {
+func (s *FollowService) GetFollowers(userID uint, page, limit int) ([]usermodel.User, int64, error) {
 	if _, err := s.userRepo.FindByID(userID); err != nil {
 		return nil, 0, errors.New("user not found")
 	}

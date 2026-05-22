@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	notificationmodel "github.com/sunibgram/domain/model/notification"
 	"github.com/sunibgram/domain/service"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -113,7 +113,7 @@ func toNotificationListResponse(item service.NotificationListItem) notificationd
 	}
 }
 
-func toNotificationSenderResponse(sender *model.NotificationSender) notificationdto.NotificationSenderResponse {
+func toNotificationSenderResponse(sender *notificationmodel.NotificationSender) notificationdto.NotificationSenderResponse {
 	if sender == nil {
 		return notificationdto.NotificationSenderResponse{}
 	}

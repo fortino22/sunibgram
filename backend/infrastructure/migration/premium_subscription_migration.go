@@ -5,12 +5,12 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/sunibgram/domain/model"
+	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 )
 
 func migratePremiumSubscriptions(db *gorm.DB) {
-	if err := db.AutoMigrate(&model.PremiumSubscription{}); err != nil {
-		log.Fatalf("AutoMigrate %T: %v", &model.PremiumSubscription{}, err)
+	if err := db.AutoMigrate(&premiumsubscriptionmodel.PremiumSubscription{}); err != nil {
+		log.Fatalf("AutoMigrate %T: %v", &premiumsubscriptionmodel.PremiumSubscription{}, err)
 	}
 
 	db.Exec("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_premium BOOLEAN NOT NULL DEFAULT false")

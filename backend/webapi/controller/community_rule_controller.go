@@ -3,7 +3,7 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
 	"github.com/sunibgram/domain/service"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	communityruledto "github.com/sunibgram/webapi/dto/community_rule"
@@ -31,7 +31,7 @@ func (c *CommunityRuleController) List(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(communityruledto.CommunityRuleListResponse{Data: c.toResponses(rules)})
 }
 
-func (c *CommunityRuleController) toResponses(rules []model.CommunityRule) []communityruledto.CommunityRuleResponse {
+func (c *CommunityRuleController) toResponses(rules []communityrulemodel.CommunityRule) []communityruledto.CommunityRuleResponse {
 	out := make([]communityruledto.CommunityRuleResponse, len(rules))
 	for i := range rules {
 		out[i] = communityruledto.CommunityRuleResponse{

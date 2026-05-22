@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/sunibgram/domain/model"
+	eventthreadpinmodel "github.com/sunibgram/domain/model/event_thread_pin"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -57,7 +57,7 @@ func (s *EventThreadPinService) Pin(ctx context.Context, eventID string, actorUs
 			return err
 		}
 	}
-	return s.pinRepo.Pin(&model.EventThreadPin{EventID: eventID, ThreadID: threadID})
+	return s.pinRepo.Pin(&eventthreadpinmodel.EventThreadPin{EventID: eventID, ThreadID: threadID})
 }
 
 func (s *EventThreadPinService) Unpin(ctx context.Context, eventID string, actorUserID, threadID uint) error {
@@ -81,6 +81,6 @@ func (s *EventThreadPinService) Unpin(ctx context.Context, eventID string, actor
 	return s.pinRepo.Unpin(eventID, threadID)
 }
 
-func (s *EventThreadPinService) GetPinned(eventID string) (*model.EventThreadPin, error) {
+func (s *EventThreadPinService) GetPinned(eventID string) (*eventthreadpinmodel.EventThreadPin, error) {
 	return s.pinRepo.FindByEventID(eventID)
 }

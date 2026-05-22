@@ -3,11 +3,12 @@ package service
 import (
 	"context"
 
-	"github.com/sunibgram/domain/model"
+	chatmodel "github.com/sunibgram/domain/model/chat"
+	chatreactionmodel "github.com/sunibgram/domain/model/chat_reaction"
 )
 
 type IChatReactionService interface {
-	Add(ctx context.Context, chatID, userID uint, emoji string) (*model.Chat, error)
-	Remove(ctx context.Context, chatID, userID uint, emoji string) (*model.Chat, error)
-	GetByChatIDs(chatIDs []uint) ([]model.ChatReaction, error)
+	Add(ctx context.Context, chatID, userID uint, emoji string) (*chatmodel.Chat, error)
+	Remove(ctx context.Context, chatID, userID uint, emoji string) (*chatmodel.Chat, error)
+	GetByChatIDs(chatIDs []uint) ([]chatreactionmodel.ChatReaction, error)
 }

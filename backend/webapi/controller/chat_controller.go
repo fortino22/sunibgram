@@ -10,7 +10,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/model"
+	chatmodel "github.com/sunibgram/domain/model/chat"
+	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
+	chatreactionmodel "github.com/sunibgram/domain/model/chat_reaction"
 	"github.com/sunibgram/domain/service"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -51,7 +53,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 
 	var gifURL *string
 	if raw := strings.TrimSpace(ctx.FormValue("gif_url")); raw != "" {
-		if err := model.ValidateGifURL(raw); err != nil {
+		if err := chatmodel.ValidateGifURL(raw); err != nil {
 			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		gifURL = &raw
@@ -80,7 +82,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 		return HandleServiceError(ctx, err)
 	}
 
-	var media []model.ChatMedia
+	var media []chatmediamodel.ChatMedia
 	if len(files) > 0 {
 		media, err = c.chatMediaService.Upload(ctx.Context(), chat.ChatID, claims.UserID, files)
 		if err != nil {
@@ -332,33 +334,33 @@ func (c *ChatController) broadcastReadReceipts(roomID, readBy uint, results []se
 	}
 }
 
-func (c *ChatController) loadMediaByChat(chats []model.Chat) map[uint][]model.ChatMedia {
+func (c *ChatController) loadMediaByChat(chats []chatmodel.Chat) map[uint][]chatmediamodel.ChatMedia {
 	ids := make([]uint, len(chats))
 	for i := range chats {
 		ids[i] = chats[i].ChatID
 	}
 	allMedia, _ := c.chatMediaService.GetByChatIDs(ids)
-	byChat := make(map[uint][]model.ChatMedia, len(ids))
+	byChat := make(map[uint][]chatmediamodel.ChatMedia, len(ids))
 	for _, m := range allMedia {
 		byChat[m.ChatID] = append(byChat[m.ChatID], m)
 	}
 	return byChat
 }
 
-func (c *ChatController) loadReactionsByChat(chats []model.Chat) map[uint][]model.ChatReaction {
+func (c *ChatController) loadReactionsByChat(chats []chatmodel.Chat) map[uint][]chatreactionmodel.ChatReaction {
 	ids := make([]uint, len(chats))
 	for i := range chats {
 		ids[i] = chats[i].ChatID
 	}
 	allReactions, _ := c.chatReactionService.GetByChatIDs(ids)
-	byChat := make(map[uint][]model.ChatReaction, len(ids))
+	byChat := make(map[uint][]chatreactionmodel.ChatReaction, len(ids))
 	for _, r := range allReactions {
 		byChat[r.ChatID] = append(byChat[r.ChatID], r)
 	}
 	return byChat
 }
 
-func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, media []model.ChatMedia, reactions []model.ChatReaction) chatdto.ChatResponse {
+func (c *ChatController) toChatResponse(ctx context.Context, chat *chatmodel.Chat, media []chatmediamodel.ChatMedia, reactions []chatreactionmodel.ChatReaction) chatdto.ChatResponse {
 	var deletedAt *dtoutils.FormattedTime
 	if chat.DeletedAt != nil {
 		wrapped := dtoutils.Wrap(*chat.DeletedAt)
@@ -403,7 +405,7 @@ func (c *ChatController) toChatResponse(ctx context.Context, chat *model.Chat, m
 	}
 }
 
-func (c *ChatController) toChatMediaResponses(ctx context.Context, media []model.ChatMedia) []chatdto.ChatMediaResponse {
+func (c *ChatController) toChatMediaResponses(ctx context.Context, media []chatmediamodel.ChatMedia) []chatdto.ChatMediaResponse {
 	out := make([]chatdto.ChatMediaResponse, len(media))
 	for i := range media {
 		u, err := c.chatMediaService.GeneratePresignedURL(ctx, media[i].Bucket, media[i].ObjectName)
@@ -420,7 +422,7 @@ func (c *ChatController) toChatMediaResponses(ctx context.Context, media []model
 	return out
 }
 
-func groupReactions(reactions []model.ChatReaction) []chatdto.ChatReactionSummary {
+func groupReactions(reactions []chatreactionmodel.ChatReaction) []chatdto.ChatReactionSummary {
 	if len(reactions) == 0 {
 		return []chatdto.ChatReactionSummary{}
 	}

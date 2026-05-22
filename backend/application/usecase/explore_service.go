@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	exploremodel "github.com/sunibgram/domain/model/explore"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -24,7 +25,7 @@ func NewExploreService(exploreRepo repository.IExploreRepository, threadRepo rep
 	return &ExploreService{exploreRepo: exploreRepo, threadRepo: threadRepo, settingsRepo: settingsRepo, followRepo: followRepo}
 }
 
-func (s *ExploreService) ExploreSearch(ctx context.Context, query string, requesterID *uint) (*model.ExploreResult, error) {
+func (s *ExploreService) ExploreSearch(ctx context.Context, query string, requesterID *uint) (*exploremodel.ExploreResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, errors.New("query is required")
@@ -43,7 +44,7 @@ func (s *ExploreService) ExploreSearch(ctx context.Context, query string, reques
 	return result, nil
 }
 
-func (s *ExploreService) filterPublicThreads(ctx context.Context, threads []model.ExploreThreadResult) ([]model.ExploreThreadResult, error) {
+func (s *ExploreService) filterPublicThreads(ctx context.Context, threads []exploremodel.ExploreThreadResult) ([]exploremodel.ExploreThreadResult, error) {
 	userIDs := make([]uint, 0, len(threads))
 	seen := make(map[uint]struct{}, len(threads))
 	for _, thread := range threads {
@@ -59,7 +60,7 @@ func (s *ExploreService) filterPublicThreads(ctx context.Context, threads []mode
 		return nil, err
 	}
 
-	filtered := make([]model.ExploreThreadResult, 0, len(threads))
+	filtered := make([]exploremodel.ExploreThreadResult, 0, len(threads))
 	for _, thread := range threads {
 		if !privacyMap[thread.UserID] {
 			filtered = append(filtered, thread)
@@ -68,7 +69,7 @@ func (s *ExploreService) filterPublicThreads(ctx context.Context, threads []mode
 	return filtered, nil
 }
 
-func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, nil, 0, err
@@ -84,7 +85,7 @@ func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requeste
 	return threads, parents, total, nil
 }
 
-func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, []*model.Thread, int64, error) {
+func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, nil, 0, err
@@ -100,7 +101,7 @@ func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, reque
 	return threads, parents, total, nil
 }
 
-func (s *ExploreService) GetPeople(ctx context.Context, query string, requesterID uint) ([]model.ExploreUserResult, error) {
+func (s *ExploreService) GetPeople(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreUserResult, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, err
@@ -108,7 +109,7 @@ func (s *ExploreService) GetPeople(ctx context.Context, query string, requesterI
 	return s.exploreRepo.FindPeople(ctx, query, requesterID, defaultExploreLimit)
 }
 
-func (s *ExploreService) GetMediaPosts(ctx context.Context, query string, requesterID uint) ([]model.Thread, int64, error) {
+func (s *ExploreService) GetMediaPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, 0, err
@@ -120,7 +121,7 @@ func (s *ExploreService) GetMediaPosts(ctx context.Context, query string, reques
 	return threads, total, nil
 }
 
-func (s *ExploreService) GetCommunities(ctx context.Context, query string, requesterID uint) ([]model.ExploreCommunityResult, int64, error) {
+func (s *ExploreService) GetCommunities(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreCommunityResult, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, 0, err
@@ -128,7 +129,7 @@ func (s *ExploreService) GetCommunities(ctx context.Context, query string, reque
 	return s.exploreRepo.FindCommunities(ctx, query, requesterID, defaultExploreLimit)
 }
 
-func (s *ExploreService) GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]model.ExploreUserResult, error) {
+func (s *ExploreService) GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, defaultExploreLimit)
 	return s.exploreRepo.FindSuggestedPeople(ctx, requesterID, limit)
 }

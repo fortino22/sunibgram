@@ -2,10 +2,10 @@ package usecase
 
 import (
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
-func (s *ThreadService) GetFacultyThreads(facultyID, requesterID uint, page, limit int) ([]model.Thread, int64, error) {
+func (s *ThreadService) GetFacultyThreads(facultyID, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	return s.threadRepo.FindByFacultyID(facultyID, &requesterID, page, limit)
 }

@@ -5,7 +5,9 @@ import (
 	"errors"
 
 	"github.com/sunibgram/application/helper"
-	"github.com/sunibgram/domain/model"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
+	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -39,7 +41,7 @@ func (s *CommunityRequestService) Send(ctx context.Context, communityID, userID 
 	if !community.IsWritable() {
 		return errors.New("community is inactive")
 	}
-	if community.Visibility != model.CommunityVisibilityPrivate {
+	if community.Visibility != communitymodel.CommunityVisibilityPrivate {
 		return errors.New("community is not private, use join instead")
 	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err == nil {
@@ -47,18 +49,18 @@ func (s *CommunityRequestService) Send(ctx context.Context, communityID, userID 
 	}
 	if existing, err := s.requestRepo.FindRequest(communityID, userID); err == nil {
 		switch existing.Status {
-		case model.CommunityRequestStatusPending:
+		case communityrequestmodel.CommunityRequestStatusPending:
 			return errors.New("request already pending")
-		case model.CommunityRequestStatusApproved:
+		case communityrequestmodel.CommunityRequestStatusApproved:
 			return errors.New("already a member")
-		case model.CommunityRequestStatusDeclined:
-			return s.requestRepo.UpdateStatus(communityID, userID, model.CommunityRequestStatusPending)
+		case communityrequestmodel.CommunityRequestStatusDeclined:
+			return s.requestRepo.UpdateStatus(communityID, userID, communityrequestmodel.CommunityRequestStatusPending)
 		}
 	}
-	req := &model.CommunityRequest{
+	req := &communityrequestmodel.CommunityRequest{
 		CommunityID: communityID,
 		UserID:      userID,
-		Status:      model.CommunityRequestStatusPending,
+		Status:      communityrequestmodel.CommunityRequestStatusPending,
 	}
 	return s.requestRepo.Save(req)
 }
@@ -68,7 +70,7 @@ func (s *CommunityRequestService) Cancel(ctx context.Context, communityID, userI
 	if err != nil {
 		return errors.New("request not found")
 	}
-	if req.Status != model.CommunityRequestStatusPending {
+	if req.Status != communityrequestmodel.CommunityRequestStatusPending {
 		return errors.New("request is not pending")
 	}
 	return s.requestRepo.Delete(communityID, userID)
@@ -86,16 +88,16 @@ func (s *CommunityRequestService) Approve(ctx context.Context, communityID, admi
 	if err != nil {
 		return errors.New("join request does not exist")
 	}
-	if req.Status != model.CommunityRequestStatusPending {
+	if req.Status != communityrequestmodel.CommunityRequestStatusPending {
 		return errors.New("join request is already " + string(req.Status))
 	}
-	if err := s.requestRepo.UpdateStatus(communityID, targetUserID, model.CommunityRequestStatusApproved); err != nil {
+	if err := s.requestRepo.UpdateStatus(communityID, targetUserID, communityrequestmodel.CommunityRequestStatusApproved); err != nil {
 		return err
 	}
-	member := &model.CommunityMember{
+	member := &communitymembermodel.CommunityMember{
 		CommunityID: communityID,
 		UserID:      targetUserID,
-		Role:        model.CommunityMemberRoleMember,
+		Role:        communitymembermodel.CommunityMemberRoleMember,
 	}
 	if err := s.memberRepo.Save(member); err != nil {
 		return err
@@ -119,13 +121,13 @@ func (s *CommunityRequestService) Decline(ctx context.Context, communityID, admi
 	if err != nil {
 		return errors.New("join request does not exist")
 	}
-	if req.Status != model.CommunityRequestStatusPending {
+	if req.Status != communityrequestmodel.CommunityRequestStatusPending {
 		return errors.New("join request is already " + string(req.Status))
 	}
-	return s.requestRepo.UpdateStatus(communityID, targetUserID, model.CommunityRequestStatusDeclined)
+	return s.requestRepo.UpdateStatus(communityID, targetUserID, communityrequestmodel.CommunityRequestStatusDeclined)
 }
 
-func (s *CommunityRequestService) GetPending(ctx context.Context, communityID, adminUserID uint, page, limit int) ([]model.CommunityRequest, int64, error) {
+func (s *CommunityRequestService) GetPending(ctx context.Context, communityID, adminUserID uint, page, limit int) ([]communityrequestmodel.CommunityRequest, int64, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
 	}

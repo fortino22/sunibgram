@@ -3,7 +3,7 @@ package usecase
 import (
 	"errors"
 
-	"github.com/sunibgram/domain/model"
+	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
 	"github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/domain/service"
 )
@@ -36,7 +36,7 @@ func (s *ThreadPinService) Pin(userID, threadID uint) error {
 		}
 	}
 
-	return s.threadPinRepo.Pin(&model.ThreadPin{UserID: userID, ThreadID: threadID})
+	return s.threadPinRepo.Pin(&threadpinmodel.ThreadPin{UserID: userID, ThreadID: threadID})
 }
 
 func (s *ThreadPinService) Unpin(userID, threadID uint) error {
