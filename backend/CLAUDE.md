@@ -4,52 +4,65 @@ Guidance for Claude Code when working in this directory.
 
 ## Architecture
 
-Strict Clean Architecture. **Dependency rule: `CMD → WebAPI → Application → Domain ← Infrastructure`**. Domain has zero external imports.
+Strict Clean Architecture, feature-modular. Every layer (`domain/`, `application/`, `infrastructure/`, `webapi/`) is split into per-module subdirectories so each feature is locatable as a folder. **Dependency rule: `CMD → WebAPI → Application → Domain ← Infrastructure`**. Domain has zero external imports.
 
-| Layer | Package | Responsibility |
-|---|---|---|
-| Domain | `domain/model/` | Structs, GORM tags, business logic, validation |
-| Domain | `domain/repository/` | Repository interfaces (`IXxxRepository`) |
-| Domain | `domain/service/` | Service interfaces (`IXxxService`) |
-| Application | `application/usecase/` | Implements `IXxxService`; orchestration only |
-| Application | `application/helper/` | Shared logic: hashtag extraction, media upload, pagination, thread visibility, notifications |
-| Infrastructure | `infrastructure/repository/` | Implements `IXxxRepository`; GORM + Redis |
-| Infrastructure | `infrastructure/storage/` | MinIO (`IStorageService`) |
-| Infrastructure | `infrastructure/socket/` | WebSocket hub implementation |
-| Infrastructure | `infrastructure/scheduler/` | Weekly background tasks (event/hashtag counter resets) |
-| Infrastructure | `infrastructure/ollama/` | Ollama AI client (thread summaries) |
-| Infrastructure | `infrastructure/email/` | SMTP client |
-| Infrastructure | `infrastructure/ratelimit/` | Rate limiter middleware |
-| WebAPI | `webapi/controller/` | Fiber handlers → parse request → call service → DTO |
-| WebAPI | `webapi/router/` | Route registration |
-| WebAPI | `webapi/socket/` | Socket.io event handlers (chat, notifications) |
-| WebAPI | `webapi/utils/` | `Claims` struct, feed builder, timeago |
-| DTO | `dto/` | Request/response structs; WebAPI only |
-| CMD | `cmd/main.go` | DI wiring |
+### Layer / module map
+
+| Layer | Path | Package convention | Responsibility |
+|---|---|---|---|
+| Domain (model) | `domain/model/<m>/` | `<m>model` (e.g. `threadmodel`, `usermodel`) | Structs, GORM tags, business logic, validation |
+| Domain (repo iface) | `domain/repository/<m>/` | `<m>repoiface` | `IXxxRepository` interfaces |
+| Domain (svc iface) | `domain/service/<m>/` | `<m>svciface` | `IXxxService` interfaces |
+| Application (usecase) | `application/usecase/<m>/` | `<m>uc` | Implements `IXxxService`; orchestration only |
+| Application (helper) | `application/helper/` | `helper` | Cross-cutting: pagination, hashtag extraction, media upload, thread visibility, chat crypto, notification helper |
+| Infrastructure (repo impl) | `infrastructure/repository/<m>/` | `<m>repo` | Implements `IXxxRepository`; GORM + Redis |
+| Infrastructure (shared) | `infrastructure/repository/_shared/` | `infrarepoShared` | `tag_keys.go`, `viewer_flag_sets.go`, `InteractionRepo`, `event_counter_helpers.go`, `explore_cache_invalidation.go` |
+| Infrastructure (others) | `infrastructure/{cache,storage,socket,scheduler,ollama,email,ratelimit,config,migration,seeder}/` | one package per subdir | Cross-cutting infra |
+| WebAPI (controller) | `webapi/controller/<m>/` | `<m>ctrl` | Fiber handlers → parse request → call service → DTO |
+| WebAPI (controller shared) | `webapi/controller/_shared/` | `ctrlshared` | `RequireAuth`, `ParseIDParam`, `HandleServiceError`, `FeedBuilder` wiring helpers |
+| WebAPI (router) | `webapi/router/<m>/` | `<m>route` | Per-module `Register<Xxx>Routes(...)` |
+| WebAPI (router entry) | `webapi/router/router.go` | `router` | Top-level `Register(...)` that calls every per-module register |
+| WebAPI (dto) | `webapi/dto/<m>/` | `<m>dto` | Request/response structs; WebAPI only |
+| WebAPI (dto shared) | `webapi/dto/_shared/` | `utils` (dir/pkg name intentionally mismatched) | `FormattedTime`, `Wrap` — JSON time helpers |
+| WebAPI (utils/middleware/socket/helper) | `webapi/{utils,middleware,socket,helper}/` | per dir | Claims, FeedBuilder, JWT MW, Socket.io handlers, timeago |
+| CMD | `cmd/main.go` | `main` | DI wiring |
 
 **Go module:** `github.com/sunibgram`
+
+### Cycle merges (matching tightly-coupled features in one package)
+
+Some domain entities share bidirectional GORM relations and must therefore live in the same package. These pairs are intentionally merged:
+
+| Merged into | Why |
+|---|---|
+| `user_faculty` → `user/` (both `usermodel`) | `User.UserFaculty` ↔ `UserFaculty.User` mutual struct field |
+| `event` → `thread/` (both `threadmodel`) | `Thread.ThreadEvents` ↔ `ThreadEvent.Thread` mutual struct field |
+| `community_member` usecase → `community/` (`communityuc`) | Mutual helper calls between community and community-member services |
+| `community_member` + `community_thread` controllers → `community/` (`communityctrl`) | Share `CommunityController` helpers |
 
 ---
 
 ## Adding a New Feature
 
-One file per concern. Multi-entity features get separate files at every layer.
+One file per concern, one module-dir per feature, **at every layer**.
 
 ```
-domain/model/xxx.go
-domain/repository/i_xxx_repository.go
-domain/service/i_xxx_service.go
-application/usecase/xxx_service.go
-infrastructure/repository/xxx_repository.go
-dto/xxx_dto.go
-webapi/controller/xxx_controller.go
-webapi/router/xxx_routes.go
+domain/model/xxx/xxx.go                          // package xxxmodel
+domain/repository/xxx/i_repository.go            // package xxxrepoiface
+domain/service/xxx/i_service.go                  // package xxxsvciface
+application/usecase/xxx/xxx_service.go           // package xxxuc
+infrastructure/repository/xxx/xxx_repository.go  // package xxxrepo
+webapi/dto/xxx/xxx_dto.go                        // package xxxdto
+webapi/controller/xxx/xxx_controller.go          // package xxxctrl
+webapi/router/xxx/xxx_routes.go                  // package xxxroute
 ```
 
 Wire in:
-1. `infrastructure/migration/migrate.go` → `db.AutoMigrate(&model.Xxx{})`
-2. `cmd/main.go` → repo → service → controller → `router.Register`
-3. `webapi/router/router.go` → add param + call `registerXxxRoutes`
+1. `infrastructure/migration/migrate.go` → `db.AutoMigrate(&xxxmodel.Xxx{})`
+2. `cmd/main.go` → repo (`xxxrepo.New...`) → service (`xxxuc.New...`) → controller (`xxxctrl.New...`)
+3. `webapi/router/router.go` → import `xxxroute "github.com/sunibgram/webapi/router/xxx"` + call `xxxroute.RegisterXxxRoutes(api, xxxCtrl, ...)`
+
+If the new entity's GORM relations create an import cycle with another entity (mutual struct fields), merge their `<m>model` files into a single directory rather than fight the cycle.
 
 ---
 
@@ -67,19 +80,19 @@ Wire in:
 | Reverse-index tag | Many parametric keys share an entity (pagination, query variants) | `cache.RegisterCacheKey(ctx, tag, key)` on Set + `cache.InvalidateTag(ctx, tag)` on mutation |
 | Pattern SCAN (batched) | Global low-cardinality families with no registry, or legacy paths | `cache.DeleteByPatterns(ctx, patterns...)` |
 
-Prefer tags over SCAN. Tags are O(set size), SCAN is O(keyspace). Add tag builders to `infrastructure/repository/tag_keys.go` — never inline `"tag:..."` strings. Tag set TTL = 24h (`cache.TagTTL`); any cached value with longer TTL must register under a different mechanism.
+Prefer tags over SCAN. Tags are O(set size), SCAN is O(keyspace). All tag builders live in `infrastructure/repository/_shared/tag_keys.go` (package `infrarepoShared`) — never inline `"tag:..."` strings. Tag set TTL = 24h (`cache.TagTTL`); any cached value with longer TTL must register under a different mechanism.
 
 **Tag invariant** — every Set of a key that should be tag-invalidatable must register under the tag. Half-migration = permanent stale (until cache TTL). Migrate one entity surface at a time: change all Set sites first, then switch invalidate path. Existing tagged surfaces:
-- `userFeedsTag(uid)` — `thread:userfeed/usermedia/following:<uid>:*` (Set sites in `thread_repository_user_feed.go`)
-- `userForYouTag(uid)` — `feed:foryou:user:<uid>:src/newcount:*` (Set sites in `thread_repository_for_you.go`)
-- `threadFeedsTag(tid)` — feed caches containing thread (Set sites in `thread_repository_*.go` via `storeFeedIDs`/`trackFeedCacheKey`)
-- `interactionThreadCacheKeysKey(table, tid)` — like/bookmark/repost listings containing thread (Set in `interaction_query.go`)
+- `infrarepoShared.UserFeedsTag(uid)` — `thread:userfeed/usermedia/following:<uid>:*` (Set sites in `infrastructure/repository/thread/thread_repository_user_feed.go`)
+- `infrarepoShared.UserForYouTag(uid)` — `feed:foryou:user:<uid>:src/newcount:*` (Set sites in `infrastructure/repository/thread/thread_repository_for_you.go`)
+- `infrarepoShared.ThreadFeedsTag(tid)` — feed caches containing thread (Set sites in `infrastructure/repository/thread/thread_repository_*.go` via `storeFeedIDs`/`trackFeedCacheKey`)
+- `infrarepoShared.InteractionThreadCacheKeysKey(table, tid)` — like/bookmark/repost listings containing thread (Set in `infrastructure/repository/_shared/interaction_query.go`)
 
 **Profile-meta overlay** — `FeedBuilder.AuthorField` in `webapi/utils/feed_builder.go` overlays `is_premium` + `faculty` from `user:meta:<uid>` (`ProfileMetaCacheKey`) onto cached threads. Lets `thread:id:*`, `thread:chain:*`, `thread:parent:*`, and feed-list caches stay cached across `UpdatePremium` / `UserFaculty` mutations — only `user:meta:<uid>` needs invalidation.
 
 Overlay correctness requires **both** at the controller call site:
-1. `FeedBuilder.ProfileSvc` set (non-nil) — `controller_builder_helpers.go:newFeedBuilder` wires this; bespoke `FeedBuilder{...}` literals must include it.
-2. `fb.LoadAvatarsForUserIDs(threadUserIDs(threads))` called before `ToFeedItem`/`AuthorField`.
+1. `FeedBuilder.ProfileSvc` set (non-nil) — `webapi/controller/_shared/controller_builder_helpers.go:NewFeedBuilder` wires this; bespoke `FeedBuilder{...}` literals must include it.
+2. `fb.LoadAvatarsForUserIDs(threadctrl.ThreadUserIDs(threads))` called before `ToFeedItem`/`AuthorField`.
 
 Missing either → falls back to embedded `User.IsPremium` / `User.UserFaculty` from cached thread = stale.
 
@@ -87,31 +100,29 @@ Missing either → falls back to embedded `User.IsPremium` / `User.UserFaculty` 
 
 | Mutation | DTOs that snapshot it | Required invalidation |
 |---|---|---|
-| `User.IsPremium` (`UpdatePremium`, `ExpireForDev`, trial activation) | `FeedAuthor`, `ReportUserResponse`, `NotificationSenderResponse`, `CommunityAbout/Member/Request/UserResponse`, `ExploreUserResponse`, `FollowUserResponse`, `UserProfileResponse` | `user:id:<uid>`, `user:meta:<uid>`, `notification:sender:<uid>`, `reports:all`, `reports:id:*`, `follows:user:*`, `community:about/users/requests/id:v2:*`, `community:threads:top/latest:*`, `explore:*`, all thread feed families (via `invalidateUserThreadCaches`) |
+| `User.IsPremium` (`UpdatePremium`, `ExpireForDev`, trial activation) | `threaddto.FeedAuthor`, `reportdto.ReportUserResponse`, `notificationdto.NotificationSenderResponse`, `communitydto.CommunityAbout/Member/Request/UserResponse`, `exploredto.ExploreUserResponse`, `followdto.FollowUserResponse`, `userprofiledto.UserProfileResponse` | `user:id:<uid>`, `user:meta:<uid>`, `notification:sender:<uid>`, `reports:all`, `reports:id:*`, `follows:user:*`, `community:about/users/requests/id:v2:*`, `community:threads:top/latest:*`, `explore:*`, all thread feed families (via `invalidateUserThreadCaches`) |
 | `UserFaculty.Save/Delete` (assignment) | `FeedAuthor.Faculty`, `ReportUserResponse.Faculty`, `NotificationSenderResponse.Faculty`, `UserProfileResponse.Faculty` | `userfaculty:user:<uid>`, `user:meta:<uid>`, `user:id:<uid>`, `profile:user:<uid>`, `notification:sender:<uid>`, `reports:all/id:*`, all thread feed families |
 | `Faculty.Update/Delete` (entity rename) | every overlay reads `user:meta:<uid>.FacultyName` | `faculty:id:<id>`, `faculty:list:*`, `profile:user:*`, `userfaculty:user:*`, **`user:meta:*`** (pattern — affects all users in faculty), `notification:sender:*`, `explore:*`, all thread feed families incl. `thread:id:*`, `thread:chain:*`, `feed:trending:global`, `feed:foryou:*` |
-| `Event.Update/Delete` | `FeedItemResponse.EventID/EventName` (cached threads preload `ThreadEvents.Event`) | `invalidateEvent(id)` (lists + `event:threads:<id>:*`) **plus** `invalidateEventThreadCaches(id)` per affected thread: `thread:id/parent`, `threadFeedsTag`, `interactionThreadCacheKeysKey`, user/community/chain patterns, `feed:trending:global`, `feed:foryou:*`, `thread:roots/all-communities/my-communities:*`, `community:threads:top/latest:*` |
+| `Event.Update/Delete` | `threaddto.FeedItemResponse.EventID/EventName` (cached threads preload `ThreadEvents.Event`) | `invalidateEvent(id)` (lists + `event:threads:<id>:*`) **plus** `invalidateEventThreadCaches(id)` per affected thread |
 
-Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src:*` (per-viewer foryou source) cache full `[]model.Thread` with full preload — they snapshot event_name/is_premium/faculty but do **not** register under `threadFeedsTag`. Mutations affecting fields embedded in cached threads must pattern-delete `feed:foryou:*` and direct-delete `feed:trending:global` explicitly. Overlay handles user fields, but event fields have no overlay → cache invalidation is the only fix.
+Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src:*` (per-viewer foryou source) cache full `[]threadmodel.Thread` with full preload — they snapshot event_name/is_premium/faculty but do **not** register under `threadFeedsTag`. Mutations affecting fields embedded in cached threads must pattern-delete `feed:foryou:*` and direct-delete `feed:trending:global` explicitly. Overlay handles user fields, but event fields have no overlay → cache invalidation is the only fix.
 
-**File validation** — lives in `domain/model/`. `model.ValidateImageExt` (jpg/jpeg/png/webp) in `media.go`. `model.ValidateThreadMediaExt` in `thread_media.go`. Never in application layer.
+**File validation** — lives in `domain/model/<m>/`. `mediamodel.ValidateImageExt` (jpg/jpeg/png/webp) in `media/media.go`. `threadmediamodel.ValidateThreadMediaExt` in `thread_media/thread_media.go`. Never in application layer.
 
 **File upload** — endpoints accepting files use `ctx.FormValue` + `ctx.FormFile` (multipart). No-file endpoints use `ctx.BodyParser` (JSON).
 
-**Storage** — `StorageUsecase` resolves bucket via `bucketWhitelist` in `storage_service.go` → env var → MinIO. Policy (`public`/`private`) via `MINIO_POLICY_<BUCKET_UPPER>`. Buckets auto-created on first upload.
+**Storage** — `storageuc.StorageUsecase` resolves bucket via `bucketWhitelist` in `application/usecase/storage/storage_service.go` → env var → MinIO. Policy (`public`/`private`) via `MINIO_POLICY_<BUCKET_UPPER>`. Buckets auto-created on first upload.
 
 **Auth** — JWT middleware at `webapi/middleware/auth.go`. Claims: `utils.Get(ctx)` from `webapi/utils/ctrl_helpers.go` → `Claims{UserID, Username, Email, RoleID, RoleName, SID}`.
 
-**Pagination** — services return `([]T, int64, error)`. Controllers wrap in `dto.PaginatedXxxResponse{Data, Meta: dto.FeedMeta{Total, Page, Limit}}`.
+**Pagination** — services return `([]T, int64, error)`. Controllers wrap in `<m>dto.PaginatedXxxResponse{Data, Meta: threaddto.FeedMeta{Total, Page, Limit}}`.
 
-**For You feed ordering** — `FindForYouFeed` in `thread_repository_for_you.go` splits candidates into two bands by `created_at` age vs `forYouFreshWindow` (1h):
-- `fresh` (age < 1h) → sorted `created_at DESC` (chronological, score ignored)
-- `ranked` (age ≥ 1h) → sorted `feed_score DESC` + `shuffleWithinBands` (current scored algorithm)
-- Final list = `[fresh..., ranked...]` → `forYouCandidateCap` (800) → `applyAuthorCap` (20/author, walks combined list in order)
+**For You feed ordering** — `FindForYouFeed` in `infrastructure/repository/thread/thread_repository_for_you.go` splits candidates into two bands by `created_at` age vs `forYouFreshWindow` (1h):
+- `fresh` (age < 1h) → sorted `created_at DESC`
+- `ranked` (age ≥ 1h) → sorted `feed_score DESC` + `shuffleWithinBands`
+- Final list = `[fresh..., ranked...]` → `forYouCandidateCap` (800) → `applyAuthorCap` (20/author)
 
-Fresh band guarantees newest posts surface at top regardless of score; ranked band gets the personalized scoring + shuffle. Tune via `forYouFreshWindow` const. Threads age out of fresh band on next request (re-evaluated per call using `time.Now()`).
-
-`GET /threads/feed/new-count?since_id=<id>` (`CountNewSinceID`) uses strict `thread_id > since_id` — frontend must pass `Math.max(...visibleIDs)` not `data[0].id`, because fresh band sorts by `created_at` not by ID. With fresh band non-empty `data[0]` usually equals max id (PK auto-increment correlates with time), but if fresh empty the ranked top item is **not** max id.
+`GET /threads/feed/new-count?since_id=<id>` (`CountNewSinceID`) uses strict `thread_id > since_id` — frontend must pass `Math.max(...visibleIDs)` not `data[0].id`, because fresh band sorts by `created_at` not by ID.
 
 **Error handling:**
 ```go
@@ -124,9 +135,9 @@ else            → fiber.StatusBadRequest
 
 **Counters** — `gorm.Expr("GREATEST(count - 1, 0)")` for decrement. Patch Redis after DB update.
 
-**WebSocket** — hub in `infrastructure/socket/hub.go` implements `domain/service/ISocketHub`. Handlers in `webapi/socket/`. Push notifications + chat events via Socket.io.
+**WebSocket** — hub in `infrastructure/socket/hub.go` implements `socket_hubsvciface.ISocketHub`. Handlers in `webapi/socket/`. Push notifications + chat events via Socket.io.
 
-**AI summaries** — `infrastructure/ollama/ollama_client.go` + `application/usecase/thread_summary_service.go`. Ollama generates thread summaries; seeded via `infrastructure/seeder/thread_summary_seeder.go`.
+**AI summaries** — `infrastructure/ollama/ollama_client.go` + `application/usecase/thread_summary/thread_summary_service.go`. Ollama generates thread summaries; seeded via `infrastructure/seeder/thread_summary_seeder.go`.
 
 **Schedulers** — `infrastructure/scheduler/` runs weekly cron jobs. Do not put business logic there; call service/repo methods directly.
 
@@ -155,4 +166,6 @@ else            → fiber.StatusBadRequest
 2. WebAPI imports Domain interfaces only, never Infrastructure
 3. Domain imports standard lib only — zero external packages
 4. Application knows Domain interfaces only, never concrete Infrastructure structs
-5. DTOs in WebAPI only — never in Domain or Application
+5. DTOs in `webapi/dto/<m>/` only — never in Domain or Application
+6. New feature → its own per-module subdir in EVERY layer above. Never add files directly to a layer's root dir (except `cmd/main.go` and `webapi/router/router.go`)
+7. Cross-cutting code goes in `_shared/` subdirs: `infrastructure/repository/_shared/` (`infrarepoShared`), `webapi/controller/_shared/` (`ctrlshared`), `webapi/dto/_shared/` (`utils`)
