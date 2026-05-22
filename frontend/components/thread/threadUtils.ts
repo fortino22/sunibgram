@@ -1,4 +1,4 @@
-import type { FeedAuthor, ThreadItem } from '@/lib/services/threads';
+import type { FeedAuthor, ThreadItem, ThreadMediaResponse } from '@/lib/services/threads';
 
 export type ThreadAuthorWithAvatar = FeedAuthor;
 
@@ -38,6 +38,34 @@ export function getRepostLabel(thread: ThreadItem, currentUserId: number | null 
 
 export function isOwnThread(thread: ThreadItem, userId: number | null | undefined): boolean {
   return userId !== null && userId !== undefined && thread.author.id === userId;
+}
+
+export function getPollOptionMedia(thread: Pick<ThreadItem, 'poll' | 'media'>): Array<ThreadMediaResponse | null> {
+  if (!thread.poll) {
+    return [];
+  }
+
+  const fallbackMedia =
+    thread.media.length === thread.poll.options.length
+      ? thread.media.map((item) => {
+          const url = item.url.trim();
+          return url ? { ...item, url } : null;
+        })
+      : [];
+
+  return thread.poll.options.map((option, index) => {
+    const optionUrl = option.image_url?.trim();
+
+    if (optionUrl) {
+      return { media_id: option.option_id, url: optionUrl };
+    }
+
+    return fallbackMedia[index] ?? null;
+  });
+}
+
+export function getPollMedia(thread: Pick<ThreadItem, 'poll' | 'media'>): ThreadMediaResponse[] {
+  return getPollOptionMedia(thread).filter((item): item is ThreadMediaResponse => item !== null);
 }
 
 export function truncateContent(value: string, maxLength = 140): string {

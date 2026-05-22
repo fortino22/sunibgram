@@ -8,13 +8,14 @@ import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
-import type { ThreadItem, ThreadMutationParams } from '@/lib/services/threads';
+import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
 import { ImageDetailModal } from './ImageDetailModal';
+import { ThreadPoll } from './ThreadPoll';
 import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
 import { QuotedPostBox } from './QuotedPostBox';
 
@@ -38,7 +39,7 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
   });
   const { like, repost, bookmark } = useThreadActions(root);
   const [isEditing, setIsEditing] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const author = getThreadAuthor(root);
   const canManage = isOwnThread(root, currentUserId);
   const repostLabel = getRepostLabel(root, currentUserId);
@@ -157,7 +158,7 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
               <ThreadBody
                 content={root.content}
                 media={root.media}
-                onImageClick={(i) => setLightboxIndex(i)}
+                onImageClick={(index) => setLightboxState({ media: root.media, index })}
               />
               {root.parent_context && (
                 <QuotedPostBox context={root.parent_context} />
@@ -165,6 +166,11 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
             </>
           )}
         </div>
+
+        <ThreadPoll
+          thread={root}
+          onImageClick={(media, index) => setLightboxState({ media, index })}
+        />
 
         {root.created_at && (
           <div style={{ marginTop: 16, fontSize: 15, color: 'var(--text-tertiary)' }}>
@@ -212,13 +218,15 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
 
       <ReplyTree threads={replies} />
 
-      {lightboxIndex !== null && (
+      {lightboxState !== null && (
         <ImageDetailModal
-          media={root.media}
-          currentIndex={lightboxIndex}
+          media={lightboxState.media}
+          currentIndex={lightboxState.index}
           thread={root}
-          onClose={() => setLightboxIndex(null)}
-          onNavigate={setLightboxIndex}
+          onClose={() => setLightboxState(null)}
+          onNavigate={(index) => setLightboxState((current) => (
+            current ? { ...current, index } : current
+          ))}
         />
       )}
     </main>

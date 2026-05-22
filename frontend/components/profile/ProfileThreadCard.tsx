@@ -9,12 +9,13 @@ import { ActionBar } from '@/components/shared/ActionBar';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
-import type { ThreadItem, ThreadMutationParams } from '@/lib/services/threads';
+import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from '@/components/thread/threadUtils';
 import { ThreadBody } from '@/components/thread/ThreadBody';
 import { ImageDetailModal } from '@/components/thread/ImageDetailModal';
 import { QuotedPostBox } from '@/components/thread/QuotedPostBox';
+import { ThreadPoll } from '@/components/thread/ThreadPoll';
 
 interface ProfileThreadCardProps {
   thread: ThreadItem;
@@ -32,7 +33,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const [isEditing, setIsEditing] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
   const replyUsername = replyingTo ?? thread.parent_context?.author.username;
@@ -179,7 +180,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               <ThreadBody
                 content={thread.content}
                 media={thread.media}
-                onImageClick={(i) => setLightboxIndex(i)}
+                onImageClick={(index) => setLightboxState({ media: thread.media, index })}
               />
               {!hideParentContext && thread.parent_context && (
                 <div onClick={(e) => e.stopPropagation()}>
@@ -189,14 +190,22 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
             </>
           )}
 
-          {lightboxIndex !== null && (
+          <ThreadPoll
+            thread={thread}
+            compact
+            onImageClick={(media, index) => setLightboxState({ media, index })}
+          />
+
+          {lightboxState !== null && (
             <div onClick={(e) => e.stopPropagation()}>
               <ImageDetailModal
-                media={thread.media}
-                currentIndex={lightboxIndex}
+                media={lightboxState.media}
+                currentIndex={lightboxState.index}
                 thread={thread}
-                onClose={() => setLightboxIndex(null)}
-                onNavigate={setLightboxIndex}
+                onClose={() => setLightboxState(null)}
+                onNavigate={(index) => setLightboxState((current) => (
+                  current ? { ...current, index } : current
+                ))}
               />
             </div>
           )}

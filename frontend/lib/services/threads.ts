@@ -16,6 +16,24 @@ export interface ThreadMediaResponse {
   url: string;
 }
 
+export interface PollOptionResponse {
+  option_id: number;
+  label: string;
+  image_url?: string;
+  vote_count: number;
+  percent: number;
+}
+
+export interface PollResponse {
+  poll_id: number;
+  question?: string;
+  ends_at: FormattedTime;
+  total_votes: number;
+  expired: boolean;
+  user_voted_option_id?: number | null;
+  options: PollOptionResponse[];
+}
+
 export interface ThreadResponse {
   thread_id: number;
   user_id: number;
@@ -24,6 +42,7 @@ export interface ThreadResponse {
   parent_id: number | null;
   root_id: number | null;
   media: ThreadMediaResponse[];
+  poll?: PollResponse;
   like_count: number;
   repost_count: number;
   bookmark_count: number;
@@ -82,6 +101,7 @@ export interface FeedParentContext {
   author: FeedAuthor;
   content: string;
   media: ThreadMediaResponse[];
+  poll?: PollResponse;
   stats: FeedStats;
   created_at: FormattedTime;
   updated_at: FormattedTime;
@@ -107,6 +127,7 @@ export interface FeedItemResponse {
   author: FeedAuthor;
   stats: FeedStats;
   media: ThreadMediaResponse[];
+  poll?: PollResponse;
   is_liked?: boolean;
   is_bookmarked?: boolean;
   is_reposted?: boolean;
@@ -128,12 +149,24 @@ export type ThreadListResponse = PaginatedFeedResponse;
 
 export type ThreadItem = FeedItemResponse;
 
+export interface ThreadPollOptionInput {
+  label: string;
+  image?: File | null;
+}
+
+export interface ThreadPollInput {
+  question?: string;
+  options: ThreadPollOptionInput[];
+  durationSeconds: number;
+}
+
 export interface ThreadMutationParams {
   content: string;
   files?: File[];
   parentId?: number | string;
   clearMedia?: boolean;
   isPrivate?: boolean;
+  poll?: ThreadPollInput;
 }
 
 export const DEFAULT_THREAD_CHAIN_PARAMS: Required<PaginationParams> = {
@@ -168,6 +201,19 @@ function buildThreadFormData(params: ThreadMutationParams): FormData {
   params.files?.forEach((file) => {
     formData.append('files', file);
   });
+  if (params.poll) {
+    formData.append('poll_question', params.poll.question?.trim() ?? '');
+    formData.append('poll_duration_seconds', String(params.poll.durationSeconds));
+    params.poll.options.forEach((option) => {
+      formData.append('poll_options', option.label);
+    });
+    const optionImages = params.poll.options.map((option) => option.image).filter((image): image is File => image instanceof File);
+    if (optionImages.length === params.poll.options.length) {
+      optionImages.forEach((image) => {
+        formData.append('poll_option_images', image);
+      });
+    }
+  }
   return formData;
 }
 
@@ -236,6 +282,14 @@ export function getThreadChain(
 
 export function createThread(params: ThreadMutationParams, token: string): Promise<ThreadResponse> {
   return api.post<ThreadResponse>('/api/threads', buildThreadFormData(params), token);
+}
+
+export function voteOnPoll(
+  id: number | string,
+  optionId: number,
+  token: string
+): Promise<ThreadMessageResponse> {
+  return api.post<ThreadMessageResponse>(`/api/threads/${id}/poll/vote`, { option_id: optionId }, token);
 }
 
 export function updateThread(

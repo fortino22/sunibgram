@@ -9,11 +9,12 @@ import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
-import type { ThreadItem, ThreadMutationParams } from '@/lib/services/threads';
+import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadHeader } from './ThreadHeader';
+import { ThreadPoll } from './ThreadPoll';
 import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
 import { ImageDetailModal } from './ImageDetailModal';
 
@@ -28,7 +29,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const { like, repost, bookmark } = useThreadActions(thread);
   const [isEditing, setIsEditing] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
   const repostLabel = getRepostLabel(thread, currentUserId);
@@ -113,9 +114,15 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
             content={thread.content}
             media={thread.media}
             compact={compact}
-            onImageClick={(i) => setLightboxIndex(i)}
+            onImageClick={(index) => setLightboxState({ media: thread.media, index })}
           />
         )}
+
+        <ThreadPoll
+          thread={thread}
+          compact={compact}
+          onImageClick={(media, index) => setLightboxState({ media, index })}
+        />
 
         {deleteMutation.isError && (
           <div
@@ -160,13 +167,15 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
         </div>
       </div>
 
-      {lightboxIndex !== null && (
+      {lightboxState !== null && (
         <ImageDetailModal
-          media={thread.media}
-          currentIndex={lightboxIndex}
+          media={lightboxState.media}
+          currentIndex={lightboxState.index}
           thread={thread}
-          onClose={() => setLightboxIndex(null)}
-          onNavigate={setLightboxIndex}
+          onClose={() => setLightboxState(null)}
+          onNavigate={(index) => setLightboxState((current) => (
+            current ? { ...current, index } : current
+          ))}
         />
       )}
       </div>

@@ -49,7 +49,7 @@ type ThreadPollVote struct {
 }
 
 func (p *ThreadPoll) IsExpired() bool {
-	return time.Now().After(p.EndsAt)
+	return !time.Now().Before(p.EndsAt)
 }
 
 func ValidatePollOptionsCount(n int) error {

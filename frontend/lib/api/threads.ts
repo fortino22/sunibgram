@@ -1,10 +1,11 @@
 import { api } from '@/lib/api';
-import type { ThreadResponse } from '@/lib/services/threads';
+import type { ThreadPollInput, ThreadResponse } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 
 export interface CreateThreadParams {
   content: string;
   files?: File[];
+  poll?: ThreadPollInput;
 }
 
 function buildCreateThreadFormData(params: CreateThreadParams) {
@@ -14,6 +15,20 @@ function buildCreateThreadFormData(params: CreateThreadParams) {
   params.files?.forEach((file) => {
     formData.append('files', file);
   });
+
+  if (params.poll) {
+    formData.append('poll_question', params.poll.question?.trim() ?? '');
+    formData.append('poll_duration_seconds', String(params.poll.durationSeconds));
+    params.poll.options.forEach((option) => {
+      formData.append('poll_options', option.label);
+    });
+    const optionImages = params.poll.options.map((option) => option.image).filter((image): image is File => image instanceof File);
+    if (optionImages.length === params.poll.options.length) {
+      optionImages.forEach((image) => {
+        formData.append('poll_option_images', image);
+      });
+    }
+  }
 
   return formData;
 }

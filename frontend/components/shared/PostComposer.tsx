@@ -1,6 +1,7 @@
 'use client';
 
-import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, Check } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, Check, BarChart3, Plus } from 'lucide-react';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -10,6 +11,8 @@ import {
 } from 'react';
 import dynamic from 'next/dynamic';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useFieldArray, useForm, useWatch } from 'react-hook-form';
+import { z } from 'zod';
 import { Avatar } from './Avatar';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useAuthStore } from '@/stores/authStore';
@@ -24,6 +27,7 @@ import {
   type CommunityData,
   type CommunityMessageResponse,
 } from '@/lib/services/communities';
+import { Input } from '@/components/ui/input';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
 import type { ThreadDetailData } from '@/hooks/useThread';
 import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
@@ -53,6 +57,74 @@ interface MutateContext {
   savedContent: string;
 }
 
+const MAX_POLL_OPTIONS = 4;
+const MAX_POLL_LABEL_LENGTH = 25;
+const MIN_POLL_DURATION_SECONDS = 5 * 60;
+const MAX_POLL_DURATION_SECONDS = 7 * 24 * 60 * 60;
+
+const pollSchema = z.object({
+  enabled: z.boolean(),
+  options: z.array(
+    z.object({
+      label: z.string().max(MAX_POLL_LABEL_LENGTH, `Choice must be ${MAX_POLL_LABEL_LENGTH} characters or less.`),
+      image: z.custom<File | undefined>((value) => value === undefined || value instanceof File),
+    })
+  ).min(2).max(MAX_POLL_OPTIONS),
+  days: z.number().int().min(0).max(7),
+  hours: z.number().int().min(0).max(23),
+  minutes: z.number().int().min(0).max(59),
+}).superRefine((value, ctx) => {
+  if (!value.enabled) {
+    return;
+  }
+
+  value.options.forEach((option, index) => {
+    const label = option.label.trim();
+    if (label.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Choice is required.',
+        path: ['options', index, 'label'],
+      });
+    }
+  });
+
+  const durationSeconds =
+    value.days * 24 * 60 * 60 +
+    value.hours * 60 * 60 +
+    value.minutes * 60;
+
+  if (durationSeconds < MIN_POLL_DURATION_SECONDS || durationSeconds > MAX_POLL_DURATION_SECONDS) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Poll length must be between 5 minutes and 7 days.',
+      path: ['minutes'],
+    });
+  }
+
+  const imageCount = value.options.filter((option) => option.image instanceof File).length;
+  if (imageCount > 0 && imageCount !== value.options.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Add images to every choice or remove them all.',
+      path: ['options'],
+    });
+  }
+});
+
+type PollFormValues = z.infer<typeof pollSchema>;
+
+const defaultPollValues: PollFormValues = {
+  enabled: false,
+  options: [
+    { label: '', image: undefined },
+    { label: '', image: undefined },
+  ],
+  days: 1,
+  hours: 0,
+  minutes: 0,
+};
+
 function getPreviewKind(file: File): PreviewKind {
   if (file.type.startsWith('image/')) return 'image';
   if (file.type.startsWith('video/')) return 'video';
@@ -65,6 +137,14 @@ function isSameFile(left: File, right: File): boolean {
     left.lastModified === right.lastModified &&
     left.size === right.size
   );
+}
+
+function countRunes(value: string): number {
+  return Array.from(value).length;
+}
+
+function buildPollDuration(values: Pick<PollFormValues, 'days' | 'hours' | 'minutes'>): number {
+  return values.days * 24 * 60 * 60 + values.hours * 60 * 60 + values.minutes * 60;
 }
 
 export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess }: PostComposerProps) {
@@ -81,10 +161,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const audienceMenuRef = useRef<HTMLDivElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
+  const pollOptionInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const pollImageUrlsRef = useRef<Record<string, string>>({});
 
   const [content, setContent] = useState('');
   const [previews, setPreviews] = useState<FilePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
+  const [pollImageUrls, setPollImageUrls] = useState<Record<string, string>>({});
 
   // Audience
   const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
@@ -95,13 +178,53 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [gifFetching, setGifFetching] = useState(false);
 
+  const pollForm = useForm<PollFormValues>({
+    resolver: zodResolver(pollSchema),
+    defaultValues: defaultPollValues,
+    mode: 'onChange',
+  });
+  const pollFields = useFieldArray({
+    control: pollForm.control,
+    name: 'options',
+  });
+  const pollEnabled = useWatch({
+    control: pollForm.control,
+    name: 'enabled',
+    defaultValue: false,
+  });
+  const pollOptions = useWatch({
+    control: pollForm.control,
+    name: 'options',
+    defaultValue: defaultPollValues.options,
+  });
+  const pollDays = useWatch({
+    control: pollForm.control,
+    name: 'days',
+    defaultValue: defaultPollValues.days,
+  });
+  const pollHours = useWatch({
+    control: pollForm.control,
+    name: 'hours',
+    defaultValue: defaultPollValues.hours,
+  });
+  const pollMinutes = useWatch({
+    control: pollForm.control,
+    name: 'minutes',
+    defaultValue: defaultPollValues.minutes,
+  });
+
   useEffect(() => {
     previewsRef.current = previews;
   }, [previews]);
 
   useEffect(() => {
+    pollImageUrlsRef.current = pollImageUrls;
+  }, [pollImageUrls]);
+
+  useEffect(() => {
     return () => {
       previewsRef.current.forEach((p) => URL.revokeObjectURL(p.url));
+      Object.values(pollImageUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
     };
   }, []);
 
@@ -131,6 +254,36 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const avatarSrc = profile?.avatar ?? null;
   const selectedFiles = previews.map((p) => p.file);
   const normalizedContent = content.trim();
+  const pollDurationSeconds = buildPollDuration({ days: pollDays, hours: pollHours, minutes: pollMinutes });
+  const rawOptionsError = pollForm.formState.errors.options;
+  const pollOptionsError =
+    !Array.isArray(rawOptionsError) && typeof rawOptionsError?.message === 'string'
+      ? rawOptionsError.message
+      : undefined;
+
+  function revokePollImage(key: string) {
+    setPollImageUrls((current) => {
+      const next = { ...current };
+      const url = next[key];
+      if (url) {
+        URL.revokeObjectURL(url);
+        delete next[key];
+      }
+      return next;
+    });
+  }
+
+  function resetPollComposer() {
+    Object.values(pollImageUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    pollImageUrlsRef.current = {};
+    setPollImageUrls({});
+    Object.values(pollOptionInputRefs.current).forEach((input) => {
+      if (input) {
+        input.value = '';
+      }
+    });
+    pollForm.reset(defaultPollValues);
+  }
 
   // Regular thread mutation
   const mutation = useMutation<ThreadResponse, Error, ThreadMutationParams, MutateContext | undefined>({
@@ -240,7 +393,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     !isPending &&
     !compressing &&
     !gifFetching &&
-    (normalizedContent.length > 0 || selectedFiles.length > 0);
+    (normalizedContent.length > 0 || selectedFiles.length > 0 || (pollEnabled && !isReply));
 
   async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(event.target.files ?? []);
@@ -277,6 +430,78 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       if (toRemove) URL.revokeObjectURL(toRemove.url);
       return cur.filter((p) => !isSameFile(p.file, target));
     });
+  }
+
+  function handleSelectAudience(community: CommunityData | null) {
+    if (community && pollEnabled) {
+      toast.error('Polls can only be posted to Everyone with the current backend.');
+      return;
+    }
+
+    setSelectedCommunity(community);
+    setShowAudienceMenu(false);
+  }
+
+  function handleAddPoll() {
+    if (isReply) {
+      return;
+    }
+
+    if (selectedCommunity) {
+      toast.error('Polls can only be posted to Everyone with the current backend.');
+      return;
+    }
+
+    pollForm.setValue('enabled', true, { shouldDirty: true, shouldValidate: true });
+  }
+
+  function handleRemovePoll() {
+    resetPollComposer();
+  }
+
+  async function handlePollImageChange(index: number, fieldId: string, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (file.size > IMAGE_MAX_BYTES.raw) {
+      toast.error('Poll option images must be 5 MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    revokePollImage(fieldId);
+    const url = URL.createObjectURL(file);
+    setPollImageUrls((current) => ({ ...current, [fieldId]: url }));
+    pollForm.setValue(`options.${index}.image`, file, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    event.target.value = '';
+  }
+
+  function handleRemovePollImage(index: number, fieldId: string) {
+    revokePollImage(fieldId);
+    pollForm.setValue(`options.${index}.image`, undefined, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
+    const input = pollOptionInputRefs.current[fieldId];
+    if (input) {
+      input.value = '';
+    }
+  }
+
+  function handleRemovePollOption(index: number) {
+    const field = pollFields.fields[index];
+    if (!field) {
+      return;
+    }
+
+    revokePollImage(field.id);
+    pollFields.remove(index);
   }
 
   function handleEmojiClick(emojiData: EmojiClickData) {
@@ -316,6 +541,14 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
+
+    if (pollEnabled) {
+      const valid = await pollForm.trigger();
+      if (!valid) {
+        return;
+      }
+    }
+
     try {
       if (!isReply && selectedCommunity) {
         await communityMutation.mutateAsync({
@@ -324,16 +557,30 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
           files: selectedFiles,
         });
       } else {
+        const pollValues = pollForm.getValues();
         await mutation.mutateAsync({
           content: normalizedContent,
           files: selectedFiles,
           isPrivate: false,
+          ...(pollEnabled && {
+            poll: {
+              question: '',
+              options: pollValues.options.map((option) => ({
+                label: option.label.trim(),
+                image: option.image,
+              })),
+              durationSeconds: buildPollDuration(pollValues),
+            },
+          }),
           ...(isReply && { parentId }),
         });
       }
       if (!isReply) setContent('');
       previews.forEach((p) => URL.revokeObjectURL(p.url));
       setPreviews([]);
+      if (!isReply) {
+        resetPollComposer();
+      }
       if (fileInputRef.current) fileInputRef.current.value = '';
       onSuccess?.();
     } catch {
@@ -416,7 +663,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   {/* Everyone option */}
                   <button
                     type="button"
-                    onClick={() => { setSelectedCommunity(null); setShowAudienceMenu(false); }}
+                    onClick={() => handleSelectAudience(null)}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -451,7 +698,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         <button
                           key={c.community_id}
                           type="button"
-                          onClick={() => { setSelectedCommunity(c); setShowAudienceMenu(false); }}
+                          onClick={() => handleSelectAudience(c)}
                           style={{
                             width: '100%',
                             display: 'flex',
@@ -602,6 +849,315 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             </div>
           )}
 
+          {pollEnabled && !isReply && (
+            <div
+              style={{
+                marginBottom: 12,
+                border: '1px solid var(--border)',
+                borderRadius: 16,
+                overflow: 'hidden',
+                background: 'var(--bg-card)',
+              }}
+            >
+              <div style={{ padding: '14px 14px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Poll</div>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Up to {MAX_POLL_OPTIONS} choices</div>
+              </div>
+
+              <div style={{ padding: '10px 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {pollFields.fields.map((field, index) => {
+                  const optionValue = pollOptions?.[index];
+                  const labelValue = optionValue?.label ?? '';
+                  const imageUrl = pollImageUrls[field.id];
+                  const optionError = pollForm.formState.errors.options?.[index];
+
+                  return (
+                    <div key={field.id}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <input
+                          ref={(node) => {
+                            pollOptionInputRefs.current[field.id] = node;
+                          }}
+                          type="file"
+                          accept="image/*"
+                          onChange={(event) => void handlePollImageChange(index, field.id, event)}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => pollOptionInputRefs.current[field.id]?.click()}
+                          aria-label={`Add image to choice ${index + 1}`}
+                          style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: 12,
+                            border: '1px solid var(--border)',
+                            background: imageUrl ? 'transparent' : 'var(--bg-subtle)',
+                            color: imageUrl ? 'transparent' : 'var(--text-secondary)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            position: 'relative',
+                          }}
+                        >
+                          {imageUrl ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imageUrl}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                              />
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  right: 4,
+                                  bottom: 4,
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: '50%',
+                                  background: 'rgba(15, 23, 42, 0.8)',
+                                  color: '#fff',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <ImagePlus size={11} />
+                              </span>
+                            </>
+                          ) : (
+                            <ImagePlus size={16} />
+                          )}
+                        </button>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <Input
+                            placeholder={`Choice ${index + 1}`}
+                            maxLength={MAX_POLL_LABEL_LENGTH}
+                            {...pollForm.register(`options.${index}.label`)}
+                            style={{
+                              height: 42,
+                              borderRadius: 12,
+                              background: 'var(--bg-card)',
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ minWidth: 54, textAlign: 'right', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                          {countRunes(labelValue)} / {MAX_POLL_LABEL_LENGTH}
+                        </div>
+
+                        {pollFields.fields.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePollOption(index)}
+                            aria-label={`Remove choice ${index + 1}`}
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: '50%',
+                              border: 'none',
+                              background: 'transparent',
+                              color: 'var(--text-tertiary)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {(optionError?.label?.message || imageUrl) && (
+                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                          <div style={{ fontSize: 12, color: 'var(--coral)' }}>
+                            {optionError?.label?.message}
+                          </div>
+                          {imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePollImage(index, field.id)}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--text-tertiary)',
+                                fontSize: 12,
+                                cursor: 'pointer',
+                                padding: 0,
+                              }}
+                            >
+                              Remove image
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {pollFields.fields.length < MAX_POLL_OPTIONS && (
+                  <button
+                    type="button"
+                    onClick={() => pollFields.append({ label: '', image: undefined })}
+                    style={{
+                      marginTop: 2,
+                      width: 34,
+                      height: 34,
+                      borderRadius: '50%',
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
+
+                {pollOptionsError && (
+                  <div style={{ fontSize: 12, color: 'var(--coral)' }}>
+                    {pollOptionsError}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    marginTop: 4,
+                    paddingTop: 14,
+                    borderTop: '1px solid var(--border)',
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 10 }}>
+                    Poll length
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 10 }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Days</span>
+                      <select
+                        value={pollDays}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          pollForm.setValue('days', val, { shouldDirty: true, shouldValidate: true });
+                          // If now only minutes selectable and current value is below minimum, clamp to 5
+                          if (val === 0 && pollHours === 0 && pollMinutes < 5) {
+                            pollForm.setValue('minutes', 5, { shouldDirty: true, shouldValidate: true });
+                          }
+                        }}
+                        style={{
+                          height: 42,
+                          borderRadius: 12,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-card)',
+                          color: 'var(--text)',
+                          padding: '0 12px',
+                          outline: 'none',
+                          fontSize: 14,
+                        }}
+                      >
+                        {Array.from({ length: 8 }, (_, v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Hours</span>
+                      <select
+                        value={pollHours}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          pollForm.setValue('hours', val, { shouldDirty: true, shouldValidate: true });
+                          // If now only minutes selectable and current value is below minimum, clamp to 5
+                          if (val === 0 && pollDays === 0 && pollMinutes < 5) {
+                            pollForm.setValue('minutes', 5, { shouldDirty: true, shouldValidate: true });
+                          }
+                        }}
+                        style={{
+                          height: 42,
+                          borderRadius: 12,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-card)',
+                          color: 'var(--text)',
+                          padding: '0 12px',
+                          outline: 'none',
+                          fontSize: 14,
+                        }}
+                      >
+                        {Array.from({ length: 24 }, (_, v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Minutes</span>
+                      <select
+                        value={pollMinutes < ((pollDays > 0 || pollHours > 0) ? 0 : 5) ? ((pollDays > 0 || pollHours > 0) ? 0 : 5) : pollMinutes}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          pollForm.setValue('minutes', val, { shouldDirty: true, shouldValidate: true });
+                        }}
+                        style={{
+                          height: 42,
+                          borderRadius: 12,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-card)',
+                          color: 'var(--text)',
+                          padding: '0 12px',
+                          outline: 'none',
+                          fontSize: 14,
+                        }}
+                      >
+                        {Array.from(
+                          { length: (pollDays > 0 || pollHours > 0) ? 60 : 55 },
+                          (_, i) => i + ((pollDays > 0 || pollHours > 0) ? 0 : 5)
+                        ).map((v) => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {pollForm.formState.errors.minutes?.message && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--coral)' }}>
+                      {pollForm.formState.errors.minutes.message}
+                    </div>
+                  )}
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    {`${Math.floor(pollDurationSeconds / 86400)}d ${Math.floor((pollDurationSeconds % 86400) / 3600)}h ${Math.floor((pollDurationSeconds % 3600) / 60)}m`}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRemovePoll}
+                  style={{
+                    marginTop: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    color: 'var(--coral)',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    padding: 0,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Remove poll
+                </button>
+              </div>
+            </div>
+          )}
+
           <div style={{ height: 1, background: 'var(--border)', margin: '0 0 12px' }} />
 
           {isError && (
@@ -632,9 +1188,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
           {/* GIF picker popover */}
           {showGifPicker && (
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ position: 'relative', marginBottom: 8 }}>
               <GifPicker
-                placement="inline"
                 onSelect={(url) => void handleGifSelect(url)}
                 onClose={() => setShowGifPicker(false)}
               />
@@ -724,6 +1279,31 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               >
                 <Smile size={18} />
               </button>
+
+              {!isReply && (
+                <button
+                  type="button"
+                  title={selectedCommunity ? 'Polls are only available for posts to Everyone' : pollEnabled ? 'Poll added' : 'Add poll'}
+                  onClick={handleAddPoll}
+                  disabled={pollEnabled || selectedCommunity !== null}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    background: 'none',
+                    border: 'none',
+                    color: pollEnabled ? 'var(--accent)' : 'var(--text-secondary)',
+                    cursor: pollEnabled || selectedCommunity !== null ? 'not-allowed' : 'pointer',
+                    opacity: pollEnabled || selectedCommunity !== null ? 0.55 : 1,
+                    transition: 'color 0.15s',
+                  }}
+                >
+                  <BarChart3 size={18} />
+                </button>
+              )}
 
               {compressing && (
                 <span style={{ color: 'var(--accent)', fontSize: 13, marginLeft: 4 }}>Compressing…</span>

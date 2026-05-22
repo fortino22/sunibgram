@@ -17,85 +17,6 @@ export interface ThreadDetailData {
   rootThreadId: number | null;
 }
 
-function formatTimeAgo(value: string): string {
-  const createdAt = new Date(value);
-
-  if (Number.isNaN(createdAt.getTime())) {
-    return value;
-  }
-
-  const diffMs = Date.now() - createdAt.getTime();
-  const minute = 60_000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-
-  if (diffMs < minute) {
-    return 'now';
-  }
-
-  if (diffMs < hour) {
-    return `${Math.max(1, Math.floor(diffMs / minute))}m`;
-  }
-
-  if (diffMs < day) {
-    return `${Math.max(1, Math.floor(diffMs / hour))}h`;
-  }
-
-  if (diffMs < 7 * day) {
-    return `${Math.max(1, Math.floor(diffMs / day))}d`;
-  }
-
-  const showYear = createdAt.getFullYear() !== new Date().getFullYear();
-  const dateOptions: Intl.DateTimeFormatOptions = {
-    day: 'numeric',
-    month: 'short',
-  };
-
-  if (showYear) {
-    dateOptions.year = 'numeric';
-  }
-
-  return createdAt.toLocaleDateString('en-US', dateOptions);
-}
-
-function mapThreadResponseToThreadItem(thread: ThreadResponse): ThreadItem {
-  return {
-    type: 'THREAD',
-    id: thread.thread_id,
-    parent_id: thread.parent_id,
-    root_id: thread.root_id,
-    community: undefined,
-    content: thread.content,
-    created_at: thread.created_at,
-    updated_at: thread.updated_at,
-    time_ago: formatTimeAgo(thread.created_at),
-    action_at: undefined,
-    reposted_at: thread.reposted_at,
-    reposted_by_id: thread.reposted_by_id,
-    reposted_by_username: thread.reposted_by_username,
-    reposted_by_name: thread.reposted_by_name,
-    author: {
-      id: thread.user_id,
-      name: thread.username,
-      username: thread.username,
-      is_premium: false,
-      avatar_url: null,
-      faculty: undefined,
-    },
-    stats: {
-      likes: thread.like_count,
-      reposts: thread.repost_count,
-      bookmarks: thread.bookmark_count,
-      comments: thread.comment_count,
-    },
-    media: thread.media,
-    is_liked: false,
-    is_bookmarked: false,
-    is_reposted: false,
-    is_pin: false,
-  };
-}
-
 export function useThread(id: number | string) {
   const token = useAuthStore((state) => state.token);
   const hasValidId = id !== undefined && id !== null && String(id).length > 0;
@@ -145,9 +66,13 @@ export function useThreadChain(id: number | string) {
           reposted_by_username: thread.reposted_by_username,
           reposted_by_name: thread.reposted_by_name,
           reposted_at: thread.reposted_at,
+          // Prefer poll from direct fetch — chain endpoint may omit image_url
+          ...(thread.poll ? { poll: thread.poll } : {}),
         };
       } else {
-        root = selectedThread ?? thread;
+        // Use direct-fetch thread as root: it includes poll option image_url
+        // Chain endpoint may omit image_url from poll options
+        root = thread;
       }
 
       const rootThreadId =
