@@ -65,7 +65,7 @@ func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]model.
 	if len(missing) > 0 {
 		var rows []model.Thread
 		if err := preloadThreadDetails(r.db.readDB).
-			Where("thread_id IN ?", missing).
+			Where("threads.thread_id IN ?", missing).
 			Find(&rows).Error; err != nil {
 			return nil, err
 		}
@@ -111,7 +111,7 @@ func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]
 	if len(missing) > 0 {
 		var rows []model.Thread
 		if err := preloadThreadParentDetails(r.db.readDB).
-			Where("thread_id IN ?", missing).
+			Where("threads.thread_id IN ?", missing).
 			Find(&rows).Error; err != nil {
 			return nil, err
 		}
@@ -192,7 +192,7 @@ func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]m
 	if len(missing) > 0 {
 		var rows []model.Thread
 		if err := preloadThreadParentDetails(r.db.readDB).
-			Where("thread_id IN ?", missing).
+			Where("threads.thread_id IN ?", missing).
 			Find(&rows).Error; err != nil {
 			return nil, err
 		}

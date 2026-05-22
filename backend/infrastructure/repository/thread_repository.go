@@ -40,30 +40,36 @@ func userJoinSelect(db *gorm.DB) *gorm.DB {
 		Select("user_id", "name", "user_name", "is_premium")
 }
 
-// Phase 2 — flat JOIN for the User relation, Preload for Community and the
-// OriginalThread chain. The main thread's User is LEFT JOIN'd directly into
-// the primary SELECT (eliminates one Preload round trip). OriginalThread is
-// still preloaded because the visibility filter and self-referential alias
-// make a flat JOIN risky; instead, the OriginalThread Preload itself uses
-// Joins("User") inside the callback so the OriginalThread.User load is
-// flattened into the OriginalThread query.
+// Phase 3 — single projected JOIN for all 1:1 relations. Main thread row +
+// User + Community + OriginalThread + OriginalThread.User +
+// OriginalThread.Community land in ONE SQL query via GORM relation joins.
+// Only 1:N ThreadEvents.Event chains stay as Preload (cannot flatten without
+// row explosion).
 //
-// Deep User.UserFaculty.Faculty chains intentionally NOT preloaded — Faculty
-// + is_premium overlayed via user:meta:<uid> in FeedBuilder. Existing
-// fallback in FeedBuilder.AuthorField (u.UserFaculty != nil) is dead in the
-// happy path with these Preloads dropped.
+// Join ordering matters: parent relations must be registered BEFORE child
+// relations that share a path. Joins("OriginalThread") is listed before
+// Joins("OriginalThread.User", ...) so GORM's iteration skips re-adding the
+// OriginalThread level and applies the User-column Selects only to the User
+// leaf (see gorm/callbacks/query.go:242 specifiedRelationsName check).
 //
-// Community is kept as Preload to avoid a double JOIN with the raw
-// visibility filter Joins("LEFT JOIN communities ...") that callers add via
-// applyThreadVisibility.
+// userJoinSelect restricts the User column SELECT to (user_id, name,
+// user_name, is_premium) — same projection as the legacy preloadThreadUser.
+// Password / email stay in the DB, never loaded into Go memory.
+//
+// Deep User.UserFaculty.Faculty chains intentionally NOT joined — faculty +
+// is_premium are overlayed via user:meta:<uid> in FeedBuilder.
+//
+// Note: callers still add a raw `Joins("LEFT JOIN communities ON ...")` via
+// applyThreadVisibility for the unaliased visibility filter. That coexists
+// with the aliased "Community" relation join here (two LEFT JOINs to
+// communities, different aliases). Postgres handles this trivially.
 func preloadThreadDetails(db *gorm.DB) *gorm.DB {
 	return db.
 		Joins("User", userJoinSelect(db)).
-		Preload("Community").
-		Preload("OriginalThread", func(otdb *gorm.DB) *gorm.DB {
-			return otdb.Joins("User", userJoinSelect(otdb))
-		}).
-		Preload("OriginalThread.Community").
+		Joins("Community").
+		Joins("OriginalThread").
+		Joins("OriginalThread.User", userJoinSelect(db)).
+		Joins("OriginalThread.Community").
 		Preload("ThreadEvents.Event").
 		Preload("OriginalThread.ThreadEvents.Event")
 }
@@ -71,7 +77,7 @@ func preloadThreadDetails(db *gorm.DB) *gorm.DB {
 func preloadThreadParentDetails(db *gorm.DB) *gorm.DB {
 	return db.
 		Joins("User", userJoinSelect(db)).
-		Preload("Community").
+		Joins("Community").
 		Preload("ThreadEvents.Event")
 }
 

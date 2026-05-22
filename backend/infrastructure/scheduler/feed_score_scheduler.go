@@ -93,17 +93,18 @@ func schedulerUserJoinSelect(db *gorm.DB) *gorm.DB {
 		Select("user_id", "name", "user_name", "is_premium")
 }
 
-// Phase 2 — User flattened into LEFT JOIN, OriginalThread kept as Preload
-// with nested User Joins. Deep User.UserFaculty.Faculty intentionally not
-// loaded — overlay via user:meta:<uid> in FeedBuilder handles it.
+// Phase 3 — all 1:1 relations flattened into one JOIN query. Mirrors the
+// repository-package preloadThreadDetails. Only ThreadEvents.Event chains
+// remain as Preload (1:N, can't flatten). Join ordering matters: parent
+// relations registered before child paths so GORM skips re-adding parent
+// when traversing the nested Joins("OriginalThread.User", ...) chain.
 func preloadSchedulerThreadDetails(db *gorm.DB) *gorm.DB {
 	return db.
 		Joins("User", schedulerUserJoinSelect(db)).
-		Preload("Community").
-		Preload("OriginalThread", func(otdb *gorm.DB) *gorm.DB {
-			return otdb.Joins("User", schedulerUserJoinSelect(otdb))
-		}).
-		Preload("OriginalThread.Community").
+		Joins("Community").
+		Joins("OriginalThread").
+		Joins("OriginalThread.User", schedulerUserJoinSelect(db)).
+		Joins("OriginalThread.Community").
 		Preload("ThreadEvents.Event").
 		Preload("OriginalThread.ThreadEvents.Event")
 }

@@ -176,7 +176,7 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 	key := threadKey(threadID)
 	var thread model.Thread
 	if err := r.cache.Get(ctx, key, &thread); err != nil {
-		if err := preloadThreadDetails(r.db.readDB).First(&thread, threadID).Error; err != nil {
+		if err := preloadThreadDetails(r.db.readDB).Where("threads.thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return
 		}
 	}

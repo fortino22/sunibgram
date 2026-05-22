@@ -131,8 +131,8 @@ func (r *threadCached) FindMediaByUserID(requesterID, userID uint, page, limit i
 
 	var threads []model.Thread
 	if err := preloadThreadDetails(r.db.readDB).
-		Where("thread_id IN ?", ids).
-		Order("created_at DESC").
+		Where("threads.thread_id IN ?", ids).
+		Order("threads.created_at DESC").
 		Find(&threads).Error; err != nil {
 		return nil, nil, 0, err
 	}
