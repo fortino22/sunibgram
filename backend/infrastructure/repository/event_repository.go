@@ -11,7 +11,7 @@ import (
 
 	communitymodel "github.com/sunibgram/domain/model/community"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	eventrepoiface "github.com/sunibgram/domain/repository/event"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -33,7 +33,7 @@ type cachedEventThreads struct {
 	Total   int64
 }
 
-func NewEventRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IEventRepository {
+func NewEventRepository(writeDB, readDB *gorm.DB, c *cache.Cache) eventrepoiface.IEventRepository {
 	return &eventRepository{writeDB: writeDB, readDB: readDB, cache: c, ttl: cache.DefaultTTL}
 }
 

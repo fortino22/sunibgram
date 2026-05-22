@@ -4,15 +4,15 @@ import (
 	"errors"
 
 	rolemodel "github.com/sunibgram/domain/model/role"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	rolerepoiface "github.com/sunibgram/domain/repository/role"
+	rolesvciface "github.com/sunibgram/domain/service/role"
 )
 
 type RoleService struct {
-	roleRepo repository.IRoleRepository
+	roleRepo rolerepoiface.IRoleRepository
 }
 
-func NewRoleService(roleRepo repository.IRoleRepository) service.IRoleService {
+func NewRoleService(roleRepo rolerepoiface.IRoleRepository) rolesvciface.IRoleService {
 	return &RoleService{roleRepo: roleRepo}
 }
 

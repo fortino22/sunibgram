@@ -8,7 +8,7 @@ import (
 
 	eventpinmodel "github.com/sunibgram/domain/model/event_pin"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	eventpinrepoiface "github.com/sunibgram/domain/repository/event_pin"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -18,7 +18,7 @@ type EventPinRepository struct {
 	cache   *cache.Cache
 }
 
-func NewEventPinRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IEventPinRepository {
+func NewEventPinRepository(writeDB, readDB *gorm.DB, c *cache.Cache) eventpinrepoiface.IEventPinRepository {
 	return &EventPinRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

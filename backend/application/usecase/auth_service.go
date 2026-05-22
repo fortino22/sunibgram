@@ -16,8 +16,11 @@ import (
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	rolerepoiface "github.com/sunibgram/domain/repository/role"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
+	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
+	authsvciface "github.com/sunibgram/domain/service/auth"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
@@ -45,21 +48,21 @@ type tokenKind string
 const kindAccess tokenKind = "access"
 
 type AuthService struct {
-	userRepo         repository.IUserRepository
-	roleRepo         repository.IRoleRepository
-	verificationRepo repository.IVerificationRepository
-	userSettingsRepo repository.IUserSettingsRepository
+	userRepo         userrepoiface.IUserRepository
+	roleRepo         rolerepoiface.IRoleRepository
+	verificationRepo verificationrepoiface.IVerificationRepository
+	userSettingsRepo usersettingsrepoiface.IUserSettingsRepository
 	cache            *cache.Cache
 	otpFailLimiter   *ratelimit.RateLimiter
 }
 
 func NewAuthService(
-	userRepo repository.IUserRepository,
-	roleRepo repository.IRoleRepository,
-	verificationRepo repository.IVerificationRepository,
-	userSettingsRepo repository.IUserSettingsRepository,
+	userRepo userrepoiface.IUserRepository,
+	roleRepo rolerepoiface.IRoleRepository,
+	verificationRepo verificationrepoiface.IVerificationRepository,
+	userSettingsRepo usersettingsrepoiface.IUserSettingsRepository,
 	c *cache.Cache,
-) service.IAuthService {
+) authsvciface.IAuthService {
 	return &AuthService{
 		userRepo:         userRepo,
 		roleRepo:         roleRepo,

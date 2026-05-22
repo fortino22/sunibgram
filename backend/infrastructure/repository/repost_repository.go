@@ -8,7 +8,7 @@ import (
 
 	repostmodel "github.com/sunibgram/domain/model/repost"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	repostrepoiface "github.com/sunibgram/domain/repository/repost"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -17,7 +17,7 @@ type RepostRepository struct {
 	patchCount func(threadID uint, column string, delta int)
 }
 
-func NewRepostRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.IRepostRepository {
+func NewRepostRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) repostrepoiface.IRepostRepository {
 	return &RepostRepository{
 		base:       newInteractionRepo(writeDB, readDB, c, "reposts", &threadDB{writeDB: writeDB, readDB: readDB}),
 		patchCount: patchCount,

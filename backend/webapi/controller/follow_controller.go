@@ -5,18 +5,19 @@ import (
 
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
-	"github.com/sunibgram/domain/service"
+	followsvciface "github.com/sunibgram/domain/service/follow"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	followdto "github.com/sunibgram/webapi/dto/follow"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type FollowController struct {
-	followService  service.IFollowService
-	profileService service.IUserProfileService
+	followService  followsvciface.IFollowService
+	profileService userprofilesvciface.IUserProfileService
 }
 
-func NewFollowController(followService service.IFollowService, profileService service.IUserProfileService) *FollowController {
+func NewFollowController(followService followsvciface.IFollowService, profileService userprofilesvciface.IUserProfileService) *FollowController {
 	return &FollowController{followService: followService, profileService: profileService}
 }
 

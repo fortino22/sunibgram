@@ -6,7 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
-	"github.com/sunibgram/domain/service"
+	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	communitymemberdto "github.com/sunibgram/webapi/dto/community_member"
@@ -14,11 +15,11 @@ import (
 )
 
 type CommunityMemberController struct {
-	memberService  service.ICommunityMemberService
-	profileService service.IUserProfileService
+	memberService  communitymembersvciface.ICommunityMemberService
+	profileService userprofilesvciface.IUserProfileService
 }
 
-func NewCommunityMemberController(memberService service.ICommunityMemberService, profileService service.IUserProfileService) *CommunityMemberController {
+func NewCommunityMemberController(memberService communitymembersvciface.ICommunityMemberService, profileService userprofilesvciface.IUserProfileService) *CommunityMemberController {
 	return &CommunityMemberController{memberService: memberService, profileService: profileService}
 }
 

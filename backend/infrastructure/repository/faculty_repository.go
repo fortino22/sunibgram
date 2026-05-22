@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	facultymodel "github.com/sunibgram/domain/model/faculty"
-	domainrepo "github.com/sunibgram/domain/repository"
+	facultyrepoiface "github.com/sunibgram/domain/repository/faculty"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -23,7 +23,7 @@ type cachedFaculties struct {
 	Total     int64
 }
 
-func NewFacultyRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IFacultyRepository {
+func NewFacultyRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) facultyrepoiface.IFacultyRepository {
 	var redisCache *cache.Cache
 	if len(c) > 0 {
 		redisCache = c[0]

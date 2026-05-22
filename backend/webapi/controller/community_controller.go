@@ -12,7 +12,9 @@ import (
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitydiscovermodel "github.com/sunibgram/domain/model/community_discover"
 	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
-	"github.com/sunibgram/domain/service"
+	communitysvciface "github.com/sunibgram/domain/service/community"
+	communityrulesvciface "github.com/sunibgram/domain/service/community_rule"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	communitydto "github.com/sunibgram/webapi/dto/community"
@@ -22,12 +24,12 @@ import (
 )
 
 type CommunityController struct {
-	communityService service.ICommunityService
-	ruleService      service.ICommunityRuleService
-	profileService   service.IUserProfileService
+	communityService communitysvciface.ICommunityService
+	ruleService      communityrulesvciface.ICommunityRuleService
+	profileService   userprofilesvciface.IUserProfileService
 }
 
-func NewCommunityController(communityService service.ICommunityService, ruleService service.ICommunityRuleService, profileService service.IUserProfileService) *CommunityController {
+func NewCommunityController(communityService communitysvciface.ICommunityService, ruleService communityrulesvciface.ICommunityRuleService, profileService userprofilesvciface.IUserProfileService) *CommunityController {
 	return &CommunityController{communityService: communityService, ruleService: ruleService, profileService: profileService}
 }
 
@@ -242,7 +244,7 @@ func (c *CommunityController) GetAbout(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(c.buildAboutResponse(about))
 }
 
-func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) communitydto.CommunityAboutResponse {
+func (c *CommunityController) buildAboutResponse(about *communitysvciface.CommunityAbout) communitydto.CommunityAboutResponse {
 	comm := about.Community
 	postingPolicy := "Only members can post."
 	visibilityPolicy := "All Communities are publicly visible."
@@ -286,7 +288,7 @@ func (c *CommunityController) buildAboutResponse(about *service.CommunityAbout) 
 	}
 }
 
-func (c *CommunityController) toAboutMemberResponses(users []service.CommunityAboutUser) []communitydto.CommunityAboutMemberResponse {
+func (c *CommunityController) toAboutMemberResponses(users []communitysvciface.CommunityAboutUser) []communitydto.CommunityAboutMemberResponse {
 	out := make([]communitydto.CommunityAboutMemberResponse, 0, len(users))
 	for i := range users {
 		u := users[i]

@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
-	"github.com/sunibgram/domain/service"
+	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	hashtagdto "github.com/sunibgram/webapi/dto/hashtag"
 )
@@ -12,10 +12,10 @@ import (
 const trendingHashtagLimit = 30
 
 type HashtagController struct {
-	hashtagService service.IHashtagService
+	hashtagService hashtagsvciface.IHashtagService
 }
 
-func NewHashtagController(hashtagService service.IHashtagService) *HashtagController {
+func NewHashtagController(hashtagService hashtagsvciface.IHashtagService) *HashtagController {
 	return &HashtagController{
 		hashtagService: hashtagService,
 	}

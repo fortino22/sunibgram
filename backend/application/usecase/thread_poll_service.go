@@ -10,25 +10,26 @@ import (
 
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	threadpollrepoiface "github.com/sunibgram/domain/repository/thread_poll"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
 )
 
 type ThreadPollService struct {
-	threadRepo repository.IThreadRepository
-	pollRepo   repository.IThreadPollRepository
+	threadRepo threadrepoiface.IThreadRepository
+	pollRepo   threadpollrepoiface.IThreadPollRepository
 	storage    *StorageUsecase
 }
 
 func NewThreadPollService(
-	threadRepo repository.IThreadRepository,
-	pollRepo repository.IThreadPollRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+	pollRepo threadpollrepoiface.IThreadPollRepository,
 	storage *StorageUsecase,
-) service.IThreadPollService {
+) threadpollsvciface.IThreadPollService {
 	return &ThreadPollService{threadRepo: threadRepo, pollRepo: pollRepo, storage: storage}
 }
 
-func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, input service.CreatePollInput) (*threadpollmodel.ThreadPoll, error) {
+func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, input threadpollsvciface.CreatePollInput) (*threadpollmodel.ThreadPoll, error) {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return nil, errors.New("thread not found")

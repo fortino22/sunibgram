@@ -13,29 +13,34 @@ import (
 	reportmodel "github.com/sunibgram/domain/model/report"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	reportrepoiface "github.com/sunibgram/domain/repository/report"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	violationrepoiface "github.com/sunibgram/domain/repository/violation"
+	reportsvciface "github.com/sunibgram/domain/service/report"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 )
 
 const reportCacheTTL = 5 * time.Minute
 
 type ReportService struct {
-	reportRepo    repository.IReportRepository
-	violationRepo repository.IViolationRepository
-	userRepo      repository.IUserRepository
-	threadRepo    repository.IThreadRepository
-	profileSvc    service.IUserProfileService
-	cacheRepo     repository.ICacheRepository
+	reportRepo    reportrepoiface.IReportRepository
+	violationRepo violationrepoiface.IViolationRepository
+	userRepo      userrepoiface.IUserRepository
+	threadRepo    threadrepoiface.IThreadRepository
+	profileSvc    userprofilesvciface.IUserProfileService
+	cacheRepo     cacherepoiface.ICacheRepository
 }
 
 func NewReportService(
-	reportRepo repository.IReportRepository,
-	violationRepo repository.IViolationRepository,
-	userRepo repository.IUserRepository,
-	threadRepo repository.IThreadRepository,
-	profileSvc service.IUserProfileService,
-	cacheRepo repository.ICacheRepository,
-) service.IReportService {
+	reportRepo reportrepoiface.IReportRepository,
+	violationRepo violationrepoiface.IViolationRepository,
+	userRepo userrepoiface.IUserRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+	profileSvc userprofilesvciface.IUserProfileService,
+	cacheRepo cacherepoiface.ICacheRepository,
+) reportsvciface.IReportService {
 	return &ReportService{
 		reportRepo:    reportRepo,
 		violationRepo: violationRepo,
@@ -266,7 +271,7 @@ func (s *ReportService) buildReportUserInfo(users []usermodel.User, profiles []u
 	return result
 }
 
-func buildReportAvatarURL(profileSvc service.IUserProfileService, profile userprofilemodel.UserProfile) string {
+func buildReportAvatarURL(profileSvc userprofilesvciface.IUserProfileService, profile userprofilemodel.UserProfile) string {
 	if profileSvc == nil || profile.AvatarBucket == "" || profile.AvatarObjectName == "" {
 		return ""
 	}

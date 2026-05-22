@@ -17,31 +17,37 @@ import (
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
 	mediamodel "github.com/sunibgram/domain/model/media"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	eventrepoiface "github.com/sunibgram/domain/repository/event"
+	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
+	eventpinrepoiface "github.com/sunibgram/domain/repository/event_pin"
+	eventreviewrepoiface "github.com/sunibgram/domain/repository/event_review"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
+	eventsvciface "github.com/sunibgram/domain/service/event"
 )
 
 type EventService struct {
-	eventRepo       repository.IEventRepository
-	eventReviewRepo repository.IEventReviewRepository
-	pinRepo         repository.IEventPinRepository
-	partRepo        repository.IEventParticipantRepository
+	eventRepo       eventrepoiface.IEventRepository
+	eventReviewRepo eventreviewrepoiface.IEventReviewRepository
+	pinRepo         eventpinrepoiface.IEventPinRepository
+	partRepo        eventparticipantrepoiface.IEventParticipantRepository
 	storageUsecase  *StorageUsecase
-	settingsRepo    repository.IUserSettingsRepository
-	followRepo      repository.IFollowRepository
-	threadRepo      repository.IThreadRepository
+	settingsRepo    usersettingsrepoiface.IUserSettingsRepository
+	followRepo      followrepoiface.IFollowRepository
+	threadRepo      threadrepoiface.IThreadRepository
 }
 
 func NewEventService(
-	eventRepo repository.IEventRepository,
-	eventReviewRepo repository.IEventReviewRepository,
-	pinRepo repository.IEventPinRepository,
-	partRepo repository.IEventParticipantRepository,
+	eventRepo eventrepoiface.IEventRepository,
+	eventReviewRepo eventreviewrepoiface.IEventReviewRepository,
+	pinRepo eventpinrepoiface.IEventPinRepository,
+	partRepo eventparticipantrepoiface.IEventParticipantRepository,
 	storageUsecase *StorageUsecase,
-	settingsRepo repository.IUserSettingsRepository,
-	followRepo repository.IFollowRepository,
-	threadRepo repository.IThreadRepository,
-) service.IEventService {
+	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
+	followRepo followrepoiface.IFollowRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+) eventsvciface.IEventService {
 	return &EventService{
 		eventRepo:       eventRepo,
 		eventReviewRepo: eventReviewRepo,

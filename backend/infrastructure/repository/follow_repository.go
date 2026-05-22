@@ -12,7 +12,7 @@ import (
 	usermodel "github.com/sunibgram/domain/model/user"
 	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
 	userstatmodel "github.com/sunibgram/domain/model/user_stat"
-	domainrepo "github.com/sunibgram/domain/repository"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -25,7 +25,7 @@ type followRepository struct {
 
 const followingSetTTL = 5 * time.Minute
 
-func NewFollowRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IFollowRepository {
+func NewFollowRepository(writeDB, readDB *gorm.DB, c *cache.Cache) followrepoiface.IFollowRepository {
 	return &followRepository{
 		writeDB: writeDB,
 		readDB:  readDB,

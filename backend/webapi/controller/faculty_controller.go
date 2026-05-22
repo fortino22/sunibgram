@@ -3,17 +3,17 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	facultysvciface "github.com/sunibgram/domain/service/faculty"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	facultydto "github.com/sunibgram/webapi/dto/faculty"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type FacultyController struct {
-	facultyService service.IFacultyService
+	facultyService facultysvciface.IFacultyService
 }
 
-func NewFacultyController(facultyService service.IFacultyService) *FacultyController {
+func NewFacultyController(facultyService facultysvciface.IFacultyService) *FacultyController {
 	return &FacultyController{facultyService: facultyService}
 }
 

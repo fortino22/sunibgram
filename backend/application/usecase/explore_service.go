@@ -8,20 +8,23 @@ import (
 	"github.com/sunibgram/application/helper"
 	exploremodel "github.com/sunibgram/domain/model/explore"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	explorerepoiface "github.com/sunibgram/domain/repository/explore"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
+	exploresvciface "github.com/sunibgram/domain/service/explore"
 )
 
 const defaultExploreLimit = 20
 
 type ExploreService struct {
-	exploreRepo  repository.IExploreRepository
-	threadRepo   repository.IThreadRepository
-	settingsRepo repository.IUserSettingsRepository
-	followRepo   repository.IFollowRepository
+	exploreRepo  explorerepoiface.IExploreRepository
+	threadRepo   threadrepoiface.IThreadRepository
+	settingsRepo usersettingsrepoiface.IUserSettingsRepository
+	followRepo   followrepoiface.IFollowRepository
 }
 
-func NewExploreService(exploreRepo repository.IExploreRepository, threadRepo repository.IThreadRepository, settingsRepo repository.IUserSettingsRepository, followRepo repository.IFollowRepository) service.IExploreService {
+func NewExploreService(exploreRepo explorerepoiface.IExploreRepository, threadRepo threadrepoiface.IThreadRepository, settingsRepo usersettingsrepoiface.IUserSettingsRepository, followRepo followrepoiface.IFollowRepository) exploresvciface.IExploreService {
 	return &ExploreService{exploreRepo: exploreRepo, threadRepo: threadRepo, settingsRepo: settingsRepo, followRepo: followRepo}
 }
 

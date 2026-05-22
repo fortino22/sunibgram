@@ -1,37 +1,47 @@
 package usecase
 
 import (
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	eventrepoiface "github.com/sunibgram/domain/repository/event"
+	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
+	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 )
 
 type ThreadService struct {
-	threadRepo     repository.IThreadRepository
-	hashtagRepo    repository.IHashtagRepository
-	eventRepo      repository.IEventRepository
-	eventPartRepo  repository.IEventParticipantRepository
-	hashtagService service.IHashtagService
-	communityRepo  repository.ICommunityRepository
-	memberRepo     repository.ICommunityMemberRepository
-	settingsRepo   repository.IUserSettingsRepository
-	followRepo     repository.IFollowRepository
-	notification   service.INotificationService
-	summaryService service.IThreadSummaryService
+	threadRepo     threadrepoiface.IThreadRepository
+	hashtagRepo    hashtagrepoiface.IHashtagRepository
+	eventRepo      eventrepoiface.IEventRepository
+	eventPartRepo  eventparticipantrepoiface.IEventParticipantRepository
+	hashtagService hashtagsvciface.IHashtagService
+	communityRepo  communityrepoiface.ICommunityRepository
+	memberRepo     communitymemberrepoiface.ICommunityMemberRepository
+	settingsRepo   usersettingsrepoiface.IUserSettingsRepository
+	followRepo     followrepoiface.IFollowRepository
+	notification   notificationsvciface.INotificationService
+	summaryService threadsummarysvciface.IThreadSummaryService
 }
 
 func NewThreadService(
-	threadRepo repository.IThreadRepository,
-	hashtagRepo repository.IHashtagRepository,
-	eventRepo repository.IEventRepository,
-	eventPartRepo repository.IEventParticipantRepository,
-	hashtagService service.IHashtagService,
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-	settingsRepo repository.IUserSettingsRepository,
-	followRepo repository.IFollowRepository,
-	notification service.INotificationService,
-	summaryService service.IThreadSummaryService,
-) service.IThreadService {
+	threadRepo threadrepoiface.IThreadRepository,
+	hashtagRepo hashtagrepoiface.IHashtagRepository,
+	eventRepo eventrepoiface.IEventRepository,
+	eventPartRepo eventparticipantrepoiface.IEventParticipantRepository,
+	hashtagService hashtagsvciface.IHashtagService,
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
+	followRepo followrepoiface.IFollowRepository,
+	notification notificationsvciface.INotificationService,
+	summaryService threadsummarysvciface.IThreadSummaryService,
+) threadsvciface.IThreadService {
 	return &ThreadService{
 		threadRepo:     threadRepo,
 		hashtagRepo:    hashtagRepo,

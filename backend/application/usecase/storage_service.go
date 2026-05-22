@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/sunibgram/domain/service"
+	storagesvciface "github.com/sunibgram/domain/service/storage"
 )
 
 var bucketWhitelist = map[string]string{
@@ -27,10 +27,10 @@ var bucketWhitelist = map[string]string{
 }
 
 type StorageUsecase struct {
-	storage service.IStorageService
+	storage storagesvciface.IStorageService
 }
 
-func NewStorageUsecase(storage service.IStorageService) *StorageUsecase {
+func NewStorageUsecase(storage storagesvciface.IStorageService) *StorageUsecase {
 	return &StorageUsecase{storage: storage}
 }
 

@@ -6,17 +6,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	notificationmodel "github.com/sunibgram/domain/model/notification"
-	"github.com/sunibgram/domain/service"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	notificationdto "github.com/sunibgram/webapi/dto/notification"
 )
 
 type NotificationController struct {
-	notificationService service.INotificationService
+	notificationService notificationsvciface.INotificationService
 }
 
-func NewNotificationController(notificationService service.INotificationService) *NotificationController {
+func NewNotificationController(notificationService notificationsvciface.INotificationService) *NotificationController {
 	return &NotificationController{notificationService: notificationService}
 }
 
@@ -34,7 +34,7 @@ func (c *NotificationController) Send(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 
-	if err := c.notificationService.SendNotification(service.CreateNotificationInput{
+	if err := c.notificationService.SendNotification(notificationsvciface.CreateNotificationInput{
 		Type:            req.Type,
 		Message:         req.Message,
 		SenderUserID:    req.SenderUserID,
@@ -101,7 +101,7 @@ func (c *NotificationController) Delete(ctx *fiber.Ctx) error {
 	return ctx.JSON(fiber.Map{"message": "notification deleted successfully"})
 }
 
-func toNotificationListResponse(item service.NotificationListItem) notificationdto.NotificationListResponse {
+func toNotificationListResponse(item notificationsvciface.NotificationListItem) notificationdto.NotificationListResponse {
 	n := item.Notification
 	return notificationdto.NotificationListResponse{
 		ID:          n.ID,

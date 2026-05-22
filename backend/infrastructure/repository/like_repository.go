@@ -8,7 +8,7 @@ import (
 
 	likemodel "github.com/sunibgram/domain/model/like"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	likerepoiface "github.com/sunibgram/domain/repository/like"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -17,7 +17,7 @@ type LikeRepository struct {
 	patchCount func(threadID uint, column string, delta int)
 }
 
-func NewLikeRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.ILikeRepository {
+func NewLikeRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) likerepoiface.ILikeRepository {
 	return &LikeRepository{
 		base:       newInteractionRepo(writeDB, readDB, c, "likes", &threadDB{writeDB: writeDB, readDB: readDB}),
 		patchCount: patchCount,

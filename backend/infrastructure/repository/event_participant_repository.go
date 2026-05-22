@@ -8,7 +8,7 @@ import (
 
 	eventparticipantmodel "github.com/sunibgram/domain/model/event_participant"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -18,7 +18,7 @@ type EventParticipantRepository struct {
 	cache   *cache.Cache
 }
 
-func NewEventParticipantRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IEventParticipantRepository {
+func NewEventParticipantRepository(writeDB, readDB *gorm.DB, c *cache.Cache) eventparticipantrepoiface.IEventParticipantRepository {
 	return &EventParticipantRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
-	domainrepo "github.com/sunibgram/domain/repository"
+	threadmediarepoiface "github.com/sunibgram/domain/repository/thread_media"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -16,7 +16,7 @@ type ThreadMediaRepository struct {
 	cache   *cache.Cache
 }
 
-func NewThreadMediaRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IThreadMediaRepository {
+func NewThreadMediaRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) threadmediarepoiface.IThreadMediaRepository {
 	var redisCache *cache.Cache
 	if len(c) > 0 {
 		redisCache = c[0]

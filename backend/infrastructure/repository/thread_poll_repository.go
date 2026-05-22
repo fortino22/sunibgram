@@ -12,7 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
-	domainrepo "github.com/sunibgram/domain/repository"
+	threadpollrepoiface "github.com/sunibgram/domain/repository/thread_poll"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -27,7 +27,7 @@ type ThreadPollRepository struct {
 	cache   *cache.Cache
 }
 
-func NewThreadPollRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IThreadPollRepository {
+func NewThreadPollRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) threadpollrepoiface.IThreadPollRepository {
 	var redisCache *cache.Cache
 	if len(c) > 0 {
 		redisCache = c[0]

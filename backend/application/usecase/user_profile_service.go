@@ -12,8 +12,12 @@ import (
 	mediamodel "github.com/sunibgram/domain/model/media"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
+	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 )
 
 func userAvatarCacheKey(userID uint) string {
@@ -21,22 +25,22 @@ func userAvatarCacheKey(userID uint) string {
 }
 
 type UserProfileService struct {
-	userRepo        repository.IUserRepository
-	followRepo      repository.IFollowRepository
-	profileRepo     repository.IUserProfileRepository
-	userFacultyRepo repository.IUserFacultyRepository
-	cacheRepo       repository.ICacheRepository
+	userRepo        userrepoiface.IUserRepository
+	followRepo      followrepoiface.IFollowRepository
+	profileRepo     userprofilerepoiface.IUserProfileRepository
+	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository
+	cacheRepo       cacherepoiface.ICacheRepository
 	storageUsecase  *StorageUsecase
 }
 
 func NewUserProfileService(
-	userRepo repository.IUserRepository,
-	followRepo repository.IFollowRepository,
-	profileRepo repository.IUserProfileRepository,
-	userFacultyRepo repository.IUserFacultyRepository,
-	cacheRepo repository.ICacheRepository,
+	userRepo userrepoiface.IUserRepository,
+	followRepo followrepoiface.IFollowRepository,
+	profileRepo userprofilerepoiface.IUserProfileRepository,
+	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
 	storageUsecase *StorageUsecase,
-) service.IUserProfileService {
+) userprofilesvciface.IUserProfileService {
 	return &UserProfileService{
 		userRepo:        userRepo,
 		followRepo:      followRepo,
@@ -47,11 +51,11 @@ func NewUserProfileService(
 	}
 }
 
-func (s *UserProfileService) AvatarCacheRepository() repository.ICacheRepository {
+func (s *UserProfileService) AvatarCacheRepository() cacherepoiface.ICacheRepository {
 	return s.cacheRepo
 }
 
-func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, input service.UpsertProfileInput) error {
+func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, input userprofilesvciface.UpsertProfileInput) error {
 	if userID == 0 {
 		return errors.New("invalid user id")
 	}
@@ -113,7 +117,7 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 	return nil
 }
 
-func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, input service.UpdateProfileInput) error {
+func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, input userprofilesvciface.UpdateProfileInput) error {
 	if input.Name != nil || input.Username != nil {
 		user, err := s.userRepo.FindByID(userID)
 		if err != nil {
@@ -206,7 +210,7 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		s.invalidateUserProfileCaches(ctx, userID)
 	}
 
-	mediaInput := service.UpsertProfileInput{
+	mediaInput := userprofilesvciface.UpsertProfileInput{
 		Avatar: input.Avatar,
 		Banner: input.Banner,
 		Bio:    input.Bio,
@@ -264,7 +268,7 @@ func (s *UserProfileService) invalidateUserProfileCaches(ctx context.Context, us
 	_ = s.cacheRepo.InvalidateCommunityRequestsGlobal(ctx)
 }
 
-func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.FullProfile, error) {
+func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofilesvciface.FullProfile, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, err
@@ -285,7 +289,7 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*service.F
 			return nil, err
 		}
 	}
-	return &service.FullProfile{
+	return &userprofilesvciface.FullProfile{
 		User:        user,
 		Stat:        stat,
 		Profile:     profile,

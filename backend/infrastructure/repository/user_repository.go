@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	domainrepo "github.com/sunibgram/domain/repository"
 	"github.com/sunibgram/infrastructure/cache"
 
 	"gorm.io/gorm"
 
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
 )
 
 type UserRepository struct {
@@ -25,7 +25,7 @@ func userKey(userID uint) string {
 	return fmt.Sprintf("user:id:%d", userID)
 }
 
-func NewUserRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IUserRepository {
+func NewUserRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) userrepoiface.IUserRepository {
 	var redisCache *cache.Cache
 	if len(c) > 0 {
 		redisCache = c[0]

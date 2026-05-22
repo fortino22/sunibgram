@@ -6,16 +6,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
-	"github.com/sunibgram/domain/service"
+	verificationsvciface "github.com/sunibgram/domain/service/verification"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	verificationdto "github.com/sunibgram/webapi/dto/verification"
 )
 
 type VerificationController struct {
-	verificationService service.IVerificationService
+	verificationService verificationsvciface.IVerificationService
 }
 
-func NewVerificationController(verificationService service.IVerificationService) *VerificationController {
+func NewVerificationController(verificationService verificationsvciface.IVerificationService) *VerificationController {
 	return &VerificationController{verificationService: verificationService}
 }
 

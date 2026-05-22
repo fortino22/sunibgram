@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	notificationmodel "github.com/sunibgram/domain/model/notification"
-	domainrepo "github.com/sunibgram/domain/repository"
+	notificationrepoiface "github.com/sunibgram/domain/repository/notification"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -17,7 +17,7 @@ type notificationRepository struct {
 	cache   *cache.Cache
 }
 
-func NewNotificationRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.INotificationRepository {
+func NewNotificationRepository(writeDB, readDB *gorm.DB, c *cache.Cache) notificationrepoiface.INotificationRepository {
 	return &notificationRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

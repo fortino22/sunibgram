@@ -13,7 +13,7 @@ import (
 	chatreadmodel "github.com/sunibgram/domain/model/chat_read"
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	chatroommembermodel "github.com/sunibgram/domain/model/chat_room_member"
-	domainrepo "github.com/sunibgram/domain/repository"
+	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -23,7 +23,7 @@ type ChatRoomRepository struct {
 	cache   *cache.Cache
 }
 
-func NewChatRoomRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IChatRoomRepository {
+func NewChatRoomRepository(writeDB, readDB *gorm.DB, c *cache.Cache) chatroomrepoiface.IChatRoomRepository {
 	return &ChatRoomRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 
@@ -188,7 +188,7 @@ func (r *ChatRoomRepository) DeleteGroup(roomID uint) error {
 	return r.cache.Delete(ctx, keys...)
 }
 
-func (r *ChatRoomRepository) FindMembers(roomID uint) ([]domainrepo.ChatRoomMemberInfo, error) {
+func (r *ChatRoomRepository) FindMembers(roomID uint) ([]chatroomrepoiface.ChatRoomMemberInfo, error) {
 	type row struct {
 		UserID           uint
 		Username         string
@@ -215,9 +215,9 @@ func (r *ChatRoomRepository) FindMembers(roomID uint) ([]domainrepo.ChatRoomMemb
 	if err != nil {
 		return nil, err
 	}
-	result := make([]domainrepo.ChatRoomMemberInfo, len(rows))
+	result := make([]chatroomrepoiface.ChatRoomMemberInfo, len(rows))
 	for i, row := range rows {
-		result[i] = domainrepo.ChatRoomMemberInfo{
+		result[i] = chatroomrepoiface.ChatRoomMemberInfo{
 			UserID:           row.UserID,
 			Username:         row.Username,
 			Name:             row.Name,
@@ -229,9 +229,9 @@ func (r *ChatRoomRepository) FindMembers(roomID uint) ([]domainrepo.ChatRoomMemb
 	return result, nil
 }
 
-func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID uint) (map[uint]domainrepo.ChatRoomMemberInfo, error) {
+func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID uint) (map[uint]chatroomrepoiface.ChatRoomMemberInfo, error) {
 	if len(roomIDs) == 0 {
-		return map[uint]domainrepo.ChatRoomMemberInfo{}, nil
+		return map[uint]chatroomrepoiface.ChatRoomMemberInfo{}, nil
 	}
 	type row struct {
 		RoomID           uint
@@ -259,9 +259,9 @@ func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID u
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[uint]domainrepo.ChatRoomMemberInfo, len(rows))
+	result := make(map[uint]chatroomrepoiface.ChatRoomMemberInfo, len(rows))
 	for _, r := range rows {
-		result[r.RoomID] = domainrepo.ChatRoomMemberInfo{
+		result[r.RoomID] = chatroomrepoiface.ChatRoomMemberInfo{
 			UserID:           r.UserID,
 			Username:         r.Username,
 			Name:             r.Name,
@@ -273,9 +273,9 @@ func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID u
 	return result, nil
 }
 
-func (r *ChatRoomRepository) FindLastMessages(roomIDs []uint) (map[uint]domainrepo.LastMessageInfo, error) {
+func (r *ChatRoomRepository) FindLastMessages(roomIDs []uint) (map[uint]chatroomrepoiface.LastMessageInfo, error) {
 	if len(roomIDs) == 0 {
-		return map[uint]domainrepo.LastMessageInfo{}, nil
+		return map[uint]chatroomrepoiface.LastMessageInfo{}, nil
 	}
 	type row struct {
 		RoomID    uint
@@ -302,9 +302,9 @@ func (r *ChatRoomRepository) FindLastMessages(roomIDs []uint) (map[uint]domainre
 	if err != nil {
 		return nil, err
 	}
-	result := make(map[uint]domainrepo.LastMessageInfo, len(rows))
+	result := make(map[uint]chatroomrepoiface.LastMessageInfo, len(rows))
 	for _, row := range rows {
-		result[row.RoomID] = domainrepo.LastMessageInfo{
+		result[row.RoomID] = chatroomrepoiface.LastMessageInfo{
 			RoomID:    row.RoomID,
 			ChatID:    row.ChatID,
 			SenderID:  row.SenderID,

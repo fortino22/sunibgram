@@ -6,7 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
-	"github.com/sunibgram/domain/service"
+	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	chatdto "github.com/sunibgram/webapi/dto/chat"
@@ -14,12 +15,12 @@ import (
 )
 
 type ChatRoomController struct {
-	chatRoomService service.IChatRoomService
-	hub             service.IHub
+	chatRoomService chatroomsvciface.IChatRoomService
+	hub             sockethubsvciface.IHub
 }
 
-func NewChatRoomController(chatRoomService service.IChatRoomService, hubs ...service.IHub) *ChatRoomController {
-	var hub service.IHub
+func NewChatRoomController(chatRoomService chatroomsvciface.IChatRoomService, hubs ...sockethubsvciface.IHub) *ChatRoomController {
+	var hub sockethubsvciface.IHub
 	if len(hubs) > 0 {
 		hub = hubs[0]
 	}
@@ -282,7 +283,7 @@ func toChatRoomResponse(room *chatroommodel.ChatRoom) chatdto.ChatRoomResponse {
 	}
 }
 
-func toChatRoomResponseWithParticipant(room *service.ChatRoomWithParticipant) chatdto.ChatRoomResponse {
+func toChatRoomResponseWithParticipant(room *chatroomsvciface.ChatRoomWithParticipant) chatdto.ChatRoomResponse {
 	resp := toChatRoomResponse(&room.ChatRoom)
 	resp.IsMuted = room.IsMuted
 	resp.UnreadCount = room.UnreadCount

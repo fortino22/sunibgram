@@ -7,16 +7,16 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	threadpolldto "github.com/sunibgram/webapi/dto/thread_poll"
 )
 
 type ThreadPollController struct {
-	pollService service.IThreadPollService
+	pollService threadpollsvciface.IThreadPollService
 }
 
-func NewThreadPollController(pollService service.IThreadPollService) *ThreadPollController {
+func NewThreadPollController(pollService threadpollsvciface.IThreadPollService) *ThreadPollController {
 	return &ThreadPollController{pollService: pollService}
 }
 
@@ -42,25 +42,25 @@ func (c *ThreadPollController) Vote(ctx *fiber.Ctx) error {
 
 // ParseCreatePollFromMultipart extracts optional poll fields from a multipart create-thread form.
 // Returns (input, hasPoll, error). hasPoll is true when the caller intends to create a poll.
-func ParseCreatePollFromMultipart(ctx *fiber.Ctx) (service.CreatePollInput, []*multipart.FileHeader, bool, error) {
+func ParseCreatePollFromMultipart(ctx *fiber.Ctx) (threadpollsvciface.CreatePollInput, []*multipart.FileHeader, bool, error) {
 	form, err := ctx.MultipartForm()
 	if err != nil || form == nil {
-		return service.CreatePollInput{}, nil, false, nil
+		return threadpollsvciface.CreatePollInput{}, nil, false, nil
 	}
 	labels := pollOptionLabels(form)
 	durationRaw := firstFormValue(form, "poll_duration_seconds")
 	question := strings.TrimSpace(firstFormValue(form, "poll_question"))
 
 	if len(labels) == 0 && durationRaw == "" && question == "" {
-		return service.CreatePollInput{}, nil, false, nil
+		return threadpollsvciface.CreatePollInput{}, nil, false, nil
 	}
 
 	durationSecs, err := strconv.Atoi(strings.TrimSpace(durationRaw))
 	if err != nil {
-		return service.CreatePollInput{}, nil, true, fiber.NewError(fiber.StatusBadRequest, "poll_duration_seconds is required and must be an integer")
+		return threadpollsvciface.CreatePollInput{}, nil, true, fiber.NewError(fiber.StatusBadRequest, "poll_duration_seconds is required and must be an integer")
 	}
 	images := form.File["poll_option_images"]
-	input := service.CreatePollInput{
+	input := threadpollsvciface.CreatePollInput{
 		Question:        question,
 		Labels:          labels,
 		Images:          images,

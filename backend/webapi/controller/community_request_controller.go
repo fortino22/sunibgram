@@ -4,7 +4,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
-	"github.com/sunibgram/domain/service"
+	communityrequestsvciface "github.com/sunibgram/domain/service/community_request"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	communityrequestdto "github.com/sunibgram/webapi/dto/community_request"
@@ -12,11 +13,11 @@ import (
 )
 
 type CommunityRequestController struct {
-	requestService service.ICommunityRequestService
-	profileService service.IUserProfileService
+	requestService communityrequestsvciface.ICommunityRequestService
+	profileService userprofilesvciface.IUserProfileService
 }
 
-func NewCommunityRequestController(requestService service.ICommunityRequestService, profileService service.IUserProfileService) *CommunityRequestController {
+func NewCommunityRequestController(requestService communityrequestsvciface.ICommunityRequestService, profileService userprofilesvciface.IUserProfileService) *CommunityRequestController {
 	return &CommunityRequestController{requestService: requestService, profileService: profileService}
 }
 

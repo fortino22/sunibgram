@@ -5,17 +5,19 @@ import (
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	userstatmodel "github.com/sunibgram/domain/model/user_stat"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
+	usersvciface "github.com/sunibgram/domain/service/user"
 )
 
 type UserService struct {
-	userRepo    repository.IUserRepository
-	followRepo  repository.IFollowRepository
-	profileRepo repository.IUserProfileRepository
+	userRepo    userrepoiface.IUserRepository
+	followRepo  followrepoiface.IFollowRepository
+	profileRepo userprofilerepoiface.IUserProfileRepository
 }
 
-func NewUserService(userRepo repository.IUserRepository, followRepo repository.IFollowRepository, profileRepo repository.IUserProfileRepository) service.IUserService {
+func NewUserService(userRepo userrepoiface.IUserRepository, followRepo followrepoiface.IFollowRepository, profileRepo userprofilerepoiface.IUserProfileRepository) usersvciface.IUserService {
 	return &UserService{userRepo: userRepo, followRepo: followRepo, profileRepo: profileRepo}
 }
 

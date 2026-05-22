@@ -9,27 +9,31 @@ import (
 	facultymodel "github.com/sunibgram/domain/model/faculty"
 	notificationmodel "github.com/sunibgram/domain/model/notification"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	notificationrepoiface "github.com/sunibgram/domain/repository/notification"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
+	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 )
 
 type NotificationService struct {
-	notificationRepo repository.INotificationRepository
-	userRepo         repository.IUserRepository
-	profileRepo      repository.IUserProfileRepository
-	userFacultyRepo  repository.IUserFacultyRepository
+	notificationRepo notificationrepoiface.INotificationRepository
+	userRepo         userrepoiface.IUserRepository
+	profileRepo      userprofilerepoiface.IUserProfileRepository
+	userFacultyRepo  userfacultyrepoiface.IUserFacultyRepository
 	storageUsecase   *StorageUsecase
-	hub              service.IHub
+	hub              sockethubsvciface.IHub
 }
 
 func NewNotificationService(
-	notificationRepo repository.INotificationRepository,
-	userRepo repository.IUserRepository,
-	profileRepo repository.IUserProfileRepository,
-	userFacultyRepo repository.IUserFacultyRepository,
+	notificationRepo notificationrepoiface.INotificationRepository,
+	userRepo userrepoiface.IUserRepository,
+	profileRepo userprofilerepoiface.IUserProfileRepository,
+	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository,
 	storageUsecase *StorageUsecase,
-	hub service.IHub,
-) service.INotificationService {
+	hub sockethubsvciface.IHub,
+) notificationsvciface.INotificationService {
 	return &NotificationService{
 		notificationRepo: notificationRepo,
 		userRepo:         userRepo,
@@ -40,7 +44,7 @@ func NewNotificationService(
 	}
 }
 
-func (s *NotificationService) SendNotification(input service.CreateNotificationInput) error {
+func (s *NotificationService) SendNotification(input notificationsvciface.CreateNotificationInput) error {
 	input.Type = strings.TrimSpace(input.Type)
 	input.Message = strings.TrimSpace(input.Message)
 	if input.Type == "" {
@@ -73,7 +77,7 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 	}
 
 	if s.hub != nil {
-		s.hub.EmitToUser(input.RecipientUserID, "notification:new", service.NotificationListItem{
+		s.hub.EmitToUser(input.RecipientUserID, "notification:new", notificationsvciface.NotificationListItem{
 			Notification: notification,
 			Actor:        actor,
 			Data:         input.Data,
@@ -82,7 +86,7 @@ func (s *NotificationService) SendNotification(input service.CreateNotificationI
 	return nil
 }
 
-func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID string, limit, offset int) ([]service.NotificationListItem, error) {
+func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID string, limit, offset int) ([]notificationsvciface.NotificationListItem, error) {
 	if recipientUserID == "" {
 		return nil, errors.New("recipient user id is required")
 	}
@@ -100,9 +104,9 @@ func (s *NotificationService) GetNotificationsByRecipientUserID(recipientUserID 
 		return nil, err
 	}
 
-	items := make([]service.NotificationListItem, len(notifications))
+	items := make([]notificationsvciface.NotificationListItem, len(notifications))
 	for i := range notifications {
-		items[i] = service.NotificationListItem{
+		items[i] = notificationsvciface.NotificationListItem{
 			Notification: &notifications[i],
 			Actor:        senders[notifications[i].SenderUserID],
 		}

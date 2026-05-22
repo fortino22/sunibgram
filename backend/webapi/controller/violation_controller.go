@@ -4,17 +4,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	violationmodel "github.com/sunibgram/domain/model/violation"
-	"github.com/sunibgram/domain/service"
+	violationsvciface "github.com/sunibgram/domain/service/violation"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	violationdto "github.com/sunibgram/webapi/dto/violation"
 )
 
 type ViolationController struct {
-	violationService service.IViolationService
+	violationService violationsvciface.IViolationService
 }
 
-func NewViolationController(violationService service.IViolationService) *ViolationController {
+func NewViolationController(violationService violationsvciface.IViolationService) *ViolationController {
 	return &ViolationController{violationService: violationService}
 }
 

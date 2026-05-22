@@ -5,21 +5,23 @@ import (
 	"errors"
 
 	eventthreadpinmodel "github.com/sunibgram/domain/model/event_thread_pin"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	eventrepoiface "github.com/sunibgram/domain/repository/event"
+	eventthreadpinrepoiface "github.com/sunibgram/domain/repository/event_thread_pin"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	eventthreadpinsvciface "github.com/sunibgram/domain/service/event_thread_pin"
 )
 
 type EventThreadPinService struct {
-	pinRepo    repository.IEventThreadPinRepository
-	eventRepo  repository.IEventRepository
-	threadRepo repository.IThreadRepository
+	pinRepo    eventthreadpinrepoiface.IEventThreadPinRepository
+	eventRepo  eventrepoiface.IEventRepository
+	threadRepo threadrepoiface.IThreadRepository
 }
 
 func NewEventThreadPinService(
-	pinRepo repository.IEventThreadPinRepository,
-	eventRepo repository.IEventRepository,
-	threadRepo repository.IThreadRepository,
-) service.IEventThreadPinService {
+	pinRepo eventthreadpinrepoiface.IEventThreadPinRepository,
+	eventRepo eventrepoiface.IEventRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+) eventthreadpinsvciface.IEventThreadPinService {
 	return &EventThreadPinService{pinRepo: pinRepo, eventRepo: eventRepo, threadRepo: threadRepo}
 }
 

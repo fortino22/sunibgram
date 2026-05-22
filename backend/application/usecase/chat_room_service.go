@@ -10,17 +10,18 @@ import (
 
 	"github.com/sunibgram/application/helper"
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
 )
 
 type ChatRoomService struct {
-	roomRepo       repository.IChatRoomRepository
-	userRepo       repository.IUserRepository
+	roomRepo       chatroomrepoiface.IChatRoomRepository
+	userRepo       userrepoiface.IUserRepository
 	storageUsecase *StorageUsecase
 }
 
-func NewChatRoomService(roomRepo repository.IChatRoomRepository, userRepo repository.IUserRepository, storageUsecase *StorageUsecase) service.IChatRoomService {
+func NewChatRoomService(roomRepo chatroomrepoiface.IChatRoomRepository, userRepo userrepoiface.IUserRepository, storageUsecase *StorageUsecase) chatroomsvciface.IChatRoomService {
 	return &ChatRoomService{roomRepo: roomRepo, userRepo: userRepo, storageUsecase: storageUsecase}
 }
 
@@ -190,7 +191,7 @@ func (s *ChatRoomService) LeaveGroup(ctx context.Context, roomID, userID uint) e
 	return s.roomRepo.RemoveMember(roomID, userID)
 }
 
-func (s *ChatRoomService) GetGroupMembers(ctx context.Context, roomID, requesterID uint) ([]service.RoomParticipant, error) {
+func (s *ChatRoomService) GetGroupMembers(ctx context.Context, roomID, requesterID uint) ([]chatroomsvciface.RoomParticipant, error) {
 	if !s.roomRepo.IsMember(roomID, requesterID) {
 		return nil, errors.New("forbidden")
 	}
@@ -205,13 +206,13 @@ func (s *ChatRoomService) GetGroupMembers(ctx context.Context, roomID, requester
 	if err != nil {
 		return nil, err
 	}
-	result := make([]service.RoomParticipant, len(members))
+	result := make([]chatroomsvciface.RoomParticipant, len(members))
 	for i, m := range members {
 		avatarURL := ""
 		if s.storageUsecase != nil && m.AvatarObjectName != "" && m.AvatarBucket != "" {
 			avatarURL = s.storageUsecase.GetURL(m.AvatarBucket, m.AvatarObjectName)
 		}
-		result[i] = service.RoomParticipant{
+		result[i] = chatroomsvciface.RoomParticipant{
 			UserID:      m.UserID,
 			Username:    m.Username,
 			Name:        m.Name,
@@ -241,7 +242,7 @@ func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]chatroom
 	return s.roomRepo.FindByUserID(userID, page, limit)
 }
 
-func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit int) ([]service.ChatRoomWithParticipant, int64, error) {
+func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit int) ([]chatroomsvciface.ChatRoomWithParticipant, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	rooms, total, err := s.roomRepo.FindByUserID(userID, page, limit)
 	if err != nil {
@@ -257,7 +258,7 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 		}
 	}
 
-	memberMap := map[uint]repository.ChatRoomMemberInfo{}
+	memberMap := map[uint]chatroomrepoiface.ChatRoomMemberInfo{}
 	if len(privateIDs) > 0 {
 		memberMap, err = s.roomRepo.FindOtherMemberInfo(privateIDs, userID)
 		if err != nil {
@@ -272,7 +273,7 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 
 	lastMessages, _ := s.roomRepo.FindLastMessages(allIDs)
 	if lastMessages == nil {
-		lastMessages = map[uint]repository.LastMessageInfo{}
+		lastMessages = map[uint]chatroomrepoiface.LastMessageInfo{}
 	}
 
 	unreadCounts, _ := s.roomRepo.FindUnreadCounts(userID, allIDs)
@@ -280,15 +281,15 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 		unreadCounts = map[uint]int{}
 	}
 
-	result := make([]service.ChatRoomWithParticipant, len(rooms))
+	result := make([]chatroomsvciface.ChatRoomWithParticipant, len(rooms))
 	for i, r := range rooms {
-		result[i] = service.ChatRoomWithParticipant{ChatRoom: r, IsMuted: muteMap[r.RoomID], UnreadCount: unreadCounts[r.RoomID]}
+		result[i] = chatroomsvciface.ChatRoomWithParticipant{ChatRoom: r, IsMuted: muteMap[r.RoomID], UnreadCount: unreadCounts[r.RoomID]}
 		if info, ok := memberMap[r.RoomID]; ok {
 			avatarURL := ""
 			if s.storageUsecase != nil && info.AvatarObjectName != "" && info.AvatarBucket != "" {
 				avatarURL = s.storageUsecase.GetURL(info.AvatarBucket, info.AvatarObjectName)
 			}
-			result[i].OtherUser = &service.RoomParticipant{
+			result[i].OtherUser = &chatroomsvciface.RoomParticipant{
 				UserID:      info.UserID,
 				Username:    info.Username,
 				Name:        info.Name,
@@ -298,7 +299,7 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 		}
 		if lm, ok := lastMessages[r.RoomID]; ok {
 			s.decryptLastMessage(&r, &lm)
-			result[i].LastMessage = &service.LastMessage{
+			result[i].LastMessage = &chatroomsvciface.LastMessage{
 				ChatID:    lm.ChatID,
 				SenderID:  lm.SenderID,
 				Message:   lm.Message,
@@ -311,7 +312,7 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 	return result, total, nil
 }
 
-func (s *ChatRoomService) GetRoomForUser(roomID, viewingUserID uint) (*service.ChatRoomWithParticipant, error) {
+func (s *ChatRoomService) GetRoomForUser(roomID, viewingUserID uint) (*chatroomsvciface.ChatRoomWithParticipant, error) {
 	room, err := s.roomRepo.FindByID(roomID)
 	if err != nil {
 		return nil, errors.New("chat room not found")
@@ -319,7 +320,7 @@ func (s *ChatRoomService) GetRoomForUser(roomID, viewingUserID uint) (*service.C
 	if !s.roomRepo.IsMember(roomID, viewingUserID) {
 		return nil, errors.New("forbidden")
 	}
-	result := &service.ChatRoomWithParticipant{ChatRoom: *room}
+	result := &chatroomsvciface.ChatRoomWithParticipant{ChatRoom: *room}
 	if room.Type == chatroommodel.ChatRoomTypePrivate {
 		memberMap, err := s.roomRepo.FindOtherMemberInfo([]uint{roomID}, viewingUserID)
 		if err == nil {
@@ -328,7 +329,7 @@ func (s *ChatRoomService) GetRoomForUser(roomID, viewingUserID uint) (*service.C
 				if s.storageUsecase != nil && info.AvatarObjectName != "" && info.AvatarBucket != "" {
 					avatarURL = s.storageUsecase.GetURL(info.AvatarBucket, info.AvatarObjectName)
 				}
-				result.OtherUser = &service.RoomParticipant{
+				result.OtherUser = &chatroomsvciface.RoomParticipant{
 					UserID:      info.UserID,
 					Username:    info.Username,
 					Name:        info.Name,
@@ -406,7 +407,7 @@ func (s *ChatRoomService) roomKey(room *chatroommodel.ChatRoom) ([]byte, error) 
 	return roomKey, nil
 }
 
-func (s *ChatRoomService) decryptLastMessage(room *chatroommodel.ChatRoom, message *repository.LastMessageInfo) {
+func (s *ChatRoomService) decryptLastMessage(room *chatroommodel.ChatRoom, message *chatroomrepoiface.LastMessageInfo) {
 	if room == nil || message == nil || message.Message == nil || strings.TrimSpace(*message.Message) == "" {
 		return
 	}

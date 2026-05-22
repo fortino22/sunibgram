@@ -11,7 +11,7 @@ import (
 
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
-	domainrepo "github.com/sunibgram/domain/repository"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -21,7 +21,7 @@ type communityMemberRepository struct {
 	cache   *cache.Cache
 }
 
-func NewCommunityMemberRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.ICommunityMemberRepository {
+func NewCommunityMemberRepository(writeDB, readDB *gorm.DB, c *cache.Cache) communitymemberrepoiface.ICommunityMemberRepository {
 	return &communityMemberRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 
 	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
-	domainrepo "github.com/sunibgram/domain/repository"
+	communityrulerepoiface "github.com/sunibgram/domain/repository/community_rule"
 )
 
 type communityRuleRepository struct {
@@ -12,7 +12,7 @@ type communityRuleRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewCommunityRuleRepository(writeDB, readDB *gorm.DB) domainrepo.ICommunityRuleRepository {
+func NewCommunityRuleRepository(writeDB, readDB *gorm.DB) communityrulerepoiface.ICommunityRuleRepository {
 	return &communityRuleRepository{writeDB: writeDB, readDB: readDB}
 }
 

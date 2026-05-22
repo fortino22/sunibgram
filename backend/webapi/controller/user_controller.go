@@ -5,18 +5,19 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	usersvciface "github.com/sunibgram/domain/service/user"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	userdto "github.com/sunibgram/webapi/dto/user"
 )
 
 type UserController struct {
-	userService    service.IUserService
-	profileService service.IUserProfileService
+	userService    usersvciface.IUserService
+	profileService userprofilesvciface.IUserProfileService
 }
 
-func NewUserController(userService service.IUserService, profileService service.IUserProfileService) *UserController {
+func NewUserController(userService usersvciface.IUserService, profileService userprofilesvciface.IUserProfileService) *UserController {
 	return &UserController{userService: userService, profileService: profileService}
 }
 

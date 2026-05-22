@@ -11,7 +11,7 @@ import (
 
 	categorymodel "github.com/sunibgram/domain/model/category"
 	communitymodel "github.com/sunibgram/domain/model/community"
-	domainrepo "github.com/sunibgram/domain/repository"
+	categoryrepoiface "github.com/sunibgram/domain/repository/category"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -23,7 +23,7 @@ type categoryRepository struct {
 	cache   *cache.Cache
 }
 
-func NewCategoryRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.ICategoryRepository {
+func NewCategoryRepository(writeDB, readDB *gorm.DB, c *cache.Cache) categoryrepoiface.ICategoryRepository {
 	return &categoryRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

@@ -1,11 +1,10 @@
 package repository
 
 import (
-	domainrepo "github.com/sunibgram/domain/repository"
-
 	"gorm.io/gorm"
 
 	rolemodel "github.com/sunibgram/domain/model/role"
+	rolerepoiface "github.com/sunibgram/domain/repository/role"
 )
 
 type RoleRepository struct {
@@ -13,7 +12,7 @@ type RoleRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewRoleRepository(writeDB *gorm.DB, readDB *gorm.DB) domainrepo.IRoleRepository {
+func NewRoleRepository(writeDB *gorm.DB, readDB *gorm.DB) rolerepoiface.IRoleRepository {
 	return &RoleRepository{writeDB: writeDB, readDB: readDB}
 }
 

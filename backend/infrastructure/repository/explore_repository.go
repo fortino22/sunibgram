@@ -13,7 +13,7 @@ import (
 	communitymodel "github.com/sunibgram/domain/model/community"
 	exploremodel "github.com/sunibgram/domain/model/explore"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	explorerepoiface "github.com/sunibgram/domain/repository/explore"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -54,7 +54,7 @@ type cachedExploreCommunities struct {
 	Total       int64
 }
 
-func NewExploreRepository(readDB *gorm.DB, c *cache.Cache) domainrepo.IExploreRepository {
+func NewExploreRepository(readDB *gorm.DB, c *cache.Cache) explorerepoiface.IExploreRepository {
 	return &exploreRepository{readDB: readDB, cache: c, ttl: exploreTTL}
 }
 

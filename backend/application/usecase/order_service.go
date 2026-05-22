@@ -14,22 +14,26 @@ import (
 	"github.com/sunibgram/application/helper"
 	ordermodel "github.com/sunibgram/domain/model/order"
 	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	orderrepoiface "github.com/sunibgram/domain/repository/order"
+	premiumsubscriptionrepoiface "github.com/sunibgram/domain/repository/premium_subscription"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	ordersvciface "github.com/sunibgram/domain/service/order"
 )
 
 const PremiumAmount int64 = 10000
 
 type OrderService struct {
-	orderRepo               repository.IOrderRepository
-	userRepo                repository.IUserRepository
-	premiumSubscriptionRepo repository.IPremiumSubscriptionRepository
-	communityRepo           repository.ICommunityRepository
-	cacheRepo               repository.ICacheRepository
+	orderRepo               orderrepoiface.IOrderRepository
+	userRepo                userrepoiface.IUserRepository
+	premiumSubscriptionRepo premiumsubscriptionrepoiface.IPremiumSubscriptionRepository
+	communityRepo           communityrepoiface.ICommunityRepository
+	cacheRepo               cacherepoiface.ICacheRepository
 	snapClient              snap.Client
 }
 
-func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.IUserRepository, premiumSubscriptionRepo repository.IPremiumSubscriptionRepository, communityRepo repository.ICommunityRepository, cacheRepo repository.ICacheRepository) service.IOrderService {
+func NewOrderService(orderRepo orderrepoiface.IOrderRepository, userRepo userrepoiface.IUserRepository, premiumSubscriptionRepo premiumsubscriptionrepoiface.IPremiumSubscriptionRepository, communityRepo communityrepoiface.ICommunityRepository, cacheRepo cacherepoiface.ICacheRepository) ordersvciface.IOrderService {
 	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
 	envStr := os.Getenv("MIDTRANS_ENV")
 
@@ -51,7 +55,7 @@ func NewOrderService(orderRepo repository.IOrderRepository, userRepo repository.
 	}
 }
 
-func (s *OrderService) CreateOrder(userID uint, amount int64, purpose, itemID, itemName string) (*service.CreateOrderResult, error) {
+func (s *OrderService) CreateOrder(userID uint, amount int64, purpose, itemID, itemName string) (*ordersvciface.CreateOrderResult, error) {
 	if amount <= 0 {
 		return nil, errors.New("amount must be greater than 0")
 	}
@@ -89,14 +93,14 @@ func (s *OrderService) CreateOrder(userID uint, amount int64, purpose, itemID, i
 		return nil, err
 	}
 
-	return &service.CreateOrderResult{
+	return &ordersvciface.CreateOrderResult{
 		Order:      order,
 		PaymentURL: snapResp.RedirectURL,
 		Token:      snapResp.Token,
 	}, nil
 }
 
-func (s *OrderService) BuyPremium(userID uint) (*service.CreateOrderResult, error) {
+func (s *OrderService) BuyPremium(userID uint) (*ordersvciface.CreateOrderResult, error) {
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return nil, errors.New("user not found")

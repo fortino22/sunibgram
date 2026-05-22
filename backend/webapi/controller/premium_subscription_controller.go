@@ -5,15 +5,15 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	premiumsubscriptionrepoiface "github.com/sunibgram/domain/repository/premium_subscription"
+	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 )
 
 type PremiumSubscriptionController struct {
-	premiumSubscriptionService service.IPremiumSubscriptionService
+	premiumSubscriptionService premiumsubscriptionsvciface.IPremiumSubscriptionService
 }
 
-func NewPremiumSubscriptionController(premiumSubscriptionService service.IPremiumSubscriptionService) *PremiumSubscriptionController {
+func NewPremiumSubscriptionController(premiumSubscriptionService premiumsubscriptionsvciface.IPremiumSubscriptionService) *PremiumSubscriptionController {
 	return &PremiumSubscriptionController{premiumSubscriptionService: premiumSubscriptionService}
 }
 
@@ -25,7 +25,7 @@ func (c *PremiumSubscriptionController) ActivateTrial(ctx *fiber.Ctx) error {
 
 	subscription, err := c.premiumSubscriptionService.ActivateTrial(claims.UserID)
 	if err != nil {
-		if errors.Is(err, repository.ErrTrialAlreadyActivated) {
+		if errors.Is(err, premiumsubscriptionrepoiface.ErrTrialAlreadyActivated) {
 			return ctx.Status(fiber.StatusConflict).JSON(fiber.Map{"message": err.Error()})
 		}
 		return HandleServiceError(ctx, err)

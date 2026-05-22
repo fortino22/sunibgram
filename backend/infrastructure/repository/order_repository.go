@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	ordermodel "github.com/sunibgram/domain/model/order"
-	domainrepo "github.com/sunibgram/domain/repository"
+	orderrepoiface "github.com/sunibgram/domain/repository/order"
 )
 
 type orderRepository struct {
@@ -14,7 +14,7 @@ type orderRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewOrderRepository(writeDB, readDB *gorm.DB) domainrepo.IOrderRepository {
+func NewOrderRepository(writeDB, readDB *gorm.DB) orderrepoiface.IOrderRepository {
 	return &orderRepository{writeDB: writeDB, readDB: readDB}
 }
 

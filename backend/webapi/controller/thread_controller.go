@@ -10,24 +10,31 @@ import (
 	communitymodel "github.com/sunibgram/domain/model/community"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
-	"github.com/sunibgram/domain/service"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 	threadmediadto "github.com/sunibgram/webapi/dto/thread_media"
 )
 
 type ThreadController struct {
-	threadService    service.IThreadService
-	mediaService     service.IThreadMediaService
-	memberService    service.ICommunityMemberService
-	likeService      service.ILikeService
-	bookmarkService  service.IBookmarkService
-	threadPinService service.IThreadPinService
-	profileService   service.IUserProfileService
-	pollService      service.IThreadPollService
+	threadService    threadsvciface.IThreadService
+	mediaService     threadmediasvciface.IThreadMediaService
+	memberService    communitymembersvciface.ICommunityMemberService
+	likeService      likesvciface.ILikeService
+	bookmarkService  bookmarksvciface.IBookmarkService
+	threadPinService threadpinsvciface.IThreadPinService
+	profileService   userprofilesvciface.IUserProfileService
+	pollService      threadpollsvciface.IThreadPollService
 }
 
-func NewThreadController(threadService service.IThreadService, mediaService service.IThreadMediaService, memberService service.ICommunityMemberService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService, pollService service.IThreadPollService) *ThreadController {
+func NewThreadController(threadService threadsvciface.IThreadService, mediaService threadmediasvciface.IThreadMediaService, memberService communitymembersvciface.ICommunityMemberService, likeService likesvciface.ILikeService, bookmarkService bookmarksvciface.IBookmarkService, threadPinService threadpinsvciface.IThreadPinService, profileService userprofilesvciface.IUserProfileService, pollService threadpollsvciface.IThreadPollService) *ThreadController {
 	return &ThreadController{threadService: threadService, mediaService: mediaService, memberService: memberService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService, pollService: pollService}
 }
 

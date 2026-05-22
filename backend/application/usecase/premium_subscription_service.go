@@ -5,23 +5,26 @@ import (
 	"time"
 
 	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	premiumsubscriptionrepoiface "github.com/sunibgram/domain/repository/premium_subscription"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 )
 
 type PremiumSubscriptionService struct {
-	userRepo                repository.IUserRepository
-	premiumSubscriptionRepo repository.IPremiumSubscriptionRepository
-	communityRepo           repository.ICommunityRepository
-	cacheRepo               repository.ICacheRepository
+	userRepo                userrepoiface.IUserRepository
+	premiumSubscriptionRepo premiumsubscriptionrepoiface.IPremiumSubscriptionRepository
+	communityRepo           communityrepoiface.ICommunityRepository
+	cacheRepo               cacherepoiface.ICacheRepository
 }
 
 func NewPremiumSubscriptionService(
-	userRepo repository.IUserRepository,
-	premiumSubscriptionRepo repository.IPremiumSubscriptionRepository,
-	communityRepo repository.ICommunityRepository,
-	cacheRepo repository.ICacheRepository,
-) service.IPremiumSubscriptionService {
+	userRepo userrepoiface.IUserRepository,
+	premiumSubscriptionRepo premiumsubscriptionrepoiface.IPremiumSubscriptionRepository,
+	communityRepo communityrepoiface.ICommunityRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
+) premiumsubscriptionsvciface.IPremiumSubscriptionService {
 	return &PremiumSubscriptionService{
 		userRepo:                userRepo,
 		premiumSubscriptionRepo: premiumSubscriptionRepo,
@@ -36,7 +39,7 @@ func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*premiumsubscri
 		return nil, err
 	}
 	if isTrial {
-		return nil, repository.ErrTrialAlreadyActivated
+		return nil, premiumsubscriptionrepoiface.ErrTrialAlreadyActivated
 	}
 
 	now := time.Now()

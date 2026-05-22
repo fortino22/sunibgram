@@ -4,7 +4,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
-	"github.com/sunibgram/domain/service"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
@@ -12,21 +17,21 @@ import (
 )
 
 type BookmarkController struct {
-	bookmarkService service.IBookmarkService
-	likeService     service.ILikeService
-	threadService   service.IThreadService
-	mediaService    service.IThreadMediaService
-	pollService     service.IThreadPollService
-	profileService  service.IUserProfileService
+	bookmarkService bookmarksvciface.IBookmarkService
+	likeService     likesvciface.ILikeService
+	threadService   threadsvciface.IThreadService
+	mediaService    threadmediasvciface.IThreadMediaService
+	pollService     threadpollsvciface.IThreadPollService
+	profileService  userprofilesvciface.IUserProfileService
 }
 
 func NewBookmarkController(
-	bookmarkService service.IBookmarkService,
-	likeService service.ILikeService,
-	threadService service.IThreadService,
-	mediaService service.IThreadMediaService,
-	pollService service.IThreadPollService,
-	profileService service.IUserProfileService,
+	bookmarkService bookmarksvciface.IBookmarkService,
+	likeService likesvciface.ILikeService,
+	threadService threadsvciface.IThreadService,
+	mediaService threadmediasvciface.IThreadMediaService,
+	pollService threadpollsvciface.IThreadPollService,
+	profileService userprofilesvciface.IUserProfileService,
 ) *BookmarkController {
 	return &BookmarkController{
 		bookmarkService: bookmarkService,

@@ -4,16 +4,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	rolemodel "github.com/sunibgram/domain/model/role"
-	"github.com/sunibgram/domain/service"
+	rolesvciface "github.com/sunibgram/domain/service/role"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	roledto "github.com/sunibgram/webapi/dto/role"
 )
 
 type RoleController struct {
-	roleService service.IRoleService
+	roleService rolesvciface.IRoleService
 }
 
-func NewRoleController(roleService service.IRoleService) *RoleController {
+func NewRoleController(roleService rolesvciface.IRoleService) *RoleController {
 	return &RoleController{roleService: roleService}
 }
 

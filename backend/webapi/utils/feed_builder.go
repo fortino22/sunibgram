@@ -11,8 +11,14 @@ import (
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
 	usermodel "github.com/sunibgram/domain/model/user"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	"github.com/sunibgram/infrastructure/cache"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
@@ -23,17 +29,17 @@ import (
 const avatarCacheTTL = time.Hour
 
 type avatarCacheProvider interface {
-	AvatarCacheRepository() repository.ICacheRepository
+	AvatarCacheRepository() cacherepoiface.ICacheRepository
 }
 
 type FeedBuilder struct {
-	Media          service.IThreadMediaService
-	LikeSvc        service.ILikeService
-	BookmarkSvc    service.IBookmarkService
-	ThreadSvc      service.IThreadService
-	PinSvc         service.IThreadPinService
-	PollSvc        service.IThreadPollService
-	ProfileSvc     service.IUserProfileService
+	Media          threadmediasvciface.IThreadMediaService
+	LikeSvc        likesvciface.ILikeService
+	BookmarkSvc    bookmarksvciface.IBookmarkService
+	ThreadSvc      threadsvciface.IThreadService
+	PinSvc         threadpinsvciface.IThreadPinService
+	PollSvc        threadpollsvciface.IThreadPollService
+	ProfileSvc     userprofilesvciface.IUserProfileService
 	Cache          *cache.Cache
 	ViewerID       *uint
 	avatarCache    map[uint]string
@@ -79,7 +85,7 @@ func EventFields(t *threadmodel.Thread) (*string, *string) {
 	return &event.ID, &event.Title
 }
 
-func (fb *FeedBuilder) avatarCacheRepo() repository.ICacheRepository {
+func (fb *FeedBuilder) avatarCacheRepo() cacherepoiface.ICacheRepository {
 	provider, ok := fb.ProfileSvc.(avatarCacheProvider)
 	if !ok {
 		return nil
@@ -122,7 +128,7 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	fb.resolveProfileMeta(needed)
 }
 
-func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo repository.ICacheRepository, needed []uint) {
+func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo cacherepoiface.ICacheRepository, needed []uint) {
 	avatarMisses := make([]uint, 0, len(needed))
 	pending := make([]uint, 0, len(needed))
 	pendingKeys := make([]string, 0, len(needed))

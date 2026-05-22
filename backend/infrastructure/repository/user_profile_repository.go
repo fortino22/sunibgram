@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
-	domainrepo "github.com/sunibgram/domain/repository"
+	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -18,7 +18,7 @@ type UserProfileRepository struct {
 	cache   *cache.Cache
 }
 
-func NewUserProfileRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IUserProfileRepository {
+func NewUserProfileRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) userprofilerepoiface.IUserProfileRepository {
 	var redisCache *cache.Cache
 	if len(c) > 0 {
 		redisCache = c[0]

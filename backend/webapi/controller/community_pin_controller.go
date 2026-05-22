@@ -3,18 +3,19 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	communitysvciface "github.com/sunibgram/domain/service/community"
+	communitypinsvciface "github.com/sunibgram/domain/service/community_pin"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	communitydto "github.com/sunibgram/webapi/dto/community"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type CommunityPinController struct {
-	pinService       service.ICommunityPinService
-	communityService service.ICommunityService
+	pinService       communitypinsvciface.ICommunityPinService
+	communityService communitysvciface.ICommunityService
 }
 
-func NewCommunityPinController(pinService service.ICommunityPinService, communityService service.ICommunityService) *CommunityPinController {
+func NewCommunityPinController(pinService communitypinsvciface.ICommunityPinService, communityService communitysvciface.ICommunityService) *CommunityPinController {
 	return &CommunityPinController{pinService: pinService, communityService: communityService}
 }
 

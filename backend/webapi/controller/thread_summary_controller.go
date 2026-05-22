@@ -6,15 +6,15 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/sunibgram/application/usecase"
-	"github.com/sunibgram/domain/service"
+	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type ThreadSummaryController struct {
-	summaryService service.IThreadSummaryService
+	summaryService threadsummarysvciface.IThreadSummaryService
 }
 
-func NewThreadSummaryController(summaryService service.IThreadSummaryService) *ThreadSummaryController {
+func NewThreadSummaryController(summaryService threadsummarysvciface.IThreadSummaryService) *ThreadSummaryController {
 	return &ThreadSummaryController{summaryService: summaryService}
 }
 

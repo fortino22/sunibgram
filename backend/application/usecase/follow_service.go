@@ -7,23 +7,26 @@ import (
 	"github.com/sunibgram/application/helper"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userstatmodel "github.com/sunibgram/domain/model/user_stat"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	followsvciface "github.com/sunibgram/domain/service/follow"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
 )
 
 type FollowService struct {
-	followRepo   repository.IFollowRepository
-	userRepo     repository.IUserRepository
-	cacheRepo    repository.ICacheRepository
-	notification service.INotificationService
+	followRepo   followrepoiface.IFollowRepository
+	userRepo     userrepoiface.IUserRepository
+	cacheRepo    cacherepoiface.ICacheRepository
+	notification notificationsvciface.INotificationService
 }
 
 func NewFollowService(
-	followRepo repository.IFollowRepository,
-	userRepo repository.IUserRepository,
-	cacheRepo repository.ICacheRepository,
-	notification service.INotificationService,
-) service.IFollowService {
+	followRepo followrepoiface.IFollowRepository,
+	userRepo userrepoiface.IUserRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
+	notification notificationsvciface.INotificationService,
+) followsvciface.IFollowService {
 	return &FollowService{followRepo: followRepo, userRepo: userRepo, cacheRepo: cacheRepo, notification: notification}
 }
 

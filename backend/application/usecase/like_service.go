@@ -9,29 +9,35 @@ import (
 	communitymodel "github.com/sunibgram/domain/model/community"
 	likemodel "github.com/sunibgram/domain/model/like"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	likerepoiface "github.com/sunibgram/domain/repository/like"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
 )
 
 type LikeService struct {
-	likeRepo      repository.ILikeRepository
-	threadRepo    repository.IThreadRepository
-	communityRepo repository.ICommunityRepository
-	memberRepo    repository.ICommunityMemberRepository
-	settingsRepo  repository.IUserSettingsRepository
-	followRepo    repository.IFollowRepository
-	notification  service.INotificationService
+	likeRepo      likerepoiface.ILikeRepository
+	threadRepo    threadrepoiface.IThreadRepository
+	communityRepo communityrepoiface.ICommunityRepository
+	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
+	settingsRepo  usersettingsrepoiface.IUserSettingsRepository
+	followRepo    followrepoiface.IFollowRepository
+	notification  notificationsvciface.INotificationService
 }
 
 func NewLikeService(
-	likeRepo repository.ILikeRepository,
-	threadRepo repository.IThreadRepository,
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-	settingsRepo repository.IUserSettingsRepository,
-	followRepo repository.IFollowRepository,
-	notification service.INotificationService,
-) service.ILikeService {
+	likeRepo likerepoiface.ILikeRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
+	followRepo followrepoiface.IFollowRepository,
+	notification notificationsvciface.INotificationService,
+) likesvciface.ILikeService {
 	return &LikeService{
 		likeRepo:      likeRepo,
 		threadRepo:    threadRepo,

@@ -7,18 +7,20 @@ import (
 
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
-	"github.com/sunibgram/domain/service"
+	authsvciface "github.com/sunibgram/domain/service/auth"
+	facultysvciface "github.com/sunibgram/domain/service/faculty"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type AuthController struct {
-	authService    service.IAuthService
-	profileService service.IUserProfileService
-	facultyService service.IFacultyService
+	authService    authsvciface.IAuthService
+	profileService userprofilesvciface.IUserProfileService
+	facultyService facultysvciface.IFacultyService
 }
 
-func NewAuthController(authService service.IAuthService, profileService service.IUserProfileService, facultyService service.IFacultyService) *AuthController {
+func NewAuthController(authService authsvciface.IAuthService, profileService userprofilesvciface.IUserProfileService, facultyService facultysvciface.IFacultyService) *AuthController {
 	return &AuthController{authService: authService, profileService: profileService, facultyService: facultyService}
 }
 
@@ -66,7 +68,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	input := service.UpsertProfileInput{}
+	input := userprofilesvciface.UpsertProfileInput{}
 	if avatar, err := ctx.FormFile("avatar"); err == nil {
 		input.Avatar = avatar
 	}

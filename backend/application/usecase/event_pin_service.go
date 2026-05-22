@@ -8,16 +8,17 @@ import (
 	"github.com/sunibgram/application/helper"
 	eventpinmodel "github.com/sunibgram/domain/model/event_pin"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	eventrepoiface "github.com/sunibgram/domain/repository/event"
+	eventpinrepoiface "github.com/sunibgram/domain/repository/event_pin"
+	eventpinsvciface "github.com/sunibgram/domain/service/event_pin"
 )
 
 type EventPinService struct {
-	pinRepo   repository.IEventPinRepository
-	eventRepo repository.IEventRepository
+	pinRepo   eventpinrepoiface.IEventPinRepository
+	eventRepo eventrepoiface.IEventRepository
 }
 
-func NewEventPinService(pinRepo repository.IEventPinRepository, eventRepo repository.IEventRepository) service.IEventPinService {
+func NewEventPinService(pinRepo eventpinrepoiface.IEventPinRepository, eventRepo eventrepoiface.IEventRepository) eventpinsvciface.IEventPinService {
 	return &EventPinService{pinRepo: pinRepo, eventRepo: eventRepo}
 }
 

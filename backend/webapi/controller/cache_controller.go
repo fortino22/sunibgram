@@ -3,15 +3,15 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	cachesvciface "github.com/sunibgram/domain/service/cache"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type CacheController struct {
-	cacheService service.ICacheService
+	cacheService cachesvciface.ICacheService
 }
 
-func NewCacheController(cacheService service.ICacheService) *CacheController {
+func NewCacheController(cacheService cachesvciface.ICacheService) *CacheController {
 	return &CacheController{cacheService: cacheService}
 }
 

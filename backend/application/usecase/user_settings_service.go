@@ -7,16 +7,17 @@ import (
 	"gorm.io/gorm"
 
 	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
+	usersettingssvciface "github.com/sunibgram/domain/service/user_settings"
 )
 
 type UserSettingsService struct {
-	settingsRepo repository.IUserSettingsRepository
-	threadRepo   repository.IThreadRepository
+	settingsRepo usersettingsrepoiface.IUserSettingsRepository
+	threadRepo   threadrepoiface.IThreadRepository
 }
 
-func NewUserSettingsService(settingsRepo repository.IUserSettingsRepository, threadRepo repository.IThreadRepository) service.IUserSettingsService {
+func NewUserSettingsService(settingsRepo usersettingsrepoiface.IUserSettingsRepository, threadRepo threadrepoiface.IThreadRepository) usersettingssvciface.IUserSettingsService {
 	return &UserSettingsService{settingsRepo: settingsRepo, threadRepo: threadRepo}
 }
 

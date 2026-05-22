@@ -13,7 +13,7 @@ import (
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitydiscovermodel "github.com/sunibgram/domain/model/community_discover"
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
-	domainrepo "github.com/sunibgram/domain/repository"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -23,7 +23,7 @@ type communityRepository struct {
 	cache   *cache.Cache
 }
 
-func NewCommunityRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.ICommunityRepository {
+func NewCommunityRepository(writeDB, readDB *gorm.DB, c *cache.Cache) communityrepoiface.ICommunityRepository {
 	return &communityRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

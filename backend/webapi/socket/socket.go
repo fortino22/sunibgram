@@ -12,13 +12,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/sunibgram/domain/service"
+	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
 const claimKindAccess = "access"
 
-func Mount(app *fiber.App, hub service.IHub, roomService service.IChatRoomService, notificationHandler *NotificationHandler, sessionCache *cache.Cache) {
+func Mount(app *fiber.App, hub sockethubsvciface.IHub, roomService chatroomsvciface.IChatRoomService, notificationHandler *NotificationHandler, sessionCache *cache.Cache) {
 	handler := NewChatHandler(hub, roomService)
 
 	fibersocketio.On(fibersocketio.EventMessage, func(ep *fibersocketio.EventPayload) {

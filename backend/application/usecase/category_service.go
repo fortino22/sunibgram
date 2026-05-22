@@ -8,15 +8,15 @@ import (
 	"github.com/google/uuid"
 
 	categorymodel "github.com/sunibgram/domain/model/category"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	categoryrepoiface "github.com/sunibgram/domain/repository/category"
+	categorysvciface "github.com/sunibgram/domain/service/category"
 )
 
 type CategoryService struct {
-	categoryRepo repository.ICategoryRepository
+	categoryRepo categoryrepoiface.ICategoryRepository
 }
 
-func NewCategoryService(categoryRepo repository.ICategoryRepository) service.ICategoryService {
+func NewCategoryService(categoryRepo categoryrepoiface.ICategoryRepository) categorysvciface.ICategoryService {
 	return &CategoryService{categoryRepo: categoryRepo}
 }
 

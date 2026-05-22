@@ -3,7 +3,13 @@ package controller
 import (
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
-	"github.com/sunibgram/domain/service"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	"github.com/sunibgram/infrastructure/cache"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 	webapiutils "github.com/sunibgram/webapi/utils"
@@ -19,13 +25,13 @@ func SetFeedBuilderCache(c *cache.Cache) {
 }
 
 func newFeedBuilder(
-	media service.IThreadMediaService,
-	like service.ILikeService,
-	bookmark service.IBookmarkService,
-	thread service.IThreadService,
-	pin service.IThreadPinService,
-	profile service.IUserProfileService,
-	poll service.IThreadPollService,
+	media threadmediasvciface.IThreadMediaService,
+	like likesvciface.ILikeService,
+	bookmark bookmarksvciface.IBookmarkService,
+	thread threadsvciface.IThreadService,
+	pin threadpinsvciface.IThreadPinService,
+	profile userprofilesvciface.IUserProfileService,
+	poll threadpollsvciface.IThreadPollService,
 	viewerID *uint,
 ) webapiutils.FeedBuilder {
 	return webapiutils.FeedBuilder{
@@ -41,7 +47,7 @@ func newFeedBuilder(
 	}
 }
 
-func loadThreadMediaByThread(mediaService service.IThreadMediaService, threads []threadmodel.Thread) map[uint][]threadmediamodel.ThreadMedia {
+func loadThreadMediaByThread(mediaService threadmediasvciface.IThreadMediaService, threads []threadmodel.Thread) map[uint][]threadmediamodel.ThreadMedia {
 	ids := make([]uint, 0, len(threads))
 	for _, thread := range threads {
 		ids = append(ids, thread.ThreadID)
@@ -52,7 +58,7 @@ func loadThreadMediaByThread(mediaService service.IThreadMediaService, threads [
 	return loadThreadMediaByID(mediaService, ids)
 }
 
-func loadThreadMediaByID(mediaService service.IThreadMediaService, threadIDs []uint) map[uint][]threadmediamodel.ThreadMedia {
+func loadThreadMediaByID(mediaService threadmediasvciface.IThreadMediaService, threadIDs []uint) map[uint][]threadmediamodel.ThreadMedia {
 	allMedia, _ := mediaService.GetByThreadIDs(threadIDs)
 	mediaByThread := make(map[uint][]threadmediamodel.ThreadMedia, len(threadIDs))
 	for _, media := range allMedia {

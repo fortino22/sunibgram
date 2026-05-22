@@ -3,18 +3,19 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	eventsvciface "github.com/sunibgram/domain/service/event"
+	eventparticipantsvciface "github.com/sunibgram/domain/service/event_participant"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	eventdto "github.com/sunibgram/webapi/dto/event"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type EventParticipantController struct {
-	partService  service.IEventParticipantService
-	eventService service.IEventService
+	partService  eventparticipantsvciface.IEventParticipantService
+	eventService eventsvciface.IEventService
 }
 
-func NewEventParticipantController(partService service.IEventParticipantService, eventService service.IEventService) *EventParticipantController {
+func NewEventParticipantController(partService eventparticipantsvciface.IEventParticipantService, eventService eventsvciface.IEventService) *EventParticipantController {
 	return &EventParticipantController{partService: partService, eventService: eventService}
 }
 

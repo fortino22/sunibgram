@@ -8,17 +8,17 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	ordermodel "github.com/sunibgram/domain/model/order"
-	"github.com/sunibgram/domain/service"
+	ordersvciface "github.com/sunibgram/domain/service/order"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	orderdto "github.com/sunibgram/webapi/dto/order"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type OrderController struct {
-	orderService service.IOrderService
+	orderService ordersvciface.IOrderService
 }
 
-func NewOrderController(orderService service.IOrderService) *OrderController {
+func NewOrderController(orderService ordersvciface.IOrderService) *OrderController {
 	return &OrderController{orderService: orderService}
 }
 

@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	violationmodel "github.com/sunibgram/domain/model/violation"
-	domainrepo "github.com/sunibgram/domain/repository"
+	violationrepoiface "github.com/sunibgram/domain/repository/violation"
 )
 
 type violationRepository struct {
@@ -15,7 +15,7 @@ type violationRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewViolationRepository(writeDB, readDB *gorm.DB) domainrepo.IViolationRepository {
+func NewViolationRepository(writeDB, readDB *gorm.DB) violationrepoiface.IViolationRepository {
 	return &violationRepository{writeDB: writeDB, readDB: readDB}
 }
 

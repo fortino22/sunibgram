@@ -8,32 +8,39 @@ import (
 
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
-	"github.com/sunibgram/domain/service"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	communitythreadpinsvciface "github.com/sunibgram/domain/service/community_thread_pin"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 	threadmediadto "github.com/sunibgram/webapi/dto/thread_media"
 )
 
 type CommunityThreadController struct {
-	threadService    service.IThreadService
-	mediaService     service.IThreadMediaService
-	likeService      service.ILikeService
-	bookmarkService  service.IBookmarkService
-	threadPinService service.IThreadPinService
-	profileService   service.IUserProfileService
-	pollService      service.IThreadPollService
-	communityPinSvc  service.ICommunityThreadPinService
+	threadService    threadsvciface.IThreadService
+	mediaService     threadmediasvciface.IThreadMediaService
+	likeService      likesvciface.ILikeService
+	bookmarkService  bookmarksvciface.IBookmarkService
+	threadPinService threadpinsvciface.IThreadPinService
+	profileService   userprofilesvciface.IUserProfileService
+	pollService      threadpollsvciface.IThreadPollService
+	communityPinSvc  communitythreadpinsvciface.ICommunityThreadPinService
 }
 
 func NewCommunityThreadController(
-	threadService service.IThreadService,
-	mediaService service.IThreadMediaService,
-	likeService service.ILikeService,
-	bookmarkService service.IBookmarkService,
-	threadPinService service.IThreadPinService,
-	profileService service.IUserProfileService,
-	pollService service.IThreadPollService,
-	communityPinSvc service.ICommunityThreadPinService,
+	threadService threadsvciface.IThreadService,
+	mediaService threadmediasvciface.IThreadMediaService,
+	likeService likesvciface.ILikeService,
+	bookmarkService bookmarksvciface.IBookmarkService,
+	threadPinService threadpinsvciface.IThreadPinService,
+	profileService userprofilesvciface.IUserProfileService,
+	pollService threadpollsvciface.IThreadPollService,
+	communityPinSvc communitythreadpinsvciface.ICommunityThreadPinService,
 ) *CommunityThreadController {
 	return &CommunityThreadController{
 		threadService:    threadService,

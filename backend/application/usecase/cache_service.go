@@ -1,15 +1,15 @@
 package usecase
 
 import (
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	cachesvciface "github.com/sunibgram/domain/service/cache"
 )
 
 type CacheService struct {
-	cacheRepo repository.ICacheRepository
+	cacheRepo cacherepoiface.ICacheRepository
 }
 
-func NewCacheService(cacheRepo repository.ICacheRepository) service.ICacheService {
+func NewCacheService(cacheRepo cacherepoiface.ICacheRepository) cachesvciface.ICacheService {
 	return &CacheService{cacheRepo: cacheRepo}
 }
 

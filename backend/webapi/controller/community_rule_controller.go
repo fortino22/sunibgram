@@ -4,16 +4,16 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
-	"github.com/sunibgram/domain/service"
+	communityrulesvciface "github.com/sunibgram/domain/service/community_rule"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	communityruledto "github.com/sunibgram/webapi/dto/community_rule"
 )
 
 type CommunityRuleController struct {
-	ruleService service.ICommunityRuleService
+	ruleService communityrulesvciface.ICommunityRuleService
 }
 
-func NewCommunityRuleController(ruleService service.ICommunityRuleService) *CommunityRuleController {
+func NewCommunityRuleController(ruleService communityrulesvciface.ICommunityRuleService) *CommunityRuleController {
 	return &CommunityRuleController{ruleService: ruleService}
 }
 

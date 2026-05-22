@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 
 	chatreactionmodel "github.com/sunibgram/domain/model/chat_reaction"
-	domainrepo "github.com/sunibgram/domain/repository"
+	chatreactionrepoiface "github.com/sunibgram/domain/repository/chat_reaction"
 )
 
 type ChatReactionRepository struct {
@@ -12,7 +12,7 @@ type ChatReactionRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewChatReactionRepository(writeDB, readDB *gorm.DB) domainrepo.IChatReactionRepository {
+func NewChatReactionRepository(writeDB, readDB *gorm.DB) chatreactionrepoiface.IChatReactionRepository {
 	return &ChatReactionRepository{writeDB: writeDB, readDB: readDB}
 }
 

@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
-	domainrepo "github.com/sunibgram/domain/repository"
+	threadpinrepoiface "github.com/sunibgram/domain/repository/thread_pin"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -16,7 +16,7 @@ type ThreadPinRepository struct {
 	cache   *cache.Cache
 }
 
-func NewThreadPinRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IThreadPinRepository {
+func NewThreadPinRepository(writeDB, readDB *gorm.DB, c ...*cache.Cache) threadpinrepoiface.IThreadPinRepository {
 	var redisCache *cache.Cache
 	if len(c) > 0 {
 		redisCache = c[0]

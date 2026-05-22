@@ -8,23 +8,26 @@ import (
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	communityrequestrepoiface "github.com/sunibgram/domain/repository/community_request"
+	communityrequestsvciface "github.com/sunibgram/domain/service/community_request"
 )
 
 type CommunityRequestService struct {
-	communityRepo repository.ICommunityRepository
-	memberRepo    repository.ICommunityMemberRepository
-	requestRepo   repository.ICommunityRequestRepository
-	cacheRepo     repository.ICacheRepository
+	communityRepo communityrepoiface.ICommunityRepository
+	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
+	requestRepo   communityrequestrepoiface.ICommunityRequestRepository
+	cacheRepo     cacherepoiface.ICacheRepository
 }
 
 func NewCommunityRequestService(
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-	requestRepo repository.ICommunityRequestRepository,
-	cacheRepo repository.ICacheRepository,
-) service.ICommunityRequestService {
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+	requestRepo communityrequestrepoiface.ICommunityRequestRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
+) communityrequestsvciface.ICommunityRequestService {
 	return &CommunityRequestService{
 		communityRepo: communityRepo,
 		memberRepo:    memberRepo,

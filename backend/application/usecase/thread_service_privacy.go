@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 
-	"github.com/sunibgram/domain/repository"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 )
 
 func canViewPrivateUser(
 	ctx context.Context,
-	settingsRepo repository.IUserSettingsRepository,
-	followRepo repository.IFollowRepository,
+	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
+	followRepo followrepoiface.IFollowRepository,
 	requesterID *uint,
 	targetUserID uint,
 ) error {

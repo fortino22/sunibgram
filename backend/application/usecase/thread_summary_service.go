@@ -12,8 +12,9 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 	"github.com/sunibgram/infrastructure/ollama"
 )
 
@@ -22,17 +23,17 @@ const threadSummaryTTL = time.Hour
 var ErrThreadSummaryNotReady = errors.New("thread summary is being generated")
 
 type ThreadSummaryService struct {
-	threadRepo   repository.IThreadRepository
-	cacheRepo    repository.ICacheRepository
+	threadRepo   threadrepoiface.IThreadRepository
+	cacheRepo    cacherepoiface.ICacheRepository
 	ollamaClient *ollama.Client
 	group        singleflight.Group
 }
 
 func NewThreadSummaryService(
-	threadRepo repository.IThreadRepository,
-	cacheRepo repository.ICacheRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
 	ollamaClient *ollama.Client,
-) service.IThreadSummaryService {
+) threadsummarysvciface.IThreadSummaryService {
 	return &ThreadSummaryService{
 		threadRepo:   threadRepo,
 		cacheRepo:    cacheRepo,

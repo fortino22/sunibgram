@@ -8,7 +8,7 @@ import (
 
 	bookmarkmodel "github.com/sunibgram/domain/model/bookmark"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	bookmarkrepoiface "github.com/sunibgram/domain/repository/bookmark"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -17,7 +17,7 @@ type BookmarkRepository struct {
 	patchCount func(threadID uint, column string, delta int)
 }
 
-func NewBookmarkRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) domainrepo.IBookmarkRepository {
+func NewBookmarkRepository(writeDB, readDB *gorm.DB, c *cache.Cache, patchCount func(uint, string, int)) bookmarkrepoiface.IBookmarkRepository {
 	return &BookmarkRepository{
 		base:       newInteractionRepo(writeDB, readDB, c, "bookmarks", &threadDB{writeDB: writeDB, readDB: readDB}),
 		patchCount: patchCount,

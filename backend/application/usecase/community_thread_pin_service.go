@@ -5,23 +5,26 @@ import (
 	"errors"
 
 	communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	communitythreadpinrepoiface "github.com/sunibgram/domain/repository/community_thread_pin"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	communitythreadpinsvciface "github.com/sunibgram/domain/service/community_thread_pin"
 )
 
 type CommunityThreadPinService struct {
-	pinRepo       repository.ICommunityThreadPinRepository
-	communityRepo repository.ICommunityRepository
-	memberRepo    repository.ICommunityMemberRepository
-	threadRepo    repository.IThreadRepository
+	pinRepo       communitythreadpinrepoiface.ICommunityThreadPinRepository
+	communityRepo communityrepoiface.ICommunityRepository
+	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
+	threadRepo    threadrepoiface.IThreadRepository
 }
 
 func NewCommunityThreadPinService(
-	pinRepo repository.ICommunityThreadPinRepository,
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-	threadRepo repository.IThreadRepository,
-) service.ICommunityThreadPinService {
+	pinRepo communitythreadpinrepoiface.ICommunityThreadPinRepository,
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+) communitythreadpinsvciface.ICommunityThreadPinService {
 	return &CommunityThreadPinService{
 		pinRepo:       pinRepo,
 		communityRepo: communityRepo,

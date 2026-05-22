@@ -3,16 +3,16 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	usersettingssvciface "github.com/sunibgram/domain/service/user_settings"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	usersettingsdto "github.com/sunibgram/webapi/dto/user_settings"
 )
 
 type UserSettingsController struct {
-	settingsService service.IUserSettingsService
+	settingsService usersettingssvciface.IUserSettingsService
 }
 
-func NewUserSettingsController(settingsService service.IUserSettingsService) *UserSettingsController {
+func NewUserSettingsController(settingsService usersettingssvciface.IUserSettingsService) *UserSettingsController {
 	return &UserSettingsController{settingsService: settingsService}
 }
 

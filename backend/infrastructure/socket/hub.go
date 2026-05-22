@@ -6,7 +6,7 @@ import (
 
 	fibersocketio "github.com/gofiber/contrib/socketio"
 
-	"github.com/sunibgram/domain/service"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 )
 
 type Hub struct {
@@ -22,7 +22,7 @@ type envelope struct {
 	Data  any    `json:"data"`
 }
 
-func NewHub() service.IHub {
+func NewHub() sockethubsvciface.IHub {
 	return &Hub{
 		rooms:       make(map[uint]map[string]struct{}),
 		connections: make(map[string]map[uint]struct{}),

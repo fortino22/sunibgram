@@ -8,15 +8,15 @@ import (
 	"github.com/google/uuid"
 
 	violationmodel "github.com/sunibgram/domain/model/violation"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	violationrepoiface "github.com/sunibgram/domain/repository/violation"
+	violationsvciface "github.com/sunibgram/domain/service/violation"
 )
 
 type ViolationService struct {
-	violationRepo repository.IViolationRepository
+	violationRepo violationrepoiface.IViolationRepository
 }
 
-func NewViolationService(violationRepo repository.IViolationRepository) service.IViolationService {
+func NewViolationService(violationRepo violationrepoiface.IViolationRepository) violationsvciface.IViolationService {
 	return &ViolationService{violationRepo: violationRepo}
 }
 

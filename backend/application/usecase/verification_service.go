@@ -14,8 +14,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
+	emailsvciface "github.com/sunibgram/domain/service/email"
+	verificationsvciface "github.com/sunibgram/domain/service/verification"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
 
@@ -61,18 +63,18 @@ func verifyOTPHash(stored, plain string) bool {
 }
 
 type VerificationService struct {
-	verificationRepo repository.IVerificationRepository
-	userRepo         repository.IUserRepository
-	emailService     service.IEmailService
+	verificationRepo verificationrepoiface.IVerificationRepository
+	userRepo         userrepoiface.IUserRepository
+	emailService     emailsvciface.IEmailService
 	sendLimiter      *ratelimit.RateLimiter
 	verifyLimiter    *ratelimit.RateLimiter
 }
 
 func NewVerificationService(
-	verificationRepo repository.IVerificationRepository,
-	userRepo repository.IUserRepository,
-	emailService service.IEmailService,
-) service.IVerificationService {
+	verificationRepo verificationrepoiface.IVerificationRepository,
+	userRepo userrepoiface.IUserRepository,
+	emailService emailsvciface.IEmailService,
+) verificationsvciface.IVerificationService {
 	return &VerificationService{
 		verificationRepo: verificationRepo,
 		userRepo:         userRepo,

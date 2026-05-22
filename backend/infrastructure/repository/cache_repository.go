@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	domainrepo "github.com/sunibgram/domain/repository"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -12,7 +12,7 @@ type CacheRepository struct {
 	cache *cache.Cache
 }
 
-func NewCacheRepository(c *cache.Cache) domainrepo.ICacheRepository {
+func NewCacheRepository(c *cache.Cache) cacherepoiface.ICacheRepository {
 	return &CacheRepository{cache: c}
 }
 

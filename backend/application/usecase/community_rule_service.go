@@ -6,8 +6,9 @@ import (
 	"unicode/utf8"
 
 	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communityrulerepoiface "github.com/sunibgram/domain/repository/community_rule"
+	communityrulesvciface "github.com/sunibgram/domain/service/community_rule"
 )
 
 const (
@@ -16,14 +17,14 @@ const (
 )
 
 type CommunityRuleService struct {
-	communityRepo repository.ICommunityRepository
-	ruleRepo      repository.ICommunityRuleRepository
+	communityRepo communityrepoiface.ICommunityRepository
+	ruleRepo      communityrulerepoiface.ICommunityRuleRepository
 }
 
 func NewCommunityRuleService(
-	communityRepo repository.ICommunityRepository,
-	ruleRepo repository.ICommunityRuleRepository,
-) service.ICommunityRuleService {
+	communityRepo communityrepoiface.ICommunityRepository,
+	ruleRepo communityrulerepoiface.ICommunityRuleRepository,
+) communityrulesvciface.ICommunityRuleService {
 	return &CommunityRuleService{communityRepo: communityRepo, ruleRepo: ruleRepo}
 }
 

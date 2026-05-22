@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	chatreadmodel "github.com/sunibgram/domain/model/chat_read"
-	domainrepo "github.com/sunibgram/domain/repository"
+	chatreadrepoiface "github.com/sunibgram/domain/repository/chat_read"
 )
 
 type ChatReadRepository struct {
@@ -16,7 +16,7 @@ type ChatReadRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewChatReadRepository(writeDB, readDB *gorm.DB) domainrepo.IChatReadRepository {
+func NewChatReadRepository(writeDB, readDB *gorm.DB) chatreadrepoiface.IChatReadRepository {
 	return &ChatReadRepository{writeDB: writeDB, readDB: readDB}
 }
 

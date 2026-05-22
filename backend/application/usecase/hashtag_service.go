@@ -7,8 +7,8 @@ import (
 
 	"github.com/sunibgram/application/helper"
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
+	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -18,11 +18,11 @@ const (
 )
 
 type HashtagService struct {
-	hashtagRepo repository.IHashtagRepository
+	hashtagRepo hashtagrepoiface.IHashtagRepository
 	cache       *cache.Cache
 }
 
-func NewHashtagService(hashtagRepo repository.IHashtagRepository, c *cache.Cache) service.IHashtagService {
+func NewHashtagService(hashtagRepo hashtagrepoiface.IHashtagRepository, c *cache.Cache) hashtagsvciface.IHashtagService {
 	return &HashtagService{hashtagRepo: hashtagRepo, cache: c}
 }
 

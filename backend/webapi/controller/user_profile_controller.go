@@ -7,7 +7,10 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
+	facultysvciface "github.com/sunibgram/domain/service/faculty"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	facultydto "github.com/sunibgram/webapi/dto/faculty"
@@ -16,17 +19,17 @@ import (
 )
 
 type UserProfileController struct {
-	profileService  service.IUserProfileService
-	facultyService  service.IFacultyService
-	hub             service.IHub
-	chatRoomService service.IChatRoomService
+	profileService  userprofilesvciface.IUserProfileService
+	facultyService  facultysvciface.IFacultyService
+	hub             sockethubsvciface.IHub
+	chatRoomService chatroomsvciface.IChatRoomService
 }
 
 func NewUserProfileController(
-	profileService service.IUserProfileService,
-	facultyService service.IFacultyService,
-	hub service.IHub,
-	chatRoomService service.IChatRoomService,
+	profileService userprofilesvciface.IUserProfileService,
+	facultyService facultysvciface.IFacultyService,
+	hub sockethubsvciface.IHub,
+	chatRoomService chatroomsvciface.IChatRoomService,
 ) *UserProfileController {
 	return &UserProfileController{
 		profileService:  profileService,
@@ -91,7 +94,7 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 		facultyID = &v
 	}
 
-	input := service.UpdateProfileInput{}
+	input := userprofilesvciface.UpdateProfileInput{}
 
 	if name := ctx.FormValue("name"); name != "" {
 		input.Name = &name
@@ -173,11 +176,11 @@ func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint, vie
 	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(fp))
 }
 
-func (c *UserProfileController) toResponse(fp *service.FullProfile) userprofiledto.UserProfileResponse {
+func (c *UserProfileController) toResponse(fp *userprofilesvciface.FullProfile) userprofiledto.UserProfileResponse {
 	return toUserProfileResponse(fp, c.profileService.GetURL)
 }
 
-func toUserProfileResponse(fp *service.FullProfile, getURL func(string, string) string) userprofiledto.UserProfileResponse {
+func toUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(string, string) string) userprofiledto.UserProfileResponse {
 	avatarURL := ""
 	bannerURL := ""
 	if fp.Profile != nil {

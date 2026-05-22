@@ -5,16 +5,16 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	emailsvciface "github.com/sunibgram/domain/service/email"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	emaildto "github.com/sunibgram/webapi/dto/email"
 )
 
 type EmailController struct {
-	emailService service.IEmailService
+	emailService emailsvciface.IEmailService
 }
 
-func NewEmailController(emailService service.IEmailService) *EmailController {
+func NewEmailController(emailService emailsvciface.IEmailService) *EmailController {
 	return &EmailController{emailService: emailService}
 }
 

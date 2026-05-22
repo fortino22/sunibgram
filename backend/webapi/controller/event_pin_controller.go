@@ -3,18 +3,19 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	eventsvciface "github.com/sunibgram/domain/service/event"
+	eventpinsvciface "github.com/sunibgram/domain/service/event_pin"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	eventdto "github.com/sunibgram/webapi/dto/event"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
 )
 
 type EventPinController struct {
-	pinService   service.IEventPinService
-	eventService service.IEventService
+	pinService   eventpinsvciface.IEventPinService
+	eventService eventsvciface.IEventService
 }
 
-func NewEventPinController(pinService service.IEventPinService, eventService service.IEventService) *EventPinController {
+func NewEventPinController(pinService eventpinsvciface.IEventPinService, eventService eventsvciface.IEventService) *EventPinController {
 	return &EventPinController{pinService: pinService, eventService: eventService}
 }
 

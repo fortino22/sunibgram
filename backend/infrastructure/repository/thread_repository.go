@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	usermodel "github.com/sunibgram/domain/model/user"
-	domainrepo "github.com/sunibgram/domain/repository"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -102,7 +102,7 @@ func threadVisibilityCachePart(requesterID *uint) string {
 	return fmt.Sprintf("%d", *requesterID)
 }
 
-func NewThreadRepository(writeDB, readDB *gorm.DB, c *cache.Cache) (domainrepo.IThreadRepository, func(uint, string, int)) {
+func NewThreadRepository(writeDB, readDB *gorm.DB, c *cache.Cache) (threadrepoiface.IThreadRepository, func(uint, string, int)) {
 	tdb := &threadDB{writeDB: writeDB, readDB: readDB}
 	r := &threadCached{
 		db:        tdb,

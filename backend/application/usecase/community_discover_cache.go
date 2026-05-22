@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sunibgram/domain/repository"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 )
 
 const discoverCommunitiesCacheKey = "discover:communities"
@@ -17,7 +17,7 @@ func communitySearchCacheKey(communityName string) string {
 	return fmt.Sprintf("communities:search:%s", strings.ToLower(strings.TrimSpace(communityName)))
 }
 
-func invalidateDiscoverCommunitiesCache(ctx context.Context, cacheRepo repository.ICacheRepository) {
+func invalidateDiscoverCommunitiesCache(ctx context.Context, cacheRepo cacherepoiface.ICacheRepository) {
 	if cacheRepo == nil {
 		return
 	}

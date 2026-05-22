@@ -4,10 +4,11 @@ import (
 	"context"
 
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 )
 
-func FilterViewableThreads(ctx context.Context, settingsRepo repository.IUserSettingsRepository, followRepo repository.IFollowRepository, requesterID *uint, threads []threadmodel.Thread) ([]threadmodel.Thread, error) {
+func FilterViewableThreads(ctx context.Context, settingsRepo usersettingsrepoiface.IUserSettingsRepository, followRepo followrepoiface.IFollowRepository, requesterID *uint, threads []threadmodel.Thread) ([]threadmodel.Thread, error) {
 	targetIDs := make([]uint, 0, len(threads))
 	seen := make(map[uint]struct{}, len(threads))
 	for _, thread := range threads {

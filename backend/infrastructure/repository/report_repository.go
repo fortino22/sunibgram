@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	reportmodel "github.com/sunibgram/domain/model/report"
-	domainrepo "github.com/sunibgram/domain/repository"
+	reportrepoiface "github.com/sunibgram/domain/repository/report"
 )
 
 type reportRepository struct {
@@ -15,7 +15,7 @@ type reportRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewReportRepository(writeDB, readDB *gorm.DB) domainrepo.IReportRepository {
+func NewReportRepository(writeDB, readDB *gorm.DB) reportrepoiface.IReportRepository {
 	return &reportRepository{writeDB: writeDB, readDB: readDB}
 }
 

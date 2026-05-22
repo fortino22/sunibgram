@@ -3,16 +3,17 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type RepostController struct {
-	threadService service.IThreadService
-	mediaService  service.IThreadMediaService
+	threadService threadsvciface.IThreadService
+	mediaService  threadmediasvciface.IThreadMediaService
 }
 
-func NewRepostController(threadService service.IThreadService, mediaService service.IThreadMediaService) *RepostController {
+func NewRepostController(threadService threadsvciface.IThreadService, mediaService threadmediasvciface.IThreadMediaService) *RepostController {
 	return &RepostController{threadService: threadService, mediaService: mediaService}
 }
 

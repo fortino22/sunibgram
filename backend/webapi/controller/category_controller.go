@@ -5,17 +5,17 @@ import (
 	"github.com/google/uuid"
 
 	categorymodel "github.com/sunibgram/domain/model/category"
-	"github.com/sunibgram/domain/service"
+	categorysvciface "github.com/sunibgram/domain/service/category"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	categorydto "github.com/sunibgram/webapi/dto/category"
 )
 
 type CategoryController struct {
-	categoryService service.ICategoryService
+	categoryService categorysvciface.ICategoryService
 }
 
-func NewCategoryController(categoryService service.ICategoryService) *CategoryController {
+func NewCategoryController(categoryService categorysvciface.ICategoryService) *CategoryController {
 	return &CategoryController{categoryService: categoryService}
 }
 

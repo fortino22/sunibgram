@@ -7,7 +7,7 @@ import (
 	"gorm.io/gorm"
 
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
-	domainrepo "github.com/sunibgram/domain/repository"
+	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
 )
 
 type VerificationRepository struct {
@@ -15,7 +15,7 @@ type VerificationRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewVerificationRepository(writeDB, readDB *gorm.DB) domainrepo.IVerificationRepository {
+func NewVerificationRepository(writeDB, readDB *gorm.DB) verificationrepoiface.IVerificationRepository {
 	return &VerificationRepository{writeDB: writeDB, readDB: readDB}
 }
 

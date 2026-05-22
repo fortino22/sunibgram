@@ -10,7 +10,7 @@ import (
 
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	domainrepo "github.com/sunibgram/domain/repository"
+	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -19,7 +19,7 @@ type hashtagRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewHashtagRepository(writeDB, readDB *gorm.DB) domainrepo.IHashtagRepository {
+func NewHashtagRepository(writeDB, readDB *gorm.DB) hashtagrepoiface.IHashtagRepository {
 	return &hashtagRepository{writeDB: writeDB, readDB: readDB}
 }
 

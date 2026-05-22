@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
-	domainrepo "github.com/sunibgram/domain/repository"
+	eventreviewrepoiface "github.com/sunibgram/domain/repository/event_review"
 )
 
 type eventReviewRepository struct {
@@ -12,7 +12,7 @@ type eventReviewRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewEventReviewRepository(writeDB, readDB *gorm.DB) domainrepo.IEventReviewRepository {
+func NewEventReviewRepository(writeDB, readDB *gorm.DB) eventreviewrepoiface.IEventReviewRepository {
 	return &eventReviewRepository{writeDB: writeDB, readDB: readDB}
 }
 

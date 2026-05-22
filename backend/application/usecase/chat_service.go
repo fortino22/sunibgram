@@ -9,24 +9,27 @@ import (
 	"github.com/sunibgram/application/helper"
 	chatmodel "github.com/sunibgram/domain/model/chat"
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	chatrepoiface "github.com/sunibgram/domain/repository/chat"
+	chatreadrepoiface "github.com/sunibgram/domain/repository/chat_read"
+	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
+	chatsvciface "github.com/sunibgram/domain/service/chat"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
 )
 
 type ChatService struct {
-	chatRepo            repository.IChatRepository
-	roomRepo            repository.IChatRoomRepository
-	chatReadRepo        repository.IChatReadRepository
-	notificationService service.INotificationService
+	chatRepo            chatrepoiface.IChatRepository
+	roomRepo            chatroomrepoiface.IChatRoomRepository
+	chatReadRepo        chatreadrepoiface.IChatReadRepository
+	notificationService notificationsvciface.INotificationService
 }
 
 func NewChatService(
-	chatRepo repository.IChatRepository,
-	roomRepo repository.IChatRoomRepository,
-	chatReadRepo repository.IChatReadRepository,
-	notificationServices ...service.INotificationService,
-) service.IChatService {
-	var notificationService service.INotificationService
+	chatRepo chatrepoiface.IChatRepository,
+	roomRepo chatroomrepoiface.IChatRoomRepository,
+	chatReadRepo chatreadrepoiface.IChatReadRepository,
+	notificationServices ...notificationsvciface.INotificationService,
+) chatsvciface.IChatService {
+	var notificationService notificationsvciface.INotificationService
 	if len(notificationServices) > 0 {
 		notificationService = notificationServices[0]
 	}
@@ -120,7 +123,7 @@ func (s *ChatService) sendMessageNotifications(room *chatroommodel.ChatRoom, cha
 		}
 		seen[member.UserID] = struct{}{}
 
-		_ = s.notificationService.SendNotification(service.CreateNotificationInput{
+		_ = s.notificationService.SendNotification(notificationsvciface.CreateNotificationInput{
 			Type:            "chat_message",
 			Message:         chatNotificationMessage(chat),
 			SenderUserID:    chat.SenderID,
@@ -321,7 +324,7 @@ func (s *ChatService) decryptChat(chat *chatmodel.Chat, roomKey []byte) {
 	}
 }
 
-func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs []uint, userID uint) ([]service.ChatMarkResult, error) {
+func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs []uint, userID uint) ([]chatsvciface.ChatMarkResult, error) {
 	if !s.roomRepo.IsMember(roomID, userID) {
 		return nil, errors.New("forbidden")
 	}
@@ -330,11 +333,11 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 		return nil, errors.New("chat room not found")
 	}
 
-	results := make([]service.ChatMarkResult, 0, len(chatIDs))
+	results := make([]chatsvciface.ChatMarkResult, 0, len(chatIDs))
 	chats, err := s.chatRepo.FindByIDs(chatIDs)
 	if err != nil {
 		for _, chatID := range chatIDs {
-			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "not_found"})
+			results = append(results, chatsvciface.ChatMarkResult{ChatID: chatID, Status: "not_found"})
 		}
 		return results, nil
 	}
@@ -345,15 +348,15 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 	for _, chatID := range chatIDs {
 		chat, ok := chatByID[chatID]
 		if !ok {
-			results = append(results, service.ChatMarkResult{ChatID: chatID, Status: "not_found"})
+			results = append(results, chatsvciface.ChatMarkResult{ChatID: chatID, Status: "not_found"})
 			continue
 		}
 		if chat.RoomID != roomID || chat.SenderID == userID {
-			results = append(results, service.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "skipped"})
+			results = append(results, chatsvciface.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "skipped"})
 			continue
 		}
 		if chat.IsRead {
-			results = append(results, service.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "already_read"})
+			results = append(results, chatsvciface.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "already_read"})
 			continue
 		}
 		if room.Type == chatroommodel.ChatRoomTypePrivate {
@@ -368,7 +371,7 @@ func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs
 				_ = s.chatRepo.UpdateIsRead(chatID)
 			}
 		}
-		results = append(results, service.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "marked"})
+		results = append(results, chatsvciface.ChatMarkResult{ChatID: chatID, SenderID: chat.SenderID, Status: "marked"})
 	}
 	return results, nil
 }

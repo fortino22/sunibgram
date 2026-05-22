@@ -8,16 +8,17 @@ import (
 	"github.com/sunibgram/application/helper"
 	facultymodel "github.com/sunibgram/domain/model/faculty"
 	usermodel "github.com/sunibgram/domain/model/user"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	facultyrepoiface "github.com/sunibgram/domain/repository/faculty"
+	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
+	facultysvciface "github.com/sunibgram/domain/service/faculty"
 )
 
 type FacultyService struct {
-	facultyRepo     repository.IFacultyRepository
-	userFacultyRepo repository.IUserFacultyRepository
+	facultyRepo     facultyrepoiface.IFacultyRepository
+	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository
 }
 
-func NewFacultyService(facultyRepo repository.IFacultyRepository, userFacultyRepo repository.IUserFacultyRepository) service.IFacultyService {
+func NewFacultyService(facultyRepo facultyrepoiface.IFacultyRepository, userFacultyRepo userfacultyrepoiface.IUserFacultyRepository) facultysvciface.IFacultyService {
 	return &FacultyService{facultyRepo: facultyRepo, userFacultyRepo: userFacultyRepo}
 }
 

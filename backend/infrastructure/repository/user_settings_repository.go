@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
-	domainrepo "github.com/sunibgram/domain/repository"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -26,7 +26,7 @@ func userPrivacyKey(userID uint) string {
 	return fmt.Sprintf("user:privacy:%d", userID)
 }
 
-func NewUserSettingsRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) domainrepo.IUserSettingsRepository {
+func NewUserSettingsRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) usersettingsrepoiface.IUserSettingsRepository {
 	var redisCache *cache.Cache
 	if len(c) > 0 {
 		redisCache = c[0]

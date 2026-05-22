@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
-	domainrepo "github.com/sunibgram/domain/repository"
+	communityrequestrepoiface "github.com/sunibgram/domain/repository/community_request"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -18,7 +18,7 @@ type communityRequestRepository struct {
 	cache   *cache.Cache
 }
 
-func NewCommunityRequestRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.ICommunityRequestRepository {
+func NewCommunityRequestRepository(writeDB, readDB *gorm.DB, c *cache.Cache) communityrequestrepoiface.ICommunityRequestRepository {
 	return &communityRequestRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

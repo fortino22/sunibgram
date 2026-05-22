@@ -8,7 +8,7 @@ import (
 
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitypinmodel "github.com/sunibgram/domain/model/community_pin"
-	domainrepo "github.com/sunibgram/domain/repository"
+	communitypinrepoiface "github.com/sunibgram/domain/repository/community_pin"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -18,7 +18,7 @@ type CommunityPinRepository struct {
 	cache   *cache.Cache
 }
 
-func NewCommunityPinRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.ICommunityPinRepository {
+func NewCommunityPinRepository(writeDB, readDB *gorm.DB, c *cache.Cache) communitypinrepoiface.ICommunityPinRepository {
 	return &CommunityPinRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

@@ -8,17 +8,18 @@ import (
 
 	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
 	mediamodel "github.com/sunibgram/domain/model/media"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	chatrepoiface "github.com/sunibgram/domain/repository/chat"
+	chatmediarepoiface "github.com/sunibgram/domain/repository/chat_media"
+	chatmediasvciface "github.com/sunibgram/domain/service/chat_media"
 )
 
 type ChatMediaService struct {
-	chatRepo  repository.IChatRepository
-	mediaRepo repository.IChatMediaRepository
+	chatRepo  chatrepoiface.IChatRepository
+	mediaRepo chatmediarepoiface.IChatMediaRepository
 	storage   *StorageUsecase
 }
 
-func NewChatMediaService(chatRepo repository.IChatRepository, mediaRepo repository.IChatMediaRepository, storage *StorageUsecase) service.IChatMediaService {
+func NewChatMediaService(chatRepo chatrepoiface.IChatRepository, mediaRepo chatmediarepoiface.IChatMediaRepository, storage *StorageUsecase) chatmediasvciface.IChatMediaService {
 	return &ChatMediaService{chatRepo: chatRepo, mediaRepo: mediaRepo, storage: storage}
 }
 

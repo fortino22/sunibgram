@@ -9,16 +9,17 @@ import (
 	"github.com/sunibgram/application/helper"
 	eventparticipantmodel "github.com/sunibgram/domain/model/event_participant"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	eventrepoiface "github.com/sunibgram/domain/repository/event"
+	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
+	eventparticipantsvciface "github.com/sunibgram/domain/service/event_participant"
 )
 
 type EventParticipantService struct {
-	partRepo  repository.IEventParticipantRepository
-	eventRepo repository.IEventRepository
+	partRepo  eventparticipantrepoiface.IEventParticipantRepository
+	eventRepo eventrepoiface.IEventRepository
 }
 
-func NewEventParticipantService(partRepo repository.IEventParticipantRepository, eventRepo repository.IEventRepository) service.IEventParticipantService {
+func NewEventParticipantService(partRepo eventparticipantrepoiface.IEventParticipantRepository, eventRepo eventrepoiface.IEventRepository) eventparticipantsvciface.IEventParticipantService {
 	return &EventParticipantService{partRepo: partRepo, eventRepo: eventRepo}
 }
 

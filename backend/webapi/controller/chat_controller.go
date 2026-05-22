@@ -13,7 +13,10 @@ import (
 	chatmodel "github.com/sunibgram/domain/model/chat"
 	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
 	chatreactionmodel "github.com/sunibgram/domain/model/chat_reaction"
-	"github.com/sunibgram/domain/service"
+	chatsvciface "github.com/sunibgram/domain/service/chat"
+	chatmediasvciface "github.com/sunibgram/domain/service/chat_media"
+	chatreactionsvciface "github.com/sunibgram/domain/service/chat_reaction"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	chatdto "github.com/sunibgram/webapi/dto/chat"
@@ -21,14 +24,14 @@ import (
 )
 
 type ChatController struct {
-	chatService         service.IChatService
-	chatMediaService    service.IChatMediaService
-	chatReactionService service.IChatReactionService
-	hub                 service.IHub
+	chatService         chatsvciface.IChatService
+	chatMediaService    chatmediasvciface.IChatMediaService
+	chatReactionService chatreactionsvciface.IChatReactionService
+	hub                 sockethubsvciface.IHub
 }
 
-func NewChatController(chatService service.IChatService, chatMediaService service.IChatMediaService, chatReactionService service.IChatReactionService, hubs ...service.IHub) *ChatController {
-	var hub service.IHub
+func NewChatController(chatService chatsvciface.IChatService, chatMediaService chatmediasvciface.IChatMediaService, chatReactionService chatreactionsvciface.IChatReactionService, hubs ...sockethubsvciface.IHub) *ChatController {
+	var hub sockethubsvciface.IHub
 	if len(hubs) > 0 {
 		hub = hubs[0]
 	}
@@ -129,10 +132,10 @@ func (c *ChatController) GetMessages(ctx *fiber.Ctx) error {
 		for _, id := range markedIDs {
 			marked[id] = true
 		}
-		var results []service.ChatMarkResult
+		var results []chatsvciface.ChatMarkResult
 		for i := range chats {
 			if marked[chats[i].ChatID] {
-				results = append(results, service.ChatMarkResult{
+				results = append(results, chatsvciface.ChatMarkResult{
 					ChatID:   chats[i].ChatID,
 					SenderID: chats[i].SenderID,
 					Status:   "marked",
@@ -312,7 +315,7 @@ func (c *ChatController) broadcastRoom(roomID uint, event string, payload any) {
 	c.hub.Broadcast(roomID, event, payload)
 }
 
-func (c *ChatController) broadcastReadReceipts(roomID, readBy uint, results []service.ChatMarkResult) {
+func (c *ChatController) broadcastReadReceipts(roomID, readBy uint, results []chatsvciface.ChatMarkResult) {
 	if c.hub == nil {
 		return
 	}

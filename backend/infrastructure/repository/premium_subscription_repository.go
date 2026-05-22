@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
-	domainrepo "github.com/sunibgram/domain/repository"
+	premiumsubscriptionrepoiface "github.com/sunibgram/domain/repository/premium_subscription"
 )
 
 type premiumSubscriptionRepository struct {
@@ -14,7 +14,7 @@ type premiumSubscriptionRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewPremiumSubscriptionRepository(writeDB, readDB *gorm.DB) domainrepo.IPremiumSubscriptionRepository {
+func NewPremiumSubscriptionRepository(writeDB, readDB *gorm.DB) premiumsubscriptionrepoiface.IPremiumSubscriptionRepository {
 	return &premiumSubscriptionRepository{writeDB: writeDB, readDB: readDB}
 }
 

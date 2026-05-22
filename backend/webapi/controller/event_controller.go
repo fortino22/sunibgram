@@ -13,7 +13,15 @@ import (
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
 	mediamodel "github.com/sunibgram/domain/model/media"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/service"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	eventsvciface "github.com/sunibgram/domain/service/event"
+	eventthreadpinsvciface "github.com/sunibgram/domain/service/event_thread_pin"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	eventdto "github.com/sunibgram/webapi/dto/event"
@@ -22,18 +30,18 @@ import (
 )
 
 type EventController struct {
-	eventService      service.IEventService
-	threadService     service.IThreadService
-	mediaService      service.IThreadMediaService
-	likeService       service.ILikeService
-	bookmarkService   service.IBookmarkService
-	threadPinService  service.IThreadPinService
-	profileService    service.IUserProfileService
-	pollService       service.IThreadPollService
-	eventThreadPinSvc service.IEventThreadPinService
+	eventService      eventsvciface.IEventService
+	threadService     threadsvciface.IThreadService
+	mediaService      threadmediasvciface.IThreadMediaService
+	likeService       likesvciface.ILikeService
+	bookmarkService   bookmarksvciface.IBookmarkService
+	threadPinService  threadpinsvciface.IThreadPinService
+	profileService    userprofilesvciface.IUserProfileService
+	pollService       threadpollsvciface.IThreadPollService
+	eventThreadPinSvc eventthreadpinsvciface.IEventThreadPinService
 }
 
-func NewEventController(eventService service.IEventService, threadService service.IThreadService, mediaService service.IThreadMediaService, likeService service.ILikeService, bookmarkService service.IBookmarkService, threadPinService service.IThreadPinService, profileService service.IUserProfileService, pollService service.IThreadPollService, eventThreadPinSvc service.IEventThreadPinService) *EventController {
+func NewEventController(eventService eventsvciface.IEventService, threadService threadsvciface.IThreadService, mediaService threadmediasvciface.IThreadMediaService, likeService likesvciface.ILikeService, bookmarkService bookmarksvciface.IBookmarkService, threadPinService threadpinsvciface.IThreadPinService, profileService userprofilesvciface.IUserProfileService, pollService threadpollsvciface.IThreadPollService, eventThreadPinSvc eventthreadpinsvciface.IEventThreadPinService) *EventController {
 	return &EventController{eventService: eventService, threadService: threadService, mediaService: mediaService, likeService: likeService, bookmarkService: bookmarkService, threadPinService: threadPinService, profileService: profileService, pollService: pollService, eventThreadPinSvc: eventThreadPinSvc}
 }
 

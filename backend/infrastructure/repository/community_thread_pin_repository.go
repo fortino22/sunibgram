@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
-	domainrepo "github.com/sunibgram/domain/repository"
+	communitythreadpinrepoiface "github.com/sunibgram/domain/repository/community_thread_pin"
 )
 
 type CommunityThreadPinRepository struct {
@@ -14,7 +14,7 @@ type CommunityThreadPinRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewCommunityThreadPinRepository(writeDB, readDB *gorm.DB) domainrepo.ICommunityThreadPinRepository {
+func NewCommunityThreadPinRepository(writeDB, readDB *gorm.DB) communitythreadpinrepoiface.ICommunityThreadPinRepository {
 	return &CommunityThreadPinRepository{writeDB: writeDB, readDB: readDB}
 }
 

@@ -3,31 +3,38 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	communitysvciface "github.com/sunibgram/domain/service/community"
+	exploresvciface "github.com/sunibgram/domain/service/explore"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	webapiutils "github.com/sunibgram/webapi/utils"
 )
 
 type ExploreController struct {
-	exploreService   service.IExploreService
-	profileService   service.IUserProfileService
-	mediaService     service.IThreadMediaService
-	likeService      service.ILikeService
-	bookmarkService  service.IBookmarkService
-	threadService    service.IThreadService
-	communityService service.ICommunityService
-	pollService      service.IThreadPollService
+	exploreService   exploresvciface.IExploreService
+	profileService   userprofilesvciface.IUserProfileService
+	mediaService     threadmediasvciface.IThreadMediaService
+	likeService      likesvciface.ILikeService
+	bookmarkService  bookmarksvciface.IBookmarkService
+	threadService    threadsvciface.IThreadService
+	communityService communitysvciface.ICommunityService
+	pollService      threadpollsvciface.IThreadPollService
 }
 
 func NewExploreController(
-	exploreService service.IExploreService,
-	profileService service.IUserProfileService,
-	mediaService service.IThreadMediaService,
-	likeService service.ILikeService,
-	bookmarkService service.IBookmarkService,
-	threadService service.IThreadService,
-	communityService service.ICommunityService,
-	pollService service.IThreadPollService,
+	exploreService exploresvciface.IExploreService,
+	profileService userprofilesvciface.IUserProfileService,
+	mediaService threadmediasvciface.IThreadMediaService,
+	likeService likesvciface.ILikeService,
+	bookmarkService bookmarksvciface.IBookmarkService,
+	threadService threadsvciface.IThreadService,
+	communityService communitysvciface.ICommunityService,
+	pollService threadpollsvciface.IThreadPollService,
 ) *ExploreController {
 	return &ExploreController{
 		exploreService:   exploreService,

@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	usermodel "github.com/sunibgram/domain/model/user"
-	domainrepo "github.com/sunibgram/domain/repository"
+	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -18,7 +18,7 @@ type userFacultyRepository struct {
 	cache   *cache.Cache
 }
 
-func NewUserFacultyRepository(writeDB, readDB *gorm.DB, c *cache.Cache) domainrepo.IUserFacultyRepository {
+func NewUserFacultyRepository(writeDB, readDB *gorm.DB, c *cache.Cache) userfacultyrepoiface.IUserFacultyRepository {
 	return &userFacultyRepository{writeDB: writeDB, readDB: readDB, cache: c}
 }
 

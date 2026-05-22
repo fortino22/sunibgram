@@ -3,15 +3,15 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type ThreadPinController struct {
-	threadPinService service.IThreadPinService
+	threadPinService threadpinsvciface.IThreadPinService
 }
 
-func NewThreadPinController(threadPinService service.IThreadPinService) *ThreadPinController {
+func NewThreadPinController(threadPinService threadpinsvciface.IThreadPinService) *ThreadPinController {
 	return &ThreadPinController{threadPinService: threadPinService}
 }
 

@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/sunibgram/domain/service"
+	emailsvciface "github.com/sunibgram/domain/service/email"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/email"
 )
@@ -25,7 +25,7 @@ type EmailService struct {
 	cache  *cache.Cache
 }
 
-func NewEmailService(client *email.SMTPClient, redisCache *cache.Cache) service.IEmailService {
+func NewEmailService(client *email.SMTPClient, redisCache *cache.Cache) emailsvciface.IEmailService {
 	return &EmailService{client: client, cache: redisCache}
 }
 

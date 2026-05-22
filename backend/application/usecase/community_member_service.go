@@ -7,15 +7,18 @@ import (
 	"github.com/sunibgram/application/helper"
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
 )
 
 type CommunityMemberService struct {
-	communityRepo repository.ICommunityRepository
-	memberRepo    repository.ICommunityMemberRepository
-	followRepo    repository.IFollowRepository
-	cacheRepo     repository.ICacheRepository
+	communityRepo communityrepoiface.ICommunityRepository
+	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
+	followRepo    followrepoiface.IFollowRepository
+	cacheRepo     cacherepoiface.ICacheRepository
 }
 
 func isCommunityAdmin(role communitymembermodel.CommunityMemberRole) bool {
@@ -23,11 +26,11 @@ func isCommunityAdmin(role communitymembermodel.CommunityMemberRole) bool {
 }
 
 func NewCommunityMemberService(
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-	followRepo repository.IFollowRepository,
-	cacheRepo repository.ICacheRepository,
-) service.ICommunityMemberService {
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+	followRepo followrepoiface.IFollowRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
+) communitymembersvciface.ICommunityMemberService {
 	return &CommunityMemberService{
 		communityRepo: communityRepo,
 		memberRepo:    memberRepo,
@@ -94,7 +97,7 @@ func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) (
 	return s.memberRepo.FindByCommunityID(communityID, page, limit)
 }
 
-func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) ([]service.CommunityUserItem, int64, error) {
+func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) ([]communitymembersvciface.CommunityUserItem, int64, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
 	}
@@ -114,7 +117,7 @@ func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communit
 		return nil, 0, err
 	}
 
-	items := make([]service.CommunityUserItem, len(members))
+	items := make([]communitymembersvciface.CommunityUserItem, len(members))
 	for i, m := range members {
 		avatarObject := ""
 		avatarBucket := ""
@@ -122,7 +125,7 @@ func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communit
 			avatarObject = m.Profile.AvatarObjectName
 			avatarBucket = m.Profile.AvatarBucket
 		}
-		items[i] = service.CommunityUserItem{
+		items[i] = communitymembersvciface.CommunityUserItem{
 			UserID:           m.UserID,
 			Username:         m.User.UserName,
 			Name:             m.User.Name,

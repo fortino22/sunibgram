@@ -17,35 +17,43 @@ import (
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	categoryrepoiface "github.com/sunibgram/domain/repository/category"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	communitypinrepoiface "github.com/sunibgram/domain/repository/community_pin"
+	communityrulerepoiface "github.com/sunibgram/domain/repository/community_rule"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
+	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
+	communitysvciface "github.com/sunibgram/domain/service/community"
 )
 
 type CommunityService struct {
-	communityRepo  repository.ICommunityRepository
-	memberRepo     repository.ICommunityMemberRepository
-	userRepo       repository.IUserRepository
-	profileRepo    repository.IUserProfileRepository
-	followRepo     repository.IFollowRepository
-	categoryRepo   repository.ICategoryRepository
-	ruleRepo       repository.ICommunityRuleRepository
-	pinRepo        repository.ICommunityPinRepository
-	cacheRepo      repository.ICacheRepository
+	communityRepo  communityrepoiface.ICommunityRepository
+	memberRepo     communitymemberrepoiface.ICommunityMemberRepository
+	userRepo       userrepoiface.IUserRepository
+	profileRepo    userprofilerepoiface.IUserProfileRepository
+	followRepo     followrepoiface.IFollowRepository
+	categoryRepo   categoryrepoiface.ICategoryRepository
+	ruleRepo       communityrulerepoiface.ICommunityRuleRepository
+	pinRepo        communitypinrepoiface.ICommunityPinRepository
+	cacheRepo      cacherepoiface.ICacheRepository
 	storageUsecase *StorageUsecase
 }
 
 func NewCommunityService(
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-	userRepo repository.IUserRepository,
-	profileRepo repository.IUserProfileRepository,
-	followRepo repository.IFollowRepository,
-	categoryRepo repository.ICategoryRepository,
-	ruleRepo repository.ICommunityRuleRepository,
-	pinRepo repository.ICommunityPinRepository,
-	cacheRepo repository.ICacheRepository,
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+	userRepo userrepoiface.IUserRepository,
+	profileRepo userprofilerepoiface.IUserProfileRepository,
+	followRepo followrepoiface.IFollowRepository,
+	categoryRepo categoryrepoiface.ICategoryRepository,
+	ruleRepo communityrulerepoiface.ICommunityRuleRepository,
+	pinRepo communitypinrepoiface.ICommunityPinRepository,
+	cacheRepo cacherepoiface.ICacheRepository,
 	storageUsecase *StorageUsecase,
-) service.ICommunityService {
+) communitysvciface.ICommunityService {
 	return &CommunityService{
 		communityRepo:  communityRepo,
 		memberRepo:     memberRepo,
@@ -336,7 +344,7 @@ func (s *CommunityService) GetByID(id uint) (*communitymodel.Community, error) {
 	return community, nil
 }
 
-func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewerID *uint) (*service.CommunityAbout, error) {
+func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewerID *uint) (*communitysvciface.CommunityAbout, error) {
 	community, err := s.communityRepo.FindByID(communityID)
 	if err != nil {
 		return nil, errors.New("community not found")
@@ -380,7 +388,7 @@ func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewe
 		}
 	}
 
-	creatorAbout := service.CommunityAboutUser{
+	creatorAbout := communitysvciface.CommunityAboutUser{
 		User:        creatorUser,
 		Profile:     creatorProfile,
 		IsFollowing: followSet[community.UserID],
@@ -392,7 +400,7 @@ func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewe
 	adminAbout := s.buildAboutUsers(admins, viewerID, followSet)
 	memberAbout := s.buildAboutUsers(topMembers, viewerID, followSet)
 
-	return &service.CommunityAbout{
+	return &communitysvciface.CommunityAbout{
 		Community:  community,
 		Creator:    creatorAbout,
 		Rules:      rules,
@@ -401,8 +409,8 @@ func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewe
 	}, nil
 }
 
-func (s *CommunityService) buildAboutUsers(members []communitymembermodel.CommunityMember, viewerID *uint, followSet map[uint]bool) []service.CommunityAboutUser {
-	out := make([]service.CommunityAboutUser, 0, len(members))
+func (s *CommunityService) buildAboutUsers(members []communitymembermodel.CommunityMember, viewerID *uint, followSet map[uint]bool) []communitysvciface.CommunityAboutUser {
+	out := make([]communitysvciface.CommunityAboutUser, 0, len(members))
 	for i := range members {
 		m := &members[i]
 		user := m.User
@@ -414,7 +422,7 @@ func (s *CommunityService) buildAboutUsers(members []communitymembermodel.Commun
 		if viewerID != nil && *viewerID == m.UserID {
 			isFollowing = false
 		}
-		out = append(out, service.CommunityAboutUser{
+		out = append(out, communitysvciface.CommunityAboutUser{
 			User:        &user,
 			Profile:     profile,
 			IsFollowing: isFollowing,

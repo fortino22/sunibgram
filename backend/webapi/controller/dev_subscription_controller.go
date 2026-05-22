@@ -3,14 +3,14 @@ package controller
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"github.com/sunibgram/domain/service"
+	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 )
 
 type DevSubscriptionController struct {
-	PremiumSubscriptionService service.IPremiumSubscriptionService
+	PremiumSubscriptionService premiumsubscriptionsvciface.IPremiumSubscriptionService
 }
 
-func NewDevSubscriptionController(premiumSubscriptionService service.IPremiumSubscriptionService) *DevSubscriptionController {
+func NewDevSubscriptionController(premiumSubscriptionService premiumsubscriptionsvciface.IPremiumSubscriptionService) *DevSubscriptionController {
 	return &DevSubscriptionController{PremiumSubscriptionService: premiumSubscriptionService}
 }
 

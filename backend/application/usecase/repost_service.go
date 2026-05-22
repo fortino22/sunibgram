@@ -7,21 +7,23 @@ import (
 	"github.com/sunibgram/application/helper"
 	repostmodel "github.com/sunibgram/domain/model/repost"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	repostrepoiface "github.com/sunibgram/domain/repository/repost"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
+	repostsvciface "github.com/sunibgram/domain/service/repost"
 )
 
 type RepostService struct {
-	repostRepo   repository.IRepostRepository
-	threadRepo   repository.IThreadRepository
-	notification service.INotificationService
+	repostRepo   repostrepoiface.IRepostRepository
+	threadRepo   threadrepoiface.IThreadRepository
+	notification notificationsvciface.INotificationService
 }
 
 func NewRepostService(
-	repostRepo repository.IRepostRepository,
-	threadRepo repository.IThreadRepository,
-	notification service.INotificationService,
-) service.IRepostService {
+	repostRepo repostrepoiface.IRepostRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+	notification notificationsvciface.INotificationService,
+) repostsvciface.IRepostService {
 	return &RepostService{repostRepo: repostRepo, threadRepo: threadRepo, notification: notification}
 }
 

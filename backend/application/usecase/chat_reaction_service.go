@@ -8,17 +8,19 @@ import (
 
 	chatmodel "github.com/sunibgram/domain/model/chat"
 	chatreactionmodel "github.com/sunibgram/domain/model/chat_reaction"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	chatrepoiface "github.com/sunibgram/domain/repository/chat"
+	chatreactionrepoiface "github.com/sunibgram/domain/repository/chat_reaction"
+	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
+	chatreactionsvciface "github.com/sunibgram/domain/service/chat_reaction"
 )
 
 type ChatReactionService struct {
-	chatRepo     repository.IChatRepository
-	reactionRepo repository.IChatReactionRepository
-	roomRepo     repository.IChatRoomRepository
+	chatRepo     chatrepoiface.IChatRepository
+	reactionRepo chatreactionrepoiface.IChatReactionRepository
+	roomRepo     chatroomrepoiface.IChatRoomRepository
 }
 
-func NewChatReactionService(chatRepo repository.IChatRepository, reactionRepo repository.IChatReactionRepository, roomRepo repository.IChatRoomRepository) service.IChatReactionService {
+func NewChatReactionService(chatRepo chatrepoiface.IChatRepository, reactionRepo chatreactionrepoiface.IChatReactionRepository, roomRepo chatroomrepoiface.IChatRoomRepository) chatreactionsvciface.IChatReactionService {
 	return &ChatReactionService{chatRepo: chatRepo, reactionRepo: reactionRepo, roomRepo: roomRepo}
 }
 

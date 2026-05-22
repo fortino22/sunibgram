@@ -4,16 +4,17 @@ import (
 	"errors"
 
 	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	threadpinrepoiface "github.com/sunibgram/domain/repository/thread_pin"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
 )
 
 type ThreadPinService struct {
-	threadPinRepo repository.IThreadPinRepository
-	threadRepo    repository.IThreadRepository
+	threadPinRepo threadpinrepoiface.IThreadPinRepository
+	threadRepo    threadrepoiface.IThreadRepository
 }
 
-func NewThreadPinService(threadPinRepo repository.IThreadPinRepository, threadRepo repository.IThreadRepository) service.IThreadPinService {
+func NewThreadPinService(threadPinRepo threadpinrepoiface.IThreadPinRepository, threadRepo threadrepoiface.IThreadRepository) threadpinsvciface.IThreadPinService {
 	return &ThreadPinService{threadPinRepo: threadPinRepo, threadRepo: threadRepo}
 }
 

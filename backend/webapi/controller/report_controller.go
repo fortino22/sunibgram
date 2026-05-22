@@ -5,17 +5,17 @@ import (
 	"github.com/google/uuid"
 
 	reportmodel "github.com/sunibgram/domain/model/report"
-	"github.com/sunibgram/domain/service"
+	reportsvciface "github.com/sunibgram/domain/service/report"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	reportdto "github.com/sunibgram/webapi/dto/report"
 )
 
 type ReportController struct {
-	reportService service.IReportService
+	reportService reportsvciface.IReportService
 }
 
-func NewReportController(reportService service.IReportService) *ReportController {
+func NewReportController(reportService reportsvciface.IReportService) *ReportController {
 	return &ReportController{reportService: reportService}
 }
 

@@ -9,29 +9,35 @@ import (
 	bookmarkmodel "github.com/sunibgram/domain/model/bookmark"
 	communitymodel "github.com/sunibgram/domain/model/community"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	bookmarkrepoiface "github.com/sunibgram/domain/repository/bookmark"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
 )
 
 type BookmarkService struct {
-	bookmarkRepo  repository.IBookmarkRepository
-	threadRepo    repository.IThreadRepository
-	communityRepo repository.ICommunityRepository
-	memberRepo    repository.ICommunityMemberRepository
-	settingsRepo  repository.IUserSettingsRepository
-	followRepo    repository.IFollowRepository
-	notification  service.INotificationService
+	bookmarkRepo  bookmarkrepoiface.IBookmarkRepository
+	threadRepo    threadrepoiface.IThreadRepository
+	communityRepo communityrepoiface.ICommunityRepository
+	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
+	settingsRepo  usersettingsrepoiface.IUserSettingsRepository
+	followRepo    followrepoiface.IFollowRepository
+	notification  notificationsvciface.INotificationService
 }
 
 func NewBookmarkService(
-	bookmarkRepo repository.IBookmarkRepository,
-	threadRepo repository.IThreadRepository,
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-	settingsRepo repository.IUserSettingsRepository,
-	followRepo repository.IFollowRepository,
-	notification service.INotificationService,
-) service.IBookmarkService {
+	bookmarkRepo bookmarkrepoiface.IBookmarkRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
+	followRepo followrepoiface.IFollowRepository,
+	notification notificationsvciface.INotificationService,
+) bookmarksvciface.IBookmarkService {
 	return &BookmarkService{
 		bookmarkRepo:  bookmarkRepo,
 		threadRepo:    threadRepo,

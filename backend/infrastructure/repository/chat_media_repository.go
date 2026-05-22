@@ -4,7 +4,7 @@ import (
 	"gorm.io/gorm"
 
 	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
-	domainrepo "github.com/sunibgram/domain/repository"
+	chatmediarepoiface "github.com/sunibgram/domain/repository/chat_media"
 )
 
 type ChatMediaRepository struct {
@@ -12,7 +12,7 @@ type ChatMediaRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewChatMediaRepository(writeDB, readDB *gorm.DB) domainrepo.IChatMediaRepository {
+func NewChatMediaRepository(writeDB, readDB *gorm.DB) chatmediarepoiface.IChatMediaRepository {
 	return &ChatMediaRepository{writeDB: writeDB, readDB: readDB}
 }
 

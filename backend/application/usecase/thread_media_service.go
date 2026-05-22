@@ -8,21 +8,22 @@ import (
 
 	mediamodel "github.com/sunibgram/domain/model/media"
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	threadmediarepoiface "github.com/sunibgram/domain/repository/thread_media"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
 )
 
 type ThreadMediaService struct {
-	threadRepo repository.IThreadRepository
-	mediaRepo  repository.IThreadMediaRepository
+	threadRepo threadrepoiface.IThreadRepository
+	mediaRepo  threadmediarepoiface.IThreadMediaRepository
 	storage    *StorageUsecase
 }
 
 func NewThreadMediaService(
-	threadRepo repository.IThreadRepository,
-	mediaRepo repository.IThreadMediaRepository,
+	threadRepo threadrepoiface.IThreadRepository,
+	mediaRepo threadmediarepoiface.IThreadMediaRepository,
 	storage *StorageUsecase,
-) service.IThreadMediaService {
+) threadmediasvciface.IThreadMediaService {
 	return &ThreadMediaService{threadRepo: threadRepo, mediaRepo: mediaRepo, storage: storage}
 }
 

@@ -6,21 +6,23 @@ import (
 	"github.com/sunibgram/application/helper"
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitypinmodel "github.com/sunibgram/domain/model/community_pin"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
+	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
+	communitypinrepoiface "github.com/sunibgram/domain/repository/community_pin"
+	communitypinsvciface "github.com/sunibgram/domain/service/community_pin"
 )
 
 type CommunityPinService struct {
-	pinRepo       repository.ICommunityPinRepository
-	communityRepo repository.ICommunityRepository
-	memberRepo    repository.ICommunityMemberRepository
+	pinRepo       communitypinrepoiface.ICommunityPinRepository
+	communityRepo communityrepoiface.ICommunityRepository
+	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
 }
 
 func NewCommunityPinService(
-	pinRepo repository.ICommunityPinRepository,
-	communityRepo repository.ICommunityRepository,
-	memberRepo repository.ICommunityMemberRepository,
-) service.ICommunityPinService {
+	pinRepo communitypinrepoiface.ICommunityPinRepository,
+	communityRepo communityrepoiface.ICommunityRepository,
+	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
+) communitypinsvciface.ICommunityPinService {
 	return &CommunityPinService{pinRepo: pinRepo, communityRepo: communityRepo, memberRepo: memberRepo}
 }
 

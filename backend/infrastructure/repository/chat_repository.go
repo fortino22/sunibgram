@@ -9,7 +9,7 @@ import (
 	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
 	chatreadmodel "github.com/sunibgram/domain/model/chat_read"
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
-	domainrepo "github.com/sunibgram/domain/repository"
+	chatrepoiface "github.com/sunibgram/domain/repository/chat"
 )
 
 type ChatRepository struct {
@@ -17,7 +17,7 @@ type ChatRepository struct {
 	readDB  *gorm.DB
 }
 
-func NewChatRepository(writeDB, readDB *gorm.DB) domainrepo.IChatRepository {
+func NewChatRepository(writeDB, readDB *gorm.DB) chatrepoiface.IChatRepository {
 	return &ChatRepository{writeDB: writeDB, readDB: readDB}
 }
 
