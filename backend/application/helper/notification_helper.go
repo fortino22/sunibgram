@@ -1,9 +1,11 @@
 package helper
 
-import "github.com/sunibgram/domain/service"
+import (
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
+)
 
 func SendCommentNotification(
-	notificationService service.INotificationService,
+	notificationService notificationsvciface.INotificationService,
 	actorUserID uint,
 	parentThreadOwnerUserID uint,
 	threadID uint,
@@ -19,7 +21,7 @@ func SendCommentNotification(
 }
 
 func SendInteractionNotification(
-	notificationService service.INotificationService,
+	notificationService notificationsvciface.INotificationService,
 	notificationType string,
 	message string,
 	senderUserID uint,
@@ -31,7 +33,7 @@ func SendInteractionNotification(
 	}
 
 	ref := referenceID
-	_ = notificationService.SendNotification(service.CreateNotificationInput{
+	_ = notificationService.SendNotification(notificationsvciface.CreateNotificationInput{
 		Type:            notificationType,
 		Message:         message,
 		SenderUserID:    senderUserID,

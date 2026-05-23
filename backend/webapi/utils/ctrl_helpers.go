@@ -6,7 +6,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/sunibgram/dto"
+
+	authdto "github.com/sunibgram/webapi/dto/auth"
 	"github.com/sunibgram/webapi/middleware"
 )
 
@@ -43,7 +44,7 @@ func str(v any) string {
 func RequireAuth(ctx *fiber.Ctx) (Claims, bool) {
 	claims, ok := Get(ctx)
 	if !ok {
-		_ = ctx.Status(401).JSON(dto.ErrorResponse{Message: "unauthorized"})
+		_ = ctx.Status(401).JSON(authdto.ErrorResponse{Message: "unauthorized"})
 		return Claims{}, false
 	}
 	return claims, true
@@ -52,7 +53,7 @@ func RequireAuth(ctx *fiber.Ctx) (Claims, bool) {
 func ParseIDParam(ctx *fiber.Ctx, paramName, entityName string) (uint, bool) {
 	id, err := strconv.ParseUint(ctx.Params(paramName), 10, 64)
 	if err != nil {
-		_ = ctx.Status(400).JSON(dto.ErrorResponse{Message: entityName + " id is invalid"})
+		_ = ctx.Status(400).JSON(authdto.ErrorResponse{Message: entityName + " id is invalid"})
 		return 0, false
 	}
 	return uint(id), true
@@ -82,7 +83,7 @@ func HandleServiceError(ctx *fiber.Ctx, err error) error {
 	} else if strings.Contains(err.Error(), "not found") {
 		status = fiber.StatusNotFound
 	}
-	return ctx.Status(status).JSON(dto.ErrorResponse{Message: err.Error()})
+	return ctx.Status(status).JSON(authdto.ErrorResponse{Message: err.Error()})
 }
 
 func BuildMediaURL(objectName, bucket string, getURL func(string, string) string) string {

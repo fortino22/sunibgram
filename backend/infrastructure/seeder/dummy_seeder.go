@@ -5,9 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sunibgram/domain/model"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+
+	facultymodel "github.com/sunibgram/domain/model/faculty"
+	rolemodel "github.com/sunibgram/domain/model/role"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 )
 
 type dummyAccount struct {
@@ -16,45 +21,45 @@ type dummyAccount struct {
 	Email        string
 	Password     string
 	RoleName     string
-	Gender       model.Gender
+	Gender       userprofilemodel.Gender
 	BirthdayDate time.Time
 	FacultyName  string
 }
 
 var dummyAccounts = []dummyAccount{
-	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: model.GenderFemale, BirthdayDate: time.Date(2003, 4, 12, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
-	{Name: "Devin", Username: "devin.hi", Email: "devin@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: model.GenderMale, BirthdayDate: time.Date(2002, 8, 25, 0, 0, 0, 0, time.UTC), FacultyName: "School of Information Systems"},
-	{Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: model.GenderMale, BirthdayDate: time.Date(2003, 11, 7, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
-	{Name: "chermiese", Username: "chermiese", Email: "chermiese@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: model.GenderFemale, BirthdayDate: time.Date(2003, 2, 19, 0, 0, 0, 0, time.UTC), FacultyName: "School of Design"},
+	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 4, 12, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
+	{Name: "Devin", Username: "devin.hi", Email: "devin@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2002, 8, 25, 0, 0, 0, 0, time.UTC), FacultyName: "School of Information Systems"},
+	{Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2003, 11, 7, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
+	{Name: "chermiese", Username: "chermiese", Email: "chermiese@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 2, 19, 0, 0, 0, 0, time.UTC), FacultyName: "School of Design"},
 }
 
 func SeedDummy(db *gorm.DB) {
-	roleCache := make(map[string]model.Role)
-	facultyCache := make(map[string]model.Faculty)
+	roleCache := make(map[string]rolemodel.Role)
+	facultyCache := make(map[string]facultymodel.Faculty)
 
 	for _, acc := range dummyAccounts {
 		acc.Username = strings.TrimSpace(acc.Username)
 		acc.Email = strings.TrimSpace(acc.Email)
 
-		var existing model.User
+		var existing usermodel.User
 		if err := db.Where("email = ?", acc.Email).First(&existing).Error; err == nil {
-			var existingProfile model.UserProfile
+			var existingProfile userprofilemodel.UserProfile
 			if err := db.Where("user_id = ?", existing.UserID).First(&existingProfile).Error; err != nil {
-				db.Create(&model.UserProfile{
+				db.Create(&userprofilemodel.UserProfile{
 					UserID:       existing.UserID,
 					Gender:       acc.Gender,
 					BirthdayDate: acc.BirthdayDate,
 				})
 			}
-			var existingSettings model.UserSettings
+			var existingSettings usersettingsmodel.UserSettings
 			if err := db.Where("user_id = ?", existing.UserID).First(&existingSettings).Error; err != nil {
-				db.Create(&model.UserSettings{UserID: existing.UserID})
+				db.Create(&usersettingsmodel.UserSettings{UserID: existing.UserID})
 			}
-			var existingFaculty model.UserFaculty
+			var existingFaculty usermodel.UserFaculty
 			if err := db.Where("user_id = ?", existing.UserID).First(&existingFaculty).Error; err != nil {
 				faculty, err := resolveFaculty(db, facultyCache, acc.FacultyName, acc.Email)
 				if err == nil {
-					db.Create(&model.UserFaculty{UserID: existing.UserID, FacultyID: faculty.FacultyID})
+					db.Create(&usermodel.UserFaculty{UserID: existing.UserID, FacultyID: faculty.FacultyID})
 				}
 			}
 			continue
@@ -80,7 +85,7 @@ func SeedDummy(db *gorm.DB) {
 			continue
 		}
 
-		user := model.User{
+		user := usermodel.User{
 			Name:     acc.Name,
 			UserName: acc.Username,
 			Email:    acc.Email,
@@ -93,7 +98,7 @@ func SeedDummy(db *gorm.DB) {
 			continue
 		}
 
-		if err := db.Create(&model.UserProfile{
+		if err := db.Create(&userprofilemodel.UserProfile{
 			UserID:       user.UserID,
 			Gender:       acc.Gender,
 			BirthdayDate: acc.BirthdayDate,
@@ -102,12 +107,12 @@ func SeedDummy(db *gorm.DB) {
 			continue
 		}
 
-		if err := db.Create(&model.UserSettings{UserID: user.UserID}).Error; err != nil {
+		if err := db.Create(&usersettingsmodel.UserSettings{UserID: user.UserID}).Error; err != nil {
 			log.Printf("dummy seeder: failed to create settings for %s: %v", acc.Email, err)
 			continue
 		}
 
-		if err := db.Create(&model.UserFaculty{UserID: user.UserID, FacultyID: faculty.FacultyID}).Error; err != nil {
+		if err := db.Create(&usermodel.UserFaculty{UserID: user.UserID, FacultyID: faculty.FacultyID}).Error; err != nil {
 			log.Printf("dummy seeder: failed to create faculty for %s: %v", acc.Email, err)
 			continue
 		}
@@ -116,11 +121,11 @@ func SeedDummy(db *gorm.DB) {
 	}
 }
 
-func resolveFaculty(db *gorm.DB, cache map[string]model.Faculty, name, email string) (model.Faculty, error) {
+func resolveFaculty(db *gorm.DB, cache map[string]facultymodel.Faculty, name, email string) (facultymodel.Faculty, error) {
 	if f, ok := cache[name]; ok {
 		return f, nil
 	}
-	var faculty model.Faculty
+	var faculty facultymodel.Faculty
 	if err := db.Where("faculty_name = ?", name).First(&faculty).Error; err != nil {
 		log.Printf("dummy seeder: faculty '%s' not found, skipping %s", name, email)
 		return faculty, err

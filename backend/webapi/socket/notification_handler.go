@@ -6,12 +6,14 @@ import (
 	"strconv"
 
 	fibersocketio "github.com/gofiber/contrib/socketio"
-	"github.com/sunibgram/domain/service"
+
+	notificationsvciface "github.com/sunibgram/domain/service/notification"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 )
 
 type NotificationHandler struct {
-	hub                 service.IHub
-	notificationService service.INotificationService
+	hub                 sockethubsvciface.IHub
+	notificationService notificationsvciface.INotificationService
 }
 
 type notificationEvent struct {
@@ -31,7 +33,7 @@ type notificationDeletePayload struct {
 	ID uint `json:"id"`
 }
 
-func NewNotificationHandler(hub service.IHub, notificationService service.INotificationService) *NotificationHandler {
+func NewNotificationHandler(hub sockethubsvciface.IHub, notificationService notificationsvciface.INotificationService) *NotificationHandler {
 	return &NotificationHandler{hub: hub, notificationService: notificationService}
 }
 

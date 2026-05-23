@@ -12,10 +12,10 @@ type bucket struct {
 }
 
 type RateLimiter struct {
-	mu       sync.Mutex
-	buckets  map[string]*bucket
-	max      int
-	window   time.Duration
+	mu      sync.Mutex
+	buckets map[string]*bucket
+	max     int
+	window  time.Duration
 }
 
 func formatDuration(d time.Duration) string {

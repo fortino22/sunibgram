@@ -3,58 +3,94 @@ package migration
 import (
 	"log"
 
-	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/infrastructure/seeder"
 	"gorm.io/gorm"
+
+	bookmarkmodel "github.com/sunibgram/domain/model/bookmark"
+	categorymodel "github.com/sunibgram/domain/model/category"
+	chatmodel "github.com/sunibgram/domain/model/chat"
+	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
+	chatreactionmodel "github.com/sunibgram/domain/model/chat_reaction"
+	chatreadmodel "github.com/sunibgram/domain/model/chat_read"
+	chatroommodel "github.com/sunibgram/domain/model/chat_room"
+	chatroommembermodel "github.com/sunibgram/domain/model/chat_room_member"
+	communitymodel "github.com/sunibgram/domain/model/community"
+	communitymembermodel "github.com/sunibgram/domain/model/community_member"
+	communitypinmodel "github.com/sunibgram/domain/model/community_pin"
+	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
+	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
+	communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
+	eventparticipantmodel "github.com/sunibgram/domain/model/event_participant"
+	eventpinmodel "github.com/sunibgram/domain/model/event_pin"
+	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
+	eventthreadpinmodel "github.com/sunibgram/domain/model/event_thread_pin"
+	facultymodel "github.com/sunibgram/domain/model/faculty"
+	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
+	likemodel "github.com/sunibgram/domain/model/like"
+	notificationmodel "github.com/sunibgram/domain/model/notification"
+	ordermodel "github.com/sunibgram/domain/model/order"
+	reportmodel "github.com/sunibgram/domain/model/report"
+	rolemodel "github.com/sunibgram/domain/model/role"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
+	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
+	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
+	usermodel "github.com/sunibgram/domain/model/user"
+	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
+	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
+	userstatmodel "github.com/sunibgram/domain/model/user_stat"
+	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
+	violationmodel "github.com/sunibgram/domain/model/violation"
+	"github.com/sunibgram/infrastructure/seeder"
 )
 
 func AutoMigrate(db *gorm.DB) {
 	db.DisableForeignKeyConstraintWhenMigrating = true
 
 	models := []any{
-		&model.Role{},
-		&model.User{},
-		&model.UserSettings{},
-		&model.UserProfile{},
-		&model.Category{},
-		&model.Violation{},
-		&model.Community{},
-		&model.Thread{},
-		&model.Report{},
-		&model.Event{},
-		&model.EventReview{},
-		&model.ThreadEvent{},
-		&model.EventThreadPin{},
-		&model.ThreadMedia{},
-		&model.ThreadPoll{},
-		&model.ThreadPollOption{},
-		&model.ThreadPollVote{},
-		&model.Like{},
-		&model.Bookmark{},
-		&model.ThreadPin{},
-		&model.VerificationCode{},
-		&model.UserRelationship{},
-		&model.UserStat{},
-		&model.CommunityMember{},
-		&model.CommunityRequest{},
-		&model.CommunityRule{},
-		&model.CommunityThreadPin{},
-		&model.EventThreadPin{},
-		&model.UserCommunityPin{},
-		&model.UserEventPin{},
-		&model.EventParticipant{},
-		&model.Faculty{},
-		&model.UserFaculty{},
-		&model.Order{},
-		&model.ChatRoom{},
-		&model.ChatRoomMember{},
-		&model.Chat{},
-		&model.ChatMedia{},
-		&model.ChatRead{},
-		&model.ChatReaction{},
-		&model.Notification{},
-		&model.Hashtag{},
-		&model.ThreadHashtag{},
+		&rolemodel.Role{},
+		&usermodel.User{},
+		&usersettingsmodel.UserSettings{},
+		&userprofilemodel.UserProfile{},
+		&categorymodel.Category{},
+		&violationmodel.Violation{},
+		&communitymodel.Community{},
+		&threadmodel.Thread{},
+		&reportmodel.Report{},
+		&threadmodel.Event{},
+		&eventreviewmodel.EventReview{},
+		&threadmodel.ThreadEvent{},
+		&eventthreadpinmodel.EventThreadPin{},
+		&threadmediamodel.ThreadMedia{},
+		&threadpollmodel.ThreadPoll{},
+		&threadpollmodel.ThreadPollOption{},
+		&threadpollmodel.ThreadPollVote{},
+		&likemodel.Like{},
+		&bookmarkmodel.Bookmark{},
+		&threadpinmodel.ThreadPin{},
+		&verificationcodemodel.VerificationCode{},
+		&userrelationshipmodel.UserRelationship{},
+		&userstatmodel.UserStat{},
+		&communitymembermodel.CommunityMember{},
+		&communityrequestmodel.CommunityRequest{},
+		&communityrulemodel.CommunityRule{},
+		&communitythreadpinmodel.CommunityThreadPin{},
+		&eventthreadpinmodel.EventThreadPin{},
+		&communitypinmodel.UserCommunityPin{},
+		&eventpinmodel.UserEventPin{},
+		&eventparticipantmodel.EventParticipant{},
+		&facultymodel.Faculty{},
+		&usermodel.UserFaculty{},
+		&ordermodel.Order{},
+		&chatroommodel.ChatRoom{},
+		&chatroommembermodel.ChatRoomMember{},
+		&chatmodel.Chat{},
+		&chatmediamodel.ChatMedia{},
+		&chatreadmodel.ChatRead{},
+		&chatreactionmodel.ChatReaction{},
+		&notificationmodel.Notification{},
+		&hashtagmodel.Hashtag{},
+		&hashtagmodel.ThreadHashtag{},
 	}
 
 	for _, m := range models {
@@ -284,6 +320,6 @@ func AutoMigrate(db *gorm.DB) {
 func seedRoles(db *gorm.DB) {
 	defaultRoles := []string{"user", "lecturer", "admin"}
 	for _, name := range defaultRoles {
-		db.Where(model.Role{Name: name}).FirstOrCreate(&model.Role{}, model.Role{Name: name})
+		db.Where(rolemodel.Role{Name: name}).FirstOrCreate(&rolemodel.Role{}, rolemodel.Role{Name: name})
 	}
 }

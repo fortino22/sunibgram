@@ -5,14 +5,16 @@ import (
 	"errors"
 
 	fibersocketio "github.com/gofiber/contrib/socketio"
-	"github.com/sunibgram/domain/service"
+
+	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
+	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 )
 
 const userIDAttribute = "user_id"
 
 type ChatHandler struct {
-	hub         service.IHub
-	roomService service.IChatRoomService
+	hub         sockethubsvciface.IHub
+	roomService chatroomsvciface.IChatRoomService
 }
 
 type clientEvent struct {
@@ -25,7 +27,7 @@ type roomPayload struct {
 	RoomID uint `json:"room_id"`
 }
 
-func NewChatHandler(hub service.IHub, roomService service.IChatRoomService) *ChatHandler {
+func NewChatHandler(hub sockethubsvciface.IHub, roomService chatroomsvciface.IChatRoomService) *ChatHandler {
 	return &ChatHandler{hub: hub, roomService: roomService}
 }
 

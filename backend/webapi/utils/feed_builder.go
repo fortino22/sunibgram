@@ -7,40 +7,51 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/domain/repository"
-	"github.com/sunibgram/domain/service"
-	"github.com/sunibgram/dto"
-	dtoutils "github.com/sunibgram/dto/utils"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
+	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
+	usermodel "github.com/sunibgram/domain/model/user"
+	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	likesvciface "github.com/sunibgram/domain/service/like"
+	threadsvciface "github.com/sunibgram/domain/service/thread"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
+	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
+	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
+	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	"github.com/sunibgram/infrastructure/cache"
+	dtoutils "github.com/sunibgram/webapi/dto/_shared"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
+	threadmediadto "github.com/sunibgram/webapi/dto/thread_media"
+	threadpolldto "github.com/sunibgram/webapi/dto/thread_poll"
 )
 
 const avatarCacheTTL = time.Hour
 
 type avatarCacheProvider interface {
-	AvatarCacheRepository() repository.ICacheRepository
+	AvatarCacheRepository() cacherepoiface.ICacheRepository
 }
 
 type FeedBuilder struct {
-	Media          service.IThreadMediaService
-	LikeSvc        service.ILikeService
-	BookmarkSvc    service.IBookmarkService
-	ThreadSvc      service.IThreadService
-	PinSvc         service.IThreadPinService
-	PollSvc        service.IThreadPollService
-	ProfileSvc     service.IUserProfileService
+	Media          threadmediasvciface.IThreadMediaService
+	LikeSvc        likesvciface.ILikeService
+	BookmarkSvc    bookmarksvciface.IBookmarkService
+	ThreadSvc      threadsvciface.IThreadService
+	PinSvc         threadpinsvciface.IThreadPinService
+	PollSvc        threadpollsvciface.IThreadPollService
+	ProfileSvc     userprofilesvciface.IUserProfileService
 	Cache          *cache.Cache
 	ViewerID       *uint
 	avatarCache    map[uint]string
 	isPremiumCache map[uint]bool
-	facultyCache   map[uint]*dto.FeedAuthorFaculty
+	facultyCache   map[uint]*threaddto.FeedAuthorFaculty
 	flagsLoaded    bool
 	liked          map[uint]bool
 	bookmarked     map[uint]bool
 	reposted       map[uint]bool
 	pinned         map[uint]bool
 	pollsLoaded    bool
-	pollsByThread  map[uint]*model.ThreadPoll
+	pollsByThread  map[uint]*threadpollmodel.ThreadPoll
 	pollUserVotes  map[uint]uint
 }
 
@@ -48,22 +59,22 @@ func avatarCacheKey(userID uint) string {
 	return fmt.Sprintf("user:%d:avatar", userID)
 }
 
-func (fb FeedBuilder) ToMediaResponses(media []model.ThreadMedia) []dto.ThreadMediaResponse {
-	result := make([]dto.ThreadMediaResponse, len(media))
+func (fb FeedBuilder) ToMediaResponses(media []threadmediamodel.ThreadMedia) []threadmediadto.ThreadMediaResponse {
+	result := make([]threadmediadto.ThreadMediaResponse, len(media))
 	for i, m := range media {
-		result[i] = dto.ThreadMediaResponse{MediaID: m.MediaID, URL: fb.Media.GetURL(m.Bucket, m.ObjectName)}
+		result[i] = threadmediadto.ThreadMediaResponse{MediaID: m.MediaID, URL: fb.Media.GetURL(m.Bucket, m.ObjectName)}
 	}
 	return result
 }
 
-func CommunityField(t *model.Thread) *dto.FeedCommunity {
+func CommunityField(t *threadmodel.Thread) *threaddto.FeedCommunity {
 	if t.CommunityID != nil && t.Community != nil {
-		return &dto.FeedCommunity{ID: t.Community.CommunityID, Name: t.Community.Name}
+		return &threaddto.FeedCommunity{ID: t.Community.CommunityID, Name: t.Community.Name}
 	}
 	return nil
 }
 
-func EventFields(t *model.Thread) (*string, *string) {
+func EventFields(t *threadmodel.Thread) (*string, *string) {
 	if len(t.ThreadEvents) == 0 {
 		return nil, nil
 	}
@@ -74,7 +85,7 @@ func EventFields(t *model.Thread) (*string, *string) {
 	return &event.ID, &event.Title
 }
 
-func (fb *FeedBuilder) avatarCacheRepo() repository.ICacheRepository {
+func (fb *FeedBuilder) avatarCacheRepo() cacherepoiface.ICacheRepository {
 	provider, ok := fb.ProfileSvc.(avatarCacheProvider)
 	if !ok {
 		return nil
@@ -96,7 +107,7 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 		fb.isPremiumCache = make(map[uint]bool)
 	}
 	if fb.facultyCache == nil {
-		fb.facultyCache = make(map[uint]*dto.FeedAuthorFaculty)
+		fb.facultyCache = make(map[uint]*threaddto.FeedAuthorFaculty)
 	}
 	seen := make(map[uint]struct{}, len(userIDs))
 	needed := make([]uint, 0, len(userIDs))
@@ -117,7 +128,7 @@ func (fb *FeedBuilder) LoadAvatarsForUserIDs(userIDs []uint) {
 	fb.resolveProfileMeta(needed)
 }
 
-func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo repository.ICacheRepository, needed []uint) {
+func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo cacherepoiface.ICacheRepository, needed []uint) {
 	avatarMisses := make([]uint, 0, len(needed))
 	pending := make([]uint, 0, len(needed))
 	pendingKeys := make([]string, 0, len(needed))
@@ -205,7 +216,7 @@ func (fb *FeedBuilder) resolveProfileMeta(needed []uint) {
 			}
 		}
 		for _, uf := range faculties {
-			fb.facultyCache[uf.UserID] = &dto.FeedAuthorFaculty{
+			fb.facultyCache[uf.UserID] = &threaddto.FeedAuthorFaculty{
 				FacultyID:   uf.FacultyID,
 				FacultyName: uf.Faculty.FacultyName,
 			}
@@ -272,7 +283,7 @@ func (fb *FeedBuilder) loadProfileMetaFromCache(userIDs []uint) (missing []uint)
 		}
 		fb.isPremiumCache[id] = entry.IsPremium
 		if entry.HasFaculty {
-			fb.facultyCache[id] = &dto.FeedAuthorFaculty{
+			fb.facultyCache[id] = &threaddto.FeedAuthorFaculty{
 				FacultyID:   entry.FacultyID,
 				FacultyName: entry.FacultyName,
 			}
@@ -304,12 +315,12 @@ func (fb *FeedBuilder) writeProfileMetaToCache(userIDs []uint) {
 // AuthorField builds a FeedAuthor from a User.
 // is_premium and faculty come from FeedBuilder caches (loaded fresh from DB via LoadAvatarsForUserIDs)
 // rather than the embedded User struct, which may be stale from a thread list cache.
-func (fb FeedBuilder) AuthorField(u model.User) dto.FeedAuthor {
+func (fb FeedBuilder) AuthorField(u usermodel.User) threaddto.FeedAuthor {
 	isPremium := u.IsPremium
 	if v, ok := fb.isPremiumCache[u.UserID]; ok {
 		isPremium = v
 	}
-	a := dto.FeedAuthor{
+	a := threaddto.FeedAuthor{
 		ID:        u.UserID,
 		Name:      u.Name,
 		Username:  u.UserName,
@@ -320,7 +331,7 @@ func (fb FeedBuilder) AuthorField(u model.User) dto.FeedAuthor {
 		a.Faculty = f
 	} else if u.UserFaculty != nil {
 		// fallback: use embedded struct if cache not populated
-		a.Faculty = &dto.FeedAuthorFaculty{
+		a.Faculty = &threaddto.FeedAuthorFaculty{
 			FacultyID:   u.UserFaculty.FacultyID,
 			FacultyName: u.UserFaculty.Faculty.FacultyName,
 		}
@@ -328,8 +339,8 @@ func (fb FeedBuilder) AuthorField(u model.User) dto.FeedAuthor {
 	return a
 }
 
-func feedFlagThreadID(t *model.Thread) uint {
-	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+func feedFlagThreadID(t *threadmodel.Thread) uint {
+	if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 		return t.OriginalThread.ThreadID
 	}
 	return t.ThreadID
@@ -337,7 +348,7 @@ func feedFlagThreadID(t *model.Thread) uint {
 
 // LoadPollsForThreads batch-fetches polls and the viewer's votes for the given threads.
 // Uses the effective thread id (resolves repost -> original).
-func (fb *FeedBuilder) LoadPollsForThreads(threads []model.Thread) {
+func (fb *FeedBuilder) LoadPollsForThreads(threads []threadmodel.Thread) {
 	if fb.PollSvc == nil {
 		return
 	}
@@ -370,7 +381,7 @@ func (fb *FeedBuilder) LoadPollsForThreads(threads []model.Thread) {
 	fb.pollUserVotes = votes
 }
 
-func (fb FeedBuilder) pollFor(t *model.Thread) *dto.PollResponse {
+func (fb FeedBuilder) pollFor(t *threadmodel.Thread) *threadpolldto.PollResponse {
 	if !fb.pollsLoaded || fb.PollSvc == nil || len(fb.pollsByThread) == 0 {
 		return nil
 	}
@@ -383,12 +394,12 @@ func (fb FeedBuilder) pollFor(t *model.Thread) *dto.PollResponse {
 	if v, ok := fb.pollUserVotes[poll.PollID]; ok {
 		voted = &v
 	}
-	return dto.BuildPollResponse(poll, voted, fb.PollSvc.GetImageURL)
+	return threadpolldto.BuildPollResponse(poll, voted, fb.PollSvc.GetImageURL)
 }
 
 // PollForParent returns the poll response for a parent thread, used in parent_context.
 // Parent threads are not reposts, so direct ThreadID lookup is sufficient.
-func (fb FeedBuilder) PollForParent(parent *model.Thread) *dto.PollResponse {
+func (fb FeedBuilder) PollForParent(parent *threadmodel.Thread) *threadpolldto.PollResponse {
 	if parent == nil {
 		return nil
 	}
@@ -431,7 +442,7 @@ func (fb *FeedBuilder) LoadPollsForThreadIDs(threadIDs []uint) {
 
 // LoadViewerFlagsForThreads batch-fetches viewer flags for the feed's effective thread IDs.
 // Uses Redis viewer-flag sets when available; falls back to DB and hydrates the set on miss.
-func (fb *FeedBuilder) LoadViewerFlagsForThreads(threads []model.Thread) {
+func (fb *FeedBuilder) LoadViewerFlagsForThreads(threads []threadmodel.Thread) {
 	if fb.ViewerID == nil {
 		return
 	}
@@ -628,14 +639,14 @@ func (fb FeedBuilder) viewerFlags(threadID uint) (isLiked, isBookmarked, isRepos
 	return
 }
 
-func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto.FeedItemResponse {
-	if t.Type == model.ThreadTypeRepost && t.OriginalThread != nil {
+func (fb FeedBuilder) ToFeedItem(t *threadmodel.Thread, media []threadmediamodel.ThreadMedia) threaddto.FeedItemResponse {
+	if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 		orig := t.OriginalThread
 		repostedAt := dtoutils.Wrap(t.CreatedAt)
 		isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(orig.ThreadID)
 		eventID, eventName := EventFields(orig)
-		return dto.FeedItemResponse{
-			Type:               string(model.ThreadTypeRepost),
+		return threaddto.FeedItemResponse{
+			Type:               string(threadmodel.ThreadTypeRepost),
 			ID:                 t.ThreadID,
 			ParentID:           orig.ParentID,
 			RootID:             orig.RootID,
@@ -653,7 +664,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 			RepostedByName:     t.User.Name,
 			OriginalThreadID:   &orig.ThreadID,
 			Author:             fb.AuthorField(orig.User),
-			Stats:              dto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount, Comments: orig.CommentCount},
+			Stats:              threaddto.FeedStats{Likes: orig.LikeCount, Reposts: orig.RepostCount, Bookmarks: orig.BookmarkCount, Comments: orig.CommentCount},
 			Media:              fb.ToMediaResponses(media),
 			Poll:               fb.pollFor(t),
 			IsLiked:            isLiked,
@@ -664,7 +675,7 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 	}
 	isLiked, isBookmarked, isReposted, isPinned := fb.viewerFlags(t.ThreadID)
 	eventID, eventName := EventFields(t)
-	return dto.FeedItemResponse{
+	return threaddto.FeedItemResponse{
 		Type:            string(t.Type),
 		ID:              t.ThreadID,
 		ParentID:        t.ParentID,
@@ -674,21 +685,21 @@ func (fb FeedBuilder) ToFeedItem(t *model.Thread, media []model.ThreadMedia) dto
 		Community:       CommunityField(t),
 		Content:         t.Content,
 		ReplyPermission: string(t.ReplyPermission),
-		CreatedAt:    dtoutils.Wrap(t.CreatedAt),
-		UpdatedAt:    dtoutils.Wrap(t.UpdatedAt),
-		TimeAgo:      TimeAgo(t.CreatedAt),
-		Author:       fb.AuthorField(t.User),
-		Stats:        dto.FeedStats{Likes: t.LikeCount, Reposts: t.RepostCount, Bookmarks: t.BookmarkCount, Comments: t.CommentCount},
-		Media:        fb.ToMediaResponses(media),
-		Poll:         fb.pollFor(t),
-		IsLiked:      isLiked,
-		IsBookmarked: isBookmarked,
-		IsReposted:   isReposted,
-		IsPinned:     isPinned,
+		CreatedAt:       dtoutils.Wrap(t.CreatedAt),
+		UpdatedAt:       dtoutils.Wrap(t.UpdatedAt),
+		TimeAgo:         TimeAgo(t.CreatedAt),
+		Author:          fb.AuthorField(t.User),
+		Stats:           threaddto.FeedStats{Likes: t.LikeCount, Reposts: t.RepostCount, Bookmarks: t.BookmarkCount, Comments: t.CommentCount},
+		Media:           fb.ToMediaResponses(media),
+		Poll:            fb.pollFor(t),
+		IsLiked:         isLiked,
+		IsBookmarked:    isBookmarked,
+		IsReposted:      isReposted,
+		IsPinned:        isPinned,
 	}
 }
 
-func EnsureFalseViewerFlags(data []dto.FeedItemResponse) {
+func EnsureFalseViewerFlags(data []threaddto.FeedItemResponse) {
 	falseVal := false
 	for i := range data {
 		if data[i].IsLiked == nil {

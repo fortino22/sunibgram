@@ -47,4 +47,3 @@ func newPostgres(role string) *gorm.DB {
 
 	return db
 }
-

@@ -5,9 +5,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/sunibgram/domain/model"
-	"github.com/sunibgram/infrastructure/cache"
 	"gorm.io/gorm"
+
+	communitymodel "github.com/sunibgram/domain/model/community"
+	threadmodel "github.com/sunibgram/domain/model/thread"
+	usermodel "github.com/sunibgram/domain/model/user"
+	"github.com/sunibgram/infrastructure/cache"
 )
 
 type FeedScoreScheduler struct {
@@ -52,13 +55,13 @@ func (s *FeedScoreScheduler) run() {
 		return
 	}
 
-	var threads []model.Thread
+	var threads []threadmodel.Thread
 	if err := preloadSchedulerThreadDetails(s.db).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", []string{string(model.ThreadTypePost), string(model.ThreadTypeReply)}).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", model.CommunityVisibilityPublic).
+		Where("threads.type IN ?", []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply)}).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false).
 		Where("threads.parent_id IS NULL OR (threads.like_count + threads.repost_count + threads.comment_count) > 0").
 		Order("threads.feed_score DESC").
@@ -84,15 +87,27 @@ func preloadSchedulerThreadUser(db *gorm.DB) *gorm.DB {
 	return db.Select("user_id", "name", "user_name", "is_premium")
 }
 
-// Deep User.UserFaculty.Faculty chains intentionally not preloaded — overlay
-// via user:meta:<uid> in FeedBuilder handles faculty rendering. Saves 4 DB
-// queries per scheduler run.
+// schedulerUserJoinSelect mirrors userJoinSelect in the repository package
+// for the scheduler's Joins("User", ...) form. Restricts loaded user columns
+// to public fields.
+func schedulerUserJoinSelect(db *gorm.DB) *gorm.DB {
+	return db.Session(&gorm.Session{NewDB: true}).
+		Model(&usermodel.User{}).
+		Select("user_id", "name", "user_name", "is_premium")
+}
+
+// Phase 3 — all 1:1 relations flattened into one JOIN query. Mirrors the
+// repository-package preloadThreadDetails. Only ThreadEvents.Event chains
+// remain as Preload (1:N, can't flatten). Join ordering matters: parent
+// relations registered before child paths so GORM skips re-adding parent
+// when traversing the nested Joins("OriginalThread.User", ...) chain.
 func preloadSchedulerThreadDetails(db *gorm.DB) *gorm.DB {
 	return db.
-		Preload("User", preloadSchedulerThreadUser).
-		Preload("OriginalThread.User", preloadSchedulerThreadUser).
-		Preload("Community").
-		Preload("OriginalThread.Community").
+		Joins("User", schedulerUserJoinSelect(db)).
+		Joins("Community").
+		Joins("OriginalThread").
+		Joins("OriginalThread.User", schedulerUserJoinSelect(db)).
+		Joins("OriginalThread.Community").
 		Preload("ThreadEvents.Event").
 		Preload("OriginalThread.ThreadEvents.Event")
 }
