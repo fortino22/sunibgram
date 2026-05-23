@@ -87,6 +87,11 @@ export interface CommunityMessageResponse {
   message: string;
 }
 
+export interface CreateCommunityResponse {
+  message: string;
+  community_id: number;
+}
+
 export interface Category {
   id: string;
   name: string;
@@ -253,8 +258,8 @@ export async function getDiscoverCommunities(
   return res.data;
 }
 
-export function createCommunity(params: CommunityParams, token: string): Promise<CommunityData> {
-  return api.post<CommunityData>('/api/communities', buildCreateCommunityFormData(params), token);
+export function createCommunity(params: CommunityParams, token: string): Promise<CreateCommunityResponse> {
+  return api.post<CreateCommunityResponse>('/api/communities', buildCreateCommunityFormData(params), token);
 }
 
 export function updateCommunity(

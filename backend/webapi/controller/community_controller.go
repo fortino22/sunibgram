@@ -45,15 +45,16 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 		banner = f
 	}
 
-	if _, _, err := c.communityService.Create(
+	community, _, err := c.communityService.Create(
 		ctx.Context(), claims.UserID,
 		name, description, rules, categoryID, visibility,
 		banner,
-	); err != nil {
+	)
+	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(dto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "community created successfully"})
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "community created successfully", "community_id": community.CommunityID})
 }
 
 func (c *CommunityController) Update(ctx *fiber.Ctx) error {
