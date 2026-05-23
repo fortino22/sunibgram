@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/helmet/v2"
 
 	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
@@ -23,7 +24,7 @@ import (
 
 func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache) *fiber.App {
 	app := fiber.New(fiber.Config{
-		BodyLimit:               50 * 1024 * 1024,
+		BodyLimit:               25 * 1024 * 1024,
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          trustedProxies(),
 		ProxyHeader:             fiber.HeaderXForwardedFor,
@@ -31,6 +32,7 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 		WriteTimeout:            30 * time.Second,
 		IdleTimeout:             60 * time.Second,
 	})
+	app.Use(recover.New())
 	app.Use(helmet.New())
 	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 	app.Use(cors.New(cors.Config{
@@ -49,6 +51,9 @@ func corsAllowOrigins() string {
 	raw := strings.TrimSpace(os.Getenv("CORS_ALLOW_ORIGINS"))
 	if raw == "" {
 		log.Fatal("CORS_ALLOW_ORIGINS must be set (comma-separated list of allowed origins)")
+	}
+	if raw == "*" {
+		log.Fatal("CORS_ALLOW_ORIGINS wildcard '*' is incompatible with AllowCredentials")
 	}
 	return raw
 }

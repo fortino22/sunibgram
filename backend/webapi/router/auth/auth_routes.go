@@ -21,13 +21,21 @@ func RegisterAuthRoutes(api fiber.Router, ctrl *authctrl.AuthController, verific
 		return c.Next()
 	}
 
+	authIPLimiter := ratelimit.New(c, "auth_ip", 10, 5*time.Minute)
+	authIPRateLimit := func(c *fiber.Ctx) error {
+		if err := authIPLimiter.Allow(c.IP()); err != nil {
+			return c.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
+		}
+		return c.Next()
+	}
+
 	auth := api.Group("/auth")
-	auth.Post("/register", ctrl.Register)
+	auth.Post("/register", authIPRateLimit, ctrl.Register)
 	auth.Post("/login/otp/send", otpSendRateLimit, verificationCtrl.SendLoginOTP)
-	auth.Post("/login", ctrl.LoginWithOTP)
-	auth.Post("/login/prod", ctrl.LoginProd)
-	auth.Post("/refresh", ctrl.Refresh)
+	auth.Post("/login", authIPRateLimit, ctrl.LoginWithOTP)
+	auth.Post("/login/prod", authIPRateLimit, ctrl.LoginProd)
+	auth.Post("/refresh", authIPRateLimit, ctrl.Refresh)
 	auth.Post("/logout", authMW, ctrl.Logout)
 	auth.Put("/change-password", authMW, ctrl.ChangePassword)
-	auth.Post("/forgot-password", ctrl.ForgotPassword)
+	auth.Post("/forgot-password", authIPRateLimit, ctrl.ForgotPassword)
 }

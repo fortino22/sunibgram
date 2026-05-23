@@ -38,6 +38,9 @@ func ParsePagination(ctx *fiber.Ctx) (page int, limit int) {
 	if page < 1 {
 		page = 1
 	}
+	if page > 10000 {
+		page = 10000
+	}
 	if limit < 1 {
 		limit = 1
 	}

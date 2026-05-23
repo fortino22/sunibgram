@@ -138,6 +138,13 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_reports_reported_user_id ON reports(reported_user_id)",
 		"CREATE INDEX IF NOT EXISTS idx_reports_reported_post_id ON reports(reported_post_id)",
 		"CREATE INDEX IF NOT EXISTS idx_reports_violation_id ON reports(violation_id)",
+		"CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created ON notifications(recipient_user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_threads_parent_id ON threads(parent_id) WHERE parent_id IS NOT NULL",
+		"CREATE INDEX IF NOT EXISTS idx_threads_original_thread_id ON threads(original_thread_id) WHERE original_thread_id IS NOT NULL",
+		"CREATE INDEX IF NOT EXISTS idx_threads_root_like ON threads(root_id, like_count DESC, created_at DESC) WHERE root_id IS NOT NULL",
+		"CREATE INDEX IF NOT EXISTS idx_user_rel_follower_created ON user_relationships(follower_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_user_rel_following_created ON user_relationships(following_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_verification_codes_expires_at ON verification_codes(expires_at)",
 	}
 	for _, s := range stmts {
 		db.Exec(s)

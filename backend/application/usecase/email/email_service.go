@@ -69,7 +69,7 @@ func (s *EmailService) SendWelcomeOTP(to, code string) error {
 			<div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#f4f4f4;text-align:center;border-radius:8px">%s</div>
 			<p style="color:#888;font-size:12px;margin-top:16px">If you didn't create an account, you can safely ignore this email.</p>
 		</div>`, code)
-	return s.client.SendMail(to, subject, body)
+	return s.QueueMail(context.Background(), to, subject, body)
 }
 
 func (s *EmailService) SendLoginOTP(to, code string) error {
@@ -81,7 +81,7 @@ func (s *EmailService) SendLoginOTP(to, code string) error {
 			<div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#f4f4f4;text-align:center;border-radius:8px">%s</div>
 			<p style="color:#888;font-size:12px;margin-top:16px">If you didn't attempt to log in, please change your password immediately.</p>
 		</div>`, code)
-	return s.client.SendMail(to, subject, body)
+	return s.QueueMail(context.Background(), to, subject, body)
 }
 
 func (s *EmailService) SendPasswordResetOTP(to, code string) error {
@@ -93,5 +93,5 @@ func (s *EmailService) SendPasswordResetOTP(to, code string) error {
 			<div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#f4f4f4;text-align:center;border-radius:8px">%s</div>
 			<p style="color:#888;font-size:12px;margin-top:16px">If you didn't request a password reset, you can safely ignore this email.</p>
 		</div>`, code)
-	return s.client.SendMail(to, subject, body)
+	return s.QueueMail(context.Background(), to, subject, body)
 }

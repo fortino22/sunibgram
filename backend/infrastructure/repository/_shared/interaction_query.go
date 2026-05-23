@@ -79,9 +79,9 @@ func (r *InteractionRepo) DeleteRecord(userID, threadID uint, model any) error {
 }
 
 func (r *InteractionRepo) Exists(userID, threadID uint, model any) (bool, error) {
-	var count int64
-	err := r.ReadDB.Model(model).Where("user_id = ? AND thread_id = ?", userID, threadID).Count(&count).Error
-	return count > 0, err
+	var exists bool
+	err := r.ReadDB.Model(model).Select("1").Where("user_id = ? AND thread_id = ?", userID, threadID).Limit(1).Scan(&exists).Error
+	return exists, err
 }
 
 func (r *InteractionRepo) AreThreadsInteracted(userID uint, threadIDs []uint) (map[uint]bool, error) {

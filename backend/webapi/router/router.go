@@ -115,7 +115,7 @@ func Register(
 	auth := middleware.Auth()
 
 	authroute.RegisterAuthRoutes(api, authCtrl, verificationCtrl, auth, c)
-	verificationroute.RegisterVerificationRoutes(api, verificationCtrl)
+	verificationroute.RegisterVerificationRoutes(api, verificationCtrl, c)
 	usersettingsroute.RegisterUserSettingsRoutes(api, userSettingsCtrl, auth)
 	userprofileroute.RegisterProfileRoutes(api, profileCtrl, auth)
 	exploreroute.RegisterExploreRoutes(api, exploreCtrl, auth)
@@ -131,7 +131,7 @@ func Register(
 	reportroute.RegisterReportRoutes(api, reportCtrl, auth)
 	facultyroute.RegisterFacultyRoutes(api, facultyCtrl, profileCtrl, auth)
 	feedbackroute.RegisterFeedbackRoutes(api, feedbackCtrl, auth)
-	orderroute.RegisterOrderRoutes(api, orderCtrl, auth)
+	orderroute.RegisterOrderRoutes(api, orderCtrl, auth, c)
 	premiumsubscriptionroute.RegisterPremiumSubscriptionRoutes(api, premiumSubscriptionCtrl, auth)
 	devroute.RegisterDevRoutes(api, devSubscriptionCtrl, auth)
 	chatroute.RegisterChatRoutes(api, chatRoomCtrl, chatCtrl, auth)

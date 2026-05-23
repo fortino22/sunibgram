@@ -47,13 +47,19 @@ func (r *threadCached) Save(thread *threadmodel.Thread) error {
 	r.invalidateUserMediaCache(ctx, thread.UserID)
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
-	r.invalidateForYouFeedCachesForFollowers(ctx, thread.UserID)
+	go func(uid uint) {
+		defer func() { _ = recover() }()
+		r.invalidateForYouFeedCachesForFollowers(context.Background(), uid)
+	}(thread.UserID)
 	effectiveCommunityID := thread.CommunityID
 	if effectiveCommunityID == nil {
 		effectiveCommunityID = repostInheritedCommunityID
 	}
 	if effectiveCommunityID != nil {
-		r.invalidateForYouFeedCachesForCommunity(ctx, *effectiveCommunityID)
+		go func(cid uint) {
+			defer func() { _ = recover() }()
+			r.invalidateForYouFeedCachesForCommunity(context.Background(), cid)
+		}(*effectiveCommunityID)
 		r.invalidateCommunityThreadQueryCaches(ctx)
 	}
 	r.invalidateTrendingFeed(ctx)
@@ -129,11 +135,11 @@ func (r *threadCached) validateThreadEventExists(eventID *string) error {
 	if eventID == nil || *eventID == "" {
 		return nil
 	}
-	var count int64
-	if err := r.db.readDB.Model(&threadmodel.Event{}).Where("id = ?", *eventID).Count(&count).Error; err != nil {
+	var exists bool
+	if err := r.db.readDB.Model(&threadmodel.Event{}).Select("1").Where("id = ?", *eventID).Limit(1).Scan(&exists).Error; err != nil {
 		return err
 	}
-	if count == 0 {
+	if !exists {
 		return errors.New("event not found")
 	}
 	return nil
@@ -195,13 +201,18 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 	r.cache.Set(ctx, key, thread, r.ttl)
 	r.invalidateFeedCachesByThreadID(ctx, threadID)
 	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
-	r.invalidateForYouFeedCachesForFollowers(ctx, thread.UserID)
+	go func(uid uint) {
+		defer func() { _ = recover() }()
+		r.invalidateForYouFeedCachesForFollowers(context.Background(), uid)
+	}(thread.UserID)
 	if thread.CommunityID != nil {
-		r.invalidateForYouFeedCachesForCommunity(ctx, *thread.CommunityID)
+		go func(cid uint) {
+			defer func() { _ = recover() }()
+			r.invalidateForYouFeedCachesForCommunity(context.Background(), cid)
+		}(*thread.CommunityID)
 	}
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
-	r.cache.Delete(ctx, "feed:trending:global")
 }
 
 func (r *threadCached) Delete(id uint) error {

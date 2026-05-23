@@ -61,7 +61,8 @@ func (c *UserProfileController) GetMyProfile(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	return c.fetchAndRespond(ctx, claims.UserID, nil)
+	uid := claims.UserID
+	return c.fetchAndRespond(ctx, uid, &uid)
 }
 
 func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
@@ -129,7 +130,7 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	if raw := ctx.FormValue("birthday_date"); raw != "" {
 		birthdayDate, err := ctrlshared.ParseDateField(raw, "birthday_date")
 		if err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 		input.BirthdayDate = &birthdayDate
 	}
@@ -137,12 +138,12 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	avatarChanged := input.Avatar != nil || input.ClearAvatar
 
 	if err := c.profileService.UpdateProfile(ctx.Context(), claims.UserID, input); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	if facultyID != nil {
 		if err := c.facultyService.SetUserFaculty(claims.UserID, facultyID); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 
@@ -174,14 +175,11 @@ func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint, vie
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "user not found"})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(fp))
+	includeEmail := viewerID != nil && *viewerID == userID
+	return ctx.Status(fiber.StatusOK).JSON(ToUserProfileResponse(fp, c.profileService.GetURL, includeEmail))
 }
 
-func (c *UserProfileController) toResponse(fp *userprofilesvciface.FullProfile) userprofiledto.UserProfileResponse {
-	return ToUserProfileResponse(fp, c.profileService.GetURL)
-}
-
-func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(string) string) userprofiledto.UserProfileResponse {
+func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(string) string, includeEmail bool) userprofiledto.UserProfileResponse {
 	avatarURL := ""
 	bannerURL := ""
 	if fp.Profile != nil {
@@ -209,11 +207,15 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 			FacultyName: fp.UserFaculty.Faculty.FacultyName,
 		}
 	}
+	email := ""
+	if includeEmail {
+		email = fp.User.Email
+	}
 	return userprofiledto.UserProfileResponse{
 		UserID:         fp.User.UserID,
 		Name:           fp.User.Name,
 		Username:       fp.User.UserName,
-		Email:          fp.User.Email,
+		Email:          email,
 		IsPremium:      fp.User.IsPremium,
 		Gender:         gender,
 		BirthdayDate:   birthdayDate,

@@ -37,6 +37,7 @@ type IChatRoomRepository interface {
 	IsMember(roomID, userID uint) bool
 	CountMembers(roomID uint) int64
 	AddMember(roomID, userID uint) error
+	AddMembersBulk(roomID uint, userIDs []uint) error
 	UpdateEncryptedKey(roomID uint, encryptedKey string) error
 	RemoveMember(roomID, userID uint) error
 	UpdateGroup(roomID uint, name string, description *string, avatarURL *string) error

@@ -42,9 +42,8 @@ func NewSMTPClient() *SMTPClient {
 
 func (c *SMTPClient) tlsConfig() *tls.Config {
 	return &tls.Config{
-		ServerName:         c.host,
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: true,
+		ServerName: c.host,
+		MinVersion: tls.VersionTLS12,
 	}
 }
 

@@ -36,6 +36,9 @@ func (c *EmailController) Send(ctx *fiber.Ctx) error {
 	if strings.TrimSpace(req.Body) == "" {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "body is required"})
 	}
+	if strings.ContainsAny(req.To, "\r\n") || strings.ContainsAny(req.Subject, "\r\n") {
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid characters in headers"})
+	}
 
 	if err := c.emailService.QueueMail(ctx.Context(), req.To, req.Subject, req.Body); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})

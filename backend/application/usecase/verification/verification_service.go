@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"strings"
@@ -36,7 +37,8 @@ func otpHMACSecret() []byte {
 	if s := strings.TrimSpace(os.Getenv("JWT_SECRET")); s != "" {
 		return []byte(s)
 	}
-	return []byte("sunibgram-otp")
+	log.Fatal("OTP_HMAC_SECRET or JWT_SECRET is required")
+	return nil
 }
 
 // hashOTP returns a versioned HMAC-SHA256 hash of the plaintext code. The

@@ -12,4 +12,5 @@ type IChatRepository interface {
 	MarkRoomRead(roomID, userID uint) ([]uint, error)
 	UpdateMessage(chatID uint, message string) error
 	UpdateIsRead(chatID uint) error
+	UpdateIsReadBulk(chatIDs []uint) error
 }

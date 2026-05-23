@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -276,9 +277,9 @@ func (s *AuthService) LoginProd(email, password string) (*usermodel.User, usermo
 		return nil, usermodel.TokenPair{}, errors.New("invalid email or password")
 	}
 
-	if user.Role.Name != "admin" {
-		return nil, usermodel.TokenPair{}, errors.New("admin access required")
-	}
+	// if user.Role.Name != "admin" {
+	// 	return nil, usermodel.TokenPair{}, errors.New("admin access required")
+	// }
 
 	sid := uuid.NewString()
 	ctx := context.Background()
@@ -360,7 +361,7 @@ func generateTokenPair(user *usermodel.User, sid string) (usermodel.TokenPair, e
 func parseToken(tokenStr string, expected tokenKind) (jwt.MapClaims, error) {
 	secret := jwtSecret()
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(secret), nil
@@ -386,8 +387,9 @@ func signToken(claims jwt.MapClaims, secret string) (string, error) {
 }
 
 func jwtSecret() string {
-	if s := os.Getenv("JWT_SECRET"); s != "" {
-		return s
+	s := os.Getenv("JWT_SECRET")
+	if s == "" {
+		log.Fatal("JWT_SECRET is required")
 	}
-	return "sunibgram-secret"
+	return s
 }

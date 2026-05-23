@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -95,7 +96,7 @@ func AdminOnly() fiber.Handler {
 func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
 	secret := jwtSecret()
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(secret), nil
@@ -117,8 +118,9 @@ func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
 }
 
 func jwtSecret() string {
-	if s := os.Getenv("JWT_SECRET"); s != "" {
-		return s
+	s := os.Getenv("JWT_SECRET")
+	if s == "" {
+		log.Fatal("JWT_SECRET is required")
 	}
-	return "sunibgram-secret"
+	return s
 }

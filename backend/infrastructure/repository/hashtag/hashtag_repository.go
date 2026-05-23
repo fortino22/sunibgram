@@ -35,18 +35,18 @@ func (r *hashtagRepository) UpsertHashtags(ctx context.Context, names []string) 
 		hashtags[i] = hashtagmodel.Hashtag{Name: name}
 	}
 	if err := r.writeDB.WithContext(ctx).
-		Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "name"}}, DoNothing: true}).
+		Clauses(
+			clause.OnConflict{
+				Columns:   []clause.Column{{Name: "name"}},
+				DoUpdates: clause.Assignments(map[string]any{"name": gorm.Expr("EXCLUDED.name")}),
+			},
+			clause.Returning{Columns: []clause.Column{{Name: "id"}, {Name: "name"}}},
+		).
 		Create(&hashtags).Error; err != nil {
 		return nil, err
 	}
 
-	var rows []hashtagmodel.Hashtag
-	if err := r.writeDB.WithContext(ctx).
-		Where("name IN ?", names).
-		Find(&rows).Error; err != nil {
-		return nil, err
-	}
-	for _, row := range rows {
+	for _, row := range hashtags {
 		ids[row.Name] = row.ID
 	}
 	return ids, nil

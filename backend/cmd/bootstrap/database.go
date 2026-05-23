@@ -37,10 +37,11 @@ func NewCache() *cache.Cache {
 }
 
 func StartWeeklySchedulers(db *gorm.DB) {
-	go scheduler.ResetWeeklyEventCounters(db)
-	go scheduler.ResetWeeklyHashtagCounters(db)
+	ctx := context.Background()
+	go scheduler.ResetWeeklyEventCounters(ctx, db)
+	go scheduler.ResetWeeklyHashtagCounters(ctx, db)
 }
 
 func StartFeedScoreScheduler(db *gorm.DB, c *cache.Cache) {
-	scheduler.NewFeedScoreScheduler(db, c).Start()
+	scheduler.NewFeedScoreScheduler(db, c).Start(context.Background())
 }

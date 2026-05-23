@@ -108,6 +108,33 @@ func (r *ChatRoomRepository) AddMember(roomID, userID uint) error {
 	return nil
 }
 
+// AddMembersBulk inserts many members in one INSERT and bumps member_count by
+// the inserted row count. Skips duplicates via ON CONFLICT DO NOTHING.
+func (r *ChatRoomRepository) AddMembersBulk(roomID uint, userIDs []uint) error {
+	if len(userIDs) == 0 {
+		return nil
+	}
+	now := time.Now()
+	members := make([]chatroommembermodel.ChatRoomMember, len(userIDs))
+	for i, uid := range userIDs {
+		members[i] = chatroommembermodel.ChatRoomMember{RoomID: roomID, UserID: uid, JoinedAt: now}
+	}
+	result := r.writeDB.Clauses(clause.OnConflict{DoNothing: true}).Create(&members)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected > 0 {
+		r.writeDB.Model(&chatroommodel.ChatRoom{}).Where("room_id = ?", roomID).UpdateColumn("member_count", gorm.Expr("member_count + ?", result.RowsAffected))
+		keys := make([]string, 0, len(userIDs)+1)
+		keys = append(keys, fmt.Sprintf("chat:room:%d", roomID))
+		for _, uid := range userIDs {
+			keys = append(keys, fmt.Sprintf("chat:member:%d:%d", roomID, uid))
+		}
+		_ = r.cache.Delete(context.Background(), keys...)
+	}
+	return nil
+}
+
 func (r *ChatRoomRepository) UpdateEncryptedKey(roomID uint, encryptedKey string) error {
 	err := r.writeDB.Model(&chatroommodel.ChatRoom{}).
 		Where("room_id = ?", roomID).

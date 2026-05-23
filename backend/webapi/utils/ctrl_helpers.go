@@ -26,12 +26,21 @@ func Get(ctx *fiber.Ctx) (Claims, bool) {
 		return Claims{}, false
 	}
 
+	uid, ok := raw["user_id"].(float64)
+	if !ok {
+		return Claims{}, false
+	}
+	rid, ok := raw["role_id"].(float64)
+	if !ok {
+		return Claims{}, false
+	}
+
 	return Claims{
-		UserID:   uint(raw["user_id"].(float64)),
+		UserID:   uint(uid),
 		SID:      str(raw["sid"]),
 		Username: str(raw["username"]),
 		Email:    str(raw["email"]),
-		RoleID:   uint(raw["role_id"].(float64)),
+		RoleID:   uint(rid),
 		RoleName: str(raw["role_name"]),
 	}, true
 }
@@ -65,6 +74,9 @@ func ParsePagination(ctx *fiber.Ctx) (page, limit int) {
 
 	if page < 1 {
 		page = 1
+	}
+	if page > 10000 {
+		page = 10000
 	}
 	if limit < 1 {
 		limit = 1

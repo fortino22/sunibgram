@@ -52,6 +52,10 @@ func userFollowingKey(userID uint) string {
 	return fmt.Sprintf("user:following:%d", userID)
 }
 
+func userFollowingSetKey(userID uint) string {
+	return fmt.Sprintf("user:following:set:%d", userID)
+}
+
 func (r *followRepository) Follow(followerID, followingID uint) error {
 	if followerID == followingID {
 		return errors.New("cannot follow yourself")
@@ -81,6 +85,7 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	ctx := context.Background()
 	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
 	r.cache.Delete(ctx, userFollowingKey(followerID))
+	r.cache.Delete(ctx, userFollowingSetKey(followerID))
 	r.invalidateVisibilityFeedsForViewer(ctx, followerID)
 	infrarepoShared.InvalidateExploreCache(ctx, r.cache)
 	return nil
@@ -105,6 +110,7 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 	ctx := context.Background()
 	r.cache.Delete(ctx, followExistsKey(followerID, followingID))
 	r.cache.Delete(ctx, userFollowingKey(followerID))
+	r.cache.Delete(ctx, userFollowingSetKey(followerID))
 	r.invalidateVisibilityFeedsForViewer(ctx, followerID)
 	infrarepoShared.InvalidateExploreCache(ctx, r.cache)
 	return nil
@@ -133,11 +139,11 @@ func (r *followRepository) Exists(followerID, followingID uint) (bool, error) {
 	if err := r.cache.Get(ctx, key, &exists); err == nil {
 		return exists, nil
 	}
-	var count int64
 	r.readDB.Model(&userrelationshipmodel.UserRelationship{}).
+		Select("1").
 		Where("follower_id = ? AND following_id = ?", followerID, followingID).
-		Count(&count)
-	exists = count > 0
+		Limit(1).
+		Scan(&exists)
 	r.cache.Set(ctx, key, exists, r.ttl)
 	return exists, nil
 }
@@ -148,15 +154,22 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 		return result, nil
 	}
 
+	setKey := userFollowingSetKey(followerID)
+	targetStrs := make([]string, len(targetIDs))
+	for i, id := range targetIDs {
+		targetStrs[i] = fmt.Sprintf("%d", id)
+	}
+
 	if r.cache != nil {
-		followingSet := map[uint]bool{}
-		if err := r.cache.Get(ctx, userFollowingKey(followerID), &followingSet); err == nil {
-			for _, id := range targetIDs {
-				if followingSet[id] {
-					result[id] = true
+		if exists, err := r.cache.Exists(ctx, setKey); err == nil && exists {
+			if flags, err := r.cache.SMIsMember(ctx, setKey, targetStrs); err == nil {
+				for i, ok := range flags {
+					if ok {
+						result[targetIDs[i]] = true
+					}
 				}
+				return result, nil
 			}
-			return result, nil
 		}
 	}
 
@@ -167,12 +180,18 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 		Pluck("following_id", &followingIDs).Error; err != nil {
 		return nil, err
 	}
+
+	if r.cache != nil {
+		members := make([]string, len(followingIDs))
+		for i, id := range followingIDs {
+			members[i] = fmt.Sprintf("%d", id)
+		}
+		_ = r.cache.SAddMany(ctx, setKey, members, followingSetTTL)
+	}
+
 	followingSet := make(map[uint]bool, len(followingIDs))
 	for _, id := range followingIDs {
 		followingSet[id] = true
-	}
-	if r.cache != nil {
-		_ = r.cache.Set(ctx, userFollowingKey(followerID), followingSet, followingSetTTL)
 	}
 	for _, id := range targetIDs {
 		if followingSet[id] {
@@ -263,7 +282,7 @@ func (r *followRepository) GetStat(userID uint) (*userstatmodel.UserStat, error)
 	key := userStatKey(userID)
 	var stat userstatmodel.UserStat
 	if err := r.cache.Get(ctx, key, &stat); err != nil {
-		if err := r.readDB.FirstOrCreate(&stat, userstatmodel.UserStat{UserID: userID}).Error; err != nil {
+		if err := r.writeDB.FirstOrCreate(&stat, userstatmodel.UserStat{UserID: userID}).Error; err != nil {
 			return nil, err
 		}
 		r.cache.Set(ctx, key, stat, r.ttl)
@@ -358,7 +377,7 @@ func (r *followRepository) patchStatCache(userID uint, followerDelta, followingD
 	key := userStatKey(userID)
 	var stat userstatmodel.UserStat
 	if err := r.cache.Get(ctx, key, &stat); err != nil {
-		if err := r.readDB.FirstOrCreate(&stat, userstatmodel.UserStat{UserID: userID}).Error; err != nil {
+		if err := r.writeDB.FirstOrCreate(&stat, userstatmodel.UserStat{UserID: userID}).Error; err != nil {
 			return
 		}
 	}

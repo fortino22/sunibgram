@@ -22,13 +22,18 @@ func NewFeedScoreScheduler(db *gorm.DB, c *cache.Cache) *FeedScoreScheduler {
 	return &FeedScoreScheduler{db: db, cache: c}
 }
 
-func (s *FeedScoreScheduler) Start() {
+func (s *FeedScoreScheduler) Start(ctx context.Context) {
 	go func() {
 		s.run()
 		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			s.run()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.run()
+			}
 		}
 	}()
 }
@@ -50,7 +55,7 @@ func (s *FeedScoreScheduler) run() {
 		return
 	}
 
-	if err := s.db.Exec("UPDATE threads SET feed_score = 0 WHERE created_at <= NOW() - INTERVAL '7 days'").Error; err != nil {
+	if err := s.db.Exec("UPDATE threads SET feed_score = 0 WHERE created_at <= NOW() - INTERVAL '7 days' AND feed_score <> 0").Error; err != nil {
 		log.Printf("feed score reset failed: %v", err)
 		return
 	}
@@ -74,10 +79,6 @@ func (s *FeedScoreScheduler) run() {
 	if err := s.cache.Set(context.Background(), "feed:trending:global", threads, 5*time.Minute); err != nil {
 		log.Printf("global trending feed cache set failed: %v", err)
 		return
-	}
-
-	if err := s.cache.DeleteByPattern(context.Background(), "feed:foryou:*"); err != nil {
-		log.Printf("feed cache invalidation failed: %v", err)
 	}
 
 	log.Println("feed scores recomputed")

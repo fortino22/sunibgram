@@ -66,5 +66,5 @@ func (c *UserController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "user not found"})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(userprofilectrl.ToUserProfileResponse(fp, c.profileService.GetURL))
+	return ctx.Status(fiber.StatusOK).JSON(userprofilectrl.ToUserProfileResponse(fp, c.profileService.GetURL, true))
 }

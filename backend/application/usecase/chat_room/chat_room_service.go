@@ -84,17 +84,25 @@ func (s *ChatRoomService) CreateGroup(ctx context.Context, creatorID uint, name 
 	}
 
 	seen := map[uint]struct{}{creatorID: {}}
+	dedup := make([]uint, 0, len(memberIDs))
 	for _, id := range memberIDs {
 		if _, ok := seen[id]; ok {
 			continue
 		}
-		if _, err := s.userRepo.FindByID(id); err != nil {
-			return nil, errors.New("member user not found")
-		}
-		if err := s.roomRepo.AddMember(room.RoomID, id); err != nil {
+		seen[id] = struct{}{}
+		dedup = append(dedup, id)
+	}
+	if len(dedup) > 0 {
+		users, err := s.userRepo.FindByIDs(dedup)
+		if err != nil {
 			return nil, err
 		}
-		seen[id] = struct{}{}
+		if len(users) != len(dedup) {
+			return nil, errors.New("member user not found")
+		}
+		if err := s.roomRepo.AddMembersBulk(room.RoomID, dedup); err != nil {
+			return nil, err
+		}
 	}
 	return room, nil
 }
@@ -115,21 +123,35 @@ func (s *ChatRoomService) AddMemberToGroup(ctx context.Context, roomID, requeste
 	}
 
 	seen := make(map[uint]struct{}, len(newUserIDs))
-	alreadyMembers := []uint{}
+	dedup := make([]uint, 0, len(newUserIDs))
 	for _, id := range newUserIDs {
 		if _, ok := seen[id]; ok {
 			continue
 		}
 		seen[id] = struct{}{}
-		if _, err := s.userRepo.FindByID(id); err != nil {
+		dedup = append(dedup, id)
+	}
+	alreadyMembers := []uint{}
+	toAdd := make([]uint, 0, len(dedup))
+	if len(dedup) > 0 {
+		users, err := s.userRepo.FindByIDs(dedup)
+		if err != nil {
+			return nil, []uint{}, err
+		}
+		if len(users) != len(dedup) {
 			return nil, []uint{}, errors.New("target user not found")
 		}
-		if s.roomRepo.IsMember(roomID, id) {
-			alreadyMembers = append(alreadyMembers, id)
-			continue
+		for _, id := range dedup {
+			if s.roomRepo.IsMember(roomID, id) {
+				alreadyMembers = append(alreadyMembers, id)
+				continue
+			}
+			toAdd = append(toAdd, id)
 		}
-		if err := s.roomRepo.AddMember(roomID, id); err != nil {
-			return nil, []uint{}, err
+		if len(toAdd) > 0 {
+			if err := s.roomRepo.AddMembersBulk(roomID, toAdd); err != nil {
+				return nil, []uint{}, err
+			}
 		}
 	}
 	room, err = s.roomRepo.FindByID(roomID)

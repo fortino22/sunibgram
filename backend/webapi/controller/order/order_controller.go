@@ -2,6 +2,7 @@ package orderctrl
 
 import (
 	"crypto/sha512"
+	"crypto/subtle"
 	"fmt"
 	"os"
 
@@ -31,7 +32,7 @@ func (c *OrderController) BuyPremium(ctx *fiber.Ctx) error {
 
 	result, err := c.orderService.BuyPremium(claims.UserID)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(orderdto.CreateOrderResponse{
@@ -51,7 +52,7 @@ func (c *OrderController) GetMyOrders(ctx *fiber.Ctx) error {
 
 	orders, total, err := c.orderService.GetByUserID(claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	data := make([]orderdto.OrderResponse, len(orders))
@@ -70,7 +71,7 @@ func (c *OrderController) GetAll(ctx *fiber.Ctx) error {
 
 	orders, total, err := c.orderService.GetAll(page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	data := make([]orderdto.OrderResponse, len(orders))
@@ -118,7 +119,7 @@ func (c *OrderController) Cancel(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.orderService.CancelOrder(id); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.JSON(fiber.Map{"message": "order cancelled successfully"})
@@ -135,7 +136,7 @@ func (c *OrderController) MidtransNotification(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.orderService.HandleNotification(payload); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.SendStatus(fiber.StatusOK)
@@ -152,7 +153,7 @@ func verifyMidtransSignature(payload map[string]interface{}) error {
 	hash := sha512.Sum512([]byte(raw))
 	expected := fmt.Sprintf("%x", hash)
 
-	if incomingSig != expected {
+	if subtle.ConstantTimeCompare([]byte(incomingSig), []byte(expected)) != 1 {
 		return fmt.Errorf("signature mismatch")
 	}
 	return nil

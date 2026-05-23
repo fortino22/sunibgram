@@ -41,4 +41,5 @@ type IThreadRepository interface {
 	FindByFacultyID(facultyID uint, requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error)
 	AttachReplyParents(threads []threadmodel.Thread, requesterID *uint) ([]threadmodel.Thread, []*threadmodel.Thread, error)
 	InvalidateUserFeedCaches(ctx context.Context, userID uint)
+	FindRepliesContent(parentID uint, limit int) ([]string, error)
 }

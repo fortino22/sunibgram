@@ -28,13 +28,14 @@ func NewExploreService(exploreRepo explorerepoiface.IExploreRepository, threadRe
 	return &ExploreService{exploreRepo: exploreRepo, threadRepo: threadRepo, settingsRepo: settingsRepo, followRepo: followRepo}
 }
 
-func (s *ExploreService) ExploreSearch(ctx context.Context, query string, requesterID *uint) (*exploremodel.ExploreResult, error) {
+func (s *ExploreService) ExploreSearch(ctx context.Context, query string, requesterID *uint, page, limit int) (*exploremodel.ExploreResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, errors.New("query is required")
 	}
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
 
-	result, err := s.exploreRepo.ExploreSearch(ctx, query, requesterID, defaultExploreLimit)
+	result, err := s.exploreRepo.ExploreSearch(ctx, query, requesterID, page, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -72,12 +73,13 @@ func (s *ExploreService) filterPublicThreads(ctx context.Context, threads []expl
 	return filtered, nil
 }
 
-func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
+func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requesterID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	threads, total, err := s.exploreRepo.FindTopPosts(ctx, query, requesterID, defaultExploreLimit)
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
+	threads, total, err := s.exploreRepo.FindTopPosts(ctx, query, requesterID, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -88,12 +90,13 @@ func (s *ExploreService) GetTopPosts(ctx context.Context, query string, requeste
 	return threads, parents, total, nil
 }
 
-func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
+func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, requesterID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, nil, 0, err
 	}
-	threads, total, err := s.exploreRepo.FindLatestPosts(ctx, query, requesterID, defaultExploreLimit)
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
+	threads, total, err := s.exploreRepo.FindLatestPosts(ctx, query, requesterID, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -104,32 +107,35 @@ func (s *ExploreService) GetLatestPosts(ctx context.Context, query string, reque
 	return threads, parents, total, nil
 }
 
-func (s *ExploreService) GetPeople(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreUserResult, error) {
+func (s *ExploreService) GetPeople(ctx context.Context, query string, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, err
 	}
-	return s.exploreRepo.FindPeople(ctx, query, requesterID, defaultExploreLimit)
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
+	return s.exploreRepo.FindPeople(ctx, query, requesterID, page, limit)
 }
 
-func (s *ExploreService) GetMediaPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, int64, error) {
+func (s *ExploreService) GetMediaPosts(ctx context.Context, query string, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, 0, err
 	}
-	threads, total, err := s.exploreRepo.FindMediaPosts(ctx, query, requesterID, defaultExploreLimit)
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
+	threads, total, err := s.exploreRepo.FindMediaPosts(ctx, query, requesterID, page, limit)
 	if err != nil {
 		return nil, 0, err
 	}
 	return threads, total, nil
 }
 
-func (s *ExploreService) GetCommunities(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreCommunityResult, int64, error) {
+func (s *ExploreService) GetCommunities(ctx context.Context, query string, requesterID uint, page, limit int) ([]exploremodel.ExploreCommunityResult, int64, error) {
 	query, err := normalizeExploreQuery(query)
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.exploreRepo.FindCommunities(ctx, query, requesterID, defaultExploreLimit)
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
+	return s.exploreRepo.FindCommunities(ctx, query, requesterID, page, limit)
 }
 
 func (s *ExploreService) GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error) {

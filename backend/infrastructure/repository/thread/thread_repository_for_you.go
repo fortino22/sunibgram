@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -163,29 +164,45 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 		}
 	}
 
-	own, err := r.findForYouOwn(ctx, userID)
-	if err != nil {
-		return nil, nil, 0, err
+	var (
+		ownThreads, globalThreads, followingThreads, communityThreads []threadmodel.Thread
+		ownErr, globalErr, followingErr, communityErr                 error
+		wg                                                            sync.WaitGroup
+	)
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		ownThreads, ownErr = r.findForYouOwn(ctx, userID)
+	}()
+	go func() {
+		defer wg.Done()
+		globalThreads, globalErr = r.findForYouGlobal(ctx)
+	}()
+	go func() {
+		defer wg.Done()
+		followingThreads, followingErr = r.findForYouFollowing(ctx, userID)
+	}()
+	go func() {
+		defer wg.Done()
+		communityThreads, communityErr = r.findForYouCommunity(ctx, userID)
+	}()
+	wg.Wait()
+	if ownErr != nil {
+		return nil, nil, 0, ownErr
 	}
-	addCandidates(own, 1.0, true, true)
-
-	global, err := r.findForYouGlobal(ctx)
-	if err != nil {
-		return nil, nil, 0, err
+	if globalErr != nil {
+		return nil, nil, 0, globalErr
 	}
-	addCandidates(global, 1.0, false, false)
-
-	following, err := r.findForYouFollowing(ctx, userID)
-	if err != nil {
-		return nil, nil, 0, err
+	if followingErr != nil {
+		return nil, nil, 0, followingErr
 	}
-	addCandidates(following, 0.8, true, false)
-
-	community, err := r.findForYouCommunity(ctx, userID)
-	if err != nil {
-		return nil, nil, 0, err
+	if communityErr != nil {
+		return nil, nil, 0, communityErr
 	}
-	addCandidates(community, 0.7, false, false)
+	addCandidates(ownThreads, 1.0, true, true)
+	addCandidates(globalThreads, 1.0, false, false)
+	addCandidates(followingThreads, 0.8, true, false)
+	addCandidates(communityThreads, 0.7, false, false)
 
 	fresh := make([]forYouCandidate, 0)
 	ranked := make([]forYouCandidate, 0, len(merged))

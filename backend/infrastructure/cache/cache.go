@@ -45,6 +45,17 @@ func (c *Cache) Set(ctx context.Context, key string, value any, ttl time.Duratio
 	return c.client.Set(ctx, key, b, ttl).Err()
 }
 
+// SetNX sets the key only if it does not already exist, with the given TTL.
+// Returns true if the key was created (caller holds the lock), false if it
+// already existed. Used for webhook idempotency and similar one-shot guards.
+func (c *Cache) SetNX(ctx context.Context, key string, value any, ttl time.Duration) (bool, error) {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return false, err
+	}
+	return c.client.SetNX(ctx, key, b, ttl).Result()
+}
+
 func (c *Cache) RPush(ctx context.Context, key string, value any) error {
 	b, err := json.Marshal(value)
 	if err != nil {

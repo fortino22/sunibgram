@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -69,12 +70,6 @@ func Mount(app *fiber.App, hub sockethubsvciface.IHub, roomService chatroomsvcif
 		if _, token := subprotocolToken(kws.Conn.Headers("Sec-WebSocket-Protocol")); token != "" {
 			tokenStr = token
 		}
-		if tokenStr == "" {
-			tokenStr = kws.Conn.Query("token")
-		}
-		if tokenStr == "" {
-			tokenStr = kws.Conn.Query("access_token")
-		}
 		userID, err := validateToken(tokenStr, sessionCache)
 		if err != nil {
 			kws.Close()
@@ -122,12 +117,6 @@ func authenticateSocket(c *fiber.Ctx, sessionCache *cache.Cache) (uint, error) {
 			tokenStr = token
 		}
 	}
-	if tokenStr == "" {
-		tokenStr = c.Query("token")
-	}
-	if tokenStr == "" {
-		tokenStr = c.Query("access_token")
-	}
 	return validateToken(tokenStr, sessionCache)
 }
 
@@ -165,7 +154,7 @@ func bearerToken(header string) string {
 
 func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.New("unexpected signing method")
 		}
 		return []byte(jwtSecret()), nil
@@ -185,10 +174,11 @@ func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
 }
 
 func jwtSecret() string {
-	if s := os.Getenv("JWT_SECRET"); s != "" {
-		return s
+	s := os.Getenv("JWT_SECRET")
+	if s == "" {
+		log.Fatal("JWT_SECRET is required")
 	}
-	return "sunibgram-secret"
+	return s
 }
 
 func numericClaim(value any) (uint, bool) {

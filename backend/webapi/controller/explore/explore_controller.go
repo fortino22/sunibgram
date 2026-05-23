@@ -55,8 +55,9 @@ func (c *ExploreController) ExploreSearch(ctx *fiber.Ctx) error {
 	if ok {
 		requesterID = &claims.UserID
 	}
+	page, limit := ctrlshared.ParsePagination(ctx)
 
-	result, err := c.exploreService.ExploreSearch(ctx.Context(), ctx.Query("q"), requesterID)
+	result, err := c.exploreService.ExploreSearch(ctx.Context(), ctx.Query("q"), requesterID, page, limit)
 	if err != nil {
 		if err.Error() == "query is required" {
 			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
@@ -71,8 +72,9 @@ func (c *ExploreController) GetTop(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
+	page, limit := ctrlshared.ParsePagination(ctx)
 
-	threads, parents, total, err := c.exploreService.GetTopPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	threads, parents, total, err := c.exploreService.GetTopPosts(ctx.Context(), ctx.Query("q"), claims.UserID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -84,8 +86,9 @@ func (c *ExploreController) GetLatest(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
+	page, limit := ctrlshared.ParsePagination(ctx)
 
-	threads, parents, total, err := c.exploreService.GetLatestPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	threads, parents, total, err := c.exploreService.GetLatestPosts(ctx.Context(), ctx.Query("q"), claims.UserID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -97,8 +100,9 @@ func (c *ExploreController) GetPeople(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
+	page, limit := ctrlshared.ParsePagination(ctx)
 
-	users, err := c.exploreService.GetPeople(ctx.Context(), ctx.Query("q"), claims.UserID)
+	users, err := c.exploreService.GetPeople(ctx.Context(), ctx.Query("q"), claims.UserID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -110,8 +114,9 @@ func (c *ExploreController) GetMedia(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
+	page, limit := ctrlshared.ParsePagination(ctx)
 
-	threads, total, err := c.exploreService.GetMediaPosts(ctx.Context(), ctx.Query("q"), claims.UserID)
+	threads, total, err := c.exploreService.GetMediaPosts(ctx.Context(), ctx.Query("q"), claims.UserID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -123,8 +128,9 @@ func (c *ExploreController) GetCommunities(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
+	page, limit := ctrlshared.ParsePagination(ctx)
 
-	communities, _, err := c.exploreService.GetCommunities(ctx.Context(), ctx.Query("q"), claims.UserID)
+	communities, _, err := c.exploreService.GetCommunities(ctx.Context(), ctx.Query("q"), claims.UserID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}

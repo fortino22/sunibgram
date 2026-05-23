@@ -157,6 +157,15 @@ func (s *OrderService) HandleNotification(payload map[string]interface{}) error 
 		return nil
 	}
 
+	if s.cacheRepo != nil {
+		ctx := context.Background()
+		key := fmt.Sprintf("order:notif:%s:%s", orderID, status)
+		ok, err := s.cacheRepo.SetNX(ctx, key, 1, 24*time.Hour)
+		if err == nil && !ok {
+			return nil
+		}
+	}
+
 	order, err := s.orderRepo.FindByOrderID(orderID)
 	if err != nil {
 		return errors.New("order not found")

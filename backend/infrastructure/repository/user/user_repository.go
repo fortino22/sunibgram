@@ -99,15 +99,37 @@ func (r *UserRepository) FindByUserName(username string) (*usermodel.User, error
 }
 
 func (r *UserRepository) ExistsByEmail(email string) (bool, error) {
-	var count int64
-	err := r.readDB.Model(&usermodel.User{}).Where("email = ?", email).Count(&count).Error
-	return count > 0, err
+	ctx := context.Background()
+	key := fmt.Sprintf("user:exists:email:%s", email)
+	if r.cache != nil {
+		var cached bool
+		if err := r.cache.Get(ctx, key, &cached); err == nil {
+			return cached, nil
+		}
+	}
+	var exists bool
+	err := r.readDB.Model(&usermodel.User{}).Select("1").Where("email = ?", email).Limit(1).Scan(&exists).Error
+	if err == nil && r.cache != nil {
+		_ = r.cache.Set(ctx, key, exists, 30*time.Second)
+	}
+	return exists, err
 }
 
 func (r *UserRepository) ExistsByUserName(username string) (bool, error) {
-	var count int64
-	err := r.readDB.Model(&usermodel.User{}).Where("user_name = ?", username).Count(&count).Error
-	return count > 0, err
+	ctx := context.Background()
+	key := fmt.Sprintf("user:exists:username:%s", username)
+	if r.cache != nil {
+		var cached bool
+		if err := r.cache.Get(ctx, key, &cached); err == nil {
+			return cached, nil
+		}
+	}
+	var exists bool
+	err := r.readDB.Model(&usermodel.User{}).Select("1").Where("user_name = ?", username).Limit(1).Scan(&exists).Error
+	if err == nil && r.cache != nil {
+		_ = r.cache.Set(ctx, key, exists, 30*time.Second)
+	}
+	return exists, err
 }
 
 func (r *UserRepository) UpdatePassword(userID uint, hashedPassword string) error {
@@ -141,6 +163,24 @@ func (r *UserRepository) UpdatePremium(userID uint, premium bool) error {
 	infrarepoShared.InvalidateExploreCache(context.Background(), r.cache)
 	r.invalidateUserPremiumCaches()
 	r.invalidateUserThreadCaches(userID)
+	return nil
+}
+
+func (r *UserRepository) UpdatePremiumByIDs(userIDs []uint, premium bool) error {
+	if len(userIDs) == 0 {
+		return nil
+	}
+	if err := r.writeDB.Model(&usermodel.User{}).Where("user_id IN ?", userIDs).Update("is_premium", premium).Error; err != nil {
+		return err
+	}
+	for _, uid := range userIDs {
+		r.invalidateUser(uid)
+		r.invalidateProfileMeta(uid)
+		notificationrepo.InvalidateNotificationSenderCache(context.Background(), r.cache, uid)
+		r.invalidateUserThreadCaches(uid)
+	}
+	infrarepoShared.InvalidateExploreCache(context.Background(), r.cache)
+	r.invalidateUserPremiumCaches()
 	return nil
 }
 

@@ -37,7 +37,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 	birthdayDate, err := ctrlshared.ParseDateField(req.BirthdayDate, "birthday_date")
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	raw := ctx.FormValue("faculty_id")
@@ -66,7 +66,7 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.Register(user, profile, req.ConfirmPassword); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	input := userprofilesvciface.UpsertProfileInput{}
@@ -81,13 +81,13 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 	if input.Avatar != nil || input.Banner != nil || input.Bio != nil {
 		if err := c.profileService.UpsertProfile(ctx.Context(), user.UserID, input); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 
 	if facultyID != nil {
 		if err := c.facultyService.SetUserFaculty(user.UserID, facultyID); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 
@@ -110,7 +110,7 @@ func (c *AuthController) ChangePassword(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.ChangePassword(claims.UserID, req.OldPassword, req.NewPassword); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "password changed successfully"})
@@ -127,7 +127,7 @@ func (c *AuthController) ForgotPassword(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.authService.ForgotPassword(req.Email, req.NewPassword); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "password reset successfully"})

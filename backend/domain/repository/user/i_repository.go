@@ -18,4 +18,5 @@ type IUserRepository interface {
 	UpdatePassword(userID uint, hashedPassword string) error
 	UpdateInfo(userID uint, name, username string) error
 	UpdatePremium(userID uint, premium bool) error
+	UpdatePremiumByIDs(userIDs []uint, premium bool) error
 }

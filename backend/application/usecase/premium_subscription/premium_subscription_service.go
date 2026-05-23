@@ -75,10 +75,8 @@ func (s *PremiumSubscriptionService) ExpireSubscriptions() error {
 	if err := s.communityRepo.DeactivateByOwnerIDs(ownerIDs); err != nil {
 		return err
 	}
-	for _, id := range ownerIDs {
-		if err := s.userRepo.UpdatePremium(id, false); err != nil {
-			return err
-		}
+	if err := s.userRepo.UpdatePremiumByIDs(ownerIDs, false); err != nil {
+		return err
 	}
 	s.invalidateCommunityThreadQueryCaches()
 	return nil

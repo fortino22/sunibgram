@@ -29,6 +29,10 @@ func (r *CacheRepository) Set(ctx context.Context, key string, value any, ttl ti
 	return r.cache.Set(ctx, key, value, ttl)
 }
 
+func (r *CacheRepository) SetNX(ctx context.Context, key string, value any, ttl time.Duration) (bool, error) {
+	return r.cache.SetNX(ctx, key, value, ttl)
+}
+
 func (r *CacheRepository) MGet(ctx context.Context, keys []string) (map[string][]byte, error) {
 	return r.cache.MGet(ctx, keys)
 }

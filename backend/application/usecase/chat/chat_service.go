@@ -3,6 +3,7 @@ package chatuc
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"unicode/utf8"
 
@@ -84,7 +85,14 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 	}
 	s.decryptChat(chat, roomKey)
 	_ = s.roomRepo.TouchUpdatedAt(roomID)
-	s.sendMessageNotifications(room, chat)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("chat notif fanout panic: %v", r)
+			}
+		}()
+		s.sendMessageNotifications(room, chat)
+	}()
 	return chat, nil
 }
 
@@ -269,10 +277,14 @@ func (s *ChatService) MarkRead(roomID, userID uint) ([]uint, error) {
 	if err != nil {
 		return nil, err
 	}
+	toMark := make([]uint, 0, len(inserted))
 	for _, chatID := range inserted {
 		if readCounts[chatID] >= memberCount-1 {
-			_ = s.chatRepo.UpdateIsRead(chatID)
+			toMark = append(toMark, chatID)
 		}
+	}
+	if len(toMark) > 0 {
+		_ = s.chatRepo.UpdateIsReadBulk(toMark)
 	}
 	return inserted, nil
 }

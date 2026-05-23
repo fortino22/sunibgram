@@ -8,11 +8,11 @@ import (
 )
 
 type IExploreService interface {
-	ExploreSearch(ctx context.Context, query string, requesterID *uint) (*exploremodel.ExploreResult, error)
-	GetTopPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
-	GetLatestPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
-	GetPeople(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreUserResult, error)
-	GetMediaPosts(ctx context.Context, query string, requesterID uint) ([]threadmodel.Thread, int64, error)
-	GetCommunities(ctx context.Context, query string, requesterID uint) ([]exploremodel.ExploreCommunityResult, int64, error)
+	ExploreSearch(ctx context.Context, query string, requesterID *uint, page, limit int) (*exploremodel.ExploreResult, error)
+	GetTopPosts(ctx context.Context, query string, requesterID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
+	GetLatestPosts(ctx context.Context, query string, requesterID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
+	GetPeople(ctx context.Context, query string, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error)
+	GetMediaPosts(ctx context.Context, query string, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error)
+	GetCommunities(ctx context.Context, query string, requesterID uint, page, limit int) ([]exploremodel.ExploreCommunityResult, int64, error)
 	GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error)
 }

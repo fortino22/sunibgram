@@ -162,6 +162,19 @@ func (r *threadCached) findAncestors(anchor threadmodel.Thread) ([]threadmodel.T
 	return ordered, nil
 }
 
+func (r *threadCached) FindRepliesContent(parentID uint, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	var out []string
+	err := r.db.readDB.Model(&threadmodel.Thread{}).
+		Where("parent_id = ?", parentID).
+		Order("like_count DESC, created_at DESC").
+		Limit(limit).
+		Pluck("content", &out).Error
+	return out, err
+}
+
 func (r *threadCached) FindByRootID(rootID uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	const maxFindByRootIDRows = 50
 
@@ -342,6 +355,7 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 		Where("COALESCE(threads.community_id, original.community_id) = ?", communityID).
 		Where("threads.type IN ?", []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeRepost), string(threadmodel.ThreadTypeReply)}).
 		Order("threads.created_at DESC, thread_media.created_at ASC").
+		Limit(500).
 		Find(&rows).Error; err != nil {
 		return nil, err
 	}

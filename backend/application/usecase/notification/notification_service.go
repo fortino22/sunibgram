@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 
 	"github.com/sunibgram/application/helper"
 	storageuc "github.com/sunibgram/application/usecase/storage"
 	facultymodel "github.com/sunibgram/domain/model/faculty"
 	notificationmodel "github.com/sunibgram/domain/model/notification"
+	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	notificationrepoiface "github.com/sunibgram/domain/repository/notification"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
@@ -141,17 +143,35 @@ func (s *NotificationService) senderProfilesByUserID(notifications []notificatio
 		return map[uint]*notificationmodel.NotificationSender{}, nil
 	}
 
-	users, err := s.userRepo.FindByIDs(ids)
-	if err != nil {
-		return nil, err
+	var wg sync.WaitGroup
+	var (
+		users         []usermodel.User
+		profiles      []userprofilemodel.UserProfile
+		userFaculties []usermodel.UserFaculty
+		uErr, pErr, fErr error
+	)
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		users, uErr = s.userRepo.FindByIDs(ids)
+	}()
+	go func() {
+		defer wg.Done()
+		profiles, pErr = s.profileRepo.FindByUserIDs(ids)
+	}()
+	go func() {
+		defer wg.Done()
+		userFaculties, fErr = s.userFacultyRepo.FindByUserIDs(ids)
+	}()
+	wg.Wait()
+	if uErr != nil {
+		return nil, uErr
 	}
-	profiles, err := s.profileRepo.FindByUserIDs(ids)
-	if err != nil {
-		return nil, err
+	if pErr != nil {
+		return nil, pErr
 	}
-	userFaculties, err := s.userFacultyRepo.FindByUserIDs(ids)
-	if err != nil {
-		return nil, err
+	if fErr != nil {
+		return nil, fErr
 	}
 
 	profilesByUserID := make(map[uint]userprofilemodel.UserProfile, len(profiles))

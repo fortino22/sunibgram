@@ -1,13 +1,14 @@
 package scheduler
 
 import (
+	"context"
 	"log"
 	"time"
 
 	"gorm.io/gorm"
 )
 
-func ResetWeeklyHashtagCounters(db *gorm.DB) {
+func ResetWeeklyHashtagCounters(ctx context.Context, db *gorm.DB) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	for {
 		now := time.Now().In(loc)
@@ -16,7 +17,11 @@ func ResetWeeklyHashtagCounters(db *gorm.DB) {
 			daysUntilMonday = 7
 		}
 		next := time.Date(now.Year(), now.Month(), now.Day()+int(daysUntilMonday), 0, 0, 0, 0, loc)
-		time.Sleep(time.Until(next))
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Until(next)):
+		}
 		if err := db.Exec("UPDATE hashtags SET week_thread_count = 0, week_like_count = 0, week_repost_count = 0").Error; err != nil {
 			log.Printf("weekly hashtag counter reset failed: %v", err)
 		} else {

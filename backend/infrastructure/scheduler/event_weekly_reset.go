@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 )
 
 // ResetWeeklyEventCounters resets week_* counter columns every Monday 00:00 WIB (UTC+7).
-func ResetWeeklyEventCounters(db *gorm.DB) {
+func ResetWeeklyEventCounters(ctx context.Context, db *gorm.DB) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	for {
 		now := time.Now().In(loc)
@@ -17,7 +18,11 @@ func ResetWeeklyEventCounters(db *gorm.DB) {
 			daysUntilMonday = 7
 		}
 		next := time.Date(now.Year(), now.Month(), now.Day()+int(daysUntilMonday), 0, 0, 0, 0, loc)
-		time.Sleep(time.Until(next))
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Until(next)):
+		}
 		if err := db.Exec("UPDATE events SET week_thread_count = 0, week_like_count = 0, week_repost_count = 0").Error; err != nil {
 			log.Printf("weekly event counter reset failed: %v", err)
 		} else {

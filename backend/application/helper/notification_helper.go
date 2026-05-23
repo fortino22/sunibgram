@@ -1,6 +1,8 @@
 package helper
 
 import (
+	"log"
+
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
 )
 
@@ -33,11 +35,18 @@ func SendInteractionNotification(
 	}
 
 	ref := referenceID
-	_ = notificationService.SendNotification(notificationsvciface.CreateNotificationInput{
-		Type:            notificationType,
-		Message:         message,
-		SenderUserID:    senderUserID,
-		RecipientUserID: recipientUserID,
-		ReferenceID:     &ref,
-	})
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("notification helper panic: %v", r)
+			}
+		}()
+		_ = notificationService.SendNotification(notificationsvciface.CreateNotificationInput{
+			Type:            notificationType,
+			Message:         message,
+			SenderUserID:    senderUserID,
+			RecipientUserID: recipientUserID,
+			ReferenceID:     &ref,
+		})
+	}()
 }

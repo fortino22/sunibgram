@@ -21,6 +21,10 @@ func NewChatRepository(writeDB, readDB *gorm.DB) chatrepoiface.IChatRepository {
 	return &ChatRepository{writeDB: writeDB, readDB: readDB}
 }
 
+func chatSenderColumns(db *gorm.DB) *gorm.DB {
+	return db.Select("user_id, user_name, name, is_premium")
+}
+
 func (r *ChatRepository) Save(chat *chatmodel.Chat) error {
 	return r.writeDB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(chat).Error; err != nil {
@@ -31,7 +35,7 @@ func (r *ChatRepository) Save(chat *chatmodel.Chat) error {
 			Update("updated_at", time.Now()).Error; err != nil {
 			return err
 		}
-		return tx.Preload("Sender").Preload("ReplyTo.Sender").First(chat, chat.ChatID).Error
+		return tx.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).First(chat, chat.ChatID).Error
 	})
 }
 
@@ -45,7 +49,7 @@ func (r *ChatRepository) FindByRoomID(roomID uint, page, limit int) ([]chatmodel
 
 	var chats []chatmodel.Chat
 	offset := (page - 1) * limit
-	err := r.readDB.Preload("Sender").Preload("ReplyTo.Sender").
+	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).
 		Where("room_id = ? AND deleted_at IS NULL", roomID).
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
@@ -55,7 +59,7 @@ func (r *ChatRepository) FindByRoomID(roomID uint, page, limit int) ([]chatmodel
 
 func (r *ChatRepository) FindByID(id uint) (*chatmodel.Chat, error) {
 	var chat chatmodel.Chat
-	err := r.readDB.Preload("Sender").Preload("ReplyTo.Sender").
+	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).
 		Where("deleted_at IS NULL").
 		First(&chat, id).Error
 	return &chat, err
@@ -66,7 +70,7 @@ func (r *ChatRepository) FindByIDs(ids []uint) ([]chatmodel.Chat, error) {
 		return []chatmodel.Chat{}, nil
 	}
 	var chats []chatmodel.Chat
-	err := r.readDB.Preload("Sender").Preload("ReplyTo.Sender").
+	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).
 		Where("chat_id IN ? AND deleted_at IS NULL", ids).
 		Find(&chats).Error
 	return chats, err
@@ -110,5 +114,14 @@ func (r *ChatRepository) UpdateMessage(chatID uint, message string) error {
 func (r *ChatRepository) UpdateIsRead(chatID uint) error {
 	return r.writeDB.Model(&chatmodel.Chat{}).
 		Where("chat_id = ? AND deleted_at IS NULL", chatID).
+		Update("is_read", true).Error
+}
+
+func (r *ChatRepository) UpdateIsReadBulk(chatIDs []uint) error {
+	if len(chatIDs) == 0 {
+		return nil
+	}
+	return r.writeDB.Model(&chatmodel.Chat{}).
+		Where("chat_id IN ? AND deleted_at IS NULL", chatIDs).
 		Update("is_read", true).Error
 }

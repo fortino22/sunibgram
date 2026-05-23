@@ -8,10 +8,7 @@ import (
 	"github.com/sunibgram/infrastructure/cache"
 )
 
-// RateLimiter is a Redis-backed sliding-window counter shared across replicas.
-// Each instance owns a Redis key namespace (prefix) and a fixed window. State
-// is INCR + EXPIRE on `ratelimit:<prefix>:<key>`; no in-process map. Multi-
-// replica safe, auto-expires.
+
 type RateLimiter struct {
 	cache  *cache.Cache
 	prefix string

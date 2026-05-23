@@ -11,7 +11,6 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	threadmodel "github.com/sunibgram/domain/model/thread"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
@@ -58,6 +57,11 @@ func (s *ThreadSummaryService) Summarize(ctx context.Context, threadID uint) (st
 
 func (s *ThreadSummaryService) queueSummaryGeneration(threadID uint, key string) {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("thread summary worker panic threadID=%d: %v", threadID, r)
+			}
+		}()
 		_, err, _ := s.group.Do(key, func() (any, error) {
 			ctx := context.Background()
 
@@ -84,18 +88,13 @@ func (s *ThreadSummaryService) queueSummaryGeneration(threadID uint, key string)
 }
 
 func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uint) (string, error) {
-	replies, err := s.topReplies(threadID, 50)
+	comments, err := s.threadRepo.FindRepliesContent(threadID, 50)
 	if err != nil {
 		return "", err
 	}
 
-	if len(replies) == 0 {
+	if len(comments) == 0 {
 		return "No comments to summarize yet.", nil
-	}
-
-	comments := make([]string, 0, len(replies))
-	for _, reply := range replies {
-		comments = append(comments, reply.Content)
 	}
 	prompt := fmt.Sprintf(
 		"Summarize the following comments from a university social media post into one concise paragraph. Always respond in English, even if the comments are in another language. Do not use bullet points or headers, just plain prose:\n\n%s",
@@ -124,21 +123,6 @@ func (s *ThreadSummaryService) RegisterReply(ctx context.Context, threadID uint)
 		return nil
 	}
 	return s.InvalidateCache(ctx, threadID)
-}
-
-func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]threadmodel.Thread, error) {
-	threads, _, err := s.threadRepo.FindByRootID(threadID, 1, limit)
-	if err != nil {
-		return nil, err
-	}
-
-	replies := make([]threadmodel.Thread, 0, len(threads))
-	for _, thread := range threads {
-		if thread.ParentID != nil && *thread.ParentID == threadID {
-			replies = append(replies, thread)
-		}
-	}
-	return replies, nil
 }
 
 func threadSummaryKey(threadID uint) string {
