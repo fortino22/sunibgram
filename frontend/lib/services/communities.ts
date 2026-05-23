@@ -2,7 +2,7 @@ import { api } from '../api';
 import type { ThreadListResponse } from './threads';
 
 export type CommunityVisibility = 'PUBLIC' | 'PRIVATE';
-export type CommunityRole = 'MEMBER' | 'MODERATOR' | 'ADMIN' | 'OWNER';
+export type CommunityRole = 'MEMBER' | 'ADMIN';
 
 // Backend DTO types — match exact JSON field names from Go backend
 export interface CommunityData {

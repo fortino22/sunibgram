@@ -65,7 +65,7 @@ export function ThreadActions({
       <ActionButton
         aria-label="Repost"
         onClick={(event) => handleClick(onRepost, event)}
-        color={isReposted ? 'var(--accent)' : undefined}
+        color={isReposted ? 'var(--green)' : undefined}
         size={size}
       >
         <Repeat2 size={iconSize} strokeWidth={2} />

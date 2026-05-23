@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, Search } from 'lucide-react';
 import { CommunityDetailSkeleton } from '@/components/community/CommunityDetailSkeleton';
 import { CommunityHeader } from '@/components/community/CommunityHeader';
 import { CommunityAboutTab } from '@/components/community/CommunityAboutTab';
@@ -50,6 +51,7 @@ export default function CommunityDetailPage() {
   const [showMembersPanel, setShowMembersPanel] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [membershipOverride, setMembershipOverride] = useState<CommunityRole | 'none' | null>(null);
+  const [processingRequestId, setProcessingRequestId] = useState<number | null>(null);
 
   const communityQuery = useCommunity(isValidId ? communityId : undefined);
   const membersQuery = useCommunityMembers(isValidId ? communityId : undefined);
@@ -97,20 +99,22 @@ export default function CommunityDetailPage() {
     }
   }
 
-  // Derive role: prefer session-level override (handles >50-member case), fall back to list
-  const listRole = currentUserId ? (members.find((m) => m.user_id === currentUserId)?.role ?? null) : null;
+  const isOwnerByCreation = currentUserId != null && community.user_id === currentUserId;
+  const listRole: CommunityRole | null = currentUserId
+    ? (members.find((m) => m.user_id === currentUserId)?.role ?? null)
+    : null;
   const myRole: CommunityRole | null =
     membershipOverride === 'none' ? null :
     membershipOverride !== null ? membershipOverride :
     listRole;
-  const isModOrAbove = myRole === 'MODERATOR' || myRole === 'ADMIN' || myRole === 'OWNER';
+  const isAdmin = myRole === 'ADMIN';
 
   const threadTabs: { id: Tab; label: string }[] = [
     { id: 'top', label: 'Top' },
     { id: 'latest', label: 'Latest' },
     { id: 'media', label: 'Media' },
     { id: 'about', label: 'About' },
-    ...(isModOrAbove ? [{ id: 'requests' as Tab, label: `Requests${requests.length > 0 ? ` (${requests.length})` : ''}` }] : []),
+    ...(isAdmin ? [{ id: 'requests' as Tab, label: `Requests${requests.length > 0 ? ` (${requests.length})` : ''}` }] : []),
   ];
 
   async function handleJoin() {
@@ -165,46 +169,36 @@ export default function CommunityDetailPage() {
 
   return (
     <div>
-      {/* Back button */}
+      {/* Top bar */}
       <div
         style={{
           position: 'sticky',
           top: 0,
           zIndex: 10,
+          background: 'oklch(10.5% 0.005 260 / 0.92)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border)',
-          padding: '20px 20px',
+          padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 12,
         }}
       >
         <button
           onClick={() => router.back()}
-          style={{ background: 'none', border: 'none', color: 'var(--text)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}
+          style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}
         >
-          ←
+          <ArrowLeft size={22} />
         </button>
-        <div style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)' }}>{community.name}</div>
+        <div style={{ flex: 1, fontWeight: 700, fontSize: 17, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {community.name}
+        </div>
         <button
-          onClick={handlePinToggle}
-          disabled={pinCommunityMutation.isPending || unpinCommunityMutation.isPending}
-          title={isPinned ? 'Unpin community' : 'Pin community'}
-          style={{
-            marginLeft: 'auto',
-            background: 'none',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            padding: '6px 12px',
-            color: isPinned ? 'var(--accent)' : 'var(--text-tertiary)',
-            fontSize: 13,
-            cursor: pinCommunityMutation.isPending || unpinCommunityMutation.isPending ? 'not-allowed' : 'pointer',
-            fontFamily: 'inherit',
-            fontWeight: isPinned ? 600 : 400,
-            opacity: pinCommunityMutation.isPending || unpinCommunityMutation.isPending ? 0.5 : 1,
-          }}
+          onClick={() => router.push('/communities/discover')}
+          style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}
+          title="Search communities"
         >
-          {isPinned ? 'Pinned' : 'Pin'}
+          <Search size={20} />
         </button>
       </div>
 
@@ -212,11 +206,15 @@ export default function CommunityDetailPage() {
       <CommunityHeader
         community={community}
         myRole={myRole}
+        isOwner={isOwnerByCreation}
         hasPendingRequest={hasPendingRequest}
+        isPinned={isPinned}
+        pinPending={pinCommunityMutation.isPending || unpinCommunityMutation.isPending}
         joinPending={joinMutation.isPending}
         leavePending={leaveMutation.isPending}
         requestPending={requestMutation.isPending}
         cancelPending={cancelMutation.isPending}
+        onPinToggle={handlePinToggle}
         onJoin={handleJoin}
         onLeave={handleLeave}
         onRequest={handleRequest}
@@ -325,13 +323,11 @@ export default function CommunityDetailPage() {
         <CommunityAboutTab
           communityId={communityId}
           memberCount={community.member_count}
-          myRole={myRole}
-          onManageMembers={() => setShowMembersPanel(true)}
         />
       )}
 
       {/* Requests tab (mod+) */}
-      {activeTab === 'requests' && isModOrAbove && (
+      {activeTab === 'requests' && isAdmin && (
         <>
           {requestsQuery.isLoading && (
             <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
@@ -345,10 +341,24 @@ export default function CommunityDetailPage() {
             <CommunityRequestCard
               key={r.user_id}
               request={r}
-              onApprove={(userId) => approveMutation.mutate(userId)}
-              onDecline={(userId) => declineMutation.mutate(userId)}
-              approvePending={approveMutation.isPending}
-              declinePending={declineMutation.isPending}
+              onApprove={async (userId) => {
+                setProcessingRequestId(userId);
+                try {
+                  await approveMutation.mutateAsync(userId);
+                } finally {
+                  setProcessingRequestId(null);
+                }
+              }}
+              onDecline={async (userId) => {
+                setProcessingRequestId(userId);
+                try {
+                  await declineMutation.mutateAsync(userId);
+                } finally {
+                  setProcessingRequestId(null);
+                }
+              }}
+              approvePending={processingRequestId === r.user_id && approveMutation.isPending}
+              declinePending={processingRequestId === r.user_id && declineMutation.isPending}
               showDivider={i < requests.length - 1}
             />
           ))}

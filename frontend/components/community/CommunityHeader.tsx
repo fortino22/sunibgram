@@ -6,11 +6,15 @@ import { Avatar } from '@/components/shared/Avatar';
 interface CommunityHeaderProps {
   community: CommunityData;
   myRole: CommunityRole | null;
+  isOwner: boolean;
   hasPendingRequest: boolean;
+  isPinned: boolean;
+  pinPending: boolean;
   joinPending: boolean;
   leavePending: boolean;
   requestPending: boolean;
   cancelPending: boolean;
+  onPinToggle: () => void;
   onJoin: () => void;
   onLeave: () => void;
   onRequest: () => void;
@@ -22,11 +26,15 @@ interface CommunityHeaderProps {
 export function CommunityHeader({
   community,
   myRole,
+  isOwner,
   hasPendingRequest,
+  isPinned,
+  pinPending,
   joinPending,
   leavePending,
   requestPending,
   cancelPending,
+  onPinToggle,
   onJoin,
   onLeave,
   onRequest,
@@ -34,7 +42,6 @@ export function CommunityHeader({
   onEdit,
   onDelete,
 }: CommunityHeaderProps) {
-  const isOwner = myRole === 'OWNER';
   const isMember = myRole !== null;
   const isPublic = community.visibility === 'PUBLIC';
 
@@ -47,7 +54,7 @@ export function CommunityHeader({
             style={{
               padding: '7px 18px',
               borderRadius: 999,
-              border: '1px solid var(--border)',
+              border: '1px solid #808080',
               background: 'transparent',
               color: 'var(--text)',
               fontSize: 14,
@@ -62,7 +69,7 @@ export function CommunityHeader({
             style={{
               padding: '7px 18px',
               borderRadius: 999,
-              border: '1px solid var(--border)',
+              border: '1px solid #808080',
               background: 'transparent',
               color: 'var(--error, #e53e3e)',
               fontSize: 14,
@@ -84,7 +91,7 @@ export function CommunityHeader({
           style={{
             padding: '7px 18px',
             borderRadius: 999,
-            border: '1px solid var(--border)',
+            border: '1px solid #808080',
             background: 'transparent',
             color: 'var(--text)',
             fontSize: 14,
@@ -107,7 +114,7 @@ export function CommunityHeader({
             style={{
               padding: '7px 18px',
               borderRadius: 999,
-              border: '1px solid var(--border)',
+              border: '1px solid #808080',
               background: 'transparent',
               color: 'var(--text-secondary)',
               fontSize: 14,
@@ -167,7 +174,7 @@ export function CommunityHeader({
       {/* Banner */}
       <div
         style={{
-          height: 180,
+          height: 234,
           background: community.banner_url
             ? `url(${community.banner_url}) center/cover no-repeat`
             : 'var(--bg-subtle)',
@@ -175,27 +182,27 @@ export function CommunityHeader({
       />
 
       {/* Content */}
-      <div style={{ padding: '14px 20px 16px' }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 6 }}>
+      <div style={{ padding: '14px 20px 16px', background: '#1C1C1C' }}>
+        <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 8 }}>
           {community.name}
         </div>
 
-        {community.visibility === 'PRIVATE' && (
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#ef4444',
-            border: '1.5px solid #ef4444',
-            borderRadius: 999,
-            padding: '2px 10px',
-            marginBottom: 8,
-          }}>
-            Private
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          {community.category_name && (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#ffffff',
+              border: '1.5px solid #ffffff',
+              borderRadius: 999,
+              padding: '2px 12px',
+            }}>
+              {community.category_name}
+            </span>
+          )}
+        </div>
 
         {community.description && (
           <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 12px' }}>
@@ -213,10 +220,10 @@ export function CommunityHeader({
                     key={m.user_id}
                     username={m.user_id}
                     avatarUrl={m.avatar_url}
-                    size={24}
+                    size={38}
                     style={{
                       border: '2px solid var(--bg)',
-                      marginLeft: i === 0 ? 0 : -8,
+                      marginLeft: i === 0 ? 0 : -13,
                       zIndex: (community.top_members ?? []).length - i,
                       position: 'relative',
                     }}
@@ -226,23 +233,47 @@ export function CommunityHeader({
             )}
             <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>
               <span style={{ fontWeight: 700, color: 'var(--text)' }}>
-                {community.member_count.toLocaleString()}
+                {community.member_count >= 1_000_000
+                  ? `${(community.member_count / 1_000_000).toFixed(1)}M`
+                  : community.member_count >= 1000
+                  ? `${(community.member_count / 1000).toFixed(1)}K`
+                  : community.member_count.toLocaleString()}
               </span>
               {' Members'}
             </span>
-            {myRole && myRole !== 'MEMBER' && (
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: myRole === 'OWNER' || myRole === 'ADMIN' ? 'var(--accent)' : 'var(--text-secondary)',
-                }}
-              >
-                · {myRole.charAt(0) + myRole.slice(1).toLowerCase()}
+            {myRole === 'ADMIN' && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>
+                · Admin
               </span>
             )}
           </div>
-          {renderActionButton()}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={onPinToggle}
+              disabled={pinPending}
+              title={isPinned ? 'Unpin community' : 'Pin community'}
+              style={{
+                background: 'none',
+                border: '1px solid #808080',
+                borderRadius: 999,
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isPinned ? 'var(--accent)' : 'var(--text-tertiary)',
+                cursor: pinPending ? 'not-allowed' : 'pointer',
+                opacity: pinPending ? 0.5 : 1,
+                flexShrink: 0,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="17" x2="12" y2="22" />
+                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
+              </svg>
+            </button>
+            {renderActionButton()}
+          </div>
         </div>
       </div>
     </div>

@@ -4,8 +4,8 @@ import { timeAgo } from '@/lib/utils';
 
 interface CommunityRequestCardProps {
   request: CommunityRequestData;
-  onApprove: (userId: number) => void;
-  onDecline: (userId: number) => void;
+  onApprove: (userId: number) => void | Promise<void>;
+  onDecline: (userId: number) => void | Promise<void>;
   approvePending: boolean;
   declinePending: boolean;
   showDivider?: boolean;

@@ -6,9 +6,7 @@ import { Avatar } from '@/components/shared/Avatar';
 import type { CommunityMemberData, CommunityRole } from '@/lib/services/communities';
 
 const ROLE_COLORS: Record<CommunityRole, string> = {
-  OWNER: 'var(--accent)',
   ADMIN: 'var(--accent)',
-  MODERATOR: 'var(--text-secondary)',
   MEMBER: 'var(--text-tertiary)',
 };
 
@@ -37,25 +35,13 @@ export function CommunityMemberCard({
   const [showActions, setShowActions] = useState(false);
   const isSelf = member.user_id === myUserId;
 
-  const canKick =
-    !isSelf &&
-    myRole !== null &&
-    myRole !== 'MEMBER' &&
-    (myRole === 'OWNER' ||
-      (myRole === 'ADMIN' && (member.role === 'MEMBER' || member.role === 'MODERATOR')) ||
-      (myRole === 'MODERATOR' && member.role === 'MEMBER'));
+  const canKick = !isSelf && myRole === 'ADMIN';
 
-  const canChangeRole =
-    !isSelf &&
-    (myRole === 'OWNER' || myRole === 'ADMIN') &&
-    member.role !== 'OWNER';
+  const canChangeRole = !isSelf && myRole === 'ADMIN';
 
   const showMenu = canKick || canChangeRole;
 
-  const promotableRoles: CommunityRole[] =
-    myRole === 'OWNER'
-      ? (['MEMBER', 'MODERATOR', 'ADMIN'] as CommunityRole[]).filter((r) => r !== member.role)
-      : (['MEMBER', 'MODERATOR'] as CommunityRole[]).filter((r) => r !== member.role);
+  const promotableRoles: CommunityRole[] = (['MEMBER', 'ADMIN'] as CommunityRole[]).filter((r) => r !== member.role);
 
   return (
     <div

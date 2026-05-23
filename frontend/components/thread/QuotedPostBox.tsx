@@ -11,7 +11,7 @@ interface QuotedPostBoxProps {
 export function QuotedPostBox({ context }: QuotedPostBoxProps) {
   const router = useRouter();
   const avatarUrl = context.author.avatar_url ?? null;
-  const firstImage = context.media.find((m) => /\.(jpe?g|png|webp|gif)$/i.test(m.url));
+  const images = context.media.filter((m) => /\.(jpe?g|png|webp|gif)$/i.test(m.url));
 
   return (
     <div
@@ -57,21 +57,46 @@ export function QuotedPostBox({ context }: QuotedPostBoxProps) {
         </p>
       )}
 
-      {/* First image thumbnail */}
-      {firstImage && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={firstImage.url}
-          alt=""
+      {/* Media thumbnails — show all images in a compact grid */}
+      {images.length > 0 && (
+        <div
           style={{
             marginTop: 8,
-            width: '100%',
-            maxHeight: 180,
-            objectFit: 'cover',
-            borderRadius: 8,
-            display: 'block',
+            display: 'grid',
+            gap: 4,
+            gridTemplateColumns: images.length === 1 ? '1fr' : 'repeat(2, 1fr)',
           }}
-        />
+        >
+          {images.map((img) =>
+            images.length === 1 ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={img.media_id}
+                src={img.url}
+                alt=""
+                style={{
+                  width: '100%',
+                  maxHeight: 160,
+                  objectFit: 'cover',
+                  borderRadius: 8,
+                  display: 'block',
+                }}
+              />
+            ) : (
+              <div
+                key={img.media_id}
+                style={{ borderRadius: 8, overflow: 'hidden', height: 100, background: 'var(--bg-card)' }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.url}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
+            )
+          )}
+        </div>
       )}
     </div>
   );

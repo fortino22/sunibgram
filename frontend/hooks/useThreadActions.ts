@@ -190,6 +190,16 @@ function patchThreadCaches(
     { queryKey: ['thread'] },
     (current: unknown) => (isThreadItem(current) && current.id === threadId ? updater(current) : current)
   );
+  // Community thread tabs: ['community', id, 'threads', 'latest'|'top'|'media']
+  queryClient.setQueriesData(
+    { queryKey: ['community'] },
+    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
+  );
+  // Community feed/explore/search: ['communities', 'threads', ...]
+  queryClient.setQueriesData(
+    { queryKey: ['communities', 'threads'] },
+    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
+  );
 }
 
 function patchInteractionList(
@@ -232,6 +242,8 @@ export function useThreadActions(thread: ThreadItem) {
         queryClient.cancelQueries({ queryKey: ['thread'] }),
         queryClient.cancelQueries({ queryKey: ['thread-chain'] }),
         queryClient.cancelQueries({ queryKey: ['explore'] }),
+        queryClient.cancelQueries({ queryKey: ['community'] }),
+        queryClient.cancelQueries({ queryKey: ['communities', 'threads'] }),
       ]);
 
       patchThreadCaches(queryClient, thread.id, (current) => updateLikesState(current, isLiked));
@@ -274,6 +286,8 @@ export function useThreadActions(thread: ThreadItem) {
         queryClient.cancelQueries({ queryKey: ['thread'] }),
         queryClient.cancelQueries({ queryKey: ['thread-chain'] }),
         queryClient.cancelQueries({ queryKey: ['explore'] }),
+        queryClient.cancelQueries({ queryKey: ['community'] }),
+        queryClient.cancelQueries({ queryKey: ['communities', 'threads'] }),
       ]);
 
       patchThreadCaches(queryClient, thread.id, (current) => updateBookmarksState(current, isBookmarked));
@@ -314,6 +328,8 @@ export function useThreadActions(thread: ThreadItem) {
         queryClient.cancelQueries({ queryKey: ['thread'] }),
         queryClient.cancelQueries({ queryKey: ['thread-chain'] }),
         queryClient.cancelQueries({ queryKey: ['explore'] }),
+        queryClient.cancelQueries({ queryKey: ['community'] }),
+        queryClient.cancelQueries({ queryKey: ['communities', 'threads'] }),
       ]);
 
       patchThreadCaches(queryClient, thread.id, (current) => updateRepostsState(current, isReposted));
@@ -327,6 +343,8 @@ export function useThreadActions(thread: ThreadItem) {
         queryClient.invalidateQueries({ queryKey: ['thread'] }),
         queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
         queryClient.invalidateQueries({ queryKey: ['explore'] }),
+        queryClient.invalidateQueries({ queryKey: ['community'] }),
+        queryClient.invalidateQueries({ queryKey: ['communities', 'threads'] }),
       ]);
     },
   });

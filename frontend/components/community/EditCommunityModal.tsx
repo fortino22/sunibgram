@@ -23,7 +23,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
   const [name, setName] = useState(community.name);
   const [description, setDescription] = useState(community.description ?? '');
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
-  const [keepRuleIds, setKeepRuleIds] = useState<number[]>(community.rules.map((r) => r.id));
+  const [keepRuleIds, setKeepRuleIds] = useState<number[]>((community.rules ?? []).map((r) => r.id));
   const [newRules, setNewRules] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<CommunityVisibility>(community.visibility);
 
@@ -145,7 +145,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
         <div
           onClick={() => bannerRef.current?.click()}
           style={{
-            height: 100,
+            height: 130,
             background: bannerPreview ? `url(${bannerPreview}) center/cover no-repeat` : 'var(--bg-subtle)',
             cursor: 'pointer',
             display: 'flex',
@@ -221,7 +221,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
                 {keepRuleIds.length + newRules.length}/10
               </span>
             </div>
-            {community.rules.map((rule) => (
+            {(community.rules ?? []).map((rule) => (
               <div key={rule.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
                 <input
                   type="checkbox"
@@ -314,7 +314,7 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
       <ImageCropModal
         imageSrc={pendingCrop.src}
         filename={pendingCrop.filename}
-        aspect={3}
+        aspect={2.31}
         onComplete={onCropComplete}
         onClose={() => setPendingCrop(null)}
       />

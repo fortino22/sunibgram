@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   joinCommunity,
   leaveCommunity,
@@ -75,6 +76,10 @@ export function useApproveRequest(communityId: number) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'requests'] });
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'members'] });
+      void qc.invalidateQueries({ queryKey: ['community', communityId] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to approve request');
     },
   });
 }
@@ -86,6 +91,9 @@ export function useDeclineRequest(communityId: number) {
     mutationFn: (userId: number) => declineCommunityJoinRequest(communityId, userId, token!),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'requests'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to decline request');
     },
   });
 }
@@ -110,6 +118,7 @@ export function useUpdateMemberRole(communityId: number) {
       updateCommunityMemberRole(communityId, userId, role, token!),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'members'] });
+      void qc.invalidateQueries({ queryKey: ['community', communityId, 'users'] });
     },
   });
 }

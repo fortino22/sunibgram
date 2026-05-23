@@ -143,7 +143,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               @{thread.author.username}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
-            {(canManage || communityRole === 'ADMIN' || communityRole === 'OWNER') && (
+            {(canManage || communityRole === 'ADMIN') && (
               <div
                 style={{ marginLeft: 'auto' }}
                 onClick={(e) => e.stopPropagation()}

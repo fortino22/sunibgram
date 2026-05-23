@@ -153,7 +153,7 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
         <div
           onClick={() => bannerRef.current?.click()}
           style={{
-            height: 100,
+            height: 130,
             background: bannerPreview
               ? `url(${bannerPreview}) center/cover no-repeat`
               : 'var(--bg-subtle)',
@@ -335,7 +335,7 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
       <ImageCropModal
         imageSrc={pendingCrop.src}
         filename={pendingCrop.filename}
-        aspect={3}
+        aspect={2.31}
         maxSizeBytes={IMAGE_MAX_BYTES.banner}
         onComplete={onCropComplete}
         onClose={() => setPendingCrop(null)}

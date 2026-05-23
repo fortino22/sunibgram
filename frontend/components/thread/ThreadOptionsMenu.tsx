@@ -32,7 +32,7 @@ export function ThreadOptionsMenu({
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const iconSize = compact ? 16 : 18;
-  const canCommunityPin = communityRole === 'ADMIN' || communityRole === 'OWNER';
+  const canCommunityPin = communityRole === 'ADMIN';
 
   useEffect(() => {
     if (!open) {

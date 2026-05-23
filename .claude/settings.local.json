@@ -64,7 +64,8 @@
       "Bash(Format-Table FullName)",
       "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\" -Recurse -Directory)",
       "Bash(git log *)",
-      "PowerShell(npm run *)"
+      "PowerShell(npm run *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Coding\\\\sunibgram\\\\frontend\\\\components\\\\thread\" -File)"
     ]
   }
 }

@@ -14,12 +14,11 @@ interface CommunityMembersPanelProps {
   onClose: () => void;
 }
 
-type RoleFilter = 'all' | 'MEMBER' | 'MODERATOR' | 'ADMIN';
+type RoleFilter = 'all' | 'MEMBER' | 'ADMIN';
 
 const ROLE_TABS: { id: RoleFilter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'MEMBER', label: 'Members' },
-  { id: 'MODERATOR', label: 'Mods' },
   { id: 'ADMIN', label: 'Admins' },
 ];
 
