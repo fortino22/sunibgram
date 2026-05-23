@@ -60,7 +60,7 @@ func (c *ExploreController) ExploreSearch(ctx *fiber.Ctx) error {
 	result, err := c.exploreService.ExploreSearch(ctx.Context(), ctx.Query("q"), requesterID, page, limit)
 	if err != nil {
 		if err.Error() == "query is required" {
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}

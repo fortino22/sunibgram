@@ -58,7 +58,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 	var gifURL *string
 	if raw := strings.TrimSpace(ctx.FormValue("gif_url")); raw != "" {
 		if err := chatmodel.ValidateGifURL(raw); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 		gifURL = &raw
 	}

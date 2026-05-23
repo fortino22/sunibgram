@@ -80,7 +80,7 @@ func (c *FollowController) GetFollowing(ctx *fiber.Ctx) error {
 
 	profileMap, err := c.followUserProfileMap(users)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(followdto.PaginatedFollowUsersResponse{
@@ -110,7 +110,7 @@ func (c *FollowController) GetFollowers(ctx *fiber.Ctx) error {
 
 	profileMap, err := c.followUserProfileMap(users)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(followdto.PaginatedFollowUsersResponse{
@@ -140,7 +140,7 @@ func (c *FollowController) GetMyFollowing(ctx *fiber.Ctx) error {
 
 	profileMap, err := c.followUserProfileMap(users)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(followdto.PaginatedFollowUsersResponse{
@@ -170,7 +170,7 @@ func (c *FollowController) GetMyFollowers(ctx *fiber.Ctx) error {
 
 	profileMap, err := c.followUserProfileMap(users)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(followdto.PaginatedFollowUsersResponse{

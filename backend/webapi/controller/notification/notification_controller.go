@@ -42,7 +42,7 @@ func (c *NotificationController) Send(ctx *fiber.Ctx) error {
 		RecipientUserID: req.RecipientUserID,
 		ReferenceID:     req.ReferenceID,
 	}); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "success"})
@@ -66,7 +66,7 @@ func (c *NotificationController) GetMine(ctx *fiber.Ctx) error {
 
 	items, err := c.notificationService.GetNotificationsByRecipientUserID(recipientUserID, limit, offset)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	data := make([]notificationdto.NotificationListResponse, len(items))

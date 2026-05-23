@@ -62,7 +62,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 
 	eventID, _, err := ParseOptionalEventID(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	var replyPermission *string
@@ -72,7 +72,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 
 	pollInput, _, hasPoll, err := threadpollctrl.ParseCreatePollFromMultipart(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	if hasPoll && parentID != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "polls are only allowed on post-type threads"})
@@ -83,13 +83,13 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		if err.Error() == "not allowed to reply to this thread" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	if len(files) > 0 {
 		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
 			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 
@@ -97,7 +97,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 		if _, err := c.pollService.Create(ctx.Context(), thread.ThreadID, claims.UserID, pollInput); err != nil {
 			_ = c.mediaService.DeleteByThread(ctx.Context(), thread.ThreadID)
 			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 
@@ -277,12 +277,12 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	keepIDs, keepSent, err := parseKeepMediaIDs(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	files := ThreadMediaFiles(ctx)
 	if err := threadmediamodel.ValidateThreadMediaCount(len(keepIDs) + len(files)); err != nil {
@@ -290,7 +290,7 @@ func (c *ThreadController) Update(ctx *fiber.Ctx) error {
 	}
 	if keepSent || len(files) > 0 {
 		if err := c.mediaService.UpdateGranular(ctx.Context(), id, claims.UserID, keepIDs, files); err != nil {
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 
@@ -320,7 +320,7 @@ func (c *ThreadController) UpdateReplyPermission(ctx *fiber.Ctx) error {
 		case "thread not found":
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		default:
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 

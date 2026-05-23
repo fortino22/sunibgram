@@ -60,7 +60,7 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 		banner,
 	)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "community created successfully", "community_id": community.CommunityID})
@@ -81,7 +81,7 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 	description := ctx.FormValue("description")
 	keepRuleIDs, err := parseKeepRuleIDs(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	newRules := readNewRulesFromForm(ctx)
 	categoryID, ok := parseRequiredFormUUID(ctx, "category_id", "category")
@@ -107,7 +107,7 @@ func (c *CommunityController) Update(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "community updated successfully"})
@@ -161,7 +161,7 @@ func (c *CommunityController) Discover(ctx *fiber.Ctx) error {
 
 	communities, err := c.communityService.Discover(ctx.Context(), categoryID)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toDiscoverResponses(communities)})

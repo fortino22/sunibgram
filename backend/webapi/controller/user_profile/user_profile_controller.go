@@ -150,6 +150,7 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	// Broadcast avatar change to all rooms so other users see the update in real-time
 	if avatarChanged && c.hub != nil && c.chatRoomService != nil {
 		go func(userID uint) {
+			defer func() { _ = recover() }()
 			fp, err := c.profileService.GetProfile(userID, nil)
 			if err != nil {
 				return

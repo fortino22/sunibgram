@@ -55,6 +55,6 @@ func eventThreadPinErrorResponse(ctx *fiber.Ctx, err error) error {
 	case "event not found", "thread not found":
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	default:
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 }

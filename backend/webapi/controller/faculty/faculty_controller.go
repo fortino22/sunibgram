@@ -24,7 +24,7 @@ func (c *FacultyController) Create(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	if err := c.facultyService.Create(req.FacultyName); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "faculty created successfully"})
 }
@@ -33,7 +33,7 @@ func (c *FacultyController) GetAll(ctx *fiber.Ctx) error {
 	page, limit := ctrlshared.ParsePagination(ctx)
 	faculties, total, err := c.facultyService.GetAll(page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	data := make([]facultydto.FacultyResponse, len(faculties))
 	for i, f := range faculties {
@@ -78,7 +78,7 @@ func (c *FacultyController) Update(ctx *fiber.Ctx) error {
 		if err.Error() == "faculty not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.JSON(fiber.Map{"message": "faculty updated successfully"})
 }
@@ -92,7 +92,7 @@ func (c *FacultyController) Delete(ctx *fiber.Ctx) error {
 		if err.Error() == "faculty not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.JSON(fiber.Map{"message": "faculty deleted successfully"})
 }

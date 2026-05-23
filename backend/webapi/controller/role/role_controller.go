@@ -26,7 +26,7 @@ func (c *RoleController) Create(ctx *fiber.Ctx) error {
 
 	role := &rolemodel.Role{Name: req.Name}
 	if err := c.roleService.Create(role); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(roledto.RoleResponse{RoleID: role.RoleID, Name: role.Name})
@@ -73,7 +73,7 @@ func (c *RoleController) Update(ctx *fiber.Ctx) error {
 
 	role := &rolemodel.Role{RoleID: id, Name: req.Name}
 	if err := c.roleService.Update(role); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(roledto.RoleResponse{RoleID: role.RoleID, Name: role.Name})

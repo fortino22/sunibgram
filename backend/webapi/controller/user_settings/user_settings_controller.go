@@ -28,7 +28,7 @@ func (c *UserSettingsController) GetUserSettingByUserID(ctx *fiber.Ctx) error {
 		if err.Error() == "user settings not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(usersettingsdto.UserSettingsResponse{
@@ -51,7 +51,7 @@ func (c *UserSettingsController) UpdateUserSetting(ctx *fiber.Ctx) error {
 		if err.Error() == "only the owner can update this setting" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "user settings updated successfully"})

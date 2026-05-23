@@ -34,7 +34,7 @@ func (c *CommunityRequestController) Send(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.requestService.Send(ctx.Context(), id, claims.UserID); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "join request sent"})
@@ -52,7 +52,7 @@ func (c *CommunityRequestController) Cancel(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.requestService.Cancel(ctx.Context(), id, claims.UserID); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "join request cancelled"})
@@ -78,7 +78,7 @@ func (c *CommunityRequestController) Approve(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "request approved"})
@@ -104,7 +104,7 @@ func (c *CommunityRequestController) Decline(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "request declined"})
@@ -128,12 +128,12 @@ func (c *CommunityRequestController) GetPending(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	avatarMap, err := c.requestAvatarMap(requests)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(communityrequestdto.PaginatedCommunityRequestResponse{

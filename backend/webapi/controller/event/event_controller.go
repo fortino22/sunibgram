@@ -54,11 +54,11 @@ func (c *EventController) Create(ctx *fiber.Ctx) error {
 	}
 	req, banner, attachments, err := parseCreateEventRequest(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	_, err = c.eventService.Create(ctx.Context(), claims.UserID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachments)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "success"})
 }
@@ -90,7 +90,7 @@ func (c *EventController) GetPending(ctx *fiber.Ctx) error {
 	page, limit := ctrlshared.ParsePagination(ctx)
 	events, reviews, total, err := c.eventService.GetAdminEvents(ctx.Query("status"), ctx.Query("name"), page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(eventdto.PaginatedEventWithReviewHistoryResponse{
 		Data: c.toAdminEventReviewHistoryResponses(ctx.Context(), events, reviews),
@@ -106,7 +106,7 @@ func (c *EventController) GetMyEvents(ctx *fiber.Ctx) error {
 	page, limit := ctrlshared.ParsePagination(ctx)
 	events, reviews, total, err := c.eventService.GetMyEvents(claims.UserID, ctx.Query("status"), page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(eventdto.PaginatedMyEventResponse{
 		Data: c.toEventReviewHistoryResponses(ctx.Context(), events, reviews),
@@ -138,7 +138,7 @@ func (c *EventController) Update(ctx *fiber.Ctx) error {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "success"})
 }
@@ -151,7 +151,7 @@ func (c *EventController) Delete(ctx *fiber.Ctx) error {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "event deleted successfully"})
 }
@@ -170,7 +170,7 @@ func (c *EventController) ApproveEvent(ctx *fiber.Ctx) error {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event approved successfully"})
 }
@@ -193,7 +193,7 @@ func (c *EventController) DeclineEvent(ctx *fiber.Ctx) error {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event declined successfully"})
 }
@@ -215,7 +215,7 @@ func (c *EventController) RequestRevision(ctx *fiber.Ctx) error {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event revision requested successfully"})
 }
@@ -234,7 +234,7 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	var pinnedThreadID uint

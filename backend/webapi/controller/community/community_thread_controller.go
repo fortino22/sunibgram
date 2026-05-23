@@ -157,12 +157,12 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 	content := ctx.FormValue("content")
 	eventID, eventIDPresent, err := threadctrl.ParseOptionalEventID(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	pollInput, _, hasPoll, err := threadpollctrl.ParseCreatePollFromMultipart(ctx)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	if content == "" && !eventIDPresent && len(files) == 0 && !hasPoll {
@@ -190,7 +190,7 @@ func (c *CommunityThreadController) CreateCommunityThread(ctx *fiber.Ctx) error 
 		if _, err := c.pollService.Create(ctx.Context(), thread.ThreadID, claims.UserID, pollInput); err != nil {
 			_ = c.mediaService.DeleteByThread(ctx.Context(), thread.ThreadID)
 			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
-			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+			return ctrlshared.HandleServiceError(ctx, err)
 		}
 	}
 
@@ -289,7 +289,7 @@ func (c *CommunityThreadController) getCommunityThreadsByQuery(
 
 	threads, parents, total, err := load(ctx.Context(), claims.UserID, query, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	tc := c.threadCtrl()
@@ -317,7 +317,7 @@ func (c *CommunityThreadController) GetMyCommunityThreads(ctx *fiber.Ctx) error 
 
 	threads, parents, total, err := c.threadService.GetMyCommunityThreads(ctx.Context(), claims.UserID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	tc := c.threadCtrl()
@@ -352,7 +352,7 @@ func (c *CommunityThreadController) GetAllCommunityThreads(ctx *fiber.Ctx) error
 
 	threads, parents, total, err := c.threadService.GetAllCommunityThreads(ctx.Context(), claims.UserID, categoryID, page, limit)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	tc := c.threadCtrl()

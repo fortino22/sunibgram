@@ -36,7 +36,7 @@ func (c *CommunityMemberController) Join(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.memberService.Join(ctx.Context(), id, claims.UserID); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "joined community successfully"})
@@ -54,7 +54,7 @@ func (c *CommunityMemberController) Leave(ctx *fiber.Ctx) error {
 	}
 
 	if err := c.memberService.Leave(ctx.Context(), id, claims.UserID); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "left community successfully"})
@@ -99,7 +99,7 @@ func (c *CommunityMemberController) RemoveMember(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "member removed successfully"})
@@ -171,7 +171,7 @@ func (c *CommunityMemberController) Kick(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "member kicked successfully"})
@@ -209,7 +209,7 @@ func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 		}
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "role updated successfully"})
