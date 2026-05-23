@@ -17,12 +17,11 @@ type IFeedbackRepository interface {
 	Save(f *feedbackmodel.Feedback) error
 	FindByID(id uuid.UUID) (*feedbackmodel.Feedback, error)
 	FindAll(filter ListFilter) ([]feedbackmodel.Feedback, int64, error)
-	Update(f *feedbackmodel.Feedback) error
 	UpdateStatus(id uuid.UUID, status string) error
 	Delete(id uuid.UUID) error
 
-	UpsertVote(feedbackID uuid.UUID, userID uint, value int) error
-	DeleteVote(feedbackID uuid.UUID, userID uint) error
+	InsertVote(feedbackID uuid.UUID, userID uint, value int) error
+	UpdateVote(feedbackID uuid.UUID, userID uint, value int) error
 	GetVoteCounts(feedbackID uuid.UUID) (feedbackmodel.VoteCounts, error)
 	GetUserVote(feedbackID uuid.UUID, userID uint) (int, bool, error)
 	GetUserVotes(feedbackIDs []uuid.UUID, userID uint) (map[uuid.UUID]int, error)

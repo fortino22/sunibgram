@@ -20,20 +20,20 @@ func NewFeedbackService(repo feedbackrepoiface.IFeedbackRepository) feedbacksvci
 	return &FeedbackService{repo: repo}
 }
 
-func (s *FeedbackService) Create(userID uint, fType, title, body string) (*feedbackmodel.Feedback, error) {
+func (s *FeedbackService) Create(userID uint, fType, title, body string) error {
 	if userID == 0 {
-		return nil, errors.New("unauthorized")
+		return errors.New("unauthorized")
 	}
 	if err := feedbackmodel.ValidateType(fType); err != nil {
-		return nil, err
+		return err
 	}
 	cleanTitle, err := feedbackmodel.ValidateTitle(title)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	cleanBody, err := feedbackmodel.ValidateBody(body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	f := &feedbackmodel.Feedback{
 		UserID: userID,
@@ -42,10 +42,7 @@ func (s *FeedbackService) Create(userID uint, fType, title, body string) (*feedb
 		Body:   cleanBody,
 		Status: feedbackmodel.StatusOpen,
 	}
-	if err := s.repo.Save(f); err != nil {
-		return nil, err
-	}
-	return f, nil
+	return s.repo.Save(f)
 }
 
 func (s *FeedbackService) GetByID(viewerID uint, id uuid.UUID) (*feedbacksvciface.FeedbackView, error) {
@@ -57,15 +54,15 @@ func (s *FeedbackService) GetByID(viewerID uint, id uuid.UUID) (*feedbacksvcifac
 	if err != nil {
 		return nil, err
 	}
-	myVote := 0
+	userVote := 0
 	if viewerID != 0 {
 		v, _, err := s.repo.GetUserVote(id, viewerID)
 		if err != nil {
 			return nil, err
 		}
-		myVote = v
+		userVote = v
 	}
-	return &feedbacksvciface.FeedbackView{Feedback: *f, Counts: counts, MyVote: myVote}, nil
+	return &feedbacksvciface.FeedbackView{Feedback: *f, Counts: counts, UserVote: userVote}, nil
 }
 
 func (s *FeedbackService) List(viewerID uint, fType, status string, page, limit int) ([]feedbacksvciface.FeedbackView, int64, error) {
@@ -117,7 +114,7 @@ func (s *FeedbackService) List(viewerID uint, fType, status string, page, limit 
 		views[i] = feedbacksvciface.FeedbackView{
 			Feedback: items[i],
 			Counts:   countsMap[items[i].ID],
-			MyVote:   votesMap[items[i].ID],
+			UserVote: votesMap[items[i].ID],
 		}
 	}
 	return views, total, nil
@@ -150,33 +147,28 @@ func (s *FeedbackService) Delete(userID uint, roleName string, id uuid.UUID) err
 	return s.repo.Delete(id)
 }
 
-func (s *FeedbackService) Vote(userID uint, id uuid.UUID, value int) (feedbackmodel.VoteCounts, error) {
-	var counts feedbackmodel.VoteCounts
+func (s *FeedbackService) Vote(userID uint, id uuid.UUID, value int) error {
 	if userID == 0 {
-		return counts, errors.New("unauthorized")
+		return errors.New("unauthorized")
 	}
 	if err := feedbackmodel.ValidateVoteValue(value); err != nil {
-		return counts, err
+		return err
 	}
 	if _, err := s.repo.FindByID(id); err != nil {
-		return counts, err
+		return err
 	}
-	if err := s.repo.UpsertVote(id, userID, value); err != nil {
-		return counts, err
+	existing, found, err := s.repo.GetUserVote(id, userID)
+	if err != nil {
+		return err
 	}
-	return s.repo.GetVoteCounts(id)
-}
-
-func (s *FeedbackService) ClearVote(userID uint, id uuid.UUID) (feedbackmodel.VoteCounts, error) {
-	var counts feedbackmodel.VoteCounts
-	if userID == 0 {
-		return counts, errors.New("unauthorized")
+	if !found {
+		return s.repo.InsertVote(id, userID, value)
 	}
-	if _, err := s.repo.FindByID(id); err != nil {
-		return counts, err
+	if existing == value {
+		if value == 1 {
+			return errors.New("you already liked this feedback")
+		}
+		return errors.New("you already disliked this feedback")
 	}
-	if err := s.repo.DeleteVote(id, userID); err != nil {
-		return counts, err
-	}
-	return s.repo.GetVoteCounts(id)
+	return s.repo.UpdateVote(id, userID, value)
 }

@@ -12,14 +12,12 @@ type UpdateStatusRequest struct {
 	Status string `json:"status"`
 }
 
-type VoteRequest struct {
-	Value int `json:"value"`
-}
-
 type FeedbackAuthor struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	Name     string `json:"name"`
+	UserID     uint   `json:"user_id"`
+	Username   string `json:"username"`
+	Name       string `json:"name"`
+	UserAvatar string `json:"user_avatar"`
+	IsPremium  bool   `json:"is_premium"`
 }
 
 type FeedbackResponse struct {
@@ -31,7 +29,7 @@ type FeedbackResponse struct {
 	Author    FeedbackAuthor      `json:"author"`
 	Likes     int64               `json:"likes"`
 	Dislikes  int64               `json:"dislikes"`
-	MyVote    int                 `json:"my_vote"`
+	IsVote    *string             `json:"is_vote"`
 	CreatedAt utils.FormattedTime `json:"created_at"`
 	UpdatedAt utils.FormattedTime `json:"updated_at"`
 }
@@ -45,10 +43,4 @@ type FeedbackListMeta struct {
 type PaginatedFeedbackResponse struct {
 	Data []FeedbackResponse `json:"data"`
 	Meta FeedbackListMeta   `json:"meta"`
-}
-
-type VoteResponse struct {
-	Likes    int64 `json:"likes"`
-	Dislikes int64 `json:"dislikes"`
-	MyVote   int   `json:"my_vote"`
 }

@@ -38,6 +38,7 @@ import (
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
 	verificationctrl "github.com/sunibgram/webapi/controller/verification"
 	violationctrl "github.com/sunibgram/webapi/controller/violation"
+	"github.com/sunibgram/infrastructure/cache"
 	webapisocket "github.com/sunibgram/webapi/socket"
 )
 
@@ -85,7 +86,7 @@ type Controllers struct {
 	NotificationHandler *webapisocket.NotificationHandler
 }
 
-func NewControllers(svcs *Services, ext *External) *Controllers {
+func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers {
 	return &Controllers{
 		Cache:               cachectrl.NewCacheController(svcs.Cache),
 		Auth:                authctrl.NewAuthController(svcs.Auth, svcs.UserProfile, svcs.Faculty),
@@ -119,7 +120,7 @@ func NewControllers(svcs *Services, ext *External) *Controllers {
 		EventPin:            eventpinctrl.NewEventPinController(svcs.EventPin, svcs.Event),
 		EventParticipant:    eventparticipantctrl.NewEventParticipantController(svcs.EventParticipant, svcs.Event),
 		Faculty:             facultyctrl.NewFacultyController(svcs.Faculty),
-		Feedback:            feedbackctrl.NewFeedbackController(svcs.Feedback),
+		Feedback:            feedbackctrl.NewFeedbackController(svcs.Feedback, svcs.UserProfile, c),
 		Order:               orderctrl.NewOrderController(svcs.Order),
 		PremiumSubscription: premiumsubscriptionctrl.NewPremiumSubscriptionController(svcs.PremiumSubscription),
 		DevSubscription:     premiumsubscriptionctrl.NewDevSubscriptionController(svcs.PremiumSubscription),

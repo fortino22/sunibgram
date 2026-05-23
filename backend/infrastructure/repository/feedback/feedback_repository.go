@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	feedbackmodel "github.com/sunibgram/domain/model/feedback"
 	feedbackrepoiface "github.com/sunibgram/domain/repository/feedback"
@@ -120,25 +119,6 @@ func (r *feedbackRepository) FindAll(filter feedbackrepoiface.ListFilter) ([]fee
 	return items, total, nil
 }
 
-func (r *feedbackRepository) Update(f *feedbackmodel.Feedback) error {
-	result := r.writeDB.Model(&feedbackmodel.Feedback{}).
-		Where("id = ?", f.ID).
-		Updates(map[string]any{
-			"title":  f.Title,
-			"body":   f.Body,
-			"type":   f.Type,
-			"status": f.Status,
-		})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return errors.New("feedback not found")
-	}
-	r.invalidateListsAndItem(f.ID)
-	return nil
-}
-
 func (r *feedbackRepository) UpdateStatus(id uuid.UUID, status string) error {
 	result := r.writeDB.Model(&feedbackmodel.Feedback{}).
 		Where("id = ?", id).
@@ -175,17 +155,15 @@ func (r *feedbackRepository) Delete(id uuid.UUID) error {
 	return nil
 }
 
-func (r *feedbackRepository) UpsertVote(feedbackID uuid.UUID, userID uint, value int) error {
+// InsertVote inserts a vote row. Caller must guarantee no existing vote for
+// (feedback_id, user_id). For flipping a vote, use UpdateVote.
+func (r *feedbackRepository) InsertVote(feedbackID uuid.UUID, userID uint, value int) error {
 	vote := feedbackmodel.FeedbackVote{
 		FeedbackID: feedbackID,
 		UserID:     userID,
 		Value:      value,
 	}
-	err := r.writeDB.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "feedback_id"}, {Name: "user_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"}),
-	}).Create(&vote).Error
-	if err != nil {
+	if err := r.writeDB.Create(&vote).Error; err != nil {
 		return err
 	}
 	r.invalidateVotes(feedbackID)
@@ -193,10 +171,16 @@ func (r *feedbackRepository) UpsertVote(feedbackID uuid.UUID, userID uint, value
 	return nil
 }
 
-func (r *feedbackRepository) DeleteVote(feedbackID uuid.UUID, userID uint) error {
-	if err := r.writeDB.Where("feedback_id = ? AND user_id = ?", feedbackID, userID).
-		Delete(&feedbackmodel.FeedbackVote{}).Error; err != nil {
-		return err
+// UpdateVote flips an existing vote to the opposite value.
+func (r *feedbackRepository) UpdateVote(feedbackID uuid.UUID, userID uint, value int) error {
+	result := r.writeDB.Model(&feedbackmodel.FeedbackVote{}).
+		Where("feedback_id = ? AND user_id = ?", feedbackID, userID).
+		Update("value", value)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("vote not found")
 	}
 	r.invalidateVotes(feedbackID)
 	r.invalidateUserVote(feedbackID, userID)

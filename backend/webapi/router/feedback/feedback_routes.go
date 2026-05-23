@@ -17,7 +17,6 @@ func RegisterFeedbackRoutes(api fiber.Router, ctrl *feedbackctrl.FeedbackControl
 
 	feedback.Post("/:id/like", ctrl.Like)
 	feedback.Post("/:id/dislike", ctrl.Dislike)
-	feedback.Delete("/:id/vote", ctrl.ClearVote)
 
 	feedback.Patch("/:id/status", middleware.AdminOnly(), ctrl.UpdateStatus)
 }
