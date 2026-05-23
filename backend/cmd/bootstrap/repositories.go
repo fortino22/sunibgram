@@ -22,6 +22,7 @@ import (
 	eventthreadpinrepoiface "github.com/sunibgram/domain/repository/event_thread_pin"
 	explorerepoiface "github.com/sunibgram/domain/repository/explore"
 	facultyrepoiface "github.com/sunibgram/domain/repository/faculty"
+	feedbackrepoiface "github.com/sunibgram/domain/repository/feedback"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
 	likerepoiface "github.com/sunibgram/domain/repository/like"
@@ -62,6 +63,7 @@ import (
 	eventthreadpinrepo "github.com/sunibgram/infrastructure/repository/event_thread_pin"
 	explorerepo "github.com/sunibgram/infrastructure/repository/explore"
 	facultyrepo "github.com/sunibgram/infrastructure/repository/faculty"
+	feedbackrepo "github.com/sunibgram/infrastructure/repository/feedback"
 	followrepo "github.com/sunibgram/infrastructure/repository/follow"
 	hashtagrepo "github.com/sunibgram/infrastructure/repository/hashtag"
 	likerepo "github.com/sunibgram/infrastructure/repository/like"
@@ -112,6 +114,7 @@ type Repositories struct {
 	EventPin             eventpinrepoiface.IEventPinRepository
 	EventParticipant     eventparticipantrepoiface.IEventParticipantRepository
 	Faculty              facultyrepoiface.IFacultyRepository
+	Feedback             feedbackrepoiface.IFeedbackRepository
 	UserFaculty          userfacultyrepoiface.IUserFacultyRepository
 	Order                orderrepoiface.IOrderRepository
 	PremiumSubscription  premiumsubscriptionrepoiface.IPremiumSubscriptionRepository
@@ -158,6 +161,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		EventPin:             eventpinrepo.NewEventPinRepository(w, r, c),
 		EventParticipant:     eventparticipantrepo.NewEventParticipantRepository(w, r, c),
 		Faculty:              facultyrepo.NewFacultyRepository(w, r, c),
+		Feedback:             feedbackrepo.NewFeedbackRepository(w, r, c),
 		UserFaculty:          userfacultyrepo.NewUserFacultyRepository(w, r, c),
 		Order:                orderrepo.NewOrderRepository(w, r),
 		PremiumSubscription:  premiumsubscriptionrepo.NewPremiumSubscriptionRepository(w, r),

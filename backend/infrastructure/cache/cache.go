@@ -248,6 +248,68 @@ func (c *Cache) Miss(err error) bool {
 	return err == redis.Nil
 }
 
+// Incr atomically increments a counter with no expiry. Returns post-increment
+// count. Use when counter must persist until explicitly deleted.
+func (c *Cache) Incr(ctx context.Context, key string) (int64, error) {
+	return c.client.Incr(ctx, key).Result()
+}
+
+// IncrWithWindow atomically increments a counter and ensures it expires after
+// the given window. Returns the post-increment count and remaining TTL on the
+// key. Use for sliding/rolling rate limits — first hit creates the key with
+// the window TTL; subsequent hits only INCR. Single pipelined round trip.
+//
+// Race: between INCR and the conditional EXPIRE another caller may also see
+// "no TTL" and issue EXPIRE again — both set the same window so the last one
+// wins. Safe for rate limiting.
+func (c *Cache) IncrWithWindow(ctx context.Context, key string, window time.Duration) (int64, time.Duration, error) {
+	pipe := c.client.Pipeline()
+	incr := pipe.Incr(ctx, key)
+	ttl := pipe.TTL(ctx, key)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return 0, 0, err
+	}
+	count := incr.Val()
+	remaining := ttl.Val()
+	if remaining < 0 {
+		if err := c.client.Expire(ctx, key, window).Err(); err != nil {
+			return count, window, err
+		}
+		remaining = window
+	}
+	return count, remaining, nil
+}
+
+// CounterTTL reads a counter set by IncrWithWindow without mutating it.
+// Returns (0, 0, nil) when the key is absent. Use for "am I over the limit?"
+// checks that must not consume a slot.
+func (c *Cache) CounterTTL(ctx context.Context, key string) (int64, time.Duration, error) {
+	pipe := c.client.Pipeline()
+	get := pipe.Get(ctx, key)
+	ttl := pipe.TTL(ctx, key)
+	if _, err := pipe.Exec(ctx); err != nil && err != redis.Nil {
+		return 0, 0, err
+	}
+	raw, err := get.Result()
+	if err == redis.Nil {
+		return 0, 0, nil
+	}
+	if err != nil {
+		return 0, 0, err
+	}
+	count, err := parseInt64(raw)
+	if err != nil {
+		return 0, 0, err
+	}
+	return count, ttl.Val(), nil
+}
+
+func parseInt64(s string) (int64, error) {
+	var n int64
+	_, err := fmt.Sscanf(s, "%d", &n)
+	return n, err
+}
+
 // TagTTL controls how long a reverse-index tag set survives. Must be > the
 // TTL of any cache key registered under it; otherwise InvalidateTag risks
 // missing keys whose tag set expired first. FacultyTTL == 24h so this is

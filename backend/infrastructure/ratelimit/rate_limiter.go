@@ -1,21 +1,22 @@
 package ratelimit
 
 import (
+	"context"
 	"fmt"
-	"sync"
 	"time"
+
+	"github.com/sunibgram/infrastructure/cache"
 )
 
-type bucket struct {
-	count     int
-	windowEnd time.Time
-}
-
+// RateLimiter is a Redis-backed sliding-window counter shared across replicas.
+// Each instance owns a Redis key namespace (prefix) and a fixed window. State
+// is INCR + EXPIRE on `ratelimit:<prefix>:<key>`; no in-process map. Multi-
+// replica safe, auto-expires.
 type RateLimiter struct {
-	mu      sync.Mutex
-	buckets map[string]*bucket
-	max     int
-	window  time.Duration
+	cache  *cache.Cache
+	prefix string
+	max    int
+	window time.Duration
 }
 
 func formatDuration(d time.Duration) string {
@@ -31,63 +32,57 @@ func formatDuration(d time.Duration) string {
 	}
 }
 
-func New(max int, window time.Duration) *RateLimiter {
-	return &RateLimiter{
-		buckets: make(map[string]*bucket),
-		max:     max,
-		window:  window,
-	}
+// New constructs a Redis-backed RateLimiter. `prefix` namespaces keys so
+// different call sites do not collide (e.g. "otp_send", "otp_verify",
+// "otp_fail"). `max` requests per `window` per key.
+func New(c *cache.Cache, prefix string, max int, window time.Duration) *RateLimiter {
+	return &RateLimiter{cache: c, prefix: prefix, max: max, window: window}
 }
 
-// Allow increments the counter and returns an error if the limit is reached.
+func (r *RateLimiter) redisKey(key string) string {
+	return fmt.Sprintf("ratelimit:%s:%s", r.prefix, key)
+}
+
+// Allow consumes one slot and returns an error if the post-increment count
+// exceeds the limit. Fail-open on Redis errors — better a brief lapse in rate
+// limiting than a full auth outage.
 func (r *RateLimiter) Allow(key string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	now := time.Now()
-	b, ok := r.buckets[key]
-	if !ok || now.After(b.windowEnd) {
-		r.buckets[key] = &bucket{count: 1, windowEnd: now.Add(r.window)}
+	ctx := context.Background()
+	count, ttl, err := r.cache.IncrWithWindow(ctx, r.redisKey(key), r.window)
+	if err != nil {
 		return nil
 	}
-
-	if b.count >= r.max {
-		wait := time.Until(b.windowEnd).Round(time.Second)
+	if count > int64(r.max) {
+		wait := ttl.Round(time.Second)
+		if wait <= 0 {
+			wait = r.window
+		}
 		return fmt.Errorf("try again in %s", formatDuration(wait))
 	}
-
-	b.count++
 	return nil
 }
 
-// Check returns an error if the key is already at or over the limit, without incrementing.
+// Check reports whether the key is at or over the limit without consuming a
+// slot. Returns nil when the counter is missing or under the cap.
 func (r *RateLimiter) Check(key string) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	now := time.Now()
-	b, ok := r.buckets[key]
-	if !ok || now.After(b.windowEnd) {
+	ctx := context.Background()
+	count, ttl, err := r.cache.CounterTTL(ctx, r.redisKey(key))
+	if err != nil {
 		return nil
 	}
-	if b.count >= r.max {
-		wait := time.Until(b.windowEnd).Round(time.Second)
+	if count >= int64(r.max) {
+		wait := ttl.Round(time.Second)
+		if wait <= 0 {
+			wait = r.window
+		}
 		return fmt.Errorf("try again in %s", formatDuration(wait))
 	}
 	return nil
 }
 
-// Fail increments the failure counter for the key without gating on the limit.
-// Use after a failed attempt to record it; pair with Check to gate entry.
+// Fail increments the counter without gating; pair with Check to record a
+// failed attempt against a key that already passed an entry check.
 func (r *RateLimiter) Fail(key string) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	now := time.Now()
-	b, ok := r.buckets[key]
-	if !ok || now.After(b.windowEnd) {
-		r.buckets[key] = &bucket{count: 1, windowEnd: now.Add(r.window)}
-		return
-	}
-	b.count++
+	ctx := context.Background()
+	_, _, _ = r.cache.IncrWithWindow(ctx, r.redisKey(key), r.window)
 }

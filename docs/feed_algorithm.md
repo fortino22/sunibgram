@@ -4,7 +4,7 @@
 
 ## Feed Score (Stored Column)
 
-Threads have a precomputed `feed_score` column updated every 5 minutes by `infrastructure/scheduler/feed_score_scheduler.go` for content from the last 7 days:
+Threads have a precomputed `feed_score` column updated every 1 minute by `infrastructure/scheduler/feed_score_scheduler.go` for content from the last 7 days:
 
 ```text
 (likes + 3 * comments + 5 * reposts + 4 * bookmarks)
@@ -15,7 +15,16 @@ Threads older than 7 days are reset to `feed_score = 0`.
 
 ## Candidate Sources
 
-Per request the repository fetches up to 100 recent candidates from each of four sources, ordered by `feed_score DESC`, filtered to types `post/repost/reply` and the last 7 days. Replies are only kept when they have engagement (`like_count + repost_count + comment_count > 0`).
+Per request the repository fetches up to 100 recent candidates from each of four sources. Each source query orders by **fresh-first then `feed_score DESC`**:
+
+```sql
+ORDER BY (threads.created_at > NOW() - INTERVAL '900 seconds') DESC,
+         threads.feed_score DESC
+```
+
+Threads created inside the fresh window (`forYouFreshWindow`, 15 min) sort to the top of each source result so a freshly posted thread with `feed_score = 0` is not cut by the `LIMIT 100` before the scheduler ticks. Visibility predicates (community visibility, `is_private` author filter, follower / member joins) are untouched — the fresh ordering only changes priority, not which rows are eligible.
+
+Filters: types `post/repost/reply`, the last 7 days. Replies are only kept when they have engagement (`like_count + repost_count + comment_count > 0`).
 
 | Source | Filter | Source weight | Reposts |
 |---|---|---|---|
@@ -32,22 +41,37 @@ For each candidate, an effective score is computed at merge time:
 
 ```text
 age_hours = max(0, now - thread.created_at in hours)
+is_fresh  = age < forYouFreshWindow (15 min)
 decay     = 1 / (1 + age_hours / 6)        # log-style halflife ~6h
 score     = thread.feed_score * source_weight * decay
 ```
 
-If the same thread appears in multiple sources, the highest score is kept (dedupe by `thread_id`). Candidates with `score < 0.01` are dropped before sorting.
+Floor boosts (applied in `addCandidates`):
 
-## Ordering — Seeded Band Shuffle
+| Case | Floor |
+|---|---|
+| Own thread, fresh (age < 15 min) | `5.0` |
+| Own thread, older | `0.5` |
+| Non-own thread, fresh (age < 15 min) | `forYouFreshFloor` = `0.1` |
+| Non-own thread, older | none — drops if `score < 0.01` |
 
-Pure score sort is deterministic and makes the feed feel frozen. Pure random shuffle destroys ranking. The algorithm uses a two-step ordering:
+The non-own fresh floor (`0.1`) only exists so a `feed_score = 0` post survives the `minScore = 0.01` filter; the floor value itself does not position the thread, because the post-merge fresh / ranked split sorts fresh purely by `created_at DESC`.
 
-1. Sort all surviving candidates by `score` DESC (tiebreak `created_at` DESC).
-2. Bucket candidates into **score bands** of width `0.5` (`band = floor(score / 0.5)`), then shuffle the candidates **within each band** using a deterministic PRNG seeded from the user's current feed seed.
+If the same thread appears in multiple sources, the highest score is kept (dedupe by `thread_id`). Candidates with `score < 0.01` and not in the fresh window are dropped before sorting.
 
-High-scoring (trending) content always sits in the top bands, but the exact order inside each band varies between sessions, so the feed looks different on every refresh without ever moving a low-score post above a high-score post.
+## Ordering — Fresh Band + Seeded Band Shuffle
 
-After shuffling, an **author cap of 20** is applied: at most 20 threads per author across the whole feed. For repost threads, the cap counts against the *original* author's id.
+Pure score sort is deterministic and makes the feed feel frozen. Pure random shuffle destroys ranking. The algorithm splits the merged candidates into two slices, processes them independently, then concatenates `[fresh..., ranked...]`:
+
+1. **Split** by `created_at` against `forYouFreshWindow` (15 min):
+   - `fresh` — `created_at > now - 15min`
+   - `ranked` — everything else
+2. **Fresh band** — sort `fresh` by `created_at DESC`, then cap at `forYouFreshCap = 5`. Overflow (6th item and beyond) spills into `ranked` so the top of the feed never becomes a pure Latest tab when the network is busy.
+3. **Ranked band** — sort by `score` DESC (tiebreak `created_at` DESC), then bucket candidates into **score bands** of width `0.5` (`band = floor(score / 0.5)`) and shuffle within each band using a deterministic PRNG seeded from the user's current feed seed.
+
+The top 5 items of the feed are always the newest fresh threads (sorted by `created_at`, regardless of `feed_score`). Below that, high-scoring trending content sits in the top ranked bands, with band-internal order varying per session.
+
+After concatenation, an **author cap of 20** is applied: at most 20 threads per author across the whole feed. For repost threads, the cap counts against the *original* author's id.
 
 The full candidate list is then sliced for the requested page (`offset = (page-1) * limit`).
 

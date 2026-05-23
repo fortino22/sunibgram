@@ -108,8 +108,8 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		if rootID != nil {
 			rootThreadID = *rootID
 		}
-		if err := s.summaryService.InvalidateCache(ctx, rootThreadID); err != nil {
-			log.Printf("thread summary cache invalidation failed: %v", err)
+		if err := s.summaryService.RegisterReply(ctx, rootThreadID); err != nil {
+			log.Printf("thread summary reply registration failed: %v", err)
 		}
 	}
 	if err := s.persistThreadHashtags(ctx, thread.ThreadID, content, false); err != nil {

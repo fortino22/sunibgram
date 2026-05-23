@@ -15,29 +15,32 @@ import (
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
-	"github.com/sunibgram/infrastructure/ollama"
+	"github.com/sunibgram/infrastructure/openai"
 )
 
-const threadSummaryTTL = time.Hour
+const (
+	threadSummaryTTL          time.Duration = 0
+	threadSummaryReplyTrigger               = 20
+)
 
 var ErrThreadSummaryNotReady = errors.New("thread summary is being generated")
 
 type ThreadSummaryService struct {
 	threadRepo   threadrepoiface.IThreadRepository
 	cacheRepo    cacherepoiface.ICacheRepository
-	ollamaClient *ollama.Client
+	openaiClient *openai.Client
 	group        singleflight.Group
 }
 
 func NewThreadSummaryService(
 	threadRepo threadrepoiface.IThreadRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
-	ollamaClient *ollama.Client,
+	openaiClient *openai.Client,
 ) threadsummarysvciface.IThreadSummaryService {
 	return &ThreadSummaryService{
 		threadRepo:   threadRepo,
 		cacheRepo:    cacheRepo,
-		ollamaClient: ollamaClient,
+		openaiClient: openaiClient,
 	}
 }
 
@@ -95,12 +98,12 @@ func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uin
 		comments = append(comments, reply.Content)
 	}
 	prompt := fmt.Sprintf(
-		"Summarize the following comments from a university social media post into one concise paragraph. Do not use bullet points or headers, just plain prose:\n\n%s",
+		"Summarize the following comments from a university social media post into one concise paragraph. Always respond in English, even if the comments are in another language. Do not use bullet points or headers, just plain prose:\n\n%s",
 		strings.Join(comments, "\n"),
 	)
 
 	var buf strings.Builder
-	if err := s.ollamaClient.StreamGenerate(ctx, prompt, &buf); err != nil {
+	if err := s.openaiClient.StreamGenerate(ctx, prompt, &buf); err != nil {
 		return "", err
 	}
 
@@ -109,7 +112,18 @@ func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uin
 }
 
 func (s *ThreadSummaryService) InvalidateCache(ctx context.Context, threadID uint) error {
-	return s.cacheRepo.Delete(ctx, threadSummaryKey(threadID))
+	return s.cacheRepo.Delete(ctx, threadSummaryKey(threadID), threadSummaryReplyCountKey(threadID))
+}
+
+func (s *ThreadSummaryService) RegisterReply(ctx context.Context, threadID uint) error {
+	count, err := s.cacheRepo.Incr(ctx, threadSummaryReplyCountKey(threadID))
+	if err != nil {
+		return err
+	}
+	if count < threadSummaryReplyTrigger {
+		return nil
+	}
+	return s.InvalidateCache(ctx, threadID)
 }
 
 func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]threadmodel.Thread, error) {
@@ -131,5 +145,8 @@ func threadSummaryKey(threadID uint) string {
 	return fmt.Sprintf("thread:summary:%d", threadID)
 }
 
-// satisfy io.Writer for strings.Builder (already implemented, just alias)
+func threadSummaryReplyCountKey(threadID uint) string {
+	return fmt.Sprintf("thread:summary:replycount:%d", threadID)
+}
+
 var _ io.Writer = (*strings.Builder)(nil)

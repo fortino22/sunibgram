@@ -2,11 +2,12 @@ package verificationuc
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
 	emailsvciface "github.com/sunibgram/domain/service/email"
 	verificationsvciface "github.com/sunibgram/domain/service/verification"
+	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
 
@@ -47,9 +49,10 @@ func hashOTP(plain string) string {
 	return otpHashV2Prefix + hex.EncodeToString(h.Sum(nil))
 }
 
-// verifyOTPHash dispatches by hash prefix: v2 → HMAC compare in constant
-// time; anything else → bcrypt compare (legacy in-flight codes).
-func verifyOTPHash(stored, plain string) bool {
+// VerifyOTPHash dispatches by hash prefix: v2 → HMAC compare in constant
+// time; anything else → bcrypt compare (legacy in-flight codes). Exported so
+// the auth service can verify login OTPs without duplicating the dispatch.
+func VerifyOTPHash(stored, plain string) bool {
 	if strings.HasPrefix(stored, otpHashV2Prefix) {
 		want, err := hex.DecodeString(strings.TrimPrefix(stored, otpHashV2Prefix))
 		if err != nil {
@@ -74,13 +77,14 @@ func NewVerificationService(
 	verificationRepo verificationrepoiface.IVerificationRepository,
 	userRepo userrepoiface.IUserRepository,
 	emailService emailsvciface.IEmailService,
+	c *cache.Cache,
 ) verificationsvciface.IVerificationService {
 	return &VerificationService{
 		verificationRepo: verificationRepo,
 		userRepo:         userRepo,
 		emailService:     emailService,
-		sendLimiter:      ratelimit.New(3, 10*time.Minute),
-		verifyLimiter:    ratelimit.New(3, 10*time.Minute),
+		sendLimiter:      ratelimit.New(c, "verification_send", 3, 10*time.Minute),
+		verifyLimiter:    ratelimit.New(c, "verification_verify", 3, 10*time.Minute),
 	}
 }
 
@@ -114,7 +118,11 @@ func (s *VerificationService) SendCode(email string, t verificationcodemodel.Ver
 
 	_ = s.verificationRepo.DeleteByEmailAndType(email, t)
 
-	plain := fmt.Sprintf("%06d", rand.Intn(1000000))
+	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil {
+		return err
+	}
+	plain := fmt.Sprintf("%06d", n.Int64())
 	record := &verificationcodemodel.VerificationCode{
 		Email:     email,
 		Code:      hashOTP(plain),
@@ -156,9 +164,20 @@ func (s *VerificationService) VerifyCode(email, code string, t verificationcodem
 		return errors.New("code has expired")
 	}
 
-	if !verifyOTPHash(record.Code, code) {
+	if !VerifyOTPHash(record.Code, code) {
 		return errors.New("invalid code")
 	}
 
 	return s.verificationRepo.MarkUsed(record.ID)
+}
+
+// otpRetentionWindow keeps rows for one week past their expiry so support can
+// audit recent OTP send/verify activity if needed. Anything older is purged.
+const otpRetentionWindow = 7 * 24 * time.Hour
+
+// PurgeExpiredCodes deletes verification rows whose expires_at fell more than
+// otpRetentionWindow in the past. Safe to call repeatedly; idempotent.
+func (s *VerificationService) PurgeExpiredCodes() (int64, error) {
+	cutoff := time.Now().Add(-otpRetentionWindow)
+	return s.verificationRepo.PurgeExpiredOlderThan(cutoff)
 }

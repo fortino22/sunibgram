@@ -24,6 +24,7 @@ import (
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
 	eventthreadpinmodel "github.com/sunibgram/domain/model/event_thread_pin"
 	facultymodel "github.com/sunibgram/domain/model/faculty"
+	feedbackmodel "github.com/sunibgram/domain/model/feedback"
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	likemodel "github.com/sunibgram/domain/model/like"
 	notificationmodel "github.com/sunibgram/domain/model/notification"
@@ -91,6 +92,8 @@ func AutoMigrate(db *gorm.DB) {
 		&notificationmodel.Notification{},
 		&hashtagmodel.Hashtag{},
 		&hashtagmodel.ThreadHashtag{},
+		&feedbackmodel.Feedback{},
+		&feedbackmodel.FeedbackVote{},
 	}
 
 	for _, m := range models {

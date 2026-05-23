@@ -21,6 +21,7 @@ import (
 	eventthreadpinctrl "github.com/sunibgram/webapi/controller/event_thread_pin"
 	explorectrl "github.com/sunibgram/webapi/controller/explore"
 	facultyctrl "github.com/sunibgram/webapi/controller/faculty"
+	feedbackctrl "github.com/sunibgram/webapi/controller/feedback"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
@@ -39,6 +40,7 @@ import (
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
 	verificationctrl "github.com/sunibgram/webapi/controller/verification"
 	violationctrl "github.com/sunibgram/webapi/controller/violation"
+	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/webapi/middleware"
 	adminroute "github.com/sunibgram/webapi/router/admin"
 	authroute "github.com/sunibgram/webapi/router/auth"
@@ -50,6 +52,7 @@ import (
 	eventroute "github.com/sunibgram/webapi/router/event"
 	exploreroute "github.com/sunibgram/webapi/router/explore"
 	facultyroute "github.com/sunibgram/webapi/router/faculty"
+	feedbackroute "github.com/sunibgram/webapi/router/feedback"
 	hashtagroute "github.com/sunibgram/webapi/router/hashtag"
 	notificationroute "github.com/sunibgram/webapi/router/notification"
 	orderroute "github.com/sunibgram/webapi/router/order"
@@ -98,6 +101,7 @@ func Register(
 	violationCtrl *violationctrl.ViolationController,
 	reportCtrl *reportctrl.ReportController,
 	facultyCtrl *facultyctrl.FacultyController,
+	feedbackCtrl *feedbackctrl.FeedbackController,
 	orderCtrl *orderctrl.OrderController,
 	premiumSubscriptionCtrl *premiumsubscriptionctrl.PremiumSubscriptionController,
 	devSubscriptionCtrl *premiumsubscriptionctrl.DevSubscriptionController,
@@ -105,11 +109,12 @@ func Register(
 	chatCtrl *chatctrl.ChatController,
 	notificationCtrl *notificationctrl.NotificationController,
 	threadPollCtrl *threadpollctrl.ThreadPollController,
+	c *cache.Cache,
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
 
-	authroute.RegisterAuthRoutes(api, authCtrl, verificationCtrl, auth)
+	authroute.RegisterAuthRoutes(api, authCtrl, verificationCtrl, auth, c)
 	verificationroute.RegisterVerificationRoutes(api, verificationCtrl)
 	usersettingsroute.RegisterUserSettingsRoutes(api, userSettingsCtrl, auth)
 	userprofileroute.RegisterProfileRoutes(api, profileCtrl, auth)
@@ -125,6 +130,7 @@ func Register(
 	violationroute.RegisterViolationRoutes(api, violationCtrl, auth)
 	reportroute.RegisterReportRoutes(api, reportCtrl, auth)
 	facultyroute.RegisterFacultyRoutes(api, facultyCtrl, profileCtrl, auth)
+	feedbackroute.RegisterFeedbackRoutes(api, feedbackCtrl, auth)
 	orderroute.RegisterOrderRoutes(api, orderCtrl, auth)
 	premiumsubscriptionroute.RegisterPremiumSubscriptionRoutes(api, premiumSubscriptionCtrl, auth)
 	devroute.RegisterDevRoutes(api, devSubscriptionCtrl, auth)

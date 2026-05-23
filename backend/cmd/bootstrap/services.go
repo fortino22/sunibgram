@@ -20,6 +20,7 @@ import (
 	eventthreadpinuc "github.com/sunibgram/application/usecase/event_thread_pin"
 	exploreuc "github.com/sunibgram/application/usecase/explore"
 	facultyuc "github.com/sunibgram/application/usecase/faculty"
+	feedbackuc "github.com/sunibgram/application/usecase/feedback"
 	followuc "github.com/sunibgram/application/usecase/follow"
 	hashtaguc "github.com/sunibgram/application/usecase/hashtag"
 	likeuc "github.com/sunibgram/application/usecase/like"
@@ -58,6 +59,7 @@ import (
 	eventthreadpinsvciface "github.com/sunibgram/domain/service/event_thread_pin"
 	exploresvciface "github.com/sunibgram/domain/service/explore"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
+	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
 	followsvciface "github.com/sunibgram/domain/service/follow"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
@@ -110,6 +112,7 @@ type Services struct {
 	EventPin             eventpinsvciface.IEventPinService
 	EventParticipant     eventparticipantsvciface.IEventParticipantService
 	Faculty              facultysvciface.IFacultyService
+	Feedback             feedbacksvciface.IFeedbackService
 	Order                ordersvciface.IOrderService
 	PremiumSubscription  premiumsubscriptionsvciface.IPremiumSubscriptionService
 	ChatRoom             chatroomsvciface.IChatRoomService
@@ -125,7 +128,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub)
 	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.Cache, notification)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
-	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.Ollama)
+	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
 	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, summary)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
@@ -137,7 +140,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		User:                 useruc.NewUserService(repos.User, repos.Follow, repos.UserProfile),
 		UserSettings:         usersettingsuc.NewUserSettingsService(repos.UserSettings, repos.Thread),
 		UserProfile:          profile,
-		Verification:         verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email),
+		Verification:         verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email, c),
 		Notification:         notification,
 		Follow:               follow,
 		Hashtag:              hashtag,
@@ -161,6 +164,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		EventPin:             eventpinuc.NewEventPinService(repos.EventPin, repos.Event),
 		EventParticipant:     eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event),
 		Faculty:              facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
+		Feedback:             feedbackuc.NewFeedbackService(repos.Feedback),
 		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
 		PremiumSubscription:  premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
 		ChatRoom:             chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage),

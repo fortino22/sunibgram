@@ -264,3 +264,9 @@ func EventJoinedUserTag(userID uint) string {
 func EventPinsUserTag(userID uint) string {
 	return fmt.Sprintf("tag:event:pins:user:%d", userID)
 }
+
+// FeedbackListTag covers feedback:list:* (paginated feedback list cache across
+// type/status filters). Registered at FeedbackRepository.FindAll Set sites.
+func FeedbackListTag() string {
+	return "tag:feedback:list"
+}

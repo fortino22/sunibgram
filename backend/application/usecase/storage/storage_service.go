@@ -15,15 +15,15 @@ import (
 )
 
 var bucketWhitelist = map[string]string{
-	"avatar":           "MINIO_BUCKET_AVATAR",
-	"banner":           "MINIO_BUCKET_BANNER",
-	"post":             "MINIO_BUCKET_POST",
-	"poll":             "MINIO_BUCKET_POLL",
-	"chat":             "MINIO_BUCKET_CHAT",
-	"community_banner": "MINIO_BUCKET_COMMUNITY_BANNER",
-	"event_banner":     "MINIO_BUCKET_EVENT_BANNER",
-	"document_event":   "MINIO_BUCKET_DOCUMENT_EVENT",
-	"group_avatar":     "MINIO_BUCKET_GROUP_AVATAR",
+	"avatar":           "S3_BUCKET_AVATAR",
+	"banner":           "S3_BUCKET_BANNER",
+	"post":             "S3_BUCKET_POST",
+	"poll":             "S3_BUCKET_POLL",
+	"chat":             "S3_BUCKET_CHAT",
+	"community_banner": "S3_BUCKET_COMMUNITY_BANNER",
+	"event_banner":     "S3_BUCKET_EVENT_BANNER",
+	"document_event":   "S3_BUCKET_DOCUMENT_EVENT",
+	"group_avatar":     "S3_BUCKET_GROUP_AVATAR",
 }
 
 type StorageUsecase struct {
@@ -40,7 +40,7 @@ func (s *StorageUsecase) ResolveBucket(uploadType string) (string, error) {
 		return "", fmt.Errorf("upload type '%s' is not allowed", uploadType)
 	}
 
-	bucket := os.Getenv(envKey)
+	bucket := strings.TrimSpace(os.Getenv(envKey))
 	if bucket == "" {
 		return "", fmt.Errorf("bucket for type '%s' is not configured", uploadType)
 	}

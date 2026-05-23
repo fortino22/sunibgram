@@ -25,8 +25,26 @@ const (
 	forYouMinScore      = 0.01
 	forYouAuthorCap     = 20
 	forYouCandidateCap  = 800
-	forYouFreshWindow   = 1 * time.Hour
+	forYouFreshWindow   = 15 * time.Minute
+	forYouFreshCap      = 5
+	forYouFreshFloor    = 0.1
 )
+
+// forYouFreshIntervalSQL renders forYouFreshWindow as a Postgres interval literal
+// so the SQL ORDER BY clause stays in sync with the Go-side fresh split.
+func forYouFreshIntervalSQL() string {
+	return fmt.Sprintf("INTERVAL '%d seconds'", int(forYouFreshWindow.Seconds()))
+}
+
+// forYouFreshFirstOrderSQL puts threads inside the fresh window at the top of
+// each source query so feed_score=0 fresh posts are not cut by the LIMIT 100.
+// Used by every per-source query; visibility WHERE clauses are unchanged.
+func forYouFreshFirstOrderSQL() string {
+	return fmt.Sprintf(
+		"(threads.created_at > NOW() - %s) DESC, threads.feed_score DESC",
+		forYouFreshIntervalSQL(),
+	)
+}
 
 const mainFeedReplyInteractionSQL = "(threads.like_count + threads.repost_count + threads.comment_count)"
 
@@ -108,23 +126,32 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 			if thread.Type == threadmodel.ThreadTypeRepost && !includeReposts {
 				continue
 			}
-			ageHours := now.Sub(thread.CreatedAt).Hours()
-			if ageHours < 0 {
-				ageHours = 0
+			age := now.Sub(thread.CreatedAt)
+			if age < 0 {
+				age = 0
 			}
+			ageHours := age.Hours()
+			isFresh := age < forYouFreshWindow
 			decay := 1.0 / (1.0 + ageHours/forYouHalflifeHours)
 			score := thread.FeedScore * sourceWeight * decay
 			if forceKeep {
-				// Own threads always surface to the author. Very recent posts
-				// (under 1h, before the feed_score scheduler has run) get
-				// boosted into the top band so a just-posted thread appears
-				// near the top of the author's own feed.
+				// Own threads always surface to the author. Fresh posts get a
+				// higher floor so a just-posted thread appears at the top of
+				// the author's own feed before the feed_score scheduler ticks.
 				floor := 0.5
-				if ageHours < 1 {
+				if isFresh {
 					floor = 5.0
 				}
 				if score < floor {
 					score = floor
+				}
+			} else if isFresh {
+				// Fresh non-own thread (within forYouFreshWindow) needs a floor
+				// to clear the minScore filter; the post-merge fresh/ranked
+				// split places it in the fresh band, sorted by created_at,
+				// regardless of this floor value.
+				if score < forYouFreshFloor {
+					score = forYouFreshFloor
 				}
 			} else if score < forYouMinScore {
 				continue
@@ -174,6 +201,14 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 	sort.SliceStable(fresh, func(i, j int) bool {
 		return fresh[i].thread.CreatedAt.After(fresh[j].thread.CreatedAt)
 	})
+
+	// Cap fresh band size: only the top forYouFreshCap newest items stay at the
+	// very top of the feed; the overflow spills into ranked so the feed does
+	// not become a pure "Latest" tab when the network is busy.
+	if len(fresh) > forYouFreshCap {
+		ranked = append(ranked, fresh[forYouFreshCap:]...)
+		fresh = fresh[:forYouFreshCap]
+	}
 
 	sort.SliceStable(ranked, func(i, j int) bool {
 		if ranked[i].score == ranked[j].score {
@@ -294,7 +329,7 @@ func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]thread
 		Where("threads.type IN ?", forYouFeedTypes(true))
 	query = applyMainFeedReplyInteractionFilter(query)
 	if err := query.
-		Order("threads.feed_score DESC").
+		Order(forYouFreshFirstOrderSQL()).
 		Limit(100).
 		Find(&threads).Error; err != nil {
 		return nil, err
@@ -322,7 +357,7 @@ func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
 	query = applyMainFeedReplyInteractionFilter(query)
 	if err := query.
-		Order("threads.feed_score DESC").
+		Order(forYouFreshFirstOrderSQL()).
 		Limit(100).
 		Find(&threads).Error; err != nil {
 		return nil, err
@@ -347,7 +382,7 @@ func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]
 		Where("threads.type IN ?", forYouFeedTypes(true))
 	query = applyMainFeedReplyInteractionFilter(query)
 	if err := query.
-		Order("threads.feed_score DESC").
+		Order(forYouFreshFirstOrderSQL()).
 		Limit(100).
 		Find(&threads).Error; err != nil {
 		return nil, err
@@ -372,7 +407,7 @@ func (r *threadCached) findForYouGlobal(ctx context.Context) ([]threadmodel.Thre
 		Where("COALESCE(user_settings.is_private, false) = ?", false)
 	query = applyMainFeedReplyInteractionFilter(query)
 	if err := query.
-		Order("threads.feed_score DESC").
+		Order(forYouFreshFirstOrderSQL()).
 		Limit(100).
 		Find(&threads).Error; err != nil {
 		return nil, err

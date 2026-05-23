@@ -9,7 +9,7 @@ import (
 	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 	"github.com/sunibgram/infrastructure/cache"
 	infraemail "github.com/sunibgram/infrastructure/email"
-	"github.com/sunibgram/infrastructure/ollama"
+	"github.com/sunibgram/infrastructure/openai"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
 	"github.com/sunibgram/infrastructure/storage"
 )
@@ -19,15 +19,15 @@ const emailWorkerCount = 4
 type External struct {
 	Storage   *storageuc.StorageUsecase
 	Email     emailsvciface.IEmailService
-	Ollama    *ollama.Client
+	OpenAI    *openai.Client
 	SocketHub sockethubsvciface.IHub
 }
 
 func NewExternal(c *cache.Cache) *External {
 	return &External{
-		Storage:   storageuc.NewStorageUsecase(storage.NewMinioClient()),
+		Storage:   storageuc.NewStorageUsecase(storage.NewS3Client()),
 		Email:     emailuc.NewEmailService(infraemail.NewSMTPClient(), c),
-		Ollama:    ollama.NewClient(),
+		OpenAI:    openai.NewClient(),
 		SocketHub: infrasocket.NewHub(),
 	}
 }

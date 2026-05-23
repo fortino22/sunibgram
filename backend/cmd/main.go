@@ -16,10 +16,11 @@ func main() {
 
 	repos := bootstrap.NewRepositories(db, redisCache)
 	svcs := bootstrap.NewServices(repos, ext, redisCache)
-	ctrls := bootstrap.NewControllers(svcs, ext)
+	ctrls := bootstrap.NewControllers(svcs, ext, redisCache)
 
 	app := bootstrap.NewServer(ctrls, svcs, ext, redisCache)
 	bootstrap.StartSubscriptionExpiry(svcs.PremiumSubscription)
+	bootstrap.StartVerificationCodePurge(svcs.Verification)
 
 	if err := bootstrap.Listen(app); err != nil {
 		panic(err)

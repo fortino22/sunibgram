@@ -43,8 +43,33 @@ func (u *User) ValidateRegister() error {
 	if !strings.HasSuffix(strings.ToLower(u.Email), allowedEmailDomain) {
 		return errors.New("email must use @binus.ac.id domain")
 	}
-	if len(u.Password) < 6 {
-		return errors.New("password must be at least 6 characters")
+	if err := ValidatePassword(u.Password); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ValidatePassword enforces minimum length and character-class diversity.
+// Shared by Register, ChangePassword, ForgotPassword so the policy can only
+// drift in one place. Allows pre-existing hashes in DB to remain valid for
+// login (no length check on login path); the policy only fires on mutation.
+func ValidatePassword(pw string) error {
+	if len(pw) < 10 {
+		return errors.New("password must be at least 10 characters")
+	}
+	var hasUpper, hasLower, hasDigit bool
+	for _, r := range pw {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			hasUpper = true
+		case r >= 'a' && r <= 'z':
+			hasLower = true
+		case r >= '0' && r <= '9':
+			hasDigit = true
+		}
+	}
+	if !hasUpper || !hasLower || !hasDigit {
+		return errors.New("password must contain uppercase, lowercase, and digit")
 	}
 	return nil
 }

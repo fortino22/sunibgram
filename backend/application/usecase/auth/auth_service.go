@@ -21,6 +21,7 @@ import (
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
 	authsvciface "github.com/sunibgram/domain/service/auth"
+	verificationuc "github.com/sunibgram/application/usecase/verification"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
@@ -69,7 +70,7 @@ func NewAuthService(
 		verificationRepo: verificationRepo,
 		userSettingsRepo: userSettingsRepo,
 		cache:            c,
-		otpFailLimiter:   ratelimit.New(5, 10*time.Minute),
+		otpFailLimiter:   ratelimit.New(c, "auth_otp_fail", 5, 10*time.Minute),
 	}
 }
 
@@ -143,8 +144,8 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 		return errors.New("old password is incorrect")
 	}
 
-	if len(newPassword) < 6 {
-		return errors.New("new password must be at least 6 characters")
+	if err := usermodel.ValidatePassword(newPassword); err != nil {
+		return err
 	}
 
 	if oldPassword == newPassword {
@@ -168,8 +169,8 @@ func (s *AuthService) ForgotPassword(email, newPassword string) error {
 		return errors.New("otp not verified or expired, please verify your otp first")
 	}
 
-	if len(newPassword) < 6 {
-		return errors.New("new password must be at least 6 characters")
+	if err := usermodel.ValidatePassword(newPassword); err != nil {
+		return err
 	}
 
 	user, err := s.userRepo.FindByEmail(email)
@@ -228,7 +229,7 @@ func (s *AuthService) LoginWithOTP(email, password, otp string) (usermodel.Token
 		s.otpFailLimiter.Fail(email)
 		return usermodel.TokenPair{}, errors.New("otp has expired")
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(record.Code), []byte(otp)); err != nil {
+	if !verificationuc.VerifyOTPHash(record.Code, otp) {
 		s.otpFailLimiter.Fail(email)
 		return usermodel.TokenPair{}, errors.New("invalid otp")
 	}
@@ -275,12 +276,7 @@ func (s *AuthService) LoginProd(email, password string) (*usermodel.User, usermo
 		return nil, usermodel.TokenPair{}, errors.New("invalid email or password")
 	}
 
-	allowedEmails := map[string]bool{
-		"devin@binus.ac.id":     true,
-		"octa@binus.ac.id":      true,
-		"chermiese@binus.ac.id": true,
-	}
-	if user.Role.Name != "admin" && !allowedEmails[user.Email] {
+	if user.Role.Name != "admin" {
 		return nil, usermodel.TokenPair{}, errors.New("admin access required")
 	}
 

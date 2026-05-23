@@ -2,6 +2,7 @@ package ctrlshared
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -47,6 +48,33 @@ func ParsePagination(ctx *fiber.Ctx) (page int, limit int) {
 	return page, limit
 }
 
+// unsafeErrorMarkers flag substrings that indicate the error string carries
+// infra-layer detail (database driver, Redis, network, panic). Such errors
+// must never reach the client — they leak schema, IPs, or stack info. The
+// raw message is logged server-side; the client sees a generic message.
+var unsafeErrorMarkers = []string{
+	"sql:", "gorm", "pq:", "pgx", "redis:", "panic:",
+	"connection refused", "no such host", "i/o timeout",
+	"syntax error", "duplicate key", "violates", "constraint",
+	"ERROR:", "deadlock", "dial tcp", "dial unix",
+	"EOF", "broken pipe",
+}
+
+// safeErrorMessage returns msg if it looks like a deliberate user-facing
+// error; otherwise logs the raw message and returns "internal error". The
+// allowlist is by exclusion: business errors never contain SQL or driver
+// keywords, so anything matching unsafeErrorMarkers is treated as a leak.
+func safeErrorMessage(ctx *fiber.Ctx, msg string) string {
+	lower := strings.ToLower(msg)
+	for _, marker := range unsafeErrorMarkers {
+		if strings.Contains(lower, strings.ToLower(marker)) {
+			log.Printf("internal error on %s %s: %s", ctx.Method(), ctx.Path(), msg)
+			return "internal error"
+		}
+	}
+	return msg
+}
+
 func HandleServiceError(ctx *fiber.Ctx, err error) error {
 	status := fiber.StatusBadRequest
 	msg := err.Error()
@@ -56,7 +84,7 @@ func HandleServiceError(ctx *fiber.Ctx, err error) error {
 	case strings.Contains(msg, "not found"):
 		status = fiber.StatusNotFound
 	}
-	return ctx.Status(status).JSON(authdto.ErrorResponse{Message: msg})
+	return ctx.Status(status).JSON(authdto.ErrorResponse{Message: safeErrorMessage(ctx, msg)})
 }
 
 func BuildMediaURL(objectName, bucket string, getURL func(string, string) string) string {

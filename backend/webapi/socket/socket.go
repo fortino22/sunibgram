@@ -51,13 +51,27 @@ func Mount(app *fiber.App, hub sockethubsvciface.IHub, roomService chatroomsvcif
 		if _, err := authenticateSocket(c, sessionCache); err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": err.Error()})
 		}
+		// Echo the chosen subprotocol back so the browser handshake succeeds
+		// when the client passed the JWT via Sec-WebSocket-Protocol.
+		if proto, _ := subprotocolToken(c.Get("Sec-WebSocket-Protocol")); proto != "" {
+			c.Set("Sec-WebSocket-Protocol", subprotocolName)
+		}
 		return c.Next()
 	})
 
 	app.Get("/ws", fibersocketio.New(func(kws *fibersocketio.Websocket) {
-		// Re-authenticate from the query token; kws.Locals may not carry Fiber context
-		// locals set by the middleware across the WebSocket upgrade boundary.
-		tokenStr := kws.Conn.Query("token")
+		// Re-authenticate from connection-scoped state; kws.Locals may not
+		// carry Fiber context locals set by middleware across the WebSocket
+		// upgrade boundary. Prefer Sec-WebSocket-Protocol; fall back to query
+		// (legacy). Query path remains for backward compatibility but should
+		// be retired once clients migrate.
+		var tokenStr string
+		if _, token := subprotocolToken(kws.Conn.Headers("Sec-WebSocket-Protocol")); token != "" {
+			tokenStr = token
+		}
+		if tokenStr == "" {
+			tokenStr = kws.Conn.Query("token")
+		}
 		if tokenStr == "" {
 			tokenStr = kws.Conn.Query("access_token")
 		}
@@ -72,8 +86,42 @@ func Mount(app *fiber.App, hub sockethubsvciface.IHub, roomService chatroomsvcif
 	}))
 }
 
+// subprotocolName is the WebSocket subprotocol the server announces to
+// clients sending the access token via Sec-WebSocket-Protocol. The browser
+// API only allows the subprotocol slot for arbitrary handshake-time strings,
+// so clients send two values: ["sunibgram.access.v1", "<jwt>"]. Server picks
+// the recognized one back, satisfying the RFC 6455 handshake.
+const subprotocolName = "sunibgram.access.v1"
+
+// subprotocolToken parses a Sec-WebSocket-Protocol header (comma-separated)
+// and returns (selectedProtocol, token). Returns empty strings if the header
+// does not advertise our subprotocol or no token follows it.
+func subprotocolToken(header string) (string, string) {
+	if header == "" {
+		return "", ""
+	}
+	parts := strings.Split(header, ",")
+	var sawProto bool
+	for _, raw := range parts {
+		p := strings.TrimSpace(raw)
+		if p == subprotocolName {
+			sawProto = true
+			continue
+		}
+		if sawProto && p != "" {
+			return subprotocolName, p
+		}
+	}
+	return "", ""
+}
+
 func authenticateSocket(c *fiber.Ctx, sessionCache *cache.Cache) (uint, error) {
 	tokenStr := bearerToken(c.Get("Authorization"))
+	if tokenStr == "" {
+		if _, token := subprotocolToken(c.Get("Sec-WebSocket-Protocol")); token != "" {
+			tokenStr = token
+		}
+	}
 	if tokenStr == "" {
 		tokenStr = c.Query("token")
 	}
