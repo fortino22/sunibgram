@@ -102,7 +102,7 @@ func AutoMigrate(db *gorm.DB) {
 		}
 	}
 
-	db.Exec("CREATE INDEX IF NOT EXISTS idx_threads_feed_score ON threads(feed_score DESC) WHERE created_at > NOW() - INTERVAL '7 days'")
+	db.Exec("CREATE INDEX IF NOT EXISTS idx_threads_feed_score ON threads(feed_score DESC)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_user_rel_follower ON user_relationships(follower_id)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_threads_created_at ON threads(created_at DESC)")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_threads_user_type ON threads(user_id, type)")
@@ -294,9 +294,6 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS banner_bucket")
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS banner_bucket")
 	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS attachment_bucket")
-	db.Exec("ALTER TABLE explores DROP COLUMN IF EXISTS avatar_bucket")
-	db.Exec("ALTER TABLE community_discovers DROP COLUMN IF EXISTS avatar_bucket")
-	db.Exec("ALTER TABLE community_discovers DROP COLUMN IF EXISTS banner_bucket")
 
 	db.Exec("ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)")
 	migrateChatEncryption(db)
