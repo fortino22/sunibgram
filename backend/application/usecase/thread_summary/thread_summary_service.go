@@ -15,7 +15,7 @@ import (
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
-	"github.com/sunibgram/infrastructure/ollama"
+	"github.com/sunibgram/infrastructure/openai"
 )
 
 const threadSummaryTTL = time.Hour
@@ -25,19 +25,19 @@ var ErrThreadSummaryNotReady = errors.New("thread summary is being generated")
 type ThreadSummaryService struct {
 	threadRepo   threadrepoiface.IThreadRepository
 	cacheRepo    cacherepoiface.ICacheRepository
-	ollamaClient *ollama.Client
+	openaiClient *openai.Client
 	group        singleflight.Group
 }
 
 func NewThreadSummaryService(
 	threadRepo threadrepoiface.IThreadRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
-	ollamaClient *ollama.Client,
+	openaiClient *openai.Client,
 ) threadsummarysvciface.IThreadSummaryService {
 	return &ThreadSummaryService{
 		threadRepo:   threadRepo,
 		cacheRepo:    cacheRepo,
-		ollamaClient: ollamaClient,
+		openaiClient: openaiClient,
 	}
 }
 
@@ -100,7 +100,7 @@ func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uin
 	)
 
 	var buf strings.Builder
-	if err := s.ollamaClient.StreamGenerate(ctx, prompt, &buf); err != nil {
+	if err := s.openaiClient.StreamGenerate(ctx, prompt, &buf); err != nil {
 		return "", err
 	}
 

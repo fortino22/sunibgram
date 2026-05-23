@@ -6,12 +6,15 @@ require (
 	github.com/gofiber/contrib/socketio v1.1.6
 	github.com/gofiber/contrib/websocket v1.3.4
 	github.com/gofiber/fiber/v2 v2.52.6
+	github.com/gofiber/helmet/v2 v2.2.26
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/midtrans/midtrans-go v1.3.8
 	github.com/minio/minio-go/v7 v7.0.80
+	github.com/openai/openai-go v1.12.0
 	github.com/redis/go-redis/v9 v9.19.0
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.32.0
+	golang.org/x/sync v0.10.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
 )
@@ -38,12 +41,15 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20240704082632-aef3928b8a38 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.56.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )

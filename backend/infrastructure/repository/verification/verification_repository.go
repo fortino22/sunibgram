@@ -52,3 +52,11 @@ func (r *VerificationRepository) MarkUsed(id uint) error {
 func (r *VerificationRepository) DeleteByEmailAndType(email string, t verificationcodemodel.VerificationType) error {
 	return r.writeDB.Where("email = ? AND type = ?", email, t).Delete(&verificationcodemodel.VerificationCode{}).Error
 }
+
+// PurgeExpiredOlderThan hard-deletes verification rows whose expires_at fell
+// before cutoff. OTPs are unusable past expires_at; the row only existed for
+// audit/idempotency. Caller passes now - retention_window.
+func (r *VerificationRepository) PurgeExpiredOlderThan(cutoff time.Time) (int64, error) {
+	res := r.writeDB.Where("expires_at < ?", cutoff).Delete(&verificationcodemodel.VerificationCode{})
+	return res.RowsAffected, res.Error
+}

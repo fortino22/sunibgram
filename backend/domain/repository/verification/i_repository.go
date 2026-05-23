@@ -1,6 +1,8 @@
 package verificationrepoiface
 
 import (
+	"time"
+
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
 )
 
@@ -10,4 +12,5 @@ type IVerificationRepository interface {
 	FindVerifiedByEmailAndType(email string, t verificationcodemodel.VerificationType) (*verificationcodemodel.VerificationCode, error)
 	MarkUsed(id uint) error
 	DeleteByEmailAndType(email string, t verificationcodemodel.VerificationType) error
+	PurgeExpiredOlderThan(cutoff time.Time) (int64, error)
 }

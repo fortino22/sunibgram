@@ -143,8 +143,8 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 		return errors.New("old password is incorrect")
 	}
 
-	if len(newPassword) < 6 {
-		return errors.New("new password must be at least 6 characters")
+	if err := usermodel.ValidatePassword(newPassword); err != nil {
+		return err
 	}
 
 	if oldPassword == newPassword {
@@ -168,8 +168,8 @@ func (s *AuthService) ForgotPassword(email, newPassword string) error {
 		return errors.New("otp not verified or expired, please verify your otp first")
 	}
 
-	if len(newPassword) < 6 {
-		return errors.New("new password must be at least 6 characters")
+	if err := usermodel.ValidatePassword(newPassword); err != nil {
+		return err
 	}
 
 	user, err := s.userRepo.FindByEmail(email)

@@ -169,3 +169,14 @@ func (s *VerificationService) VerifyCode(email, code string, t verificationcodem
 
 	return s.verificationRepo.MarkUsed(record.ID)
 }
+
+// otpRetentionWindow keeps rows for one week past their expiry so support can
+// audit recent OTP send/verify activity if needed. Anything older is purged.
+const otpRetentionWindow = 7 * 24 * time.Hour
+
+// PurgeExpiredCodes deletes verification rows whose expires_at fell more than
+// otpRetentionWindow in the past. Safe to call repeatedly; idempotent.
+func (s *VerificationService) PurgeExpiredCodes() (int64, error) {
+	cutoff := time.Now().Add(-otpRetentionWindow)
+	return s.verificationRepo.PurgeExpiredOlderThan(cutoff)
+}

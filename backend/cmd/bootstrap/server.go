@@ -3,14 +3,18 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/helmet/v2"
 
 	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
+	verificationsvciface "github.com/sunibgram/domain/service/verification"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/scheduler"
 	"github.com/sunibgram/webapi/router"
@@ -23,10 +27,14 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          trustedProxies(),
 		ProxyHeader:             fiber.HeaderXForwardedFor,
+		ReadTimeout:             15 * time.Second,
+		WriteTimeout:            30 * time.Second,
+		IdleTimeout:             60 * time.Second,
 	})
+	app.Use(helmet.New())
 	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:3000",
+		AllowOrigins:     corsAllowOrigins(),
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
 		AllowCredentials: true,
@@ -34,6 +42,20 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 	webapisocket.Mount(app, ext.SocketHub, svcs.ChatRoom, ctrls.NotificationHandler, c)
 	registerRoutes(app, ctrls, c)
 	return app
+}
+
+
+func corsAllowOrigins() string {
+	raw := strings.TrimSpace(os.Getenv("CORS_ALLOW_ORIGINS"))
+	if raw == "" {
+		log.Fatal("CORS_ALLOW_ORIGINS must be set (comma-separated list of allowed origins)")
+	}
+	return raw
+}
+
+
+func StartVerificationCodePurge(svc verificationsvciface.IVerificationService) {
+	go scheduler.RunVerificationCodePurge(context.Background(), svc)
 }
 
 func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
