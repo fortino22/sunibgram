@@ -20,7 +20,7 @@ import (
 
 const (
 	threadSummaryTTL          time.Duration = 0
-	threadSummaryReplyTrigger               = 10
+	threadSummaryReplyTrigger               = 20
 )
 
 var ErrThreadSummaryNotReady = errors.New("thread summary is being generated")
@@ -149,5 +149,4 @@ func threadSummaryReplyCountKey(threadID uint) string {
 	return fmt.Sprintf("thread:summary:replycount:%d", threadID)
 }
 
-// satisfy io.Writer for strings.Builder (already implemented, just alias)
 var _ io.Writer = (*strings.Builder)(nil)

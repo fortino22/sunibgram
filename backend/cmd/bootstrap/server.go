@@ -93,6 +93,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.Violation,
 		ctrls.Report,
 		ctrls.Faculty,
+		ctrls.Feedback,
 		ctrls.Order,
 		ctrls.PremiumSubscription,
 		ctrls.DevSubscription,

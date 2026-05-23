@@ -21,6 +21,7 @@ import (
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
 	authsvciface "github.com/sunibgram/domain/service/auth"
+	verificationuc "github.com/sunibgram/application/usecase/verification"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
@@ -228,7 +229,7 @@ func (s *AuthService) LoginWithOTP(email, password, otp string) (usermodel.Token
 		s.otpFailLimiter.Fail(email)
 		return usermodel.TokenPair{}, errors.New("otp has expired")
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(record.Code), []byte(otp)); err != nil {
+	if !verificationuc.VerifyOTPHash(record.Code, otp) {
 		s.otpFailLimiter.Fail(email)
 		return usermodel.TokenPair{}, errors.New("invalid otp")
 	}

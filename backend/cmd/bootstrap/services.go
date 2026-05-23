@@ -20,6 +20,7 @@ import (
 	eventthreadpinuc "github.com/sunibgram/application/usecase/event_thread_pin"
 	exploreuc "github.com/sunibgram/application/usecase/explore"
 	facultyuc "github.com/sunibgram/application/usecase/faculty"
+	feedbackuc "github.com/sunibgram/application/usecase/feedback"
 	followuc "github.com/sunibgram/application/usecase/follow"
 	hashtaguc "github.com/sunibgram/application/usecase/hashtag"
 	likeuc "github.com/sunibgram/application/usecase/like"
@@ -58,6 +59,7 @@ import (
 	eventthreadpinsvciface "github.com/sunibgram/domain/service/event_thread_pin"
 	exploresvciface "github.com/sunibgram/domain/service/explore"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
+	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
 	followsvciface "github.com/sunibgram/domain/service/follow"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
@@ -110,6 +112,7 @@ type Services struct {
 	EventPin             eventpinsvciface.IEventPinService
 	EventParticipant     eventparticipantsvciface.IEventParticipantService
 	Faculty              facultysvciface.IFacultyService
+	Feedback             feedbacksvciface.IFeedbackService
 	Order                ordersvciface.IOrderService
 	PremiumSubscription  premiumsubscriptionsvciface.IPremiumSubscriptionService
 	ChatRoom             chatroomsvciface.IChatRoomService
@@ -161,6 +164,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		EventPin:             eventpinuc.NewEventPinService(repos.EventPin, repos.Event),
 		EventParticipant:     eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event),
 		Faculty:              facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
+		Feedback:             feedbackuc.NewFeedbackService(repos.Feedback),
 		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
 		PremiumSubscription:  premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
 		ChatRoom:             chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage),

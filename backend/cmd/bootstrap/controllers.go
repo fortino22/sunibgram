@@ -19,6 +19,7 @@ import (
 	eventthreadpinctrl "github.com/sunibgram/webapi/controller/event_thread_pin"
 	explorectrl "github.com/sunibgram/webapi/controller/explore"
 	facultyctrl "github.com/sunibgram/webapi/controller/faculty"
+	feedbackctrl "github.com/sunibgram/webapi/controller/feedback"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
@@ -73,6 +74,7 @@ type Controllers struct {
 	EventPin            *eventpinctrl.EventPinController
 	EventParticipant    *eventparticipantctrl.EventParticipantController
 	Faculty             *facultyctrl.FacultyController
+	Feedback            *feedbackctrl.FeedbackController
 	Order               *orderctrl.OrderController
 	PremiumSubscription *premiumsubscriptionctrl.PremiumSubscriptionController
 	DevSubscription     *premiumsubscriptionctrl.DevSubscriptionController
@@ -117,6 +119,7 @@ func NewControllers(svcs *Services, ext *External) *Controllers {
 		EventPin:            eventpinctrl.NewEventPinController(svcs.EventPin, svcs.Event),
 		EventParticipant:    eventparticipantctrl.NewEventParticipantController(svcs.EventParticipant, svcs.Event),
 		Faculty:             facultyctrl.NewFacultyController(svcs.Faculty),
+		Feedback:            feedbackctrl.NewFeedbackController(svcs.Feedback),
 		Order:               orderctrl.NewOrderController(svcs.Order),
 		PremiumSubscription: premiumsubscriptionctrl.NewPremiumSubscriptionController(svcs.PremiumSubscription),
 		DevSubscription:     premiumsubscriptionctrl.NewDevSubscriptionController(svcs.PremiumSubscription),

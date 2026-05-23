@@ -49,9 +49,10 @@ func hashOTP(plain string) string {
 	return otpHashV2Prefix + hex.EncodeToString(h.Sum(nil))
 }
 
-// verifyOTPHash dispatches by hash prefix: v2 → HMAC compare in constant
-// time; anything else → bcrypt compare (legacy in-flight codes).
-func verifyOTPHash(stored, plain string) bool {
+// VerifyOTPHash dispatches by hash prefix: v2 → HMAC compare in constant
+// time; anything else → bcrypt compare (legacy in-flight codes). Exported so
+// the auth service can verify login OTPs without duplicating the dispatch.
+func VerifyOTPHash(stored, plain string) bool {
 	if strings.HasPrefix(stored, otpHashV2Prefix) {
 		want, err := hex.DecodeString(strings.TrimPrefix(stored, otpHashV2Prefix))
 		if err != nil {
@@ -163,7 +164,7 @@ func (s *VerificationService) VerifyCode(email, code string, t verificationcodem
 		return errors.New("code has expired")
 	}
 
-	if !verifyOTPHash(record.Code, code) {
+	if !VerifyOTPHash(record.Code, code) {
 		return errors.New("invalid code")
 	}
 
