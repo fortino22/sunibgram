@@ -49,6 +49,15 @@ func (r *CacheRepository) DeleteByPatterns(ctx context.Context, patterns ...stri
 	return r.cache.DeleteByPatterns(ctx, patterns...)
 }
 
+func (r *CacheRepository) IncrWithWindow(ctx context.Context, key string, window time.Duration) (int64, error) {
+	count, _, err := r.cache.IncrWithWindow(ctx, key, window)
+	return count, err
+}
+
+func (r *CacheRepository) Incr(ctx context.Context, key string) (int64, error) {
+	return r.cache.Incr(ctx, key)
+}
+
 func (r *CacheRepository) RegisterCacheKey(ctx context.Context, tag, cacheKey string) error {
 	return r.cache.RegisterCacheKey(ctx, tag, cacheKey)
 }

@@ -248,6 +248,12 @@ func (c *Cache) Miss(err error) bool {
 	return err == redis.Nil
 }
 
+// Incr atomically increments a counter with no expiry. Returns post-increment
+// count. Use when counter must persist until explicitly deleted.
+func (c *Cache) Incr(ctx context.Context, key string) (int64, error) {
+	return c.client.Incr(ctx, key).Result()
+}
+
 // IncrWithWindow atomically increments a counter and ensures it expires after
 // the given window. Returns the post-increment count and remaining TTL on the
 // key. Use for sliding/rolling rate limits — first hit creates the key with

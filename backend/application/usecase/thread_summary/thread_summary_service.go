@@ -18,7 +18,10 @@ import (
 	"github.com/sunibgram/infrastructure/openai"
 )
 
-const threadSummaryTTL = time.Hour
+const (
+	threadSummaryTTL          time.Duration = 0
+	threadSummaryReplyTrigger               = 10
+)
 
 var ErrThreadSummaryNotReady = errors.New("thread summary is being generated")
 
@@ -109,7 +112,18 @@ func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uin
 }
 
 func (s *ThreadSummaryService) InvalidateCache(ctx context.Context, threadID uint) error {
-	return s.cacheRepo.Delete(ctx, threadSummaryKey(threadID))
+	return s.cacheRepo.Delete(ctx, threadSummaryKey(threadID), threadSummaryReplyCountKey(threadID))
+}
+
+func (s *ThreadSummaryService) RegisterReply(ctx context.Context, threadID uint) error {
+	count, err := s.cacheRepo.Incr(ctx, threadSummaryReplyCountKey(threadID))
+	if err != nil {
+		return err
+	}
+	if count < threadSummaryReplyTrigger {
+		return nil
+	}
+	return s.InvalidateCache(ctx, threadID)
 }
 
 func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]threadmodel.Thread, error) {
@@ -129,6 +143,10 @@ func (s *ThreadSummaryService) topReplies(threadID uint, limit int) ([]threadmod
 
 func threadSummaryKey(threadID uint) string {
 	return fmt.Sprintf("thread:summary:%d", threadID)
+}
+
+func threadSummaryReplyCountKey(threadID uint) string {
+	return fmt.Sprintf("thread:summary:replycount:%d", threadID)
 }
 
 // satisfy io.Writer for strings.Builder (already implemented, just alias)
