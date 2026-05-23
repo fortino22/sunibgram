@@ -1,0 +1,162 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-3
+  ECR_REGISTRY: 422661068405.dkr.ecr.ap-southeast-3.amazonaws.com
+  BACKEND_REPO: sunibgram-backend
+  FRONTEND_REPO: sunibgram-frontend
+  INSTANCE_ID: i-02b184ff7bc60f16f
+  ROLE_ARN: arn:aws:iam::422661068405:role/sunibgram-prod-gha-deployer
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  build-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+  build-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:${{ steps.meta.outputs.tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+  deploy:
+    needs: [build-backend, build-frontend]
+    if: |
+      always() &&
+      (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success') &&
+      needs.build-backend.result != 'failure' &&
+      needs.build-frontend.result != 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: SSM run deploy.sh
+        env:
+          BACKEND_TAG: ${{ needs.build-backend.outputs.tag }}
+          FRONTEND_TAG: ${{ needs.build-frontend.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          ENV_PAIRS=()
+          [ -n "$BACKEND_TAG" ]  && ENV_PAIRS+=("NEW_BACKEND_TAG=$BACKEND_TAG")
+          [ -n "$FRONTEND_TAG" ] && ENV_PAIRS+=("NEW_FRONTEND_TAG=$FRONTEND_TAG")
+
+          CMD="cd /opt/sunibgram-infra && git pull --ff-only && ${ENV_PAIRS[*]} bash scripts/deploy.sh"
+
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "gha deploy ${GITHUB_SHA::7}" \
+            --parameters "commands=[\"$CMD\"]" \
+            --query "Command.CommandId" --output text)
+
+          echo "command-id=$CMD_ID"
+
+          for i in $(seq 1 60); do
+            sleep 10
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" --output text 2>/dev/null || echo "Pending")
+            echo "status: $STATUS"
+            case "$STATUS" in
+              Success) exit 0 ;;
+              Failed|Cancelled|TimedOut)
+                aws ssm get-command-invocation \
+                  --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+                  --query "StandardErrorContent" --output text
+                exit 1 ;;
+            esac
+          done
+          echo "timed out waiting for SSM command"
+          exit 1
