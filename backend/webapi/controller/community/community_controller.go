@@ -58,7 +58,8 @@ func (c *CommunityController) Create(ctx *fiber.Ctx) error {
 		ctx.Context(), claims.UserID,
 		name, description, rules, categoryID, visibility,
 		banner,
-	); err != nil {
+	)
+	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
