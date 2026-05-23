@@ -25,7 +25,7 @@ type External struct {
 
 func NewExternal(c *cache.Cache) *External {
 	return &External{
-		Storage:   storageuc.NewStorageUsecase(storage.NewMinioClient()),
+		Storage:   storageuc.NewStorageUsecase(storage.NewS3Client()),
 		Email:     emailuc.NewEmailService(infraemail.NewSMTPClient(), c),
 		OpenAI:    openai.NewClient(),
 		SocketHub: infrasocket.NewHub(),

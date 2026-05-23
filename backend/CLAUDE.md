@@ -111,7 +111,7 @@ Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src
 
 **File upload** — endpoints accepting files use `ctx.FormValue` + `ctx.FormFile` (multipart). No-file endpoints use `ctx.BodyParser` (JSON).
 
-**Storage** — `storageuc.StorageUsecase` resolves bucket via `bucketWhitelist` in `application/usecase/storage/storage_service.go` → env var → MinIO. Policy (`public`/`private`) via `MINIO_POLICY_<BUCKET_UPPER>`. Buckets auto-created on first upload.
+**Storage** — `storageuc.StorageUsecase` resolves bucket via `bucketWhitelist` in `application/usecase/storage/storage_service.go` → env var → S3-compatible backend (`infrastructure/storage/s3_client.go`, package `storage`, factory `NewS3Client`). Same `minio-go/v7` SDK targets AWS S3 in prod and MinIO in local dev — only env differs. All config read from `S3_*` env vars only (no fallbacks). Policy (`public`/`private`) via `S3_POLICY_<BUCKET_UPPER>`. `S3_AUTO_CREATE_BUCKETS=true` (dev) lets the client `MakeBucket`+`SetBucketPolicy` on first upload; default `false` (prod buckets pre-provisioned via IaC, IAM lacks `s3:CreateBucket`). `S3_USE_IAM_ROLE=true` switches creds to EC2 IMDSv2 (no static keys). `S3_CDN_BASE_URL` (e.g. CloudFront domain) overrides public URL host in `GetURL`; presigned URLs always sign against S3 directly.
 
 **Auth** — JWT middleware at `webapi/middleware/auth.go`. Claims: `utils.Get(ctx)` from `webapi/utils/ctrl_helpers.go` → `Claims{UserID, Username, Email, RoleID, RoleName, SID}`.
 
@@ -151,14 +151,14 @@ else            → fiber.StatusBadRequest
 
 | Upload Type | Env Var | Bucket | Policy |
 |---|---|---|---|
-| `avatar` | `MINIO_BUCKET_AVATAR` | `sunibgram-avatar` | public |
-| `banner` | `MINIO_BUCKET_BANNER` | `sunibgram-banner` | public |
-| `post` | `MINIO_BUCKET_POST` | `sunibgram-post` | public |
-| `poll` | `MINIO_BUCKET_POLL` | `sunibgram-poll` | public |
-| `document` | `MINIO_BUCKET_DOCUMENT` | `sunibgram-document` | private |
-| `assignment` | `MINIO_BUCKET_ASSIGNMENT` | `sunibgram-assignment` | private |
-| `community_avatar` | `MINIO_BUCKET_COMMUNITY_AVATAR` | `sunibgram-community-avatar` | public |
-| `community_banner` | `MINIO_BUCKET_COMMUNITY_BANNER` | `sunibgram-community-banner` | public |
+| `avatar` | `S3_BUCKET_AVATAR` | `sunibgram-avatar` | public |
+| `banner` | `S3_BUCKET_BANNER` | `sunibgram-banner` | public |
+| `post` | `S3_BUCKET_POST` | `sunibgram-post` | public |
+| `poll` | `S3_BUCKET_POLL` | `sunibgram-poll` | public |
+| `document` | `S3_BUCKET_DOCUMENT` | `sunibgram-document` | private |
+| `assignment` | `S3_BUCKET_ASSIGNMENT` | `sunibgram-assignment` | private |
+| `community_avatar` | `S3_BUCKET_COMMUNITY_AVATAR` | `sunibgram-community-avatar` | public |
+| `community_banner` | `S3_BUCKET_COMMUNITY_BANNER` | `sunibgram-community-banner` | public |
 
 ---
 
