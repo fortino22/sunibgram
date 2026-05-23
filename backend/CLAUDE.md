@@ -117,10 +117,12 @@ Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src
 
 **Pagination** — services return `([]T, int64, error)`. Controllers wrap in `<m>dto.PaginatedXxxResponse{Data, Meta: threaddto.FeedMeta{Total, Page, Limit}}`.
 
-**For You feed ordering** — `FindForYouFeed` in `infrastructure/repository/thread/thread_repository_for_you.go` splits candidates into two bands by `created_at` age vs `forYouFreshWindow` (1h):
-- `fresh` (age < 1h) → sorted `created_at DESC`
-- `ranked` (age ≥ 1h) → sorted `feed_score DESC` + `shuffleWithinBands`
+**For You feed ordering** — `FindForYouFeed` in `infrastructure/repository/thread/thread_repository_for_you.go` splits candidates into two bands by `created_at` age vs `forYouFreshWindow` (15m):
+- `fresh` (age < 15m) → sorted `created_at DESC` → capped at `forYouFreshCap` (5); overflow spills into `ranked`
+- `ranked` (age ≥ 15m or fresh overflow) → sorted `feed_score DESC` + `shuffleWithinBands`
 - Final list = `[fresh..., ranked...]` → `forYouCandidateCap` (800) → `applyAuthorCap` (20/author)
+
+Source SQL (`findForYou{Own,Following,Community,Global}`) uses `forYouFreshFirstOrderSQL()` — `ORDER BY (created_at > NOW() - INTERVAL '<window>') DESC, feed_score DESC` — so fresh posts with `feed_score = 0` are not cut by the per-source `LIMIT 100`. Non-own fresh candidates get a floor of `forYouFreshFloor` (0.1) in `addCandidates` to clear the `forYouMinScore` (0.01) filter; own fresh candidates get floor `5.0`. Visibility predicates (community visibility, `is_private` author, follower / member joins) are unchanged — fresh-first only reorders, never widens the WHERE clause.
 
 `GET /threads/feed/new-count?since_id=<id>` (`CountNewSinceID`) uses strict `thread_id > since_id` — frontend must pass `Math.max(...visibleIDs)` not `data[0].id`, because fresh band sorts by `created_at` not by ID.
 
