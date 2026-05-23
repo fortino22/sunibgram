@@ -28,9 +28,7 @@ type Event struct {
 	StartTime            time.Time `gorm:"not null;index"`
 	EndTime              time.Time `gorm:"not null;index"`
 	BannerObjectName     string    `gorm:"type:varchar(500)"`
-	BannerBucket         string    `gorm:"type:varchar(100)"`
 	AttachmentObjectName string    `gorm:"type:varchar(500)"`
-	AttachmentBucket     string    `gorm:"type:varchar(100)"`
 	PDFs                 EventPDFs `gorm:"type:jsonb;default:'[]'"`
 	ParticipantCount     int       `gorm:"not null;default:0"`
 	ThreadCount          int       `gorm:"not null;default:0"`
@@ -62,7 +60,6 @@ var allowedEventAttachmentExts = map[string]bool{".pdf": true}
 
 type EventPDF struct {
 	ObjectName string `json:"object_name"`
-	Bucket     string `json:"bucket"`
 }
 
 type EventPDFs []EventPDF

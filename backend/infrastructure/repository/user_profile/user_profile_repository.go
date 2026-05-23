@@ -36,9 +36,7 @@ func (r *UserProfileRepository) Upsert(profile *userprofilemodel.UserProfile) er
 	if profile.ProfileID != 0 {
 		if err := r.writeDB.Model(profile).Updates(map[string]any{
 			"avatar_object_name": profile.AvatarObjectName,
-			"avatar_bucket":      profile.AvatarBucket,
 			"banner_object_name": profile.BannerObjectName,
-			"banner_bucket":      profile.BannerBucket,
 			"bio":                profile.Bio,
 			"gender":             profile.Gender,
 			"birthday_date":      profile.BirthdayDate,
@@ -59,7 +57,7 @@ func (r *UserProfileRepository) Upsert(profile *userprofilemodel.UserProfile) er
 	}
 	if err := r.writeDB.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "user_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"avatar_object_name", "avatar_bucket", "banner_object_name", "banner_bucket", "bio", "gender", "birthday_date", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"avatar_object_name", "banner_object_name", "bio", "gender", "birthday_date", "updated_at"}),
 	}).Create(profile).Error; err != nil {
 		return err
 	}

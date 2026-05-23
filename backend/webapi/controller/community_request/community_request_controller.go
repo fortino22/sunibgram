@@ -177,7 +177,7 @@ func (c *CommunityRequestController) requestAvatarMap(requests []communityreques
 	}
 	avatarMap := make(map[uint]string, len(profiles))
 	for _, p := range profiles {
-		avatarMap[p.UserID] = ctrlshared.BuildMediaURL(p.AvatarObjectName, p.AvatarBucket, c.profileService.GetURL)
+		avatarMap[p.UserID] = ctrlshared.BuildMediaURL(p.AvatarObjectName, c.profileService.GetURL)
 	}
 	return avatarMap, nil
 }

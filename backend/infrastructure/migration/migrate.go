@@ -138,13 +138,11 @@ func AutoMigrate(db *gorm.DB) {
 	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS week_like_count INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE hashtags ADD COLUMN IF NOT EXISTS week_repost_count INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_object_name VARCHAR(500)")
-	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS banner_bucket VARCHAR(100)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS user_id INTEGER NOT NULL DEFAULT 0")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS type VARCHAR(20) NOT NULL DEFAULT 'unofficial'")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'pending'")
 	db.Exec("ALTER TABLE events ALTER COLUMN status SET DEFAULT 'pending'")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS attachment_object_name VARCHAR(500)")
-	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS attachment_bucket VARCHAR(100)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs JSONB NOT NULL DEFAULT '[]'::jsonb")
 	db.Exec("CREATE INDEX IF NOT EXISTS idx_events_status ON events(status)")
 	db.Exec("ALTER TABLE events ADD COLUMN IF NOT EXISTS participant_count INTEGER NOT NULL DEFAULT 0")
@@ -284,6 +282,21 @@ func AutoMigrate(db *gorm.DB) {
 			END IF;
 		END $$;
 	`)
+
+	// Drop legacy *_bucket columns (refactor to 2-bucket model — bucket is no
+	// longer stored; it's derived from the object key prefix).
+	db.Exec("ALTER TABLE user_profiles DROP COLUMN IF EXISTS avatar_bucket")
+	db.Exec("ALTER TABLE user_profiles DROP COLUMN IF EXISTS banner_bucket")
+	db.Exec("ALTER TABLE thread_polls DROP COLUMN IF EXISTS bucket")
+	db.Exec("ALTER TABLE thread_poll_options DROP COLUMN IF EXISTS bucket")
+	db.Exec("ALTER TABLE thread_media DROP COLUMN IF EXISTS bucket")
+	db.Exec("ALTER TABLE chat_media DROP COLUMN IF EXISTS bucket")
+	db.Exec("ALTER TABLE communities DROP COLUMN IF EXISTS banner_bucket")
+	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS banner_bucket")
+	db.Exec("ALTER TABLE events DROP COLUMN IF EXISTS attachment_bucket")
+	db.Exec("ALTER TABLE explores DROP COLUMN IF EXISTS avatar_bucket")
+	db.Exec("ALTER TABLE community_discovers DROP COLUMN IF EXISTS avatar_bucket")
+	db.Exec("ALTER TABLE community_discovers DROP COLUMN IF EXISTS banner_bucket")
 
 	db.Exec("ALTER TABLE chat_rooms ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(500)")
 	migrateChatEncryption(db)

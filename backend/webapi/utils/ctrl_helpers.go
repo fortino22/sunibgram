@@ -86,9 +86,9 @@ func HandleServiceError(ctx *fiber.Ctx, err error) error {
 	return ctx.Status(status).JSON(authdto.ErrorResponse{Message: err.Error()})
 }
 
-func BuildMediaURL(objectName, bucket string, getURL func(string, string) string) string {
+func BuildMediaURL(objectName string, getURL func(string) string) string {
 	if objectName == "" {
 		return ""
 	}
-	return getURL(bucket, objectName)
+	return getURL(objectName)
 }

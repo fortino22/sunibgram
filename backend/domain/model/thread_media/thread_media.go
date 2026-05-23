@@ -60,7 +60,6 @@ type ThreadMedia struct {
 	MediaID    uint   `gorm:"primaryKey;autoIncrement"`
 	ThreadID   uint   `gorm:"not null;index"`
 	ObjectName string `gorm:"not null"`
-	Bucket     string `gorm:"not null"`
 	CreatedAt  time.Time
 }
 

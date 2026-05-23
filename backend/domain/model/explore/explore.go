@@ -6,7 +6,6 @@ type ExploreUserResult struct {
 	Username         string
 	IsPremium        bool
 	AvatarObjectName string
-	AvatarBucket     string
 	IsFollowing      bool
 }
 

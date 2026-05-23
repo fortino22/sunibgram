@@ -111,7 +111,7 @@ Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src
 
 **File upload** — endpoints accepting files use `ctx.FormValue` + `ctx.FormFile` (multipart). No-file endpoints use `ctx.BodyParser` (JSON).
 
-**Storage** — `storageuc.StorageUsecase` resolves bucket via `bucketWhitelist` in `application/usecase/storage/storage_service.go` → env var → S3-compatible backend (`infrastructure/storage/s3_client.go`, package `storage`, factory `NewS3Client`). Same `minio-go/v7` SDK targets AWS S3 in prod and MinIO in local dev — only env differs. All config read from `S3_*` env vars only (no fallbacks). Policy (`public`/`private`) via `S3_POLICY_<BUCKET_UPPER>`. `S3_AUTO_CREATE_BUCKETS=true` (dev) lets the client `MakeBucket`+`SetBucketPolicy` on first upload; default `false` (prod buckets pre-provisioned via IaC, IAM lacks `s3:CreateBucket`). `S3_USE_IAM_ROLE=true` switches creds to EC2 IMDSv2 (no static keys). `S3_CDN_BASE_URL` (e.g. CloudFront domain) overrides public URL host in `GetURL`; presigned URLs always sign against S3 directly.
+**Storage** — Two-bucket model: `media` (public, CloudFront-fronted) and `private` (presigned only). The bucket is derived from the S3 key prefix at the storage-layer (`infrastructure/storage/s3_client.go`); it is **not** stored anywhere outside that file. Upload type → prefix mapping lives in `bucketPrefixMap` in `application/usecase/storage/storage_service.go`. Storage interface (`domain/service/storage/i_service.go`) takes only `objectName` (e.g. `"avatar/<uuid>.jpg"`, `"chat/<uuid>.mp4"`) — no bucket param. The S3 client routes `chat/*` and `document-event/*` keys to the private bucket; everything else goes to the media bucket. Credentials resolve via AWS default chain: env vars → shared config/credentials file (incl. SSO via `AWS_PROFILE`) → EC2/ECS task role. **No static keys in env.** Local dev: `aws sso login --profile sunibgram-dev` + `AWS_PROFILE=sunibgram-dev`. Prod: attach IAM role to task; unset `AWS_PROFILE`. Buckets pre-provisioned via the separate `sunibgram-infra` Terraform repo (private, OAC-fronted). `S3_CDN_BASE_URL` (CloudFront domain) is the host used by `GetURL` for media-bucket keys; URL format = `<cdn>/<object>`. Presigned URLs (`GeneratePresignedURL`) sign against the S3 regional endpoint via the SDK presigner — used for sensitive content (chat, document_event).
 
 **Auth** — JWT middleware at `webapi/middleware/auth.go`. Claims: `utils.Get(ctx)` from `webapi/utils/ctrl_helpers.go` → `Claims{UserID, Username, Email, RoleID, RoleName, SID}`.
 
@@ -149,16 +149,26 @@ else            → fiber.StatusBadRequest
 
 ## Storage Buckets
 
-| Upload Type | Env Var | Bucket | Policy |
+Two buckets only — pre-provisioned via Terraform in the separate `sunibgram-infra` Terraform repo (private, OAC-fronted CloudFront for media; private S3-only for sensitive). Source of truth: `bucketPrefixMap` in `application/usecase/storage/storage_service.go`. The S3 client (`infrastructure/storage/s3_client.go`) routes keys with `chat/` or `document-event/` prefix to the private bucket; everything else goes to the media bucket. **Bucket is never stored in DB** — it's derived from the object key prefix.
+
+| Bucket | Env Var | Bucket (dev) | Access |
 |---|---|---|---|
-| `avatar` | `S3_BUCKET_AVATAR` | `sunibgram-avatar` | public |
-| `banner` | `S3_BUCKET_BANNER` | `sunibgram-banner` | public |
-| `post` | `S3_BUCKET_POST` | `sunibgram-post` | public |
-| `poll` | `S3_BUCKET_POLL` | `sunibgram-poll` | public |
-| `document` | `S3_BUCKET_DOCUMENT` | `sunibgram-document` | private |
-| `assignment` | `S3_BUCKET_ASSIGNMENT` | `sunibgram-assignment` | private |
-| `community_avatar` | `S3_BUCKET_COMMUNITY_AVATAR` | `sunibgram-community-avatar` | public |
-| `community_banner` | `S3_BUCKET_COMMUNITY_BANNER` | `sunibgram-community-banner` | public |
+| media | `S3_BUCKET_MEDIA` | `sunibgram-media-dev` | CloudFront (`S3_CDN_BASE_URL`) |
+| private | `S3_BUCKET_PRIVATE` | `sunibgram-private-dev` | S3 presigned only |
+
+| Upload Type | Key Prefix | Target Bucket |
+|---|---|---|
+| `avatar` | `avatar/` | media |
+| `banner` | `banner/` | media |
+| `post` | `post/` | media |
+| `poll` | `poll/` | media |
+| `community_banner` | `community-banner/` | media |
+| `event_banner` | `event-banner/` | media |
+| `group_avatar` | `group-avatar/` | media |
+| `chat` | `chat/` | private (presigned) |
+| `document_event` | `document-event/` | private (presigned) |
+
+CloudFront single distribution fronts the media bucket only (no viewer-request function needed — keys map 1:1). `GetURL` builds `<cdn>/<object>`. `GeneratePresignedURL` signs against the S3 regional endpoint for keys in the private bucket.
 
 ---
 

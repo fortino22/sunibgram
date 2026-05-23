@@ -195,14 +195,12 @@ func (r *ChatRoomRepository) FindMembers(roomID uint) ([]chatroomrepoiface.ChatR
 		Name             string
 		FacultyName      string
 		AvatarObjectName string
-		AvatarBucket     string
 	}
 	var rows []row
 	err := r.readDB.Raw(`
 		SELECT u.user_id, u.user_name AS username, u.name,
 		       COALESCE(f.faculty_name, '') AS faculty_name,
-		       COALESCE(up.avatar_object_name, '') AS avatar_object_name,
-		       COALESCE(up.avatar_bucket, '') AS avatar_bucket
+		       COALESCE(up.avatar_object_name, '') AS avatar_object_name
 		FROM chat_room_members crm
 		JOIN users u ON u.user_id = crm.user_id
 		LEFT JOIN user_profiles up ON up.user_id = u.user_id
@@ -223,7 +221,6 @@ func (r *ChatRoomRepository) FindMembers(roomID uint) ([]chatroomrepoiface.ChatR
 			Name:             row.Name,
 			FacultyName:      row.FacultyName,
 			AvatarObjectName: row.AvatarObjectName,
-			AvatarBucket:     row.AvatarBucket,
 		}
 	}
 	return result, nil
@@ -240,14 +237,12 @@ func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID u
 		Name             string
 		FacultyName      string
 		AvatarObjectName string
-		AvatarBucket     string
 	}
 	var rows []row
 	err := r.readDB.Raw(`
 		SELECT crm.room_id, u.user_id, u.user_name AS username, u.name,
 		       COALESCE(f.faculty_name, '') AS faculty_name,
-		       COALESCE(up.avatar_object_name, '') AS avatar_object_name,
-		       COALESCE(up.avatar_bucket, '') AS avatar_bucket
+		       COALESCE(up.avatar_object_name, '') AS avatar_object_name
 		FROM chat_room_members crm
 		JOIN users u ON u.user_id = crm.user_id
 		LEFT JOIN user_faculties uf ON uf.user_id = u.user_id
@@ -267,7 +262,6 @@ func (r *ChatRoomRepository) FindOtherMemberInfo(roomIDs []uint, excludeUserID u
 			Name:             r.Name,
 			FacultyName:      r.FacultyName,
 			AvatarObjectName: r.AvatarObjectName,
-			AvatarBucket:     r.AvatarBucket,
 		}
 	}
 	return result, nil

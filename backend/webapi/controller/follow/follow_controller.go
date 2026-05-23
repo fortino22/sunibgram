@@ -185,7 +185,7 @@ func (c *FollowController) toFollowUserResponses(users []usermodel.User, profile
 		avatarURL := ""
 		profile, ok := profileMap[user.UserID]
 		if ok {
-			avatarURL = ctrlshared.BuildMediaURL(profile.AvatarObjectName, profile.AvatarBucket, c.profileService.GetURL)
+			avatarURL = ctrlshared.BuildMediaURL(profile.AvatarObjectName, c.profileService.GetURL)
 		}
 		data[i] = followdto.FollowUserResponse{
 			UserID:    user.UserID,

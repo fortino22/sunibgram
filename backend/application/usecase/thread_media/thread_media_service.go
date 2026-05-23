@@ -41,12 +41,12 @@ func (s *ThreadMediaService) Upload(ctx context.Context, threadID, userID uint, 
 		return nil, errors.New("forbidden")
 	}
 
-	bucket, err := s.storage.ResolveBucket("post")
+	_, prefix, err := s.storage.ResolveBucketAndPrefix("post")
 	if err != nil {
 		return nil, err
 	}
 
-	media, err := s.uploadFiles(ctx, threadID, bucket, files)
+	media, err := s.uploadFiles(ctx, threadID, prefix, files)
 	if err != nil {
 		return nil, err
 	}
@@ -73,16 +73,16 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 
 	existing, _ := s.mediaRepo.FindByThreadID(threadID)
 	for _, m := range existing {
-		_ = s.storage.Delete(ctx, m.Bucket, m.ObjectName)
+		_ = s.storage.Delete(ctx, m.ObjectName)
 	}
 	_ = s.mediaRepo.DeleteByThreadID(threadID)
 
-	bucket, err := s.storage.ResolveBucket("post")
+	_, prefix, err := s.storage.ResolveBucketAndPrefix("post")
 	if err != nil {
 		return err
 	}
 
-	media, err := s.uploadFiles(ctx, threadID, bucket, files)
+	media, err := s.uploadFiles(ctx, threadID, prefix, files)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 			return err
 		}
 		for _, m := range deleted {
-			_ = s.storage.Delete(ctx, m.Bucket, m.ObjectName)
+			_ = s.storage.Delete(ctx, m.ObjectName)
 		}
 	}
 
@@ -144,12 +144,12 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 		return nil
 	}
 
-	bucket, err := s.storage.ResolveBucket("post")
+	_, prefix, err := s.storage.ResolveBucketAndPrefix("post")
 	if err != nil {
 		return err
 	}
 
-	media, err := s.uploadFiles(ctx, threadID, bucket, files)
+	media, err := s.uploadFiles(ctx, threadID, prefix, files)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 	return s.mediaRepo.SaveAll(media)
 }
 
-func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, bucket string, files []*multipart.FileHeader) ([]threadmediamodel.ThreadMedia, error) {
+func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, prefix string, files []*multipart.FileHeader) ([]threadmediamodel.ThreadMedia, error) {
 	for _, header := range files {
 		if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxPostUploadSize); err != nil {
 			return nil, err
@@ -189,7 +189,7 @@ func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, buc
 				return
 			}
 
-			objectName, err := s.storage.Upload(ctx, bucket, file, header)
+			objectName, err := s.storage.Upload(ctx, prefix, file, header)
 			if err != nil {
 				errCh <- err
 				return
@@ -198,7 +198,6 @@ func (s *ThreadMediaService) uploadFiles(ctx context.Context, threadID uint, buc
 			media[i] = threadmediamodel.ThreadMedia{
 				ThreadID:   threadID,
 				ObjectName: objectName,
-				Bucket:     bucket,
 			}
 		}()
 	}
@@ -219,7 +218,7 @@ func (s *ThreadMediaService) DeleteByThread(ctx context.Context, threadID uint) 
 		return err
 	}
 	for _, m := range media {
-		_ = s.storage.Delete(ctx, m.Bucket, m.ObjectName)
+		_ = s.storage.Delete(ctx, m.ObjectName)
 	}
 	return s.mediaRepo.DeleteByThreadID(threadID)
 }
@@ -261,11 +260,11 @@ func (s *ThreadMediaService) Delete(ctx context.Context, threadID, userID uint, 
 		return err
 	}
 	for _, m := range deleted {
-		_ = s.storage.Delete(ctx, m.Bucket, m.ObjectName)
+		_ = s.storage.Delete(ctx, m.ObjectName)
 	}
 	return nil
 }
 
-func (s *ThreadMediaService) GetURL(bucket, objectName string) string {
-	return s.storage.GetURL(bucket, objectName)
+func (s *ThreadMediaService) GetURL(objectName string) string {
+	return s.storage.GetURL(objectName)
 }

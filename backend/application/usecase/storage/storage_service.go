@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,16 +13,29 @@ import (
 	storagesvciface "github.com/sunibgram/domain/service/storage"
 )
 
-var bucketWhitelist = map[string]string{
-	"avatar":           "S3_BUCKET_AVATAR",
-	"banner":           "S3_BUCKET_BANNER",
-	"post":             "S3_BUCKET_POST",
-	"poll":             "S3_BUCKET_POLL",
-	"chat":             "S3_BUCKET_CHAT",
-	"community_banner": "S3_BUCKET_COMMUNITY_BANNER",
-	"event_banner":     "S3_BUCKET_EVENT_BANNER",
-	"document_event":   "S3_BUCKET_DOCUMENT_EVENT",
-	"group_avatar":     "S3_BUCKET_GROUP_AVATAR",
+// Two-bucket S3 model. Bucket name = "media" (public, CloudFront) or "private"
+// (presigned). Object key = "<prefix>/<uuid>.<ext>". Both bucket+prefix are
+// derived from upload type; bucket no longer leaks into the DB.
+type bucketPrefix struct {
+	Bucket string
+	Prefix string
+}
+
+const (
+	bucketMedia   = "media"
+	bucketPrivate = "private"
+)
+
+var bucketPrefixMap = map[string]bucketPrefix{
+	"avatar":           {bucketMedia, "avatar"},
+	"banner":           {bucketMedia, "banner"},
+	"post":             {bucketMedia, "post"},
+	"poll":             {bucketMedia, "poll"},
+	"community_banner": {bucketMedia, "community-banner"},
+	"event_banner":     {bucketMedia, "event-banner"},
+	"group_avatar":     {bucketMedia, "group-avatar"},
+	"chat":             {bucketPrivate, "chat"},
+	"document_event":   {bucketPrivate, "document-event"},
 }
 
 type StorageUsecase struct {
@@ -34,51 +46,47 @@ func NewStorageUsecase(storage storagesvciface.IStorageService) *StorageUsecase 
 	return &StorageUsecase{storage: storage}
 }
 
-func (s *StorageUsecase) ResolveBucket(uploadType string) (string, error) {
-	envKey, allowed := bucketWhitelist[strings.ToLower(uploadType)]
-	if !allowed {
-		return "", fmt.Errorf("upload type '%s' is not allowed", uploadType)
+// ResolveBucketAndPrefix returns the logical bucket name ("media" or "private")
+// and the S3 key prefix for the given upload type.
+func (s *StorageUsecase) ResolveBucketAndPrefix(uploadType string) (string, string, error) {
+	bp, ok := bucketPrefixMap[strings.ToLower(uploadType)]
+	if !ok {
+		return "", "", fmt.Errorf("upload type '%s' is not allowed", uploadType)
 	}
-
-	bucket := strings.TrimSpace(os.Getenv(envKey))
-	if bucket == "" {
-		return "", fmt.Errorf("bucket for type '%s' is not configured", uploadType)
-	}
-
-	return bucket, nil
+	return bp.Bucket, bp.Prefix, nil
 }
 
-func (s *StorageUsecase) Upload(ctx context.Context, bucket string, file multipart.File, header *multipart.FileHeader) (string, error) {
+func (s *StorageUsecase) Upload(ctx context.Context, prefix string, file multipart.File, header *multipart.FileHeader) (string, error) {
 	ext := filepath.Ext(header.Filename)
-	objectName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	objectName := fmt.Sprintf("%s/%s%s", prefix, uuid.New().String(), ext)
 
 	contentType := header.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 
-	if err := s.storage.Upload(ctx, bucket, objectName, file, header.Size, contentType); err != nil {
+	if err := s.storage.Upload(ctx, objectName, file, header.Size, contentType); err != nil {
 		return "", err
 	}
 	return objectName, nil
 }
 
-func (s *StorageUsecase) GetURL(bucket, objectName string) string {
-	return s.storage.GetURL(bucket, objectName)
+func (s *StorageUsecase) GetURL(objectName string) string {
+	return s.storage.GetURL(objectName)
 }
 
-func (s *StorageUsecase) Delete(ctx context.Context, bucket, objectName string) error {
-	return s.storage.Delete(ctx, bucket, objectName)
+func (s *StorageUsecase) Delete(ctx context.Context, objectName string) error {
+	return s.storage.Delete(ctx, objectName)
 }
 
 func (s *StorageUsecase) GetAllowedTypes() []string {
-	types := make([]string, 0, len(bucketWhitelist))
-	for k := range bucketWhitelist {
+	types := make([]string, 0, len(bucketPrefixMap))
+	for k := range bucketPrefixMap {
 		types = append(types, k)
 	}
 	return types
 }
 
-func (s *StorageUsecase) GeneratePresignedURL(ctx context.Context, bucket, objectName string) (string, error) {
-	return s.storage.GeneratePresignedURL(ctx, bucket, objectName, 24*time.Hour)
+func (s *StorageUsecase) GeneratePresignedURL(ctx context.Context, objectName string) (string, error) {
+	return s.storage.GeneratePresignedURL(ctx, objectName, 24*time.Hour)
 }

@@ -24,9 +24,7 @@ type UserProfile struct {
 	Gender           Gender         `gorm:"type:varchar(30)"`
 	BirthdayDate     time.Time      `gorm:"type:date"`
 	AvatarObjectName string         `gorm:"default:''"`
-	AvatarBucket     string         `gorm:"default:''"`
 	BannerObjectName string         `gorm:"default:''"`
-	BannerBucket     string         `gorm:"default:''"`
 	Bio              string         `gorm:"type:text;default:''"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time

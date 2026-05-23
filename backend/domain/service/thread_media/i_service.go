@@ -15,5 +15,5 @@ type IThreadMediaService interface {
 	UpdateGranular(ctx context.Context, threadID, userID uint, keepIDs []uint, files []*multipart.FileHeader) error
 	Delete(ctx context.Context, threadID, userID uint, mediaIDs []uint) error
 	DeleteByThread(ctx context.Context, threadID uint) error
-	GetURL(bucket, objectName string) string
+	GetURL(objectName string) string
 }

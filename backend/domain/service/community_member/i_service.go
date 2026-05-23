@@ -21,7 +21,6 @@ type CommunityUserItem struct {
 	Username         string
 	Name             string
 	AvatarObjectName string
-	AvatarBucket     string
 	IsPremium        bool
 	Role             communitymembermodel.CommunityMemberRole
 	IsFollowing      bool

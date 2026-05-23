@@ -26,7 +26,7 @@ func (c *ExploreController) toResponse(result *exploremodel.ExploreResult) explo
 func (c *ExploreController) toUserResponses(users []exploremodel.ExploreUserResult) []exploredto.ExploreUserResponse {
 	responses := make([]exploredto.ExploreUserResponse, len(users))
 	for i, item := range users {
-		avatarURL := ctrlshared.BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
+		avatarURL := ctrlshared.BuildMediaURL(item.AvatarObjectName, c.profileService.GetURL)
 
 		responses[i] = exploredto.ExploreUserResponse{
 			UserID:      item.UserID,
@@ -43,7 +43,7 @@ func (c *ExploreController) toUserResponses(users []exploremodel.ExploreUserResu
 func (c *ExploreController) toPeopleResponses(users []exploremodel.ExploreUserResult) []exploredto.ExplorePeopleResponse {
 	responses := make([]exploredto.ExplorePeopleResponse, len(users))
 	for i, item := range users {
-		avatarURL := ctrlshared.BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL)
+		avatarURL := ctrlshared.BuildMediaURL(item.AvatarObjectName, c.profileService.GetURL)
 
 		responses[i] = exploredto.ExplorePeopleResponse{
 			UserID:         item.UserID,
@@ -152,7 +152,7 @@ func (c *ExploreController) toMediaResponse(threads []threadmodel.Thread, total 
 		for j, item := range media {
 			mediaResponses[j] = threadmediadto.ThreadMediaResponse{
 				MediaID: item.MediaID,
-				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
+				URL:     c.mediaService.GetURL(item.ObjectName),
 			}
 		}
 		data[i] = exploredto.ExploreMediaResponse{
@@ -188,7 +188,7 @@ func (c *ExploreController) toExploreCommunityResponses(communities []exploremod
 }
 
 func (c *ExploreController) toCommunityResponse(comm *communitymodel.Community) communitydto.CommunityResponse {
-	bannerURL := ctrlshared.BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
+	bannerURL := ctrlshared.BuildMediaURL(comm.BannerObjectName, c.communityService.GetURL)
 	var categoryName string
 	if comm.Category != nil {
 		categoryName = comm.Category.Name

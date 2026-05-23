@@ -275,13 +275,13 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Event) eventdto.EventResponse {
-	bannerURL := ctrlshared.BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL)
+	bannerURL := ctrlshared.BuildMediaURL(event.BannerObjectName, c.eventService.GetURL)
 	var attachmentURL string
 	if event.AttachmentObjectName != "" {
 		var err error
-		attachmentURL, err = c.eventService.GeneratePresignedAttachmentURL(ctx, event.AttachmentBucket, event.AttachmentObjectName)
+		attachmentURL, err = c.eventService.GeneratePresignedAttachmentURL(ctx, event.AttachmentObjectName)
 		if err != nil {
-			log.Printf("presign error bucket=%s object=%s: %v", event.AttachmentBucket, event.AttachmentObjectName, err)
+			log.Printf("presign error object=%s: %v", event.AttachmentObjectName, err)
 		}
 	}
 	pdfURLs := c.eventPDFURLs(ctx, event)
@@ -321,7 +321,7 @@ func (c *EventController) toListResponse(event *threadmodel.Event) eventdto.Even
 		Type:        event.Type,
 		StartTime:   eventdto.EventTime{Time: event.StartTime},
 		EndTime:     eventdto.EventTime{Time: event.EndTime},
-		BannerURL:   ctrlshared.BuildMediaURL(event.BannerObjectName, event.BannerBucket, c.eventService.GetURL),
+		BannerURL:   ctrlshared.BuildMediaURL(event.BannerObjectName, c.eventService.GetURL),
 		CreatedAt:   utils.Wrap(event.CreatedAt),
 		UpdatedAt:   utils.Wrap(event.UpdatedAt),
 	}
@@ -385,7 +385,7 @@ func (c *EventController) toEventAdminReviewNoteResponses(reviews []eventreviewm
 func (c *EventController) eventPDFURLs(ctx context.Context, event *threadmodel.Event) []string {
 	pdfs := event.PDFs
 	if len(pdfs) == 0 && event.AttachmentObjectName != "" {
-		pdfs = threadmodel.EventPDFs{{ObjectName: event.AttachmentObjectName, Bucket: event.AttachmentBucket}}
+		pdfs = threadmodel.EventPDFs{{ObjectName: event.AttachmentObjectName}}
 	}
 	if len(pdfs) == 0 {
 		return nil
@@ -395,9 +395,9 @@ func (c *EventController) eventPDFURLs(ctx context.Context, event *threadmodel.E
 		if pdf.ObjectName == "" {
 			continue
 		}
-		url, err := c.eventService.GeneratePresignedAttachmentURL(ctx, pdf.Bucket, pdf.ObjectName)
+		url, err := c.eventService.GeneratePresignedAttachmentURL(ctx, pdf.ObjectName)
 		if err != nil {
-			log.Printf("presign error bucket=%s object=%s: %v", pdf.Bucket, pdf.ObjectName, err)
+			log.Printf("presign error object=%s: %v", pdf.ObjectName, err)
 			continue
 		}
 		urls = append(urls, url)

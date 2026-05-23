@@ -20,6 +20,6 @@ type IThreadPollService interface {
 	GetForThreads(threadIDs []uint, requesterID uint) (map[uint]*threadpollmodel.ThreadPoll, map[uint]uint, error)
 	Vote(ctx context.Context, threadID, optionID, userID uint) (*threadpollmodel.ThreadPoll, *uint, error)
 	DeleteByThread(ctx context.Context, threadID uint) error
-	GetImageURL(bucket, objectName string) string
+	GetImageURL(objectName string) string
 	HasPoll(threadID uint) bool
 }

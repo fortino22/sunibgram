@@ -36,7 +36,7 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 		return nil, errors.New("forbidden")
 	}
 
-	bucket, err := s.storage.ResolveBucket("chat")
+	_, prefix, err := s.storage.ResolveBucketAndPrefix("chat")
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 		}
 	}
 
-	media, err := s.uploadFiles(ctx, chatID, bucket, files)
+	media, err := s.uploadFiles(ctx, chatID, prefix, files)
 	if err != nil {
 		s.rollbackUploaded(ctx, chatID, media)
 		return nil, err
@@ -67,7 +67,7 @@ func (s *ChatMediaService) Upload(ctx context.Context, chatID, senderID uint, fi
 	return media, nil
 }
 
-func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket string, files []*multipart.FileHeader) ([]chatmediamodel.ChatMedia, error) {
+func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, prefix string, files []*multipart.FileHeader) ([]chatmediamodel.ChatMedia, error) {
 	media := make([]chatmediamodel.ChatMedia, len(files))
 	errCh := make(chan error, len(files))
 	var wg sync.WaitGroup
@@ -91,7 +91,7 @@ func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket 
 				return
 			}
 
-			objectName, err := s.storage.Upload(ctx, bucket, file, header)
+			objectName, err := s.storage.Upload(ctx, prefix, file, header)
 			if err != nil {
 				errCh <- err
 				return
@@ -100,7 +100,6 @@ func (s *ChatMediaService) uploadFiles(ctx context.Context, chatID uint, bucket 
 			media[i] = chatmediamodel.ChatMedia{
 				ChatID:     chatID,
 				ObjectName: objectName,
-				Bucket:     bucket,
 				MediaType:  mediaType,
 				FileSize:   header.Size,
 			}
@@ -123,7 +122,7 @@ func (s *ChatMediaService) rollbackUploaded(ctx context.Context, chatID uint, me
 		if item.ObjectName == "" {
 			continue
 		}
-		_ = s.storage.Delete(ctx, item.Bucket, item.ObjectName)
+		_ = s.storage.Delete(ctx, item.ObjectName)
 	}
 }
 
@@ -135,10 +134,10 @@ func (s *ChatMediaService) GetByChatIDs(chatIDs []uint) ([]chatmediamodel.ChatMe
 	return s.mediaRepo.FindByChatIDs(chatIDs)
 }
 
-func (s *ChatMediaService) GetURL(bucket, objectName string) string {
-	return s.storage.GetURL(bucket, objectName)
+func (s *ChatMediaService) GetURL(objectName string) string {
+	return s.storage.GetURL(objectName)
 }
 
-func (s *ChatMediaService) GeneratePresignedURL(ctx context.Context, bucket, objectName string) (string, error) {
-	return s.storage.GeneratePresignedURL(ctx, bucket, objectName)
+func (s *ChatMediaService) GeneratePresignedURL(ctx context.Context, objectName string) (string, error) {
+	return s.storage.GeneratePresignedURL(ctx, objectName)
 }

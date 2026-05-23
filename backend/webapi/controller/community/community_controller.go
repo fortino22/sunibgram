@@ -194,7 +194,7 @@ func (c *CommunityController) GetMyCreated(ctx *fiber.Ctx) error {
 		slim[i] = communitydto.MyCommunityResponse{
 			CommunityID:   communities[i].CommunityID,
 			CommunityName: communities[i].Name,
-			BannerURL:     ctrlshared.BuildMediaURL(communities[i].BannerObjectName, communities[i].BannerBucket, c.communityService.GetURL),
+			BannerURL:     ctrlshared.BuildMediaURL(communities[i].BannerObjectName, c.communityService.GetURL),
 		}
 	}
 
@@ -259,7 +259,7 @@ func (c *CommunityController) buildAboutResponse(about *communitysvciface.Commun
 	creatorAvatar := ""
 	creatorBio := ""
 	if about.Creator.Profile != nil {
-		creatorAvatar = ctrlshared.BuildMediaURL(about.Creator.Profile.AvatarObjectName, about.Creator.Profile.AvatarBucket, c.profileService.GetURL)
+		creatorAvatar = ctrlshared.BuildMediaURL(about.Creator.Profile.AvatarObjectName, c.profileService.GetURL)
 		creatorBio = about.Creator.Profile.Bio
 	}
 
@@ -300,7 +300,7 @@ func (c *CommunityController) toAboutMemberResponses(users []communitysvciface.C
 		avatarURL := ""
 		bio := ""
 		if u.Profile != nil {
-			avatarURL = ctrlshared.BuildMediaURL(u.Profile.AvatarObjectName, u.Profile.AvatarBucket, c.profileService.GetURL)
+			avatarURL = ctrlshared.BuildMediaURL(u.Profile.AvatarObjectName, c.profileService.GetURL)
 			bio = u.Profile.Bio
 		}
 		out = append(out, communitydto.CommunityAboutMemberResponse{
@@ -336,7 +336,7 @@ func toRuleMiniResponses(rules []communityrulemodel.CommunityRule) []communityru
 }
 
 func (c *CommunityController) buildResponse(comm *communitymodel.Community, rules []communityruledto.CommunityRuleMiniResponse) communitydto.CommunityResponse {
-	bannerURL := ctrlshared.BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL)
+	bannerURL := ctrlshared.BuildMediaURL(comm.BannerObjectName, c.communityService.GetURL)
 	topMembers := c.toTopMemberResponses(comm.TopMembers)
 	var categoryName string
 	if comm.Category != nil {
@@ -421,7 +421,6 @@ func (c *CommunityController) toDiscoverResponse(comm *communitydiscovermodel.Di
 			UserID: strconv.FormatUint(uint64(comm.TopMembers[i].UserID), 10),
 			AvatarURL: ctrlshared.BuildMediaURL(
 				comm.TopMembers[i].AvatarObjectName,
-				comm.TopMembers[i].AvatarBucket,
 				c.communityService.GetURL,
 			),
 		}
@@ -434,7 +433,7 @@ func (c *CommunityController) toDiscoverResponse(comm *communitydiscovermodel.Di
 	return communitydto.DiscoverCommunityResponse{
 		CommunityID:  comm.CommunityID,
 		Name:         comm.Name,
-		BannerURL:    ctrlshared.BuildMediaURL(comm.BannerObjectName, comm.BannerBucket, c.communityService.GetURL),
+		BannerURL:    ctrlshared.BuildMediaURL(comm.BannerObjectName, c.communityService.GetURL),
 		MemberCount:  comm.MemberCount,
 		CategoryName: categoryName,
 		TopMembers:   members,
@@ -448,7 +447,6 @@ func (c *CommunityController) toTopMemberResponses(members []communitydiscovermo
 			UserID: strconv.FormatUint(uint64(members[i].UserID), 10),
 			AvatarURL: ctrlshared.BuildMediaURL(
 				members[i].AvatarObjectName,
-				members[i].AvatarBucket,
 				c.communityService.GetURL,
 			),
 		}

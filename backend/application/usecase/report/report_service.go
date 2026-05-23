@@ -272,10 +272,10 @@ func (s *ReportService) buildReportUserInfo(users []usermodel.User, profiles []u
 }
 
 func buildReportAvatarURL(profileSvc userprofilesvciface.IUserProfileService, profile userprofilemodel.UserProfile) string {
-	if profileSvc == nil || profile.AvatarBucket == "" || profile.AvatarObjectName == "" {
+	if profileSvc == nil || profile.AvatarObjectName == "" {
 		return ""
 	}
-	return profileSvc.GetURL(profile.AvatarBucket, profile.AvatarObjectName)
+	return profileSvc.GetURL(profile.AvatarObjectName)
 }
 
 func reportIDKey(id uuid.UUID) string {

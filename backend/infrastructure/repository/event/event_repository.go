@@ -265,9 +265,7 @@ func (r *eventRepository) Update(event *threadmodel.Event) error {
 		"end_time":               event.EndTime,
 		"status":                 event.Status,
 		"banner_object_name":     event.BannerObjectName,
-		"banner_bucket":          event.BannerBucket,
 		"attachment_object_name": event.AttachmentObjectName,
-		"attachment_bucket":      event.AttachmentBucket,
 		"pdfs":                   event.PDFs,
 		"updated_at":             gorm.Expr("NOW()"),
 	}).Error; err != nil {

@@ -412,9 +412,9 @@ func (c *ChatController) toChatResponse(ctx context.Context, chat *chatmodel.Cha
 func (c *ChatController) toChatMediaResponses(ctx context.Context, media []chatmediamodel.ChatMedia) []chatdto.ChatMediaResponse {
 	out := make([]chatdto.ChatMediaResponse, len(media))
 	for i := range media {
-		u, err := c.chatMediaService.GeneratePresignedURL(ctx, media[i].Bucket, media[i].ObjectName)
+		u, err := c.chatMediaService.GeneratePresignedURL(ctx, media[i].ObjectName)
 		if err != nil {
-			log.Printf("presign error bucket=%s object=%s: %v", media[i].Bucket, media[i].ObjectName, err)
+			log.Printf("presign error object=%s: %v", media[i].ObjectName, err)
 		}
 		out[i] = chatdto.ChatMediaResponse{
 			MediaID:   media[i].MediaID,

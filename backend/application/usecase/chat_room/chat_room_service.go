@@ -167,11 +167,11 @@ func (s *ChatRoomService) UpdateGroup(ctx context.Context, roomID, requesterID u
 
 	var avatarURL *string
 	if avatarFile != nil && s.storageUsecase != nil {
-		objName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, avatarFile, "group_avatar")
+		objName, err := helper.UploadImage(ctx, s.storageUsecase, avatarFile, "group_avatar")
 		if err != nil {
 			return fmt.Errorf("avatar upload failed: %w", err)
 		}
-		url := s.storageUsecase.GetURL(bucket, objName)
+		url := s.storageUsecase.GetURL(objName)
 		avatarURL = &url
 	}
 
@@ -210,8 +210,8 @@ func (s *ChatRoomService) GetGroupMembers(ctx context.Context, roomID, requester
 	result := make([]chatroomsvciface.RoomParticipant, len(members))
 	for i, m := range members {
 		avatarURL := ""
-		if s.storageUsecase != nil && m.AvatarObjectName != "" && m.AvatarBucket != "" {
-			avatarURL = s.storageUsecase.GetURL(m.AvatarBucket, m.AvatarObjectName)
+		if s.storageUsecase != nil && m.AvatarObjectName != "" {
+			avatarURL = s.storageUsecase.GetURL(m.AvatarObjectName)
 		}
 		result[i] = chatroomsvciface.RoomParticipant{
 			UserID:      m.UserID,
@@ -287,8 +287,8 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 		result[i] = chatroomsvciface.ChatRoomWithParticipant{ChatRoom: r, IsMuted: muteMap[r.RoomID], UnreadCount: unreadCounts[r.RoomID]}
 		if info, ok := memberMap[r.RoomID]; ok {
 			avatarURL := ""
-			if s.storageUsecase != nil && info.AvatarObjectName != "" && info.AvatarBucket != "" {
-				avatarURL = s.storageUsecase.GetURL(info.AvatarBucket, info.AvatarObjectName)
+			if s.storageUsecase != nil && info.AvatarObjectName != "" {
+				avatarURL = s.storageUsecase.GetURL(info.AvatarObjectName)
 			}
 			result[i].OtherUser = &chatroomsvciface.RoomParticipant{
 				UserID:      info.UserID,
@@ -327,8 +327,8 @@ func (s *ChatRoomService) GetRoomForUser(roomID, viewingUserID uint) (*chatrooms
 		if err == nil {
 			if info, ok := memberMap[roomID]; ok {
 				avatarURL := ""
-				if s.storageUsecase != nil && info.AvatarObjectName != "" && info.AvatarBucket != "" {
-					avatarURL = s.storageUsecase.GetURL(info.AvatarBucket, info.AvatarObjectName)
+				if s.storageUsecase != nil && info.AvatarObjectName != "" {
+					avatarURL = s.storageUsecase.GetURL(info.AvatarObjectName)
 				}
 				result.OtherUser = &chatroomsvciface.RoomParticipant{
 					UserID:      info.UserID,

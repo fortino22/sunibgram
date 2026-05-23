@@ -395,7 +395,7 @@ func (c *CommunityThreadController) GetCommunityThreadMedia(ctx *fiber.Ctx) erro
 		for j, item := range thread.Media {
 			media[j] = threadmediadto.ThreadMediaResponse{
 				MediaID: item.MediaID,
-				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
+				URL:     c.mediaService.GetURL(item.ObjectName),
 			}
 		}
 		data[i] = threaddto.CommunityThreadMediaResponse{

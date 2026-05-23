@@ -68,14 +68,14 @@ func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, i
 		labels[i] = label
 	}
 
-	bucket, err := s.storage.ResolveBucket("poll")
+	_, prefix, err := s.storage.ResolveBucketAndPrefix("poll")
 	if err != nil {
 		return nil, err
 	}
 
-	uploaded, err := s.uploadOptionImages(ctx, bucket, input.Images)
+	uploaded, err := s.uploadOptionImages(ctx, prefix, input.Images)
 	if err != nil {
-		s.cleanupObjects(ctx, bucket, uploaded)
+		s.cleanupObjects(ctx, uploaded)
 		return nil, err
 	}
 
@@ -93,13 +93,12 @@ func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, i
 		}
 		if i < len(uploaded) && uploaded[i] != "" {
 			opt.ObjectName = uploaded[i]
-			opt.Bucket = bucket
 		}
 		options[i] = opt
 	}
 
 	if err := s.pollRepo.Create(poll, options); err != nil {
-		s.cleanupObjects(ctx, bucket, uploaded)
+		s.cleanupObjects(ctx, uploaded)
 		return nil, err
 	}
 	return poll, nil
@@ -189,19 +188,19 @@ func (s *ThreadPollService) DeleteByThread(ctx context.Context, threadID uint) e
 		return err
 	}
 	for _, opt := range options {
-		if opt.ObjectName == "" || opt.Bucket == "" {
+		if opt.ObjectName == "" {
 			continue
 		}
-		_ = s.storage.Delete(ctx, opt.Bucket, opt.ObjectName)
+		_ = s.storage.Delete(ctx, opt.ObjectName)
 	}
 	return nil
 }
 
-func (s *ThreadPollService) GetImageURL(bucket, objectName string) string {
-	if bucket == "" || objectName == "" {
+func (s *ThreadPollService) GetImageURL(objectName string) string {
+	if objectName == "" {
 		return ""
 	}
-	return s.storage.GetURL(bucket, objectName)
+	return s.storage.GetURL(objectName)
 }
 
 func (s *ThreadPollService) HasPoll(threadID uint) bool {
@@ -209,7 +208,7 @@ func (s *ThreadPollService) HasPoll(threadID uint) bool {
 	return err == nil && poll != nil
 }
 
-func (s *ThreadPollService) uploadOptionImages(ctx context.Context, bucket string, headers []*multipart.FileHeader) ([]string, error) {
+func (s *ThreadPollService) uploadOptionImages(ctx context.Context, prefix string, headers []*multipart.FileHeader) ([]string, error) {
 	if len(headers) == 0 {
 		return nil, nil
 	}
@@ -234,7 +233,7 @@ func (s *ThreadPollService) uploadOptionImages(ctx context.Context, bucket strin
 				errCh <- err
 				return
 			}
-			objectName, err := s.storage.Upload(ctx, bucket, file, header)
+			objectName, err := s.storage.Upload(ctx, prefix, file, header)
 			if err != nil {
 				errCh <- err
 				return
@@ -252,11 +251,11 @@ func (s *ThreadPollService) uploadOptionImages(ctx context.Context, bucket strin
 	return result, nil
 }
 
-func (s *ThreadPollService) cleanupObjects(ctx context.Context, bucket string, objects []string) {
+func (s *ThreadPollService) cleanupObjects(ctx context.Context, objects []string) {
 	for _, name := range objects {
 		if name == "" {
 			continue
 		}
-		_ = s.storage.Delete(ctx, bucket, name)
+		_ = s.storage.Delete(ctx, name)
 	}
 }

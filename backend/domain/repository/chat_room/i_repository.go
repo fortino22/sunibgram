@@ -13,7 +13,6 @@ type ChatRoomMemberInfo struct {
 	Name             string
 	FacultyName      string
 	AvatarObjectName string
-	AvatarBucket     string
 }
 
 // LastMessageInfo holds a lightweight preview of the most recent message in a room.

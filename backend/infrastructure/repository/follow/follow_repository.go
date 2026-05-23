@@ -196,7 +196,6 @@ func (r *followRepository) GetMentionFollowing(ctx context.Context, userID uint,
 			users.user_name AS username,
 			users.is_premium,
 			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 			TRUE AS is_following
 		`).
 		Joins("JOIN users ON users.user_id = user_relationships.following_id").
@@ -228,7 +227,6 @@ func (r *followRepository) SearchMentionUsers(ctx context.Context, userID uint, 
 			users.user_name AS username,
 			users.is_premium,
 			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 			(user_relationships.following_id IS NOT NULL) AS is_following
 		`).
 		Joins("JOIN roles ON roles.role_id = users.role_id").
@@ -254,7 +252,6 @@ func mentionRowsToResults(rows []explorerepo.ExploreUserRow) []exploremodel.Expl
 			Username:         row.Username,
 			IsPremium:        row.IsPremium,
 			AvatarObjectName: row.AvatarObjectName,
-			AvatarBucket:     row.AvatarBucket,
 			IsFollowing:      row.IsFollowing,
 		}
 	}

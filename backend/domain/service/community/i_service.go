@@ -23,7 +23,7 @@ type ICommunityService interface {
 	GetAbout(ctx context.Context, communityID uint, viewerID *uint) (*CommunityAbout, error)
 	GetMyCreated(userID uint, page, limit int) ([]communitymodel.Community, int64, error)
 	GetMyJoined(userID uint, page, limit int) ([]communitymodel.Community, int64, error)
-	GetURL(bucket, objectName string) string
+	GetURL(objectName string) string
 }
 
 type CommunityAboutUser struct {

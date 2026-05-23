@@ -120,17 +120,14 @@ func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communit
 	items := make([]communitymembersvciface.CommunityUserItem, len(members))
 	for i, m := range members {
 		avatarObject := ""
-		avatarBucket := ""
 		if m.Profile != nil {
 			avatarObject = m.Profile.AvatarObjectName
-			avatarBucket = m.Profile.AvatarBucket
 		}
 		items[i] = communitymembersvciface.CommunityUserItem{
 			UserID:           m.UserID,
 			Username:         m.User.UserName,
 			Name:             m.User.Name,
 			AvatarObjectName: avatarObject,
-			AvatarBucket:     avatarBucket,
 			IsPremium:        m.User.IsPremium,
 			Role:             m.Role,
 			IsFollowing:      followSet[m.UserID],

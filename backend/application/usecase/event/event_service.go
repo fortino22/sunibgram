@@ -109,12 +109,11 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 		EndTime:     endTime.UTC(),
 	}
 	if banner != nil {
-		objName, bucket, err := s.uploadImage(ctx, banner, "event_banner")
+		objName, err := s.uploadImage(ctx, banner, "event_banner")
 		if err != nil {
 			return nil, fmt.Errorf("banner upload failed: %w", err)
 		}
 		event.BannerObjectName = objName
-		event.BannerBucket = bucket
 	}
 	if eventType == "official" {
 		event.Status = "pending"
@@ -128,7 +127,6 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 		}
 		event.PDFs = pdfs
 		event.AttachmentObjectName = pdfs[0].ObjectName
-		event.AttachmentBucket = pdfs[0].Bucket
 	}
 	if err := s.eventRepo.Save(event); err != nil {
 		s.deletePDFs(ctx, event.PDFs)
@@ -242,19 +240,17 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 	event.StartTime = startTime.UTC()
 	event.EndTime = endTime.UTC()
 	if clearBanner && event.BannerObjectName != "" {
-		_ = s.storageUsecase.Delete(ctx, event.BannerBucket, event.BannerObjectName)
+		_ = s.storageUsecase.Delete(ctx, event.BannerObjectName)
 		event.BannerObjectName = ""
-		event.BannerBucket = ""
 	} else if banner != nil {
 		if event.BannerObjectName != "" {
-			_ = s.storageUsecase.Delete(ctx, event.BannerBucket, event.BannerObjectName)
+			_ = s.storageUsecase.Delete(ctx, event.BannerObjectName)
 		}
-		objName, bucket, err := s.uploadImage(ctx, banner, "event_banner")
+		objName, err := s.uploadImage(ctx, banner, "event_banner")
 		if err != nil {
 			return nil, fmt.Errorf("banner upload failed: %w", err)
 		}
 		event.BannerObjectName = objName
-		event.BannerBucket = bucket
 	}
 	if len(attachments) > 0 {
 		pdfs, err := s.uploadPDFs(ctx, attachments, "document_event")
@@ -263,11 +259,10 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 		}
 		s.deletePDFs(ctx, event.PDFs)
 		if event.AttachmentObjectName != "" && len(event.PDFs) == 0 {
-			_ = s.storageUsecase.Delete(ctx, event.AttachmentBucket, event.AttachmentObjectName)
+			_ = s.storageUsecase.Delete(ctx, event.AttachmentObjectName)
 		}
 		event.PDFs = pdfs
 		event.AttachmentObjectName = pdfs[0].ObjectName
-		event.AttachmentBucket = pdfs[0].Bucket
 	}
 	if err := s.eventRepo.Update(event); err != nil {
 		return nil, err
@@ -285,11 +280,11 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 		return errors.New("event not found")
 	}
 	if event.BannerObjectName != "" {
-		_ = s.storageUsecase.Delete(ctx, event.BannerBucket, event.BannerObjectName)
+		_ = s.storageUsecase.Delete(ctx, event.BannerObjectName)
 	}
 	s.deletePDFs(ctx, event.PDFs)
 	if event.AttachmentObjectName != "" && len(event.PDFs) == 0 {
-		_ = s.storageUsecase.Delete(ctx, event.AttachmentBucket, event.AttachmentObjectName)
+		_ = s.storageUsecase.Delete(ctx, event.AttachmentObjectName)
 	}
 	s.invalidateUserScopedCaches(id)
 	return s.eventRepo.Delete(id)
@@ -436,42 +431,42 @@ func validateEventStatusFilter(status string) error {
 	}
 }
 
-func (s *EventService) GetURL(bucket, objectName string) string {
-	return s.storageUsecase.GetURL(bucket, objectName)
+func (s *EventService) GetURL(objectName string) string {
+	return s.storageUsecase.GetURL(objectName)
 }
 
-func (s *EventService) GeneratePresignedAttachmentURL(ctx context.Context, bucket, objectName string) (string, error) {
-	return s.storageUsecase.GeneratePresignedURL(ctx, bucket, objectName)
+func (s *EventService) GeneratePresignedAttachmentURL(ctx context.Context, objectName string) (string, error) {
+	return s.storageUsecase.GeneratePresignedURL(ctx, objectName)
 }
 
-func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
+func (s *EventService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, error) {
 	return helper.UploadImage(ctx, s.storageUsecase, header, uploadType)
 }
 
-func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
+func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, error) {
 	if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxDocumentUploadSize); err != nil {
-		return "", "", err
+		return "", err
 	}
 	if err := threadmodel.ValidateEventAttachmentExt(header.Filename); err != nil {
-		return "", "", err
+		return "", err
 	}
-	bucket, err := s.storageUsecase.ResolveBucket(uploadType)
+	_, prefix, err := s.storageUsecase.ResolveBucketAndPrefix(uploadType)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	f, err := header.Open()
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	defer f.Close()
 	if err := threadmodel.ValidateEventAttachmentFile(f); err != nil {
-		return "", "", err
+		return "", err
 	}
-	objName, err := s.storageUsecase.Upload(ctx, bucket, f, header)
+	objName, err := s.storageUsecase.Upload(ctx, prefix, f, header)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	return objName, bucket, nil
+	return objName, nil
 }
 
 func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.FileHeader, uploadType string) (threadmodel.EventPDFs, error) {
@@ -488,12 +483,12 @@ func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.File
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			objName, bucket, err := s.uploadFile(ctx, header, uploadType)
+			objName, err := s.uploadFile(ctx, header, uploadType)
 			if err != nil {
 				errCh <- err
 				return
 			}
-			pdfs[i] = threadmodel.EventPDF{ObjectName: objName, Bucket: bucket}
+			pdfs[i] = threadmodel.EventPDF{ObjectName: objName}
 		}()
 	}
 
@@ -528,7 +523,7 @@ func (s *EventService) deletePDFs(ctx context.Context, pdfs threadmodel.EventPDF
 		if pdf.ObjectName == "" {
 			continue
 		}
-		_ = s.storageUsecase.Delete(ctx, pdf.Bucket, pdf.ObjectName)
+		_ = s.storageUsecase.Delete(ctx, pdf.ObjectName)
 	}
 }
 

@@ -37,7 +37,6 @@ type ExploreUserRow struct {
 	Username         string
 	IsPremium        bool
 	AvatarObjectName string
-	AvatarBucket     string
 	IsFollowing      bool
 }
 
@@ -198,7 +197,6 @@ func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID
 			users.user_name AS username,
 			users.is_premium,
 			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 			FALSE AS is_following
 		`).
 		Joins("JOIN user_relationships AS suggested ON suggested.follower_id = followed.following_id").
@@ -210,7 +208,7 @@ func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID
 		Where("suggested.following_id <> ?", requesterID).
 		Where("existing.following_id IS NULL").
 		Where("roles.name <> ?", "admin").
-		Group("users.user_id, users.name, users.user_name, users.is_premium, users.created_at, user_profiles.avatar_object_name, user_profiles.avatar_bucket").
+		Group("users.user_id, users.name, users.user_name, users.is_premium, users.created_at, user_profiles.avatar_object_name").
 		Order("COUNT(DISTINCT followed.following_id) DESC, users.is_premium DESC, users.created_at DESC").
 		Limit(limit).
 		Scan(&rows).Error; err != nil {
@@ -225,7 +223,6 @@ func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID
 			Username:         row.Username,
 			IsPremium:        row.IsPremium,
 			AvatarObjectName: row.AvatarObjectName,
-			AvatarBucket:     row.AvatarBucket,
 			IsFollowing:      row.IsFollowing,
 		}
 	}
@@ -396,7 +393,6 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 			users.user_name AS username,
 			users.is_premium,
 			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-			COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 			(user_relationships.following_id IS NOT NULL) AS is_following
 		`).
 		Joins("JOIN roles ON roles.role_id = users.role_id").
@@ -418,7 +414,6 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 			Username:         row.Username,
 			IsPremium:        row.IsPremium,
 			AvatarObjectName: row.AvatarObjectName,
-			AvatarBucket:     row.AvatarBucket,
 			IsFollowing:      row.IsFollowing,
 		}
 	}

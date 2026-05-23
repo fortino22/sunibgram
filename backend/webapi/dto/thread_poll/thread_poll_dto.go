@@ -35,7 +35,7 @@ type CreatePollDTO struct {
 	DurationSeconds int
 }
 
-func BuildPollResponse(poll *threadpollmodel.ThreadPoll, votedOptionID *uint, urlFn func(bucket, object string) string) *PollResponse {
+func BuildPollResponse(poll *threadpollmodel.ThreadPoll, votedOptionID *uint, urlFn func(object string) string) *PollResponse {
 	if poll == nil {
 		return nil
 	}
@@ -48,7 +48,7 @@ func BuildPollResponse(poll *threadpollmodel.ThreadPoll, votedOptionID *uint, ur
 		}
 		var imageURL string
 		if urlFn != nil {
-			imageURL = urlFn(opt.Bucket, opt.ObjectName)
+			imageURL = urlFn(opt.ObjectName)
 		}
 		options[i] = PollOptionResponse{
 			OptionID:  opt.OptionID,

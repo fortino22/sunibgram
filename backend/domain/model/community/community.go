@@ -27,7 +27,6 @@ type Community struct {
 	Category         *categorymodel.Category                          `gorm:"foreignKey:CategoryID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	Visibility       CommunityVisibility                              `gorm:"type:varchar(10);not null;default:'PUBLIC';index"`
 	BannerObjectName string                                           `gorm:"type:varchar(500)"`
-	BannerBucket     string                                           `gorm:"type:varchar(100)"`
 	MemberCount      int                                              `gorm:"not null;default:1"`
 	IsActive         bool                                             `gorm:"not null;default:true;index"`
 	TopMembers       []communitydiscovermodel.DiscoverCommunityMember `gorm:"-"`

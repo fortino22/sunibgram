@@ -65,7 +65,7 @@ func (c *CommunityPinController) GetMyPins(ctx *fiber.Ctx) error {
 		slim[i] = communitydto.MyCommunityResponse{
 			CommunityID:   communities[i].CommunityID,
 			CommunityName: communities[i].Name,
-			BannerURL:     ctrlshared.BuildMediaURL(communities[i].BannerObjectName, communities[i].BannerBucket, c.communityService.GetURL),
+			BannerURL:     ctrlshared.BuildMediaURL(communities[i].BannerObjectName, c.communityService.GetURL),
 		}
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{

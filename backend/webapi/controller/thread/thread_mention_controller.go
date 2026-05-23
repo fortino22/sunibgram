@@ -33,7 +33,7 @@ func (c *ThreadController) Mention(ctx *fiber.Ctx) error {
 func (c *ThreadController) toMentionUserResponses(users []exploremodel.ExploreUserResult) []threaddto.MentionUserResponse {
 	responses := make([]threaddto.MentionUserResponse, len(users))
 	for i, user := range users {
-		avatarURL := ctrlshared.BuildMediaURL(user.AvatarObjectName, user.AvatarBucket, c.profileService.GetURL)
+		avatarURL := ctrlshared.BuildMediaURL(user.AvatarObjectName, c.profileService.GetURL)
 
 		responses[i] = threaddto.MentionUserResponse{
 			UserID:      strconv.FormatUint(uint64(user.UserID), 10),

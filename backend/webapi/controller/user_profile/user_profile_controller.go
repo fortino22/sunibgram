@@ -155,7 +155,7 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 			}
 			avatarURL := ""
 			if fp.Profile != nil {
-				avatarURL = ctrlshared.BuildMediaURL(fp.Profile.AvatarObjectName, fp.Profile.AvatarBucket, c.profileService.GetURL)
+				avatarURL = ctrlshared.BuildMediaURL(fp.Profile.AvatarObjectName, c.profileService.GetURL)
 			}
 			payload := fiber.Map{"user_id": userID, "avatar_url": avatarURL}
 			c.hub.EmitToUser(userID, "user:profile_updated", payload)
@@ -181,12 +181,12 @@ func (c *UserProfileController) toResponse(fp *userprofilesvciface.FullProfile) 
 	return ToUserProfileResponse(fp, c.profileService.GetURL)
 }
 
-func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(string, string) string) userprofiledto.UserProfileResponse {
+func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(string) string) userprofiledto.UserProfileResponse {
 	avatarURL := ""
 	bannerURL := ""
 	if fp.Profile != nil {
-		avatarURL = ctrlshared.BuildMediaURL(fp.Profile.AvatarObjectName, fp.Profile.AvatarBucket, getURL)
-		bannerURL = ctrlshared.BuildMediaURL(fp.Profile.BannerObjectName, fp.Profile.BannerBucket, getURL)
+		avatarURL = ctrlshared.BuildMediaURL(fp.Profile.AvatarObjectName, getURL)
+		bannerURL = ctrlshared.BuildMediaURL(fp.Profile.BannerObjectName, getURL)
 	}
 	bio := ""
 	gender := ""

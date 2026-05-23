@@ -70,34 +70,32 @@ func (s *UserProfileService) UpsertProfile(ctx context.Context, userID uint, inp
 		if err := validateProfileImage(input.Avatar, "avatar"); err != nil {
 			return err
 		}
-		if existing.AvatarObjectName != "" && existing.AvatarBucket != "" {
-			if err := s.storageUsecase.Delete(ctx, existing.AvatarBucket, existing.AvatarObjectName); err != nil {
+		if existing.AvatarObjectName != "" {
+			if err := s.storageUsecase.Delete(ctx, existing.AvatarObjectName); err != nil {
 				return fmt.Errorf("failed to delete old avatar: %w", err)
 			}
 		}
-		objectName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, input.Avatar, "avatar")
+		objectName, err := helper.UploadImage(ctx, s.storageUsecase, input.Avatar, "avatar")
 		if err != nil {
 			return err
 		}
 		existing.AvatarObjectName = objectName
-		existing.AvatarBucket = bucket
 	}
 
 	if input.Banner != nil {
 		if err := validateProfileImage(input.Banner, "banner"); err != nil {
 			return err
 		}
-		if existing.BannerObjectName != "" && existing.BannerBucket != "" {
-			if err := s.storageUsecase.Delete(ctx, existing.BannerBucket, existing.BannerObjectName); err != nil {
+		if existing.BannerObjectName != "" {
+			if err := s.storageUsecase.Delete(ctx, existing.BannerObjectName); err != nil {
 				return fmt.Errorf("failed to delete old banner: %w", err)
 			}
 		}
-		objectName, bucket, err := helper.UploadImage(ctx, s.storageUsecase, input.Banner, "banner")
+		objectName, err := helper.UploadImage(ctx, s.storageUsecase, input.Banner, "banner")
 		if err != nil {
 			return err
 		}
 		existing.BannerObjectName = objectName
-		existing.BannerBucket = bucket
 	}
 
 	if input.Bio != nil {
@@ -173,19 +171,17 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 	if input.ClearAvatar || input.ClearBanner {
 		existing, _ := s.profileRepo.FindByUserID(userID)
 		if existing != nil {
-			if input.ClearAvatar && existing.AvatarObjectName != "" && existing.AvatarBucket != "" {
-				if err := s.storageUsecase.Delete(ctx, existing.AvatarBucket, existing.AvatarObjectName); err != nil {
+			if input.ClearAvatar && existing.AvatarObjectName != "" {
+				if err := s.storageUsecase.Delete(ctx, existing.AvatarObjectName); err != nil {
 					return fmt.Errorf("failed to delete avatar: %w", err)
 				}
 				existing.AvatarObjectName = ""
-				existing.AvatarBucket = ""
 			}
-			if input.ClearBanner && existing.BannerObjectName != "" && existing.BannerBucket != "" {
-				if err := s.storageUsecase.Delete(ctx, existing.BannerBucket, existing.BannerObjectName); err != nil {
+			if input.ClearBanner && existing.BannerObjectName != "" {
+				if err := s.storageUsecase.Delete(ctx, existing.BannerObjectName); err != nil {
 					return fmt.Errorf("failed to delete banner: %w", err)
 				}
 				existing.BannerObjectName = ""
-				existing.BannerBucket = ""
 			}
 			if err := s.profileRepo.Upsert(existing); err != nil {
 				return err
@@ -312,6 +308,6 @@ func (s *UserProfileService) GetUserFaculties(userIDs []uint) ([]usermodel.UserF
 	return s.userFacultyRepo.FindByUserIDs(userIDs)
 }
 
-func (s *UserProfileService) GetURL(bucket, objectName string) string {
-	return s.storageUsecase.GetURL(bucket, objectName)
+func (s *UserProfileService) GetURL(objectName string) string {
+	return s.storageUsecase.GetURL(objectName)
 }

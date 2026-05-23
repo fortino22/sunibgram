@@ -138,7 +138,7 @@ func (c *CommunityMemberController) GetCommunityUsers(ctx *fiber.Ctx) error {
 			UserID:      item.UserID,
 			Username:    item.Username,
 			Name:        item.Name,
-			UserAvatar:  ctrlshared.BuildMediaURL(item.AvatarObjectName, item.AvatarBucket, c.profileService.GetURL),
+			UserAvatar:  ctrlshared.BuildMediaURL(item.AvatarObjectName, c.profileService.GetURL),
 			IsPremium:   item.IsPremium,
 			Role:        string(item.Role),
 			IsFollowing: item.IsFollowing,
@@ -218,7 +218,7 @@ func (c *CommunityMemberController) UpdateRole(ctx *fiber.Ctx) error {
 func (c *CommunityMemberController) toMemberResponse(m *communitymembermodel.CommunityMember) communitymemberdto.CommunityMemberResponse {
 	avatarURL := ""
 	if m.Profile != nil {
-		avatarURL = ctrlshared.BuildMediaURL(m.Profile.AvatarObjectName, m.Profile.AvatarBucket, c.profileService.GetURL)
+		avatarURL = ctrlshared.BuildMediaURL(m.Profile.AvatarObjectName, c.profileService.GetURL)
 	}
 	return communitymemberdto.CommunityMemberResponse{
 		CommunityID: m.CommunityID,

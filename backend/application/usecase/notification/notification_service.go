@@ -167,8 +167,8 @@ func (s *NotificationService) senderProfilesByUserID(notifications []notificatio
 	senders := make(map[uint]*notificationmodel.NotificationSender, len(users))
 	for i := range users {
 		var avatarURL string
-		if profile, ok := profilesByUserID[users[i].UserID]; ok && profile.AvatarBucket != "" && profile.AvatarObjectName != "" {
-			avatarURL = s.storageUsecase.GetURL(profile.AvatarBucket, profile.AvatarObjectName)
+		if profile, ok := profilesByUserID[users[i].UserID]; ok && profile.AvatarObjectName != "" {
+			avatarURL = s.storageUsecase.GetURL(profile.AvatarObjectName)
 		}
 
 		sender := &notificationmodel.NotificationSender{
@@ -203,8 +203,8 @@ func (s *NotificationService) senderProfile(userID uint) (*notificationmodel.Not
 
 	var avatarURL string
 	profile, _ := s.profileRepo.FindByUserID(userID)
-	if profile != nil && profile.AvatarBucket != "" && profile.AvatarObjectName != "" {
-		avatarURL = s.storageUsecase.GetURL(profile.AvatarBucket, profile.AvatarObjectName)
+	if profile != nil && profile.AvatarObjectName != "" {
+		avatarURL = s.storageUsecase.GetURL(profile.AvatarObjectName)
 	}
 
 	var faculty *facultymodel.Faculty

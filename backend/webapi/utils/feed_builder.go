@@ -62,7 +62,7 @@ func avatarCacheKey(userID uint) string {
 func (fb FeedBuilder) ToMediaResponses(media []threadmediamodel.ThreadMedia) []threadmediadto.ThreadMediaResponse {
 	result := make([]threadmediadto.ThreadMediaResponse, len(media))
 	for i, m := range media {
-		result[i] = threadmediadto.ThreadMediaResponse{MediaID: m.MediaID, URL: fb.Media.GetURL(m.Bucket, m.ObjectName)}
+		result[i] = threadmediadto.ThreadMediaResponse{MediaID: m.MediaID, URL: fb.Media.GetURL(m.ObjectName)}
 	}
 	return result
 }
@@ -178,8 +178,8 @@ func (fb *FeedBuilder) resolveAvatars(ctx context.Context, cacheRepo cacherepoif
 	for _, p := range profiles {
 		delete(missed, p.UserID)
 		avatarURL := ""
-		if p.AvatarBucket != "" && p.AvatarObjectName != "" {
-			avatarURL = fb.ProfileSvc.GetURL(p.AvatarBucket, p.AvatarObjectName)
+		if p.AvatarObjectName != "" {
+			avatarURL = fb.ProfileSvc.GetURL(p.AvatarObjectName)
 		}
 		fb.avatarCache[p.UserID] = avatarURL
 		if cacheRepo != nil {

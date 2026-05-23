@@ -457,7 +457,7 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 		for j, item := range mediaByThread[thread.ThreadID] {
 			media[j] = threadmediadto.ThreadMediaResponse{
 				MediaID: item.MediaID,
-				URL:     c.mediaService.GetURL(item.Bucket, item.ObjectName),
+				URL:     c.mediaService.GetURL(item.ObjectName),
 			}
 		}
 		data[i] = threaddto.MediaOnlyItem{

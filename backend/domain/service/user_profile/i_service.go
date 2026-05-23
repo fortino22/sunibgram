@@ -42,5 +42,5 @@ type IUserProfileService interface {
 	GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error)
 	GetUsers(userIDs []uint) ([]usermodel.User, error)
 	GetUserFaculties(userIDs []uint) ([]usermodel.UserFaculty, error)
-	GetURL(bucket, objectName string) string
+	GetURL(objectName string) string
 }

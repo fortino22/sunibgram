@@ -22,6 +22,6 @@ type IEventService interface {
 	RequestRevision(id, adminID, note string) error
 	Delete(ctx context.Context, id string) error
 	GetThreads(ctx context.Context, requesterID *uint, id, filter, sort string, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
-	GetURL(bucket, objectName string) string
-	GeneratePresignedAttachmentURL(ctx context.Context, bucket, objectName string) (string, error)
+	GetURL(objectName string) string
+	GeneratePresignedAttachmentURL(ctx context.Context, objectName string) (string, error)
 }

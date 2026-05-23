@@ -103,7 +103,6 @@ func (r *communityRepository) FindDiscover() ([]communitydiscovermodel.DiscoverC
 		CommunityID       uint
 		Name              string
 		BannerObjectName  string
-		BannerBucket      string
 		CategoryID        *uuid.UUID
 		CategoryName      string
 		CategoryCreatedAt *time.Time
@@ -117,7 +116,6 @@ func (r *communityRepository) FindDiscover() ([]communitydiscovermodel.DiscoverC
 			communities.community_id,
 			communities.name,
 			COALESCE(communities.banner_object_name, '') AS banner_object_name,
-			COALESCE(communities.banner_bucket, '') AS banner_bucket,
 			categories.id AS category_id,
 			COALESCE(categories.name, '') AS category_name,
 			categories.created_at AS category_created_at,
@@ -125,7 +123,7 @@ func (r *communityRepository) FindDiscover() ([]communitydiscovermodel.DiscoverC
 		`).
 		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id").
-		Group("communities.community_id, communities.name, communities.banner_object_name, communities.banner_bucket, categories.id, categories.name, categories.created_at").
+		Group("communities.community_id, communities.name, communities.banner_object_name, categories.id, categories.name, categories.created_at").
 		Order("member_count DESC, communities.name ASC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
@@ -147,7 +145,6 @@ func (r *communityRepository) FindDiscover() ([]communitydiscovermodel.DiscoverC
 			CommunityID:      row.CommunityID,
 			Name:             row.Name,
 			BannerObjectName: row.BannerObjectName,
-			BannerBucket:     row.BannerBucket,
 			Category:         category,
 			MemberCount:      row.MemberCount,
 			TopMembers:       []communitydiscovermodel.DiscoverCommunityMember{},
@@ -183,7 +180,6 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]communitydiscov
 		CommunityID       uint
 		Name              string
 		BannerObjectName  string
-		BannerBucket      string
 		CategoryID        *uuid.UUID
 		CategoryName      string
 		CategoryCreatedAt *time.Time
@@ -197,7 +193,6 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]communitydiscov
 			communities.community_id,
 			communities.name,
 			COALESCE(communities.banner_object_name, '') AS banner_object_name,
-			COALESCE(communities.banner_bucket, '') AS banner_bucket,
 			categories.id AS category_id,
 			COALESCE(categories.name, '') AS category_name,
 			categories.created_at AS category_created_at,
@@ -206,7 +201,7 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]communitydiscov
 		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
 		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id").
 		Where("LOWER(communities.name) LIKE LOWER(?)", "%"+name+"%").
-		Group("communities.community_id, communities.name, communities.banner_object_name, communities.banner_bucket, categories.id, categories.name, categories.created_at").
+		Group("communities.community_id, communities.name, communities.banner_object_name, categories.id, categories.name, categories.created_at").
 		Order("member_count DESC, communities.name ASC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
@@ -228,7 +223,6 @@ func (r *communityRepository) FindDiscoverByName(name string) ([]communitydiscov
 			CommunityID:      row.CommunityID,
 			Name:             row.Name,
 			BannerObjectName: row.BannerObjectName,
-			BannerBucket:     row.BannerBucket,
 			Category:         category,
 			MemberCount:      row.MemberCount,
 			TopMembers:       []communitydiscovermodel.DiscoverCommunityMember{},
@@ -264,19 +258,17 @@ func (r *communityRepository) findTopMembers(communityIDs []uint) (map[uint][]co
 		CommunityID      uint
 		UserID           uint
 		AvatarObjectName string
-		AvatarBucket     string
 	}
 
 	var memberRows []memberRow
 	if err := r.readDB.
 		Raw(`
-			SELECT community_id, user_id, avatar_object_name, avatar_bucket
+			SELECT community_id, user_id, avatar_object_name
 			FROM (
 				SELECT
 					community_members.community_id,
 					community_members.user_id,
 					COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-					COALESCE(user_profiles.avatar_bucket, '') AS avatar_bucket,
 					ROW_NUMBER() OVER (
 						PARTITION BY community_members.community_id
 						ORDER BY COALESCE(user_stats.follower_count, 0) DESC,
@@ -300,7 +292,6 @@ func (r *communityRepository) findTopMembers(communityIDs []uint) (map[uint][]co
 		topMembers[row.CommunityID] = append(topMembers[row.CommunityID], communitydiscovermodel.DiscoverCommunityMember{
 			UserID:           row.UserID,
 			AvatarObjectName: row.AvatarObjectName,
-			AvatarBucket:     row.AvatarBucket,
 		})
 	}
 
@@ -322,7 +313,6 @@ func (r *communityRepository) UpdateWithTx(tx *gorm.DB, community *communitymode
 		"category_id":        categoryID,
 		"visibility":         community.Visibility,
 		"banner_object_name": community.BannerObjectName,
-		"banner_bucket":      community.BannerBucket,
 		"updated_at":         gorm.Expr("NOW()"),
 	}).Error; err != nil {
 		return err

@@ -86,7 +86,6 @@ type ChatMedia struct {
 	ChatID     uint           `gorm:"not null;index"`
 	Chat       chatmodel.Chat `gorm:"foreignKey:ChatID;references:ChatID;constraint:OnUpdate:NO ACTION,OnDelete:CASCADE"`
 	ObjectName string         `gorm:"not null"`
-	Bucket     string         `gorm:"not null"`
 	MediaType  string         `gorm:"type:varchar(50);not null"`
 	FileSize   int64
 	CreatedAt  time.Time

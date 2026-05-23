@@ -57,7 +57,7 @@ func (c *EventParticipantController) GetMyJoined(ctx *fiber.Ctx) error {
 		data[i] = eventdto.EventMiniResponse{
 			ID:        events[i].ID,
 			Title:     events[i].Title,
-			BannerURL: ctrlshared.BuildMediaURL(events[i].BannerObjectName, events[i].BannerBucket, c.eventService.GetURL),
+			BannerURL: ctrlshared.BuildMediaURL(events[i].BannerObjectName, c.eventService.GetURL),
 		}
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{

@@ -106,12 +106,11 @@ func (s *CommunityService) Create(ctx context.Context, userID uint, name, descri
 	}
 
 	if banner != nil {
-		objName, bucket, err := s.uploadImage(ctx, banner, "community_banner")
+		objName, err := s.uploadImage(ctx, banner, "community_banner")
 		if err != nil {
 			return nil, nil, fmt.Errorf("banner upload failed: %w", err)
 		}
 		community.BannerObjectName = objName
-		community.BannerBucket = bucket
 	}
 
 	var savedRules []communityrulemodel.CommunityRule
@@ -196,19 +195,17 @@ func (s *CommunityService) Update(ctx context.Context, id, userID uint, name, de
 	community.Visibility = visibility
 
 	if clearBanner && community.BannerObjectName != "" {
-		_ = s.storageUsecase.Delete(ctx, community.BannerBucket, community.BannerObjectName)
+		_ = s.storageUsecase.Delete(ctx, community.BannerObjectName)
 		community.BannerObjectName = ""
-		community.BannerBucket = ""
 	} else if banner != nil {
 		if community.BannerObjectName != "" {
-			_ = s.storageUsecase.Delete(ctx, community.BannerBucket, community.BannerObjectName)
+			_ = s.storageUsecase.Delete(ctx, community.BannerObjectName)
 		}
-		objName, bucket, err := s.uploadImage(ctx, banner, "community_banner")
+		objName, err := s.uploadImage(ctx, banner, "community_banner")
 		if err != nil {
 			return nil, nil, fmt.Errorf("banner upload failed: %w", err)
 		}
 		community.BannerObjectName = objName
-		community.BannerBucket = bucket
 	}
 
 	var savedRules []communityrulemodel.CommunityRule
@@ -266,7 +263,7 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 		return errors.New("forbidden")
 	}
 	if community.BannerObjectName != "" {
-		_ = s.storageUsecase.Delete(ctx, community.BannerBucket, community.BannerObjectName)
+		_ = s.storageUsecase.Delete(ctx, community.BannerObjectName)
 	}
 	if s.pinRepo != nil {
 		s.pinRepo.InvalidateByCommunity(id)
@@ -453,11 +450,11 @@ func (s *CommunityService) GetMyJoined(userID uint, page, limit int) ([]communit
 	return communities, total, nil
 }
 
-func (s *CommunityService) GetURL(bucket, objectName string) string {
-	return s.storageUsecase.GetURL(bucket, objectName)
+func (s *CommunityService) GetURL(objectName string) string {
+	return s.storageUsecase.GetURL(objectName)
 }
 
-func (s *CommunityService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, string, error) {
+func (s *CommunityService) uploadImage(ctx context.Context, header *multipart.FileHeader, uploadType string) (string, error) {
 	return helper.UploadImage(ctx, s.storageUsecase, header, uploadType)
 }
 
