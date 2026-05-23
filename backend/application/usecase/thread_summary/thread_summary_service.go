@@ -95,7 +95,7 @@ func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uin
 		comments = append(comments, reply.Content)
 	}
 	prompt := fmt.Sprintf(
-		"Summarize the following comments from a university social media post into one concise paragraph. Do not use bullet points or headers, just plain prose:\n\n%s",
+		"Summarize the following comments from a university social media post into one concise paragraph. Always respond in English, even if the comments are in another language. Do not use bullet points or headers, just plain prose:\n\n%s",
 		strings.Join(comments, "\n"),
 	)
 
