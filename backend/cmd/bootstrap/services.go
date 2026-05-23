@@ -137,7 +137,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		User:                 useruc.NewUserService(repos.User, repos.Follow, repos.UserProfile),
 		UserSettings:         usersettingsuc.NewUserSettingsService(repos.UserSettings, repos.Thread),
 		UserProfile:          profile,
-		Verification:         verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email),
+		Verification:         verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email, c),
 		Notification:         notification,
 		Follow:               follow,
 		Hashtag:              hashtag,

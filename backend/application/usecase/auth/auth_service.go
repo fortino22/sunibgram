@@ -69,7 +69,7 @@ func NewAuthService(
 		verificationRepo: verificationRepo,
 		userSettingsRepo: userSettingsRepo,
 		cache:            c,
-		otpFailLimiter:   ratelimit.New(5, 10*time.Minute),
+		otpFailLimiter:   ratelimit.New(c, "auth_otp_fail", 5, 10*time.Minute),
 	}
 }
 
@@ -275,12 +275,7 @@ func (s *AuthService) LoginProd(email, password string) (*usermodel.User, usermo
 		return nil, usermodel.TokenPair{}, errors.New("invalid email or password")
 	}
 
-	allowedEmails := map[string]bool{
-		"devin@binus.ac.id":     true,
-		"octa@binus.ac.id":      true,
-		"chermiese@binus.ac.id": true,
-	}
-	if user.Role.Name != "admin" && !allowedEmails[user.Email] {
+	if user.Role.Name != "admin" {
 		return nil, usermodel.TokenPair{}, errors.New("admin access required")
 	}
 

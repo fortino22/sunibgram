@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -18,7 +19,10 @@ import (
 
 func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache) *fiber.App {
 	app := fiber.New(fiber.Config{
-		BodyLimit: 50 * 1024 * 1024,
+		BodyLimit:               50 * 1024 * 1024,
+		EnableTrustedProxyCheck: true,
+		TrustedProxies:          trustedProxies(),
+		ProxyHeader:             fiber.HeaderXForwardedFor,
 	})
 	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 	app.Use(cors.New(cors.Config{
@@ -28,52 +32,53 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 		AllowCredentials: true,
 	}))
 	webapisocket.Mount(app, ext.SocketHub, svcs.ChatRoom, ctrls.NotificationHandler, c)
-	registerRoutes(app, ctrls)
+	registerRoutes(app, ctrls, c)
 	return app
 }
 
-func registerRoutes(app *fiber.App, c *Controllers) {
+func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 	router.Register(
 		app,
-		c.Auth,
-		c.Role,
-		c.User,
-		c.Cache,
-		c.UserSettings,
-		c.UserProfile,
-		c.Explore,
-		c.Hashtag,
-		c.Thread,
-		c.Event,
-		c.Like,
-		c.Bookmark,
-		c.ThreadPin,
-		c.Repost,
-		c.ThreadSummary,
-		c.Email,
-		c.Verification,
-		c.Follow,
-		c.Community,
-		c.CommunityMember,
-		c.CommunityRequest,
-		c.CommunityThread,
-		c.CommunityRule,
-		c.CommunityThreadPin,
-		c.CommunityPin,
-		c.EventPin,
-		c.EventParticipant,
-		c.EventThreadPin,
-		c.Category,
-		c.Violation,
-		c.Report,
-		c.Faculty,
-		c.Order,
-		c.PremiumSubscription,
-		c.DevSubscription,
-		c.ChatRoom,
-		c.Chat,
-		c.Notification,
-		c.ThreadPoll,
+		ctrls.Auth,
+		ctrls.Role,
+		ctrls.User,
+		ctrls.Cache,
+		ctrls.UserSettings,
+		ctrls.UserProfile,
+		ctrls.Explore,
+		ctrls.Hashtag,
+		ctrls.Thread,
+		ctrls.Event,
+		ctrls.Like,
+		ctrls.Bookmark,
+		ctrls.ThreadPin,
+		ctrls.Repost,
+		ctrls.ThreadSummary,
+		ctrls.Email,
+		ctrls.Verification,
+		ctrls.Follow,
+		ctrls.Community,
+		ctrls.CommunityMember,
+		ctrls.CommunityRequest,
+		ctrls.CommunityThread,
+		ctrls.CommunityRule,
+		ctrls.CommunityThreadPin,
+		ctrls.CommunityPin,
+		ctrls.EventPin,
+		ctrls.EventParticipant,
+		ctrls.EventThreadPin,
+		ctrls.Category,
+		ctrls.Violation,
+		ctrls.Report,
+		ctrls.Faculty,
+		ctrls.Order,
+		ctrls.PremiumSubscription,
+		ctrls.DevSubscription,
+		ctrls.ChatRoom,
+		ctrls.Chat,
+		ctrls.Notification,
+		ctrls.ThreadPoll,
+		c,
 	)
 }
 
@@ -82,7 +87,7 @@ func StartSubscriptionExpiry(svc premiumsubscriptionsvciface.IPremiumSubscriptio
 }
 
 func Listen(app *fiber.App) error {
-	addr := fmt.Sprintf(":%s", getEnv("PORT", "8080"))
+	addr := fmt.Sprintf(":%s", getEnv("PORT", ""))
 	fmt.Printf("server running on %s\n", addr)
 	return app.Listen(addr)
 }
@@ -92,4 +97,16 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func trustedProxies() []string {
+	raw := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES"))
+
+	out := make([]string, 0, 4)
+	for _, p := range strings.Split(raw, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

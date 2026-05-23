@@ -2,11 +2,12 @@ package verificationuc
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
 	emailsvciface "github.com/sunibgram/domain/service/email"
 	verificationsvciface "github.com/sunibgram/domain/service/verification"
+	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
 
@@ -74,13 +76,14 @@ func NewVerificationService(
 	verificationRepo verificationrepoiface.IVerificationRepository,
 	userRepo userrepoiface.IUserRepository,
 	emailService emailsvciface.IEmailService,
+	c *cache.Cache,
 ) verificationsvciface.IVerificationService {
 	return &VerificationService{
 		verificationRepo: verificationRepo,
 		userRepo:         userRepo,
 		emailService:     emailService,
-		sendLimiter:      ratelimit.New(3, 10*time.Minute),
-		verifyLimiter:    ratelimit.New(3, 10*time.Minute),
+		sendLimiter:      ratelimit.New(c, "verification_send", 3, 10*time.Minute),
+		verifyLimiter:    ratelimit.New(c, "verification_verify", 3, 10*time.Minute),
 	}
 }
 
@@ -114,7 +117,11 @@ func (s *VerificationService) SendCode(email string, t verificationcodemodel.Ver
 
 	_ = s.verificationRepo.DeleteByEmailAndType(email, t)
 
-	plain := fmt.Sprintf("%06d", rand.Intn(1000000))
+	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+	if err != nil {
+		return err
+	}
+	plain := fmt.Sprintf("%06d", n.Int64())
 	record := &verificationcodemodel.VerificationCode{
 		Email:     email,
 		Code:      hashOTP(plain),

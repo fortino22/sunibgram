@@ -39,6 +39,7 @@ import (
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
 	verificationctrl "github.com/sunibgram/webapi/controller/verification"
 	violationctrl "github.com/sunibgram/webapi/controller/violation"
+	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/webapi/middleware"
 	adminroute "github.com/sunibgram/webapi/router/admin"
 	authroute "github.com/sunibgram/webapi/router/auth"
@@ -105,11 +106,12 @@ func Register(
 	chatCtrl *chatctrl.ChatController,
 	notificationCtrl *notificationctrl.NotificationController,
 	threadPollCtrl *threadpollctrl.ThreadPollController,
+	c *cache.Cache,
 ) {
 	api := app.Group("/api")
 	auth := middleware.Auth()
 
-	authroute.RegisterAuthRoutes(api, authCtrl, verificationCtrl, auth)
+	authroute.RegisterAuthRoutes(api, authCtrl, verificationCtrl, auth, c)
 	verificationroute.RegisterVerificationRoutes(api, verificationCtrl)
 	usersettingsroute.RegisterUserSettingsRoutes(api, userSettingsCtrl, auth)
 	userprofileroute.RegisterProfileRoutes(api, profileCtrl, auth)
