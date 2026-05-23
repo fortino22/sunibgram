@@ -540,3 +540,78 @@ Cheap but unnecessary.
 **Repo method swaps:** `_shared/interaction_query.go`, `user_repository.go`, `chat_repository.go`, `notification_repository.go`, `thread_summary_service.go`
 
 End of report.
+
+---
+
+# Re-scan Addendum — 2026-05-23
+
+Second pass over `/backend`. Goal: confirm prior findings still present, surface new ones.
+
+## Status of prior findings
+
+All 19 security items (**C1–C3, H1–H5, M1–M7, L1–L5**) and all 20 perf items (**P-H1–P-H11, P-M1–P-M12, P-L1–P-L10**) remain **OPEN**. Zero fixes applied since the original audit. Spot-check evidence (current line numbers):
+
+- C1 `jwtSecret()` fallback: `webapi/middleware/auth_middleware.go:119-124`, `application/usecase/auth/auth_service.go:388-393`, `webapi/socket/socket.go:187-192`
+- C2 `otpHMACSecret()` fallback: `application/usecase/verification/verification_service.go:32-40`
+- H1 query-string JWT: `webapi/socket/socket.go:72-77, 126-129`
+- H3 non-constant-time signature compare: `webapi/controller/order/order_controller.go:155`
+- M1 unchecked `.(float64)`: `webapi/utils/ctrl_helpers.go:30,34`
+- M3 email field on public profile: `webapi/controller/user_profile/user_profile_controller.go:216`
+- P-H6 writes on readDB: `infrastructure/repository/follow/follow_repository.go:266,361`
+- P-H9 N serial UPDATEs: `application/usecase/chat/chat_service.go:272-276`
+- P-M10 chat Preload full user: `infrastructure/repository/chat/chat_repository.go:34,48,58,69`
+
+Audited-clean items (SQL injection, bcrypt, OTP `hmac.Equal`, UUID file names, AES-GCM, `password json:"-"`) are still clean — no regressions.
+
+## NEW perf findings
+
+### P-H12. `ChatRoomService.CreateGroup` — N+1 user lookup + serial AddMember
+- `application/usecase/chat_room/chat_room_service.go:87-98`
+
+Per memberID: one `userRepo.FindByID` then one `roomRepo.AddMember`. For a 50-person group that's 100 round trips on the request path.
+
+**Fix:** batch validate (`SELECT user_id FROM users WHERE user_id IN (?)`), then one INSERT with multi-row VALUES (`db.Create(&members)` where members is `[]RoomMember`).
+
+### P-H13. `ChatRoomService.AddMemberToGroup` — same N+1 pattern
+- `application/usecase/chat_room/chat_room_service.go:119-134`
+
+Same as P-H12: per-user `FindByID` + `IsMember` + `AddMember` in a loop.
+
+**Fix:** one IN-query for user existence, one IN-query for current membership, one bulk INSERT for the diff. Final `FindByID(roomID)` reload at `:135` stays.
+
+### P-M13. `ExpireSubscriptions` — serial `UpdatePremium` per owner
+- `application/usecase/premium_subscription/premium_subscription_service.go:78-82`
+
+After `DeactivateByOwnerIDs(ownerIDs)` (one bulk UPDATE), loops `userRepo.UpdatePremium(id, false)` per owner.
+
+**Fix:** add `userRepo.UpdatePremiumByIDs(ids []uint, premium bool)` → single `UPDATE users SET is_premium = ? WHERE user_id IN (?)`. Background job, not request-path, but still O(N) UPDATEs + per-row cache patch.
+
+### P-M14. `thread_summary` worker goroutine swallows panics
+- `application/usecase/thread_summary/thread_summary_service.go:60-83`
+
+`go func() { s.group.Do(... s.generateSummary(...) ...) }()` has no `defer recover()`. OpenAI client panic or downstream nil deref crashes the worker (no `recover` middleware on background goroutines).
+
+**Fix:** wrap the body in `defer func() { if r := recover(); r != nil { log.Printf(...) } }()`.
+
+## NEW security findings
+
+Deep scan covering IDOR, mass assignment, SSRF, path traversal, WebSocket auth, race conditions, refresh-token reuse, account enumeration, admin gating, JWT claim verification, premium/payment bypass found **no new issues** beyond the original audit. Checks that passed:
+
+- Controller `:id` params: ownership enforced via `claims.UserID` on mutations (thread delete, chat unsend, community member remove, notification delete, bookmark/like).
+- WebSocket room joins call `roomService.IsMember(roomID, userID)` (`socket/chat_handler.go`).
+- Mass assignment: BodyParser DTOs do not expose `user_id`/`role_id`/`is_premium`/`created_at`.
+- Order amount fixed server-side (no client `amount` field).
+- Like/Bookmark/Repost protected by composite PK `(user_id, thread_id)`.
+- Admin endpoints behind `middleware.AdminOnly()` consistently.
+
+## Updated Quick-Win Order
+
+Append after row 9:
+
+| # | Item | Effort | Impact |
+|---|------|--------|--------|
+| 10 | P-H12 + P-H13 — batch `CreateGroup` / `AddMemberToGroup` | 30 min | group-chat ops degenerate from O(N) to O(1) |
+| 11 | P-M14 — `defer recover` in `thread_summary` goroutine | 1 min | worker crash protection |
+| 12 | P-M13 — bulk `UpdatePremiumByIDs` for expiry job | 10 min | nightly job O(1) instead of O(owners) |
+
+End of addendum.
