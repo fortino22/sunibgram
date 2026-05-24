@@ -28,7 +28,7 @@ function monogramColor(name: string): string {
 export function CommunityDiscoverCard({ community, onClick }: CommunityDiscoverCardProps) {
   const color = monogramColor(community.name);
   const initial = community.name.charAt(0).toUpperCase();
-  const thumbUrl = community.avatar_url ?? community.banner_url ?? null;
+  const thumbUrl = community.banner_url ?? null;
 
   return (
     <div

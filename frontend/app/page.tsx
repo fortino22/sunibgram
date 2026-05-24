@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useLayoutEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { CreatePostBox } from '@/components/shared/CreatePostBox';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
@@ -8,13 +9,22 @@ import { Icon } from '@/components/ui/Icon';
 import { useFollowingThreads } from '@/hooks/useFollowingThreads';
 import { useThreads } from '@/hooks/useThreads';
 import { useFacultyThreads } from '@/hooks/useFacultyThreads';
-import { usePinnedCommunities, useCommunityThreadsLatest } from '@/hooks/useCommunities';
+import { usePinnedCommunities, useCommunityThreadsBySort } from '@/hooks/useCommunities';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import type { ThreadItem } from '@/lib/services/threads';
+
+type CommunitySort = 'latest' | 'top' | 'likes';
+
+const SORT_OPTIONS: { value: CommunitySort; label: string }[] = [
+  { value: 'latest', label: 'Latest' },
+  { value: 'top', label: 'Top' },
+  { value: 'likes', label: 'Likes' },
+];
 
 interface Tab {
   id: string;
   label: string;
+  isCommunity?: boolean;
 }
 
 const EMPTY_MESSAGES: Record<string, { title: string; subtitle: string }> = {
@@ -95,8 +105,8 @@ function EmptyFeed({ emptyKey }: { emptyKey: string }) {
   );
 }
 
-function ActiveCommunityFeed({ communityId }: { communityId: number }) {
-  const query = useCommunityThreadsLatest(communityId);
+function ActiveCommunityFeed({ communityId, sort }: { communityId: number; sort: CommunitySort }) {
+  const query = useCommunityThreadsBySort(communityId, sort);
   const threads = query.data?.data ?? [];
 
   if (query.isLoading) {
@@ -108,7 +118,7 @@ function ActiveCommunityFeed({ communityId }: { communityId: number }) {
   return (
     <div>
       {threads.map((thread: ThreadItem) => (
-        <ThreadCard key={thread.id} thread={thread} />
+        <ThreadCard key={thread.id} thread={thread} inCommunityContext />
       ))}
     </div>
   );
@@ -116,6 +126,11 @@ function ActiveCommunityFeed({ communityId }: { communityId: number }) {
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<string>('for-you');
+  const [communitySort, setCommunitySort] = useState<CommunitySort>('latest');
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; centerX: number } | null>(null);
+
+  const activeCommunityBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const { data: profile } = useMyProfile();
   const facultyId = profile?.faculty?.faculty_id ?? null;
@@ -149,11 +164,99 @@ export default function HomePage() {
     ...pinnedCommunities.map((c) => ({
       id: `community-${c.community_id}`,
       label: c.community_name,
+      isCommunity: true,
     })),
   ];
 
+  // Measure active button position after DOM updates to position the fixed dropdown
+  useLayoutEffect(() => {
+    if (sortDropdownOpen && activeCommunityBtnRef.current) {
+      const rect = activeCommunityBtnRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 6, centerX: rect.left + rect.width / 2 });
+    } else {
+      setDropdownPos(null);
+    }
+  }, [sortDropdownOpen, activeTab]);
+
+  function handleTabClick(tabId: string) {
+    if (tabId.startsWith('community-')) {
+      if (activeTab === tabId) {
+        setSortDropdownOpen((prev) => !prev);
+      } else {
+        setActiveTab(tabId);
+        setCommunitySort('latest');
+        setSortDropdownOpen(false);
+      }
+    } else {
+      setActiveTab(tabId);
+      setSortDropdownOpen(false);
+    }
+  }
+
+  function handleSortSelect(sort: CommunitySort) {
+    setCommunitySort(sort);
+    setSortDropdownOpen(false);
+  }
+
   return (
     <div>
+      {/* invisible overlay to close dropdown on outside click */}
+      {sortDropdownOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+          onClick={() => setSortDropdownOpen(false)}
+        />
+      )}
+
+      {/* sort dropdown — fixed so it escapes the tab strip's overflow container */}
+      {sortDropdownOpen && dropdownPos && (
+        <div
+          style={{
+            position: 'fixed',
+            top: dropdownPos.top,
+            left: dropdownPos.centerX,
+            transform: 'translateX(-50%)',
+            zIndex: 50,
+            background: 'var(--bg-elevated, var(--bg-subtle))',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
+            overflow: 'hidden',
+            minWidth: 130,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+          }}
+        >
+          {SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => handleSortSelect(opt.value)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                padding: '11px 14px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: communitySort === opt.value ? 600 : 400,
+                color: 'var(--text)',
+                textAlign: 'left',
+                fontFamily: 'inherit',
+                gap: 12,
+              }}
+            >
+              {opt.label}
+              {communitySort === opt.value && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div
         style={{
           position: 'sticky',
@@ -184,14 +287,59 @@ export default function HomePage() {
               scrollbarWidth: 'none',
             }}
           >
-            {allTabs.map((t) => (
-              <FeedTabButton
-                key={t.id}
-                tab={t}
-                active={activeTab === t.id}
-                onClick={() => setActiveTab(t.id)}
-              />
-            ))}
+            {allTabs.map((t) => {
+              const active = activeTab === t.id;
+              if (t.isCommunity) {
+                return (
+                  <button
+                    key={t.id}
+                    ref={(el) => { if (active) activeCommunityBtnRef.current = el; }}
+                    onClick={() => handleTabClick(t.id)}
+                    style={{
+                      flex: 1,
+                      minWidth: 'max-content',
+                      padding: '12px 8px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: active ? 600 : 400,
+                      fontSize: 14,
+                      color: active ? 'var(--text)' : 'var(--text-tertiary)',
+                      borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+                      marginBottom: -1,
+                      transition: 'all 0.15s ease',
+                      letterSpacing: '-0.01em',
+                      fontFamily: 'inherit',
+                      whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 3,
+                    }}
+                  >
+                    {t.label}
+                    {active && (
+                      <ChevronDown
+                        size={13}
+                        style={{
+                          flexShrink: 0,
+                          transition: 'transform 0.15s ease',
+                          transform: sortDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        }}
+                      />
+                    )}
+                  </button>
+                );
+              }
+              return (
+                <FeedTabButton
+                  key={t.id}
+                  tab={t}
+                  active={active}
+                  onClick={() => handleTabClick(t.id)}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -199,7 +347,7 @@ export default function HomePage() {
       {(isForYou || isFollowing) && <CreatePostBox />}
 
       {activeCommunityId ? (
-        <ActiveCommunityFeed communityId={activeCommunityId} />
+        <ActiveCommunityFeed communityId={activeCommunityId} sort={communitySort} />
       ) : activeQuery.isLoading ? (
         <div>
           {Array.from({ length: 3 }, (_, i) => <ThreadCardSkeleton key={i} />)}

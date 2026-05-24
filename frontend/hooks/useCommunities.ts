@@ -20,6 +20,7 @@ import {
   getCommunityAbout,
   getCommunityUsers,
   getPinnedCommunities,
+  getCommunityThreadsBySort,
 } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -181,6 +182,18 @@ export function useCommunityUsers(
   return useQuery({
     queryKey: ['community', communityId, 'users', params.role ?? null, params.query ?? ''],
     queryFn: () => getCommunityUsers(communityId!, { ...params, limit: 30 }, token!),
+    enabled: !!token && !!communityId,
+  });
+}
+
+export function useCommunityThreadsBySort(
+  communityId: number | undefined,
+  sort: 'latest' | 'top' | 'likes'
+) {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['community', communityId, 'threads', 'sort', sort],
+    queryFn: () => getCommunityThreadsBySort(communityId!, sort, token!, { limit: 20 }),
     enabled: !!token && !!communityId,
   });
 }

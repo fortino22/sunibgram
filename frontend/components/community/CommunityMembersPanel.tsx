@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { CommunityMemberCard } from '@/components/community/CommunityMemberCard';
 import { useCommunityUsers } from '@/hooks/useCommunities';
 import { useKickMember, useUpdateMemberRole } from '@/hooks/useCommunityMutations';
@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 interface CommunityMembersPanelProps {
   communityId: number;
+  communityName: string;
   myRole: CommunityRole | null;
   onClose: () => void;
 }
@@ -22,7 +23,7 @@ const ROLE_TABS: { id: RoleFilter; label: string }[] = [
   { id: 'ADMIN', label: 'Admins' },
 ];
 
-export function CommunityMembersPanel({ communityId, myRole, onClose }: CommunityMembersPanelProps) {
+export function CommunityMembersPanel({ communityId, communityName, myRole, onClose }: CommunityMembersPanelProps) {
   const currentUserId = useAuthStore((s) => s.user?.id);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [inputValue, setInputValue] = useState('');
@@ -54,28 +55,22 @@ export function CommunityMembersPanel({ communityId, myRole, onClose }: Communit
   }));
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 50,
-        background: 'var(--bg)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 20px',
+          gap: 12,
+          padding: '14px 16px',
           borderBottom: '1px solid var(--border)',
-          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          background: 'oklch(10.5% 0.005 260 / 0.92)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 10,
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)' }}>Members</span>
         <button
           onClick={onClose}
           style={{
@@ -85,12 +80,16 @@ export function CommunityMembersPanel({ communityId, myRole, onClose }: Communit
             color: 'var(--text)',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
             padding: 4,
+            flexShrink: 0,
           }}
         >
-          <X size={20} />
+          <ArrowLeft size={22} />
         </button>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', lineHeight: 1.2 }}>Members</div>
+          <div style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.2 }}>{communityName}</div>
+        </div>
       </div>
 
       {/* Search */}
@@ -149,7 +148,7 @@ export function CommunityMembersPanel({ communityId, myRole, onClose }: Communit
       </div>
 
       {/* Member list */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div>
         {isLoading && (
           <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
             Loading...

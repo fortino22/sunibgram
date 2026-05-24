@@ -7,6 +7,7 @@ import { Avatar } from '@/components/shared/Avatar';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
+import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
@@ -40,8 +41,10 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
   const { like, repost, bookmark } = useThreadActions(root);
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const author = getThreadAuthor(root);
   const canManage = isOwnThread(root, currentUserId);
+  const canReport = currentUserId != null && currentUserId !== root.author.id;
   const repostLabel = getRepostLabel(root, currentUserId);
 
   async function handleSave(params: ThreadMutationParams) {
@@ -131,10 +134,11 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
               @{author.username}
             </span>
           </div>
-          {canManage && (
+          {(canManage || canReport) && (
             <ThreadOptionsMenu
-              onEdit={() => setIsEditing(true)}
-              onDelete={() => void handleDelete()}
+              onEdit={canManage ? () => setIsEditing(true) : undefined}
+              onDelete={canManage ? () => void handleDelete() : undefined}
+              onReport={canReport ? () => setReportModalOpen(true) : undefined}
               deleting={deleteMutation.isPending}
               disabled={updateMutation.isPending}
               compact
@@ -227,6 +231,13 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
           onNavigate={(index) => setLightboxState((current) => (
             current ? { ...current, index } : current
           ))}
+        />
+      )}
+
+      {reportModalOpen && (
+        <ReportPostModal
+          postId={root.id}
+          onClose={() => setReportModalOpen(false)}
         />
       )}
     </main>
