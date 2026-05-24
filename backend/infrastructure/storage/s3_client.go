@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -14,6 +15,13 @@ import (
 
 	storagesvciface "github.com/sunibgram/domain/service/storage"
 )
+
+type presignedEntry struct {
+	url     string
+	expires time.Time
+}
+
+const presignSafetyMargin = 5 * time.Minute
 
 // S3Storage talks to AWS S3 via aws-sdk-go-v2. Credentials are resolved via the
 // SDK default chain (env vars → ~/.aws/credentials with SSO profile → IAM role).
@@ -25,6 +33,8 @@ type S3Storage struct {
 	mediaBucket   string
 	privateBucket string
 	cdnBaseURL    string
+	presignMu     sync.RWMutex
+	presignCache  map[string]presignedEntry
 }
 
 // Object key prefixes that route to the private bucket. Everything else → media.
@@ -60,6 +70,7 @@ func NewS3Client() storagesvciface.IStorageService {
 		mediaBucket:   mediaBucket,
 		privateBucket: privateBucket,
 		cdnBaseURL:    cdnBaseURL,
+		presignCache:  make(map[string]presignedEntry),
 	}
 }
 
@@ -104,6 +115,15 @@ func (s *S3Storage) Delete(ctx context.Context, objectName string) error {
 }
 
 func (s *S3Storage) GeneratePresignedURL(ctx context.Context, objectName string, expires time.Duration) (string, error) {
+	now := time.Now()
+	cacheKey := fmt.Sprintf("%s|%d", objectName, int64(expires))
+	s.presignMu.RLock()
+	if entry, ok := s.presignCache[cacheKey]; ok && entry.expires.After(now) {
+		s.presignMu.RUnlock()
+		return entry.url, nil
+	}
+	s.presignMu.RUnlock()
+
 	req, err := s.presigner.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketFor(objectName)),
 		Key:    aws.String(objectName),
@@ -111,5 +131,14 @@ func (s *S3Storage) GeneratePresignedURL(ctx context.Context, objectName string,
 	if err != nil {
 		return "", fmt.Errorf("presign failed: %w", err)
 	}
+
+	s.presignMu.Lock()
+	for k, v := range s.presignCache {
+		if !v.expires.After(now) {
+			delete(s.presignCache, k)
+		}
+	}
+	s.presignCache[cacheKey] = presignedEntry{url: req.URL, expires: now.Add(expires - presignSafetyMargin)}
+	s.presignMu.Unlock()
 	return req.URL, nil
 }

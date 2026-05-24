@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	pollBodyTTL = 30 * time.Second
+	pollBodyTTL = time.Hour
 	pollVoteTTL = 5 * time.Minute
 )
 

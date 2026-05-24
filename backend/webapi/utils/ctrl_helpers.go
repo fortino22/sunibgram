@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 
+	rolemodel "github.com/sunibgram/domain/model/role"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	"github.com/sunibgram/webapi/middleware"
 )
@@ -18,6 +19,10 @@ type Claims struct {
 	Email    string
 	RoleID   uint
 	RoleName string
+}
+
+func (c Claims) IsAdmin() bool {
+	return c.RoleName == rolemodel.RoleAdmin
 }
 
 func Get(ctx *fiber.Ctx) (Claims, bool) {

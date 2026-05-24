@@ -2,11 +2,14 @@ package verificationctrl
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
 	verificationsvciface "github.com/sunibgram/domain/service/verification"
+	"github.com/sunibgram/infrastructure/cache"
+	"github.com/sunibgram/infrastructure/ratelimit"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	verificationdto "github.com/sunibgram/webapi/dto/verification"
@@ -14,13 +17,22 @@ import (
 
 type VerificationController struct {
 	verificationService verificationsvciface.IVerificationService
+	ipSendLimiter       *ratelimit.RateLimiter
+	ipVerifyLimiter     *ratelimit.RateLimiter
 }
 
-func NewVerificationController(verificationService verificationsvciface.IVerificationService) *VerificationController {
-	return &VerificationController{verificationService: verificationService}
+func NewVerificationController(verificationService verificationsvciface.IVerificationService, c *cache.Cache) *VerificationController {
+	return &VerificationController{
+		verificationService: verificationService,
+		ipSendLimiter:       ratelimit.New(c, "verification_send_ip", 30, time.Hour),
+		ipVerifyLimiter:     ratelimit.New(c, "verification_verify_ip", 60, time.Hour),
+	}
 }
 
 func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
+	if err := c.ipSendLimiter.Allow(ctx.IP()); err != nil {
+		return ctx.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
+	}
 	var req verificationdto.SendVerificationRequest
 	if err := ctx.BodyParser(&req); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
@@ -36,6 +48,9 @@ func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
 }
 
 func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
+	if err := c.ipSendLimiter.Allow(ctx.IP()); err != nil {
+		return ctx.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
+	}
 	var req verificationdto.SendVerificationRequest
 	if err := ctx.BodyParser(&req); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
@@ -52,6 +67,9 @@ func (c *VerificationController) SendCode(ctx *fiber.Ctx) error {
 }
 
 func (c *VerificationController) VerifyCode(ctx *fiber.Ctx) error {
+	if err := c.ipVerifyLimiter.Allow(ctx.IP()); err != nil {
+		return ctx.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
+	}
 	var req verificationdto.VerifyCodeRequest
 	if err := ctx.BodyParser(&req); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})

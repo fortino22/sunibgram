@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"os"
+
 	authctrl "github.com/sunibgram/webapi/controller/auth"
 	bookmarkctrl "github.com/sunibgram/webapi/controller/bookmark"
 	cachectrl "github.com/sunibgram/webapi/controller/cache"
@@ -95,7 +97,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		UserSettings:        usersettingsctrl.NewUserSettingsController(svcs.UserSettings),
 		UserProfile:         userprofilectrl.NewUserProfileController(svcs.UserProfile, svcs.Faculty, ext.SocketHub, svcs.ChatRoom),
 		Email:               emailctrl.NewEmailController(ext.Email),
-		Verification:        verificationctrl.NewVerificationController(svcs.Verification),
+		Verification:        verificationctrl.NewVerificationController(svcs.Verification, c),
 		Follow:              followctrl.NewFollowController(svcs.Follow, svcs.UserProfile),
 		Thread:              threadctrl.NewThreadController(svcs.Thread, svcs.ThreadMedia, svcs.CommunityMember, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll),
 		Event:               eventctrl.NewEventController(svcs.Event, svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.EventThreadPin),
@@ -121,7 +123,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		EventParticipant:    eventparticipantctrl.NewEventParticipantController(svcs.EventParticipant, svcs.Event),
 		Faculty:             facultyctrl.NewFacultyController(svcs.Faculty),
 		Feedback:            feedbackctrl.NewFeedbackController(svcs.Feedback, svcs.UserProfile, c),
-		Order:               orderctrl.NewOrderController(svcs.Order),
+		Order:               orderctrl.NewOrderController(svcs.Order, os.Getenv("MIDTRANS_SERVER_KEY")),
 		PremiumSubscription: premiumsubscriptionctrl.NewPremiumSubscriptionController(svcs.PremiumSubscription),
 		DevSubscription:     premiumsubscriptionctrl.NewDevSubscriptionController(svcs.PremiumSubscription),
 		ChatRoom:            chatroomctrl.NewChatRoomController(svcs.ChatRoom, ext.SocketHub),

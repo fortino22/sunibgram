@@ -141,10 +141,15 @@ func (r *UserSettingsRepository) invalidateVisibilityDependentCaches(ctx context
 		infrarepoShared.CommunityThreadsGlobalTag(),
 		infrarepoShared.EventThreadsGlobalTag(),
 	)
-	// thread:userfeed/usermedia:* and feed:foryou:* still SCAN — no global
-	// tag yet (per-user tags are infrarepoShared.UserFeedsTag / infrarepoShared.UserForYouTag, registered
-	// per-user at each Set; adding global tags would add a SADD on every
-	// user-feed write). Privacy toggle is per-user-rare, SCAN acceptable.
+	// thread:userfeed/usermedia:* still SCAN — no global tag yet (per-user tag
+	// is infrarepoShared.UserFeedsTag, registered per-user at each Set; adding
+	// a global tag would add a SADD on every user-feed write). Privacy toggle
+	// is per-user-rare, SCAN acceptable.
+	//
+	// feed:foryou:* is also SCAN'd here as a blunt drop. Per-user invalidation
+	// via IncrForYouVersion only orphans the current viewer's keys; a privacy
+	// toggle affects what every OTHER viewer sees of this author's threads, so
+	// the global SCAN is the only way to drop all those viewers' caches.
 	_ = r.cache.DeleteByPatterns(ctx,
 		"thread:userfeed:*",
 		"thread:usermedia:*",

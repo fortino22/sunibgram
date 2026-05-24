@@ -33,7 +33,15 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 		IdleTimeout:             60 * time.Second,
 	})
 	app.Use(recover.New())
-	app.Use(helmet.New())
+	app.Use(helmet.New(helmet.Config{
+		ContentSecurityPolicy: "default-src 'self'",
+		ReferrerPolicy:        "no-referrer",
+		HSTSMaxAge:            31536000,
+		HSTSPreloadEnabled:    true,
+		XSSProtection:         "0",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "DENY",
+	}))
 	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     corsAllowOrigins(),

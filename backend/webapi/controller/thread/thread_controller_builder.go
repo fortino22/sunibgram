@@ -61,44 +61,31 @@ func (c *ThreadController) BuildUserFeedItemsWithPin(threads []threadmodel.Threa
 }
 
 func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []threadmodel.Thread, parents []*threadmodel.Thread, fb webapiutils.FeedBuilder) []threaddto.FeedItemResponse {
-	allIDs := make([]uint, 0, len(threads)*2)
-	for _, t := range threads {
+	allIDs := make([]uint, 0, len(threads)*2+len(parents))
+	authorIDs := make([]uint, 0, len(threads)*2+len(parents))
+	pollIDs := make([]uint, 0, len(threads)+len(parents))
+	for i := range threads {
+		t := &threads[i]
 		allIDs = append(allIDs, t.ThreadID)
-		if t.OriginalThread != nil {
+		if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
 			allIDs = append(allIDs, t.OriginalThread.ThreadID)
+			pollIDs = append(pollIDs, t.OriginalThread.ThreadID)
+			authorIDs = append(authorIDs, t.OriginalThread.User.UserID, t.UserID)
+		} else {
+			pollIDs = append(pollIDs, t.ThreadID)
+			authorIDs = append(authorIDs, t.User.UserID)
 		}
 	}
 	for _, p := range parents {
 		if p != nil {
 			allIDs = append(allIDs, p.ThreadID)
-		}
-	}
-	mediaByThread := ctrlshared.LoadThreadMediaByID(c.mediaService, allIDs)
-
-	// Collect all author IDs including parents so avatars load in one batch
-	authorIDs := ThreadUserIDs(threads)
-	for _, p := range parents {
-		if p != nil {
 			authorIDs = append(authorIDs, p.User.UserID)
-		}
-	}
-	fb.LoadAvatarsForUserIDs(authorIDs)
-	fb.LoadViewerFlagsForThreads(threads)
-
-	pollIDs := make([]uint, 0, len(threads)+len(parents))
-	for i := range threads {
-		t := &threads[i]
-		if t.Type == threadmodel.ThreadTypeRepost && t.OriginalThread != nil {
-			pollIDs = append(pollIDs, t.OriginalThread.ThreadID)
-		} else {
-			pollIDs = append(pollIDs, t.ThreadID)
-		}
-	}
-	for _, p := range parents {
-		if p != nil {
 			pollIDs = append(pollIDs, p.ThreadID)
 		}
 	}
+	mediaByThread := ctrlshared.LoadThreadMediaByID(c.mediaService, allIDs)
+	fb.LoadAvatarsForUserIDs(authorIDs)
+	fb.LoadViewerFlagsForThreads(threads)
 	fb.LoadPollsForThreadIDs(pollIDs)
 
 	data := make([]threaddto.FeedItemResponse, len(threads))

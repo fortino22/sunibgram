@@ -33,6 +33,7 @@ func (c *Client) StreamGenerate(ctx context.Context, prompt string, w io.Writer)
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(prompt),
 		},
+		MaxCompletionTokens: openai.Int(400),
 	})
 	defer stream.Close()
 

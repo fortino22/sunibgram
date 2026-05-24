@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"os"
+
 	authuc "github.com/sunibgram/application/usecase/auth"
 	bookmarkuc "github.com/sunibgram/application/usecase/bookmark"
 	cacheuc "github.com/sunibgram/application/usecase/cache"
@@ -165,7 +167,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		EventParticipant:     eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event),
 		Faculty:              facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
 		Feedback:             feedbackuc.NewFeedbackService(repos.Feedback),
-		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
+		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),
 		PremiumSubscription:  premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
 		ChatRoom:             chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage),
 		Chat:                 chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification),

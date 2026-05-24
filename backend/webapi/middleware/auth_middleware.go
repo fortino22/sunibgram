@@ -11,18 +11,34 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 
+	rolemodel "github.com/sunibgram/domain/model/role"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
 const (
 	claimKindAccess = "access"
 	LocalClaims     = "claims"
+	expectedIssuer  = "sunibgram-api"
 )
 
-var sessionCache *cache.Cache
+var (
+	sessionCache    *cache.Cache
+	cachedJWTSecret []byte
+)
 
 func Init(c *cache.Cache) {
 	sessionCache = c
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
+	cachedJWTSecret = []byte(secret)
+}
+
+// JWTSecret returns the cached JWT secret loaded at boot via Init.
+// Exposed so the socket package can share the same secret without re-reading env.
+func JWTSecret() []byte {
+	return cachedJWTSecret
 }
 
 func Auth() fiber.Handler {
@@ -68,6 +84,8 @@ func OptionalAuth() fiber.Handler {
 		if sid != "" && sessionCache != nil {
 			var uid uint
 			if err := sessionCache.Get(context.Background(), fmt.Sprintf("session:%s", sid), &uid); err != nil {
+				uidClaim, _ := claims["user_id"].(float64)
+				log.Printf("auth: revoked-session optional read sid=%s uid=%d ip=%s path=%s", sid, uint(uidClaim), c.IP(), c.Path())
 				return c.Next()
 			}
 		}
@@ -85,7 +103,7 @@ func AdminOnly() fiber.Handler {
 		}
 
 		roleName, _ := claims["role_name"].(string)
-		if roleName != "admin" {
+		if roleName != rolemodel.RoleAdmin {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"message": "admin access required"})
 		}
 
@@ -94,12 +112,11 @@ func AdminOnly() fiber.Handler {
 }
 
 func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
-	secret := jwtSecret()
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.New("unexpected signing method")
 		}
-		return []byte(secret), nil
+		return cachedJWTSecret, nil
 	})
 	if err != nil || !token.Valid {
 		return nil, errors.New("invalid or expired token")
@@ -114,13 +131,9 @@ func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
 		return nil, errors.New("wrong token type")
 	}
 
-	return claims, nil
-}
-
-func jwtSecret() string {
-	s := os.Getenv("JWT_SECRET")
-	if s == "" {
-		log.Fatal("JWT_SECRET is required")
+	if iss, _ := claims["iss"].(string); iss != "" && iss != expectedIssuer {
+		return nil, errors.New("invalid token issuer")
 	}
-	return s
+
+	return claims, nil
 }
