@@ -112,6 +112,17 @@ func (r *threadCached) Update(thread *threadmodel.Thread) error {
 	r.invalidateCommunityThreadQueryCaches(ctx)
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
+	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
+	go func(uid uint) {
+		defer func() { _ = recover() }()
+		r.invalidateForYouFeedCachesForFollowers(context.Background(), uid)
+	}(thread.UserID)
+	if thread.CommunityID != nil {
+		go func(cid uint) {
+			defer func() { _ = recover() }()
+			r.invalidateForYouFeedCachesForCommunity(context.Background(), cid)
+		}(*thread.CommunityID)
+	}
 	_ = r.cache.InvalidateTag(ctx, infrarepoShared.ThreadRootsGlobalTag())
 	infrarepoShared.InvalidateExplorePostCaches(ctx, r.cache)
 	return nil
@@ -275,6 +286,17 @@ func (r *threadCached) Delete(id uint) error {
 	r.invalidateCommunityThreadQueryCaches(ctx)
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
+	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
+	go func(uid uint) {
+		defer func() { _ = recover() }()
+		r.invalidateForYouFeedCachesForFollowers(context.Background(), uid)
+	}(thread.UserID)
+	if thread.CommunityID != nil {
+		go func(cid uint) {
+			defer func() { _ = recover() }()
+			r.invalidateForYouFeedCachesForCommunity(context.Background(), cid)
+		}(*thread.CommunityID)
+	}
 	_ = r.cache.InvalidateTag(ctx, infrarepoShared.ThreadRootsGlobalTag())
 
 	r.likes.DeleteByThreadID(id)

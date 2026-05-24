@@ -12,6 +12,7 @@ import (
 
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
 	mediamodel "github.com/sunibgram/domain/model/media"
+	rolemodel "github.com/sunibgram/domain/model/role"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
 	eventsvciface "github.com/sunibgram/domain/service/event"
@@ -84,7 +85,7 @@ func (c *EventController) GetPending(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	if claims.RoleName != "admin" {
+	if claims.RoleName != rolemodel.RoleAdmin {
 		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 	page, limit := ctrlshared.ParsePagination(ctx)
@@ -126,14 +127,23 @@ func (c *EventController) GetByID(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) Update(ctx *fiber.Ctx) error {
-	if _, ok := ctrlshared.RequireAuth(ctx); !ok {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
 		return nil
+	}
+	eventID := ctx.Params("id")
+	existing, err := c.eventService.GetByID(eventID)
+	if err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "event not found"})
+	}
+	if existing.UserID != claims.UserID && claims.RoleName != rolemodel.RoleAdmin {
+		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 	req, banner, clearBanner, attachments, err := parseUpdateEventRequest(ctx)
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
-	_, err = c.eventService.Update(ctx.Context(), ctx.Params("id"), req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, clearBanner, attachments)
+	_, err = c.eventService.Update(ctx.Context(), eventID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, clearBanner, attachments)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
@@ -144,15 +154,25 @@ func (c *EventController) Update(ctx *fiber.Ctx) error {
 }
 
 func (c *EventController) Delete(ctx *fiber.Ctx) error {
-	if _, ok := ctrlshared.RequireAuth(ctx); !ok {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
 		return nil
 	}
-	if err := c.eventService.Delete(ctx.Context(), ctx.Params("id")); err != nil {
+	eventID := ctx.Params("id")
+	existing, err := c.eventService.GetByID(eventID)
+	if err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "event not found"})
+	}
+	if existing.UserID != claims.UserID && claims.RoleName != rolemodel.RoleAdmin {
+		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
+	}
+	if err := c.eventService.Delete(ctx.Context(), eventID); err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
+	log.Printf("AUDIT event_delete admin_id=%d event_id=%s ip=%s", claims.UserID, eventID, ctx.IP())
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "event deleted successfully"})
 }
 
@@ -161,17 +181,19 @@ func (c *EventController) ApproveEvent(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	if claims.RoleName != "admin" {
+	if claims.RoleName != rolemodel.RoleAdmin {
 		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
-	err := c.eventService.ApproveEvent(ctx.Params("id"), adminID)
+	eventID := ctx.Params("id")
+	err := c.eventService.ApproveEvent(eventID, adminID)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
+	log.Printf("AUDIT event_approve admin_id=%d event_id=%s ip=%s", claims.UserID, eventID, ctx.IP())
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event approved successfully"})
 }
 
@@ -180,7 +202,7 @@ func (c *EventController) DeclineEvent(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	if claims.RoleName != "admin" {
+	if claims.RoleName != rolemodel.RoleAdmin {
 		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 	var req eventreviewdto.DeclineEventRequest
@@ -188,13 +210,15 @@ func (c *EventController) DeclineEvent(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
-	err := c.eventService.DeclineEvent(ctx.Params("id"), adminID, req.Reason)
+	eventID := ctx.Params("id")
+	err := c.eventService.DeclineEvent(eventID, adminID, req.Reason)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
+	log.Printf("AUDIT event_decline admin_id=%d event_id=%s ip=%s", claims.UserID, eventID, ctx.IP())
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event declined successfully"})
 }
 
@@ -203,7 +227,7 @@ func (c *EventController) RequestRevision(ctx *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
-	if claims.RoleName != "admin" {
+	if claims.RoleName != rolemodel.RoleAdmin {
 		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 	var req eventreviewdto.RevisionRequest
@@ -211,12 +235,14 @@ func (c *EventController) RequestRevision(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 	adminID := strconv.FormatUint(uint64(claims.UserID), 10)
-	if err := c.eventService.RequestRevision(ctx.Params("id"), adminID, req.Note); err != nil {
+	eventID := ctx.Params("id")
+	if err := c.eventService.RequestRevision(eventID, adminID, req.Note); err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
+	log.Printf("AUDIT event_revision admin_id=%d event_id=%s ip=%s", claims.UserID, eventID, ctx.IP())
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "Event revision requested successfully"})
 }
 
