@@ -58,9 +58,35 @@ func (r *userFacultyRepository) FindByUserIDs(ids []uint) ([]usermodel.UserFacul
 	if len(ids) == 0 {
 		return []usermodel.UserFaculty{}, nil
 	}
-	var rows []usermodel.UserFaculty
-	err := r.readDB.Preload("Faculty").Where("user_id IN ?", ids).Find(&rows).Error
-	return rows, err
+	ctx := context.Background()
+	rows := make([]usermodel.UserFaculty, 0, len(ids))
+	missing := make([]uint, 0, len(ids))
+	if r.cache != nil {
+		for _, id := range ids {
+			var uf usermodel.UserFaculty
+			if err := r.cache.Get(ctx, userFacultyKey(id), &uf); err == nil {
+				rows = append(rows, uf)
+				continue
+			}
+			missing = append(missing, id)
+		}
+	} else {
+		missing = ids
+	}
+	if len(missing) == 0 {
+		return rows, nil
+	}
+	var fetched []usermodel.UserFaculty
+	if err := r.readDB.Preload("Faculty").Where("user_id IN ?", missing).Find(&fetched).Error; err != nil {
+		return nil, err
+	}
+	if r.cache != nil {
+		for i := range fetched {
+			r.cache.Set(ctx, userFacultyKey(fetched[i].UserID), fetched[i], cache.FacultyTTL)
+		}
+	}
+	rows = append(rows, fetched...)
+	return rows, nil
 }
 
 func (r *userFacultyRepository) FindByFacultyID(facultyID uint, page, limit int) ([]usermodel.UserFaculty, int64, error) {

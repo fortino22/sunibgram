@@ -420,11 +420,11 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 		Where("threads.type IN ?", forYouFeedTypes(true)).
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR count_new_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
 	query = applyMainFeedReplyInteractionFilter(query)
-	if err := query.Limit(1001).Count(&count).Error; err != nil {
+	if err := query.Limit(201).Count(&count).Error; err != nil {
 		return 0, err
 	}
-	if count > 1000 {
-		count = 1000
+	if count > 200 {
+		count = 200
 	}
 	_ = r.cache.Set(ctx, key, count, 30*time.Second)
 	return count, nil

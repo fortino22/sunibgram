@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	threadSummaryTTL          time.Duration = 0
+	threadSummaryTTL          time.Duration = 7 * 24 * time.Hour
 	threadSummaryReplyTrigger               = 20
 )
 
