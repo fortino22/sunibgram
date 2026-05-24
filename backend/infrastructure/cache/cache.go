@@ -279,6 +279,54 @@ func (c *Cache) GetCounter(ctx context.Context, key string) (int64, error) {
 	return parseInt64(raw)
 }
 
+// ZSetMember pairs a sorted-set member with its score for ZAddReplace /
+// ZRevRangeWithScores. Member is the application-level identifier (typically
+// a stringified ID); Score is the float64 priority Redis sorts by.
+type ZSetMember struct {
+	Member string
+	Score  float64
+}
+
+// ZAddReplace atomically replaces a sorted set's contents with the given
+// members under one key and applies the TTL. Existing entries are dropped so
+// callers can treat the call as a snapshot write. Single MULTI/EXEC pipeline.
+func (c *Cache) ZAddReplace(ctx context.Context, key string, members []ZSetMember, ttl time.Duration) error {
+	pipe := c.client.TxPipeline()
+	pipe.Del(ctx, key)
+	if len(members) > 0 {
+		zMembers := make([]redis.Z, len(members))
+		for i, m := range members {
+			zMembers[i] = redis.Z{Score: m.Score, Member: m.Member}
+		}
+		pipe.ZAdd(ctx, key, zMembers...)
+	}
+	if ttl > 0 {
+		pipe.Expire(ctx, key, ttl)
+	}
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// ZRevRangeWithScores returns members of a sorted set in score-descending
+// order from rank `start` to `stop` inclusive (Redis ZREVRANGE semantics).
+// Empty key returns (nil, nil), not an error, so callers can treat absence
+// the same as an empty set.
+func (c *Cache) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) ([]ZSetMember, error) {
+	z, err := c.client.ZRevRangeWithScores(ctx, key, start, stop).Result()
+	if err == redis.Nil {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ZSetMember, len(z))
+	for i, x := range z {
+		m, _ := x.Member.(string)
+		out[i] = ZSetMember{Member: m, Score: x.Score}
+	}
+	return out, nil
+}
+
 // IncrWithWindow atomically increments a counter and ensures it expires after
 // the given window. Returns the post-increment count and remaining TTL on the
 // key. Use for sliding/rolling rate limits — first hit creates the key with

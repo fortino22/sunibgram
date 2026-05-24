@@ -127,7 +127,35 @@ func (r *threadCached) UpdateReplyPermission(threadID uint, replyPermission thre
 		return err
 	}
 	ctx := context.Background()
-	r.cache.Delete(ctx, ThreadKey(threadID), ParentThreadKey(threadID))
+	var thread threadmodel.Thread
+	if err := r.db.readDB.
+		Select("thread_id, user_id, root_id, community_id").
+		First(&thread, threadID).Error; err != nil {
+		r.cache.Delete(ctx, ThreadKey(threadID), ParentThreadKey(threadID))
+		return nil
+	}
+	r.invalidate(ctx, thread.ThreadID, thread.RootID, thread.CommunityID)
+	r.invalidateFeedCachesByThreadID(ctx, thread.ThreadID)
+	r.invalidateInteractions(ctx, thread.ThreadID)
+	r.invalidateUserFeedCache(ctx, thread.UserID)
+	r.invalidateUserMediaCache(ctx, thread.UserID)
+	r.invalidateCommunityThreadQueryCaches(ctx)
+	r.invalidateFollowingFeedCache(ctx)
+	r.invalidateTrendingFeed(ctx)
+	r.invalidateForYouFeedCacheForUser(ctx, thread.UserID)
+	go func(uid uint) {
+		defer func() { _ = recover() }()
+		r.invalidateForYouFeedCachesForFollowers(context.Background(), uid)
+	}(thread.UserID)
+	if thread.CommunityID != nil {
+		go func(cid uint) {
+			defer func() { _ = recover() }()
+			r.invalidateForYouFeedCachesForCommunity(context.Background(), cid)
+		}(*thread.CommunityID)
+	}
+	_ = r.cache.InvalidateTag(ctx, infrarepoShared.ThreadRootsGlobalTag())
+	_ = r.cache.InvalidateTag(ctx, infrarepoShared.EventThreadsGlobalTag())
+	infrarepoShared.InvalidateExplorePostCaches(ctx, r.cache)
 	return nil
 }
 

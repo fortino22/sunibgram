@@ -84,9 +84,10 @@ Prefer tags over SCAN. Tags are O(set size), SCAN is O(keyspace). All tag builde
 
 **Tag invariant** — every Set of a key that should be tag-invalidatable must register under the tag. Half-migration = permanent stale (until cache TTL). Migrate one entity surface at a time: change all Set sites first, then switch invalidate path. Existing tagged surfaces:
 - `infrarepoShared.UserFeedsTag(uid)` — `thread:userfeed/usermedia/following:<uid>:*` (Set sites in `infrastructure/repository/thread/thread_repository_user_feed.go`)
-- `infrarepoShared.UserForYouTag(uid)` — `feed:foryou:user:<uid>:src/newcount:*` (Set sites in `infrastructure/repository/thread/thread_repository_for_you.go`)
 - `infrarepoShared.ThreadFeedsTag(tid)` — feed caches containing thread (Set sites in `infrastructure/repository/thread/thread_repository_*.go` via `storeFeedIDs`/`trackFeedCacheKey`)
 - `infrarepoShared.InteractionThreadCacheKeysKey(table, tid)` — like/bookmark/repost listings containing thread (Set in `infrastructure/repository/_shared/interaction_query.go`)
+
+**For You version counter** (replaces the legacy `UserForYouTag`) — `infrarepoShared.ForYouVersionKey(uid)` is a per-user atomic counter. Readers GET the version and bake it into every `feed:foryou:user:<uid>:src/newcount:v<N>` key; mutations call `infrarepoShared.IncrForYouVersion(ctx, cache, uid)` (single O(1) Redis INCR). Old `:v<N-1>` entries orphan and TTL-expire (30–60 s). No tag set, no SMEMBERS/DEL fanout.
 
 **Profile-meta overlay** — `FeedBuilder.AuthorField` in `webapi/utils/feed_builder.go` overlays `is_premium` + `faculty` from `user:meta:<uid>` (`ProfileMetaCacheKey`) onto cached threads. Lets `thread:id:*`, `thread:chain:*`, `thread:parent:*`, and feed-list caches stay cached across `UpdatePremium` / `UserFaculty` mutations — only `user:meta:<uid>` needs invalidation.
 
@@ -105,7 +106,9 @@ Missing either → falls back to embedded `User.IsPremium` / `User.UserFaculty` 
 | `Faculty.Update/Delete` (entity rename) | every overlay reads `user:meta:<uid>.FacultyName` | `faculty:id:<id>`, `faculty:list:*`, `profile:user:*`, `userfaculty:user:*`, **`user:meta:*`** (pattern — affects all users in faculty), `notification:sender:*`, `explore:*`, all thread feed families incl. `thread:id:*`, `thread:chain:*`, `feed:trending:global`, `feed:foryou:*` |
 | `Event.Update/Delete` | `threaddto.FeedItemResponse.EventID/EventName` (cached threads preload `ThreadEvents.Event`) | `invalidateEvent(id)` (lists + `event:threads:<id>:*`) **plus** `invalidateEventThreadCaches(id)` per affected thread |
 
-Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src:*` (per-viewer foryou source) cache full `[]threadmodel.Thread` with full preload — they snapshot event_name/is_premium/faculty but do **not** register under `threadFeedsTag`. Mutations affecting fields embedded in cached threads must pattern-delete `feed:foryou:*` and direct-delete `feed:trending:global` explicitly. Overlay handles user fields, but event fields have no overlay → cache invalidation is the only fix.
+Note: `feed:foryou:user:<uid>:src:v<N>:*` (per-viewer foryou source) caches full `[]threadmodel.Thread` with full preload — snapshots event_name/is_premium/faculty but does **not** register under `threadFeedsTag`. Invalidate by `IncrForYouVersion(viewerID)` (single Redis INCR; old `:v<N-1>` entries orphan and TTL-expire). Author-mutations that affect followers must INCR every follower's version (see `invalidateForYouFeedCachesForFollowers`).
+
+`feed:trending:global` is a Redis **ZSET** of top-100 `thread_id → feed_score` pairs (scheduler-written; ~3 KB). Reader hydrates full threads via `thread:id:<id>` per-thread cache (`hydrateThreads`). To invalidate when fields embedded in cached threads change (event name, premium, faculty), either direct-delete `feed:trending:global` (scheduler refreshes within 1 min) OR invalidate the per-thread caches with `thread:id:*` (next hydration goes to DB). Overlay handles user fields on the hydrated thread; event fields have no overlay → per-thread cache invalidation is the only fix.
 
 **File validation** — lives in `domain/model/<m>/`. `mediamodel.ValidateImageExt` (jpg/jpeg/png/webp) in `media/media.go`. `threadmediamodel.ValidateThreadMediaExt` in `thread_media/thread_media.go`. Never in application layer.
 
@@ -118,11 +121,13 @@ Note: `feed:trending:global` (scheduler-written) and `feed:foryou:user:<uid>:src
 **Pagination** — services return `([]T, int64, error)`. Controllers wrap in `<m>dto.PaginatedXxxResponse{Data, Meta: threaddto.FeedMeta{Total, Page, Limit}}`.
 
 **For You feed ordering** — `FindForYouFeed` in `infrastructure/repository/thread/thread_repository_for_you.go` splits candidates into two bands by `created_at` age vs `forYouFreshWindow` (15m):
-- `fresh` (age < 15m) → sorted `created_at DESC` → capped at `forYouFreshCap` (5); overflow spills into `ranked`
+- `fresh` (age < 15m) → sorted `created_at DESC` → capped at `forYouEffectiveFreshCap(limit) = min(forYouFreshCap=5, ceil(0.2 * limit))`; overflow spills into `ranked`
 - `ranked` (age ≥ 15m or fresh overflow) → sorted `feed_score DESC` + `shuffleWithinBands`
-- Final list = `[fresh..., ranked...]` → `forYouCandidateCap` (800) → `applyAuthorCap` (20/author)
+- Final list = `[fresh..., ranked...]` → `forYouCandidateCap` (800) → `applyAuthorCap` (position-aware: 3 in top-10, 5 in top-25, 20 across whole feed)
 
-Source SQL (`findForYou{Own,Following,Community,Global}`) uses `forYouFreshFirstOrderSQL()` — `ORDER BY (created_at > NOW() - INTERVAL '<window>') DESC, feed_score DESC` — so fresh posts with `feed_score = 0` are not cut by the per-source `LIMIT 100`. Non-own fresh candidates get a floor of `forYouFreshFloor` (0.1) in `addCandidates` to clear the `forYouMinScore` (0.01) filter; own fresh candidates get floor `5.0`. Visibility predicates (community visibility, `is_private` author, follower / member joins) are unchanged — fresh-first only reorders, never widens the WHERE clause.
+Source SQL (`findForYou{Own,Following,Community,Global}`) uses `forYouFreshFirstOrder(freshCutoff)` — `ORDER BY (created_at > ?) DESC, feed_score DESC` (parameter-bound) — so fresh posts with `feed_score = 0` are not cut by the per-source `LIMIT 100`. Non-own fresh candidates get a floor of `forYouFreshFloor` (0.1) in `addCandidates` to clear the `forYouMinScore` (0.01) filter; own fresh candidates get floor `5.0`. Replies are demoted via `forYouReplyWeight` (0.5) applied to the effective source weight. Visibility predicates (community visibility, `is_private` author, follower / member joins) are unchanged — fresh-first only reorders, never widens the WHERE clause.
+
+`feed_score` stores **raw weighted engagement** (no decay applied); read-time decay `1/(1+age_h/forYouHalflifeHours)` is the only decay. Scheduler (`infrastructure/scheduler/feed_score_scheduler.go`) recomputes every 1 min and writes the global trending ZSET (`feed:trending:global`) — top-100 (thread_id, feed_score) pairs; readers hydrate via `thread:id:<id>` per-thread cache.
 
 `GET /threads/feed/new-count?since_id=<id>` (`CountNewSinceID`) uses strict `thread_id > since_id` — frontend must pass `Math.max(...visibleIDs)` not `data[0].id`, because fresh band sorts by `created_at` not by ID.
 
