@@ -262,19 +262,20 @@ func (r *communityMemberRepository) invalidateCommunityMemberChange(communityID,
 	// Tag-based — covers every legacy pattern:
 	//   infrarepoShared.CommunityMembersTag    → community:members/users/about/about:topmembers:<cid>:*
 	//   infrarepoShared.CommunityListsByUserTag → community:joined/created:<uid>:*
-	//   infrarepoShared.UserForYouTag          → feed:foryou:user:<uid>:*
 	//   infrarepoShared.UserFeedsTag           → thread:userfeed/usermedia/following:<uid>:*
 	//   infrarepoShared.ViewerThreadFeedsTag   → thread:userfeed/usermedia:*:req:<uid>,
 	//                            thread:my-communities/all-communities:user:<uid>:*,
 	//                            community:threads:*:user:<uid>:*,
 	//                            event:threads:*:viewer:<uid>:*
+	// For You caches use a version-counter (see ForYouVersionKey), invalidated
+	// by IncrForYouVersion — single atomic O(1) op, no SMEMBERS / DEL fan-out.
 	_ = r.cache.InvalidateTags(ctx,
 		infrarepoShared.CommunityMembersTag(communityID),
 		infrarepoShared.CommunityListsByUserTag(userID),
-		infrarepoShared.UserForYouTag(userID),
 		infrarepoShared.UserFeedsTag(userID),
 		infrarepoShared.ViewerThreadFeedsTag(userID),
 	)
+	infrarepoShared.IncrForYouVersion(ctx, r.cache, userID)
 	infrarepoShared.InvalidateExploreCache(ctx, r.cache)
 }
 

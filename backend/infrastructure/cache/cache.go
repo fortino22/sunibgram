@@ -265,6 +265,20 @@ func (c *Cache) Incr(ctx context.Context, key string) (int64, error) {
 	return c.client.Incr(ctx, key).Result()
 }
 
+// GetCounter reads an integer counter set by Incr/IncrWithWindow. Returns
+// (0, nil) when the key is absent so callers can treat a missing version key
+// as version 0 without special-casing redis.Nil. Other errors propagate.
+func (c *Cache) GetCounter(ctx context.Context, key string) (int64, error) {
+	raw, err := c.client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return parseInt64(raw)
+}
+
 // IncrWithWindow atomically increments a counter and ensures it expires after
 // the given window. Returns the post-increment count and remaining TTL on the
 // key. Use for sliding/rolling rate limits — first hit creates the key with

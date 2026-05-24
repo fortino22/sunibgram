@@ -118,18 +118,18 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 
 func (r *followRepository) invalidateVisibilityFeedsForViewer(ctx context.Context, viewerID uint) {
 	// Tag-based invalidation. Same blast radius as the legacy 9-pattern SCAN:
-	//   infrarepoShared.UserForYouTag       → feed:foryou:user:<v>:*
 	//   infrarepoShared.UserFeedsTag        → thread:userfeed/usermedia/following:<v>:*
 	//   infrarepoShared.ViewerThreadFeedsTag → thread:roots:*:viewer:<v>,
 	//                          thread:userfeed/usermedia:*:req:<v>,
 	//                          thread:my-communities/all-communities:user:<v>:*,
 	//                          community:threads:*:user:<v>:*,
 	//                          event:threads:*:viewer:<v>:*
+	// For You caches use a version-counter (IncrForYouVersion) instead of a tag.
 	_ = r.cache.InvalidateTags(ctx,
-		infrarepoShared.UserForYouTag(viewerID),
 		infrarepoShared.UserFeedsTag(viewerID),
 		infrarepoShared.ViewerThreadFeedsTag(viewerID),
 	)
+	infrarepoShared.IncrForYouVersion(ctx, r.cache, viewerID)
 }
 
 func (r *followRepository) Exists(followerID, followingID uint) (bool, error) {

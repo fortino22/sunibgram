@@ -13,6 +13,7 @@ import (
 
 	communitymodel "github.com/sunibgram/domain/model/community"
 	threadmodel "github.com/sunibgram/domain/model/thread"
+	infrarepoShared "github.com/sunibgram/infrastructure/repository/_shared"
 )
 
 const forYouRecencyWindow = 7 * 24 * time.Hour
@@ -78,16 +79,24 @@ func forYouSeedKey(userID uint) string {
 	return fmt.Sprintf("feed:foryou:user:%d:seed", userID)
 }
 
-func forYouSourceOwnKey(userID uint) string {
-	return fmt.Sprintf("feed:foryou:user:%d:src:own", userID)
+// Per-source cache keys carry a `:v{N}` suffix where N is the user's current
+// For You cache version (see infrarepoShared.ForYouVersionKey). Mutations INCR
+// the version atomically; readers GET it once and bake it into every source
+// key built for this request. Old `:v{N-1}` entries orphan and TTL-expire.
+func forYouSourceOwnKey(userID uint, version int64) string {
+	return fmt.Sprintf("feed:foryou:user:%d:src:own:v%d", userID, version)
 }
 
-func forYouSourceFollowingKey(userID uint) string {
-	return fmt.Sprintf("feed:foryou:user:%d:src:following", userID)
+func forYouSourceFollowingKey(userID uint, version int64) string {
+	return fmt.Sprintf("feed:foryou:user:%d:src:following:v%d", userID, version)
 }
 
-func forYouSourceCommunityKey(userID uint) string {
-	return fmt.Sprintf("feed:foryou:user:%d:src:community", userID)
+func forYouSourceCommunityKey(userID uint, version int64) string {
+	return fmt.Sprintf("feed:foryou:user:%d:src:community:v%d", userID, version)
+}
+
+func forYouNewCountKey(userID, sinceID uint, version int64) string {
+	return fmt.Sprintf("feed:foryou:user:%d:newcount:%d:v%d", userID, sinceID, version)
 }
 
 const forYouSourceGlobalKey = "feed:trending:global"
@@ -117,6 +126,10 @@ func (r *threadCached) InvalidateForYouSeed(ctx context.Context, userID uint) {
 
 func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	seed := r.resolveForYouSeed(ctx, userID)
+	// Single GET of the user's For You cache version. Every source cache key
+	// built for this request carries this version; a concurrent mutation that
+	// INCRs the version mid-request just orphans the soon-to-be-written keys.
+	version := infrarepoShared.ReadForYouVersion(ctx, r.cache, userID)
 
 	merged := make(map[uint]forYouCandidate)
 	now := time.Now()
@@ -170,7 +183,7 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 	wg.Add(4)
 	go func() {
 		defer wg.Done()
-		ownThreads, ownErr = r.findForYouOwn(ctx, userID)
+		ownThreads, ownErr = r.findForYouOwn(ctx, userID, version)
 	}()
 	go func() {
 		defer wg.Done()
@@ -178,11 +191,11 @@ func (r *threadCached) FindForYouFeed(ctx context.Context, userID uint, page, li
 	}()
 	go func() {
 		defer wg.Done()
-		followingThreads, followingErr = r.findForYouFollowing(ctx, userID)
+		followingThreads, followingErr = r.findForYouFollowing(ctx, userID, version)
 	}()
 	go func() {
 		defer wg.Done()
-		communityThreads, communityErr = r.findForYouCommunity(ctx, userID)
+		communityThreads, communityErr = r.findForYouCommunity(ctx, userID, version)
 	}()
 	wg.Wait()
 	if ownErr != nil {
@@ -305,10 +318,17 @@ func applyAuthorCap(candidates []forYouCandidate, maxPerAuthor int) []threadmode
 // CountNewSinceID counts visible feed-eligible threads created after sinceID,
 // used by the "Show N new posts" banner. Capped at 1000 (UI shows "999+").
 //
-// Not cached: the query is an indexed COUNT(*) with LIMIT 1001 — ~1 ms — and
-// since_id varies per scroll position, every distinct value would mint a new
-// Redis key. Caching cost > saving.
+// Cached per (userID, sinceID, forYouVersion) with a 30 s TTL. A new post by
+// any author the viewer can see triggers IncrForYouVersion(viewer), which
+// orphans the cached count atomically — zero staleness, no per-since_id key
+// fanout on invalidation.
 func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint) (int64, error) {
+	version := infrarepoShared.ReadForYouVersion(ctx, r.cache, userID)
+	key := forYouNewCountKey(userID, sinceID, version)
+	var cached int64
+	if err := r.cache.Get(ctx, key, &cached); err == nil {
+		return cached, nil
+	}
 	var count int64
 	requester := userID
 	query := ApplyThreadVisibility(r.db.readDB.WithContext(ctx).Model(&threadmodel.Thread{}), &requester).
@@ -324,11 +344,12 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 	if count > 1000 {
 		count = 1000
 	}
+	_ = r.cache.Set(ctx, key, count, 30*time.Second)
 	return count, nil
 }
 
-func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
-	key := forYouSourceOwnKey(userID)
+func (r *threadCached) findForYouOwn(ctx context.Context, userID uint, version int64) ([]threadmodel.Thread, error) {
+	key := forYouSourceOwnKey(userID, version)
 	var cached []threadmodel.Thread
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
@@ -353,9 +374,7 @@ func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]thread
 			Find(&threads).Error; err != nil {
 			return nil, err
 		}
-		if err := r.cache.Set(ctx, key, threads, forYouOwnTTL); err == nil {
-			r.trackForYouKey(ctx, userID, key)
-		}
+		_ = r.cache.Set(ctx, key, threads, forYouOwnTTL)
 		return threads, nil
 	})
 	if err != nil {
@@ -364,8 +383,8 @@ func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]thread
 	return result.([]threadmodel.Thread), nil
 }
 
-func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
-	key := forYouSourceFollowingKey(userID)
+func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint, version int64) ([]threadmodel.Thread, error) {
+	key := forYouSourceFollowingKey(userID, version)
 	var cached []threadmodel.Thread
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
@@ -392,9 +411,7 @@ func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]
 			Find(&threads).Error; err != nil {
 			return nil, err
 		}
-		if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
-			r.trackForYouKey(ctx, userID, key)
-		}
+		_ = r.cache.Set(ctx, key, threads, forYouSourceTTL)
 		return threads, nil
 	})
 	if err != nil {
@@ -403,8 +420,8 @@ func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]
 	return result.([]threadmodel.Thread), nil
 }
 
-func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
-	key := forYouSourceCommunityKey(userID)
+func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint, version int64) ([]threadmodel.Thread, error) {
+	key := forYouSourceCommunityKey(userID, version)
 	var cached []threadmodel.Thread
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
@@ -428,9 +445,7 @@ func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]
 			Find(&threads).Error; err != nil {
 			return nil, err
 		}
-		if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
-			r.trackForYouKey(ctx, userID, key)
-		}
+		_ = r.cache.Set(ctx, key, threads, forYouSourceTTL)
 		return threads, nil
 	})
 	if err != nil {

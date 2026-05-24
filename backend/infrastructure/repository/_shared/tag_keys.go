@@ -1,6 +1,11 @@
 package infrarepoShared
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+
+	"github.com/sunibgram/infrastructure/cache"
+)
 
 // Tag key builders for reverse-index invalidation (cache phase 2).
 //
@@ -15,13 +20,6 @@ import "fmt"
 // thread:userfeed:<uid>:*, thread:usermedia:<uid>:*, thread:following:<uid>:*.
 func UserFeedsTag(userID uint) string {
 	return fmt.Sprintf("tag:user:%d:feeds", userID)
-}
-
-// UserForYouTag covers foryou source caches for a user
-// (feed:foryou:user:<uid>:src:*). Does NOT cover the foryou seed
-// (deterministic key, deleted directly). Newcount results are not cached.
-func UserForYouTag(userID uint) string {
-	return fmt.Sprintf("tag:user:%d:foryou", userID)
 }
 
 // ThreadFeedsTag covers feed entries that include a given thread. Replaces
@@ -270,4 +268,30 @@ func EventPinsUserTag(userID uint) string {
 // type/status filters). Registered at FeedbackRepository.FindAll Set sites.
 func FeedbackListTag() string {
 	return "tag:feedback:list"
+}
+
+// ForYouVersionKey is a per-user atomic counter used to invalidate the
+// For You source caches (and the newcount cache) without iterating the
+// individual cache keys. Readers GET the current version and bake it into
+// every foryou cache key; mutations INCR it atomically. Old keys orphan
+// and TTL-expire — no SMEMBERS / no DEL fan-out on the request path.
+//
+// Other tag families (UserFeedsTag, ViewerThreadFeedsTag, etc.) are unchanged.
+func ForYouVersionKey(userID uint) string {
+	return fmt.Sprintf("feed:foryou:user:%d:version", userID)
+}
+
+// IncrForYouVersion atomically bumps the per-user For You cache version,
+// invalidating every src:* and newcount:* cache entry for that user in one
+// O(1) Redis op. Errors are swallowed by callers (best-effort invalidation).
+func IncrForYouVersion(ctx context.Context, c *cache.Cache, userID uint) {
+	_, _ = c.Incr(ctx, ForYouVersionKey(userID))
+}
+
+// ReadForYouVersion returns the current per-user For You cache version,
+// treating a missing key as version 0. Used by readers to build version-
+// scoped cache keys.
+func ReadForYouVersion(ctx context.Context, c *cache.Cache, userID uint) int64 {
+	v, _ := c.GetCounter(ctx, ForYouVersionKey(userID))
+	return v
 }
