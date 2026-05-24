@@ -68,9 +68,7 @@ jobs:
           context: ./backend
           platforms: linux/arm64
           push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:${{ steps.meta.outputs.tag }}
-            ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:latest
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.BACKEND_REPO }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,scope=backend,mode=max
 
@@ -100,9 +98,7 @@ jobs:
           context: ./frontend
           platforms: linux/arm64
           push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:${{ steps.meta.outputs.tag }}
-            ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:latest
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
 
