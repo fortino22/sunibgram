@@ -128,8 +128,8 @@ jobs:
           set -euo pipefail
 
           ENV_PAIRS=()
-          [ -n "$BACKEND_TAG" ]  && ENV_PAIRS+=("NEW_BACKEND_TAG=$BACKEND_TAG")
-          [ -n "$FRONTEND_TAG" ] && ENV_PAIRS+=("NEW_FRONTEND_TAG=$FRONTEND_TAG")
+          if [ -n "$BACKEND_TAG" ];  then ENV_PAIRS+=("BACKEND_TAG=$BACKEND_TAG"); fi
+          if [ -n "$FRONTEND_TAG" ]; then ENV_PAIRS+=("FRONTEND_TAG=$FRONTEND_TAG"); fi
 
           CMD="cd /opt/sunibgram-infra && git pull --ff-only && ${ENV_PAIRS[*]} bash scripts/deploy.sh"
 
