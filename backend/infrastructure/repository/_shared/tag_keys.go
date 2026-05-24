@@ -17,8 +17,9 @@ func UserFeedsTag(userID uint) string {
 	return fmt.Sprintf("tag:user:%d:feeds", userID)
 }
 
-// UserForYouTag covers foryou source + newcount caches for a user.
-// Does NOT cover the foryou seed (deterministic key, deleted directly).
+// UserForYouTag covers foryou source caches for a user
+// (feed:foryou:user:<uid>:src:*). Does NOT cover the foryou seed
+// (deterministic key, deleted directly). Newcount results are not cached.
 func UserForYouTag(userID uint) string {
 	return fmt.Sprintf("tag:user:%d:foryou", userID)
 }

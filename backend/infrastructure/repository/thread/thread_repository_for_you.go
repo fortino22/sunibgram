@@ -15,6 +15,8 @@ import (
 	threadmodel "github.com/sunibgram/domain/model/thread"
 )
 
+const forYouRecencyWindow = 7 * 24 * time.Hour
+
 const (
 	forYouTrendingTTL = 2 * time.Minute
 	forYouSourceTTL   = 60 * time.Second
@@ -31,20 +33,20 @@ const (
 	forYouFreshFloor    = 0.1
 )
 
-// forYouFreshIntervalSQL renders forYouFreshWindow as a Postgres interval literal
-// so the SQL ORDER BY clause stays in sync with the Go-side fresh split.
-func forYouFreshIntervalSQL() string {
-	return fmt.Sprintf("INTERVAL '%d seconds'", int(forYouFreshWindow.Seconds()))
+// forYouRecencyBounds computes the two timestamps used by every source query
+// (the 7-day recency cutoff and the fresh-window cutoff). Binding these as
+// parameters instead of inlining NOW() lets Postgres reuse the prepared-statement
+// plan across requests and keeps pgbouncer / GORM caches effective.
+func forYouRecencyBounds() (recencyCutoff, freshCutoff time.Time) {
+	now := time.Now()
+	return now.Add(-forYouRecencyWindow), now.Add(-forYouFreshWindow)
 }
 
-// forYouFreshFirstOrderSQL puts threads inside the fresh window at the top of
+// forYouFreshFirstOrder puts threads inside the fresh window at the top of
 // each source query so feed_score=0 fresh posts are not cut by the LIMIT 100.
 // Used by every per-source query; visibility WHERE clauses are unchanged.
-func forYouFreshFirstOrderSQL() string {
-	return fmt.Sprintf(
-		"(threads.created_at > NOW() - %s) DESC, threads.feed_score DESC",
-		forYouFreshIntervalSQL(),
-	)
+func forYouFreshFirstOrder(freshCutoff time.Time) interface{} {
+	return gorm.Expr("(threads.created_at > ?) DESC, threads.feed_score DESC", freshCutoff)
 }
 
 const mainFeedReplyInteractionSQL = "(threads.like_count + threads.repost_count + threads.comment_count)"
@@ -86,10 +88,6 @@ func forYouSourceFollowingKey(userID uint) string {
 
 func forYouSourceCommunityKey(userID uint) string {
 	return fmt.Sprintf("feed:foryou:user:%d:src:community", userID)
-}
-
-func forYouNewCountKey(userID, sinceID uint) string {
-	return fmt.Sprintf("feed:foryou:user:%d:newcount:%d", userID, sinceID)
 }
 
 const forYouSourceGlobalKey = "feed:trending:global"
@@ -306,12 +304,11 @@ func applyAuthorCap(candidates []forYouCandidate, maxPerAuthor int) []threadmode
 
 // CountNewSinceID counts visible feed-eligible threads created after sinceID,
 // used by the "Show N new posts" banner. Capped at 1000 (UI shows "999+").
+//
+// Not cached: the query is an indexed COUNT(*) with LIMIT 1001 — ~1 ms — and
+// since_id varies per scroll position, every distinct value would mint a new
+// Redis key. Caching cost > saving.
 func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint) (int64, error) {
-	key := forYouNewCountKey(userID, sinceID)
-	var cached int64
-	if err := r.cache.Get(ctx, key, &cached); err == nil {
-		return cached, nil
-	}
 	var count int64
 	requester := userID
 	query := ApplyThreadVisibility(r.db.readDB.WithContext(ctx).Model(&threadmodel.Thread{}), &requester).
@@ -327,9 +324,6 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 	if count > 1000 {
 		count = 1000
 	}
-	if err := r.cache.Set(ctx, key, count, 30*time.Second); err == nil {
-		r.trackForYouKey(ctx, userID, key)
-	}
 	return count, nil
 }
 
@@ -339,22 +333,35 @@ func (r *threadCached) findForYouOwn(ctx context.Context, userID uint) ([]thread
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
-	var threads []threadmodel.Thread
-	query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
-		Where("threads.user_id = ?", userID).
-		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", forYouFeedTypes(true))
-	query = applyMainFeedReplyInteractionFilter(query)
-	if err := query.
-		Order(forYouFreshFirstOrderSQL()).
-		Limit(100).
-		Find(&threads).Error; err != nil {
+	result, err, _ := r.forYouSingleflight.Do(key, func() (interface{}, error) {
+		// Re-check cache inside the singleflight gate: a sibling caller may
+		// have populated it while we were queued.
+		var doubleCheck []threadmodel.Thread
+		if err := r.cache.Get(ctx, key, &doubleCheck); err == nil {
+			return doubleCheck, nil
+		}
+		recencyCutoff, freshCutoff := forYouRecencyBounds()
+		var threads []threadmodel.Thread
+		query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
+			Where("threads.user_id = ?", userID).
+			Where("threads.created_at > ?", recencyCutoff).
+			Where("threads.type IN ?", forYouFeedTypes(true))
+		query = applyMainFeedReplyInteractionFilter(query)
+		if err := query.
+			Order(forYouFreshFirstOrder(freshCutoff)).
+			Limit(100).
+			Find(&threads).Error; err != nil {
+			return nil, err
+		}
+		if err := r.cache.Set(ctx, key, threads, forYouOwnTTL); err == nil {
+			r.trackForYouKey(ctx, userID, key)
+		}
+		return threads, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	if err := r.cache.Set(ctx, key, threads, forYouOwnTTL); err == nil {
-		r.trackForYouKey(ctx, userID, key)
-	}
-	return threads, nil
+	return result.([]threadmodel.Thread), nil
 }
 
 func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
@@ -363,26 +370,37 @@ func (r *threadCached) findForYouFollowing(ctx context.Context, userID uint) ([]
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
-	var threads []threadmodel.Thread
-	query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
-		Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-		Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
-		Where("user_relationships.follower_id = ?", userID).
-		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", forYouFeedTypes(true)).
-		Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
-	query = applyMainFeedReplyInteractionFilter(query)
-	if err := query.
-		Order(forYouFreshFirstOrderSQL()).
-		Limit(100).
-		Find(&threads).Error; err != nil {
+	result, err, _ := r.forYouSingleflight.Do(key, func() (interface{}, error) {
+		var doubleCheck []threadmodel.Thread
+		if err := r.cache.Get(ctx, key, &doubleCheck); err == nil {
+			return doubleCheck, nil
+		}
+		recencyCutoff, freshCutoff := forYouRecencyBounds()
+		var threads []threadmodel.Thread
+		query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
+			Joins("JOIN user_relationships ON user_relationships.following_id = threads.user_id").
+			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+			Joins("LEFT JOIN community_members ON community_members.community_id = threads.community_id AND community_members.user_id = ?", userID).
+			Where("user_relationships.follower_id = ?", userID).
+			Where("threads.created_at > ?", recencyCutoff).
+			Where("threads.type IN ?", forYouFeedTypes(true)).
+			Where("threads.community_id IS NULL OR communities.visibility = ? OR community_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
+		query = applyMainFeedReplyInteractionFilter(query)
+		if err := query.
+			Order(forYouFreshFirstOrder(freshCutoff)).
+			Limit(100).
+			Find(&threads).Error; err != nil {
+			return nil, err
+		}
+		if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
+			r.trackForYouKey(ctx, userID, key)
+		}
+		return threads, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
-		r.trackForYouKey(ctx, userID, key)
-	}
-	return threads, nil
+	return result.([]threadmodel.Thread), nil
 }
 
 func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]threadmodel.Thread, error) {
@@ -391,44 +409,70 @@ func (r *threadCached) findForYouCommunity(ctx context.Context, userID uint) ([]
 	if err := r.cache.Get(ctx, key, &cached); err == nil {
 		return cached, nil
 	}
-	var threads []threadmodel.Thread
-	query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
-		Joins("JOIN community_members ON community_members.community_id = threads.community_id").
-		Where("community_members.user_id = ?", userID).
-		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", forYouFeedTypes(true))
-	query = applyMainFeedReplyInteractionFilter(query)
-	if err := query.
-		Order(forYouFreshFirstOrderSQL()).
-		Limit(100).
-		Find(&threads).Error; err != nil {
+	result, err, _ := r.forYouSingleflight.Do(key, func() (interface{}, error) {
+		var doubleCheck []threadmodel.Thread
+		if err := r.cache.Get(ctx, key, &doubleCheck); err == nil {
+			return doubleCheck, nil
+		}
+		recencyCutoff, freshCutoff := forYouRecencyBounds()
+		var threads []threadmodel.Thread
+		query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
+			Joins("JOIN community_members ON community_members.community_id = threads.community_id").
+			Where("community_members.user_id = ?", userID).
+			Where("threads.created_at > ?", recencyCutoff).
+			Where("threads.type IN ?", forYouFeedTypes(true))
+		query = applyMainFeedReplyInteractionFilter(query)
+		if err := query.
+			Order(forYouFreshFirstOrder(freshCutoff)).
+			Limit(100).
+			Find(&threads).Error; err != nil {
+			return nil, err
+		}
+		if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
+			r.trackForYouKey(ctx, userID, key)
+		}
+		return threads, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	if err := r.cache.Set(ctx, key, threads, forYouSourceTTL); err == nil {
-		r.trackForYouKey(ctx, userID, key)
-	}
-	return threads, nil
+	return result.([]threadmodel.Thread), nil
 }
 
 func (r *threadCached) findForYouGlobal(ctx context.Context) ([]threadmodel.Thread, error) {
-	var threads []threadmodel.Thread
-	if err := r.cache.Get(ctx, forYouSourceGlobalKey, &threads); err == nil {
-		return threads, nil
+	var cached []threadmodel.Thread
+	if err := r.cache.Get(ctx, forYouSourceGlobalKey, &cached); err == nil {
+		return cached, nil
 	}
-	query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
-		Where("threads.created_at > NOW() - INTERVAL '7 days'").
-		Where("threads.type IN ?", forYouFeedTypes(false)).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
-		Where("COALESCE(user_settings.is_private, false) = ?", false)
-	query = applyMainFeedReplyInteractionFilter(query)
-	if err := query.
-		Order(forYouFreshFirstOrderSQL()).
-		Limit(100).
-		Find(&threads).Error; err != nil {
+	// The scheduler proactively warms this key every minute; the lazy path
+	// here only runs during scheduler downtime or startup. Without singleflight
+	// every concurrent feed request stampedes the same global query.
+	result, err, _ := r.forYouSingleflight.Do(forYouSourceGlobalKey, func() (interface{}, error) {
+		var doubleCheck []threadmodel.Thread
+		if err := r.cache.Get(ctx, forYouSourceGlobalKey, &doubleCheck); err == nil {
+			return doubleCheck, nil
+		}
+		recencyCutoff, freshCutoff := forYouRecencyBounds()
+		var threads []threadmodel.Thread
+		query := PreloadThreadDetails(r.db.readDB.WithContext(ctx)).
+			Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+			Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
+			Where("threads.created_at > ?", recencyCutoff).
+			Where("threads.type IN ?", forYouFeedTypes(false)).
+			Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
+			Where("COALESCE(user_settings.is_private, false) = ?", false)
+		query = applyMainFeedReplyInteractionFilter(query)
+		if err := query.
+			Order(forYouFreshFirstOrder(freshCutoff)).
+			Limit(100).
+			Find(&threads).Error; err != nil {
+			return nil, err
+		}
+		_ = r.cache.Set(ctx, forYouSourceGlobalKey, threads, forYouTrendingTTL)
+		return threads, nil
+	})
+	if err != nil {
 		return nil, err
 	}
-	_ = r.cache.Set(ctx, forYouSourceGlobalKey, threads, forYouTrendingTTL)
-	return threads, nil
+	return result.([]threadmodel.Thread), nil
 }

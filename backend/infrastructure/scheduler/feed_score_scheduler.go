@@ -39,24 +39,23 @@ func (s *FeedScoreScheduler) Start(ctx context.Context) {
 }
 
 func (s *FeedScoreScheduler) run() {
+	// IS DISTINCT FROM skips WAL writes for rows whose feed_score did not move
+	// since the last tick — most cold threads stay constant, so this cuts WAL
+	// churn dramatically without changing any read-side semantics.
 	if err := s.db.Exec(`
 		UPDATE threads
-		SET feed_score = (
-			like_count::float +
-			3.0 * comment_count::float +
-			5.0 * repost_count::float +
-			4.0 * bookmark_count::float
-		) / (
-			1.0 + POWER(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0, 1.5)
-		)
-		WHERE created_at > NOW() - INTERVAL '7 days'
+		SET feed_score = new_score
+		FROM (
+			SELECT thread_id,
+				(like_count::float + 3.0 * comment_count::float + 5.0 * repost_count::float + 4.0 * bookmark_count::float)
+				/ (1.0 + POWER(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0, 1.5)) AS new_score
+			FROM threads
+			WHERE created_at > NOW() - INTERVAL '7 days'
+		) computed
+		WHERE threads.thread_id = computed.thread_id
+		  AND threads.feed_score IS DISTINCT FROM computed.new_score
 	`).Error; err != nil {
 		log.Printf("feed score recompute failed: %v", err)
-		return
-	}
-
-	if err := s.db.Exec("UPDATE threads SET feed_score = 0 WHERE created_at <= NOW() - INTERVAL '7 days' AND feed_score <> 0").Error; err != nil {
-		log.Printf("feed score reset failed: %v", err)
 		return
 	}
 

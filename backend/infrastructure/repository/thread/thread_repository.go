@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 
 	usermodel "github.com/sunibgram/domain/model/user"
@@ -19,6 +20,10 @@ type threadCached struct {
 	likes     *infrarepoShared.InteractionRepo
 	bookmarks *infrarepoShared.InteractionRepo
 	reposts   *infrarepoShared.InteractionRepo
+	// forYouSingleflight coalesces concurrent cache-miss requests against the
+	// same For You source key onto a single underlying DB query. Eliminates
+	// thundering-herd at TTL expiry.
+	forYouSingleflight singleflight.Group
 }
 
 type ThreadDB struct {

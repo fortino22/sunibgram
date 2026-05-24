@@ -349,7 +349,7 @@ func (r *threadCached) FindCommunityMedia(communityID, requesterUserID uint) ([]
 	requesterID := &requesterUserID
 	if err := ApplyThreadVisibility(r.db.readDB.
 		Table("thread_media").
-		Select("thread_media.media_id, thread_media.thread_id, thread_media.object_name, thread_media.bucket, thread_media.created_at").
+		Select("thread_media.media_id, thread_media.thread_id, thread_media.object_name, thread_media.created_at").
 		Joins("JOIN threads ON threads.thread_id = thread_media.thread_id"), requesterID).
 		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
 		Where("COALESCE(threads.community_id, original.community_id) = ?", communityID).

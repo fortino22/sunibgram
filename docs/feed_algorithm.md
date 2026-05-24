@@ -6,12 +6,21 @@
 
 Threads have a precomputed `feed_score` column updated every 1 minute by `infrastructure/scheduler/feed_score_scheduler.go` for content from the last 7 days:
 
-```text
-(likes + 3 * comments + 5 * reposts + 4 * bookmarks)
-/ (1 + (age_hours ^ 1.5))
+```sql
+UPDATE threads
+SET feed_score = (
+  like_count + 3.0 * comment_count + 5.0 * repost_count + 4.0 * bookmark_count
+) / (
+  1.0 + POWER(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0, 1.5)
+)
+WHERE created_at > NOW() - INTERVAL '7 days';
 ```
 
-Threads older than 7 days are reset to `feed_score = 0`.
+Threads older than 7 days are reset to `feed_score = 0` (only when `feed_score <> 0`, so cold rows aren't rewritten).
+
+After the score recompute the scheduler also re-populates the **global trending cache** (`feed:trending:global`, TTL `5 min`) with the top 100 public, non-private, visibility-filtered threads ordered by `feed_score DESC`. Because the scheduler ticks every 1 min and the TTL is 5 min, the global source is effectively always cache-warm; the in-repo `forYouTrendingTTL = 2 min` only takes effect if the scheduler is down.
+
+Combined with the read-time decay (see [Scoring](#scoring)), the effective ranking applies decay **twice**: once by the scheduler with exponent 1.5 inside `feed_score`, and once at merge time with a linear ~6h half-life. The two are intentional — the stored score determines DB-side `ORDER BY` and the read-time decay does final ranking — but be aware they compound.
 
 ## Candidate Sources
 
@@ -29,11 +38,11 @@ Filters: types `post/repost/reply`, the last 7 days. Replies are only kept when 
 | Source | Filter | Source weight | Reposts |
 |---|---|---|---|
 | Own | viewer's own threads | `1.0` | yes |
-| Global trending | public, non-private authors | `1.0` | no |
-| Following | threads from followed users; community-visibility checked | `0.8` | yes |
-| Community | threads in communities the viewer is a member of | `0.7` | no |
+| Global trending | public communities only, non-private authors | `1.0` | no |
+| Following | threads from followed users; community-visibility checked (public OR viewer is member) | `0.8` | yes |
+| Community | threads in communities the viewer is a member of | `0.7` | no (SQL fetches reposts, Go filter strips them — slight wasted work) |
 
-Each source query is cached in Redis (see "Caching" below) so the four queries do not hit the DB on every request.
+The four source queries run **in parallel** via `sync.WaitGroup` inside `FindForYouFeed`. Each source query is cached in Redis (see "Caching" below) so the four queries do not hit the DB on every request. The global source is warmed by the scheduler, so under steady state only `own/following/community` ever miss cache for a given user.
 
 ## Scoring
 
@@ -98,7 +107,9 @@ Auth-protected, no body, returns `204 No Content`. Deletes the caller's seed key
 
 ### `GET /threads/feed/new-count?since_id=<id>`
 
-Auth-protected. Returns `{ "count": N }` — the number of feed-eligible, visibility-filtered threads with `thread_id > since_id`. Capped at 1000 (UI should render `999+`). Result is cached per `(userID, since_id)` for 30 seconds. Frontend polls this every ~30 s to drive the "Show N new posts" banner.
+Auth-protected. Returns `{ "count": N }` — the number of feed-eligible, visibility-filtered threads with `thread_id > since_id` (strict `>`). Capped at 1000 (`LIMIT 1001` then clamped; UI should render `999+`). Result is cached per `(userID, since_id)` for 30 seconds. Frontend polls this every ~30 s to drive the "Show N new posts" banner.
+
+**Important:** because the fresh band sorts by `created_at DESC` rather than `thread_id DESC`, two recently-created threads can land in the visible list with `id_a > id_b` even though `created_at_a < created_at_b`. The frontend must pass `Math.max(...visibleIDs)` as `since_id`, NOT `data[0].thread_id`. Passing `data[0].thread_id` undercounts new posts.
 
 ## Caching
 
@@ -109,7 +120,9 @@ Auth-protected. Returns `{ "count": N }` — the number of feed-eligible, visibi
 | `feed:foryou:user:{userID}:src:following` | 60 s | Following candidate cache |
 | `feed:foryou:user:{userID}:src:community` | 60 s | Community candidate cache |
 | `feed:foryou:user:{userID}:newcount:{since_id}` | 30 s | "New posts" banner counter |
-| `feed:trending:global` | 2 min | Global trending candidate cache |
+| `feed:trending:global` | 5 min (scheduler-warmed every 1 min) / 2 min (lazy fallback) | Global trending candidate cache, shared across users |
+
+Per-user keys are registered under tag `UserForYouTag(userID)` so a single `cache.InvalidateTag` drops all `src:*` and `newcount:*` entries for a user. The global key is NOT tagged — invalidation must be direct (`cache.Delete(ctx, "feed:trending:global")`) and is required when fields embedded in the cached `[]threadmodel.Thread` change (e.g. `Faculty.Update/Delete`, `Event.Update/Delete`, premium toggles for any included author — see backend `CLAUDE.md` mutation cheatsheet).
 
 The previous per-page result cache (`feed:foryou:{userID}:{page}:{limit}`) has been removed — merge / sort / shuffle / cap run on every request but are O(800) in-memory on cached source data, so the cost is negligible compared to a freeze-the-whole-feed cache.
 
