@@ -98,6 +98,10 @@ jobs:
           context: ./frontend
           platforms: linux/arm64
           push: true
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://sunibgram.com
+            NEXT_PUBLIC_SOCKET_URL=https://sunibgram.com
+            API_URL=http://backend:8080
           tags: ${{ env.ECR_REGISTRY }}/${{ env.FRONTEND_REPO }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
