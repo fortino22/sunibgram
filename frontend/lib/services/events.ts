@@ -167,12 +167,33 @@ export async function shareEvent(id: string, token: string): Promise<EventShareR
   };
 }
 
+export function joinEvent(id: string, token: string) {
+  return api.post<{ message: string }>(`/api/events/${id}/join`, undefined, token);
+}
+
+export function leaveEvent(id: string, token: string) {
+  return api.delete<{ message: string }>(`/api/events/${id}/leave`, token);
+}
+
+export async function getMyJoinedEvents(token: string): Promise<EventItem[]> {
+  const response = await api.get<unknown>('/api/events/joined/me', token);
+  const items: EventListItemResponse[] = Array.isArray(response)
+    ? (response as EventListItemResponse[])
+    : Array.isArray((response as { data?: unknown }).data)
+      ? (response as { data: EventListItemResponse[] }).data
+      : [];
+  return items.map(mapEventItem);
+}
+
 export function getOfficialEventPosts(
   id: string,
   params: PaginationParams,
   token: string
 ): Promise<PaginatedFeedResponse> {
-  return api.get<PaginatedFeedResponse>(`/api/events/${id}/official-posts${queryString(params)}`, token);
+  const qs = new URLSearchParams({ filter: 'official' });
+  if (params.page !== undefined) qs.set('page', String(params.page));
+  if (params.limit !== undefined) qs.set('limit', String(params.limit));
+  return api.get<PaginatedFeedResponse>(`/api/events/${id}/threads?${qs.toString()}`, token);
 }
 
 export function getEventDiscussion(
@@ -180,5 +201,8 @@ export function getEventDiscussion(
   params: PaginationParams,
   token: string
 ): Promise<PaginatedFeedResponse> {
-  return api.get<PaginatedFeedResponse>(`/api/events/${id}/discussion${queryString(params)}`, token);
+  const qs = new URLSearchParams({ filter: 'unofficial' });
+  if (params.page !== undefined) qs.set('page', String(params.page));
+  if (params.limit !== undefined) qs.set('limit', String(params.limit));
+  return api.get<PaginatedFeedResponse>(`/api/events/${id}/threads?${qs.toString()}`, token);
 }
