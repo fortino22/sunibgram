@@ -7,13 +7,13 @@ import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
-import { CreateEventThreadModal } from '@/components/events/CreateEventThreadModal';
 import { useEvent } from '@/hooks/useEvent';
 import { useEventActions } from '@/hooks/useEventActions';
 import { useEventJoin } from '@/hooks/useEventJoin';
 import { useEventPosts } from '@/hooks/useEventPosts';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useAuthStore } from '@/stores/authStore';
+import { useComposeStore } from '@/stores/composeStore';
 
 type Tab = 'official' | 'discussion';
 
@@ -89,6 +89,9 @@ function EventDetailHeader({ onBack }: { onBack: () => void }) {
   return (
     <div
       style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 20,
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
@@ -200,8 +203,8 @@ export function EventDetailView({ eventId }: { eventId: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('official');
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
-  const [postModalOpen, setPostModalOpen] = useState(false);
   const user = useAuthStore((s) => s.user);
+  const { openOfficialEventPost } = useComposeStore();
 
   const query = useEvent(eventId);
   const { bookmark, share } = useEventActions(eventId);
@@ -343,7 +346,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           {user?.id === event.userId && (
             <button
               type="button"
-              onClick={() => setPostModalOpen(true)}
+              onClick={() => openOfficialEventPost(eventId, event.title)}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -359,7 +362,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
               }}
             >
               <Pencil size={15} />
-              Post Update
+              Post Official
             </button>
           )}
 
@@ -456,14 +459,6 @@ export function EventDetailView({ eventId }: { eventId: string }) {
         <EventPostsPanel eventId={eventId} mode="discussion" active />
       )}
 
-      {postModalOpen && (
-        <CreateEventThreadModal
-          eventId={eventId}
-          eventTitle={event.title}
-          onClose={() => setPostModalOpen(false)}
-          onSuccess={() => setPostModalOpen(false)}
-        />
-      )}
     </div>
   );
 }

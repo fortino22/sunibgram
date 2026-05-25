@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createThread } from '@/lib/services/threads';
+import { createEventThread } from '@/lib/services/threads';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useAuthStore } from '@/stores/authStore';
 import { Avatar } from '@/components/shared/Avatar';
@@ -33,7 +33,7 @@ export function CreateEventThreadModal({
   const { mutateAsync, isPending, error } = useMutation({
     mutationFn: () => {
       if (!token) throw new Error('Not authenticated.');
-      return createThread({ content: content.trim(), files: files.length > 0 ? files : undefined, eventId }, token);
+      return createEventThread({ content: content.trim(), files: files.length > 0 ? files : undefined, eventId, isOfficial: true }, token);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event', eventId] });

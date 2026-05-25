@@ -5,7 +5,7 @@ import { useComposeStore } from '@/stores/composeStore';
 import { PostComposer } from './PostComposer';
 
 export function NewPostModal() {
-  const { open, closeCompose, preselectedEventId, preselectedEventTitle } = useComposeStore();
+  const { open, closeCompose, preselectedEventId, preselectedEventTitle, preselectedIsOfficialEvent } = useComposeStore();
   if (!open) return null;
 
   return (
@@ -57,10 +57,11 @@ export function NewPostModal() {
           </button>
         </div>
         <PostComposer
-          placeholder="What is happening?!"
+          placeholder={preselectedIsOfficialEvent ? 'Write an official update for this event…' : 'What is happening?!'}
           onSuccess={closeCompose}
           preselectedEventId={preselectedEventId}
           preselectedEventTitle={preselectedEventTitle}
+          preselectedIsOfficialEvent={preselectedIsOfficialEvent}
         />
       </div>
     </div>

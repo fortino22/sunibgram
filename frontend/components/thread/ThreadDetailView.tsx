@@ -9,6 +9,7 @@ import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
+import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
@@ -43,6 +44,7 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const author = getThreadAuthor(root);
   const canManage = isOwnThread(root, currentUserId);
   const canReport = currentUserId != null && currentUserId !== root.author.id;
@@ -53,10 +55,10 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
     setIsEditing(false);
   }
 
-  async function handleDelete() {
-    if (!window.confirm('Delete this post?')) return;
+  async function handleDeleteConfirm() {
     try {
       await deleteMutation.mutateAsync();
+      setDeleteModalOpen(false);
     } catch {
       // Mutation state already exposes the error.
     }
@@ -134,7 +136,7 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
           {(canManage || canReport) && (
             <ThreadOptionsMenu
               onEdit={canManage ? () => setIsEditing(true) : undefined}
-              onDelete={canManage ? () => void handleDelete() : undefined}
+              onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
               onReport={canReport ? () => setReportModalOpen(true) : undefined}
               deleting={deleteMutation.isPending}
               disabled={updateMutation.isPending}
@@ -237,6 +239,12 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
           onClose={() => setReportModalOpen(false)}
         />
       )}
+      <DeletePostModal
+        open={deleteModalOpen}
+        isPending={deleteMutation.isPending}
+        onConfirm={() => void handleDeleteConfirm()}
+        onCancel={() => setDeleteModalOpen(false)}
+      />
     </main>
   );
 }

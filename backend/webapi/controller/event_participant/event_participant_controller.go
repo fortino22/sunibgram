@@ -9,6 +9,7 @@ import (
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	eventdto "github.com/sunibgram/webapi/dto/event"
 	threaddto "github.com/sunibgram/webapi/dto/thread"
+	utils "github.com/sunibgram/webapi/dto/_shared"
 )
 
 type EventParticipantController struct {
@@ -52,12 +53,20 @@ func (c *EventParticipantController) GetMyJoined(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
-	data := make([]eventdto.EventMiniResponse, len(events))
+	data := make([]eventdto.EventListResponse, len(events))
 	for i := range events {
-		data[i] = eventdto.EventMiniResponse{
-			ID:        events[i].ID,
-			Title:     events[i].Title,
-			BannerURL: ctrlshared.BuildMediaURL(events[i].BannerObjectName, c.eventService.GetURL),
+		data[i] = eventdto.EventListResponse{
+			ID:          events[i].ID,
+			UserID:      events[i].UserID,
+			Title:       events[i].Title,
+			Description: events[i].Description,
+			Location:    events[i].Location,
+			Type:        events[i].Type,
+			StartTime:   eventdto.EventTime{Time: events[i].StartTime},
+			EndTime:     eventdto.EventTime{Time: events[i].EndTime},
+			BannerURL:   ctrlshared.BuildMediaURL(events[i].BannerObjectName, c.eventService.GetURL),
+			CreatedAt:   utils.Wrap(events[i].CreatedAt),
+			UpdatedAt:   utils.Wrap(events[i].UpdatedAt),
 		}
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
