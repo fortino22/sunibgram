@@ -113,7 +113,7 @@ export function LoginForm({
               Verifying…
             </>
           ) : (
-            'Verify & Send Code'
+            'Login'
           )}
         </button>
       </form>

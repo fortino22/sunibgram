@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useExplorePeople, useSuggestedPeople } from '@/hooks/useExplore';
 import { useCreatePrivateRoom, useCreateGroupRoom } from '@/hooks/chat/useCreateChatRoom';
 import { useAuthStore } from '@/stores/authStore';
@@ -315,18 +316,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
                           >
                             {u.name || u.username}
                           </span>
-                          {u.isPremium && (
-                            <span
-                              style={{
-                                fontSize: 10,
-                                color: 'var(--accent)',
-                                fontWeight: 700,
-                                flexShrink: 0,
-                              }}
-                            >
-                              ★
-                            </span>
-                          )}
+                          {u.isPremium && <VerifiedBadge size={15} />}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                           @{u.username}

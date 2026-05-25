@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	bookmarkmodel "github.com/sunibgram/domain/model/bookmark"
+	bookmarkcollectionmodel "github.com/sunibgram/domain/model/bookmark_collection"
 	categorymodel "github.com/sunibgram/domain/model/category"
 	chatmodel "github.com/sunibgram/domain/model/chat"
 	chatmediamodel "github.com/sunibgram/domain/model/chat_media"
@@ -69,6 +70,8 @@ func AutoMigrate(db *gorm.DB) {
 		&threadpollmodel.ThreadPollVote{},
 		&likemodel.Like{},
 		&bookmarkmodel.Bookmark{},
+		&bookmarkcollectionmodel.BookmarkCollection{},
+		&bookmarkcollectionmodel.BookmarkCollectionItem{},
 		&threadpinmodel.ThreadPin{},
 		&verificationcodemodel.VerificationCode{},
 		&userrelationshipmodel.UserRelationship{},

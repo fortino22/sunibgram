@@ -5,6 +5,7 @@ import (
 
 	authctrl "github.com/sunibgram/webapi/controller/auth"
 	bookmarkctrl "github.com/sunibgram/webapi/controller/bookmark"
+	bookmarkcollectionctrl "github.com/sunibgram/webapi/controller/bookmark_collection"
 	cachectrl "github.com/sunibgram/webapi/controller/cache"
 	categoryctrl "github.com/sunibgram/webapi/controller/category"
 	chatctrl "github.com/sunibgram/webapi/controller/chat"
@@ -44,6 +45,7 @@ import (
 	"github.com/sunibgram/webapi/middleware"
 	adminroute "github.com/sunibgram/webapi/router/admin"
 	authroute "github.com/sunibgram/webapi/router/auth"
+	bookmarkcollectionroute "github.com/sunibgram/webapi/router/bookmark_collection"
 	categoryroute "github.com/sunibgram/webapi/router/category"
 	chatroute "github.com/sunibgram/webapi/router/chat"
 	communityroute "github.com/sunibgram/webapi/router/community"
@@ -81,6 +83,7 @@ func Register(
 	eventCtrl *eventctrl.EventController,
 	likeCtrl *likectrl.LikeController,
 	bookmarkCtrl *bookmarkctrl.BookmarkController,
+	bookmarkCollectionCtrl *bookmarkcollectionctrl.BookmarkCollectionController,
 	threadPinCtrl *threadpinctrl.ThreadPinController,
 	repostCtrl *repostctrl.RepostController,
 	summaryCtrl *threadsummaryctrl.ThreadSummaryController,
@@ -121,6 +124,7 @@ func Register(
 	exploreroute.RegisterExploreRoutes(api, exploreCtrl, auth)
 	hashtagroute.RegisterHashtagRoutes(api, hashtagCtrl, auth)
 	threadroute.RegisterThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, summaryCtrl, auth)
+	bookmarkcollectionroute.RegisterBookmarkCollectionRoutes(api, bookmarkCollectionCtrl, auth)
 	eventroute.RegisterEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, eventThreadPinCtrl, auth)
 	emailroute.RegisterEmailRoutes(api, emailCtrl, auth)
 	userroute.RegisterUserRoutes(api, followCtrl, exploreCtrl, auth)

@@ -29,7 +29,7 @@ type dummyAccount struct {
 var dummyAccounts = []dummyAccount{
 	{Name: "Octa", Username: "Octa.hi", Email: "octa@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 4, 12, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
 	{Name: "Devin", Username: "devin.hi", Email: "devin@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2002, 8, 25, 0, 0, 0, 0, time.UTC), FacultyName: "School of Information Systems"},
-	{Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2003, 11, 7, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
+	// {Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2003, 11, 7, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
 	{Name: "chermiese", Username: "chermiese", Email: "chermiese@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 2, 19, 0, 0, 0, 0, time.UTC), FacultyName: "School of Design"},
 }
 

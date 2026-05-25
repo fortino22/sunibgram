@@ -3,7 +3,6 @@
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import {
-  getTrendingHashtags,
   getSuggestedPeople,
   searchExplore,
   getTopPosts,
@@ -13,14 +12,7 @@ import {
   getCommunitySearch,
 } from '@/lib/services/explore';
 
-export function useTrendingHashtags(limit = 10) {
-  const token = useAuthStore((s) => s.token);
-  return useQuery({
-    queryKey: ['hashtags', 'trending', limit],
-    queryFn: () => getTrendingHashtags(token, limit),
-    staleTime: 5 * 60 * 1000,
-  });
-}
+export { useTrendingHashtags } from './useHashtags';
 
 export function useSuggestedPeople(limit = 10) {
   const token = useAuthStore((s) => s.token);
