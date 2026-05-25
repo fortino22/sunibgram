@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	bookmarkrepoiface "github.com/sunibgram/domain/repository/bookmark"
+	bookmarkcollectionrepoiface "github.com/sunibgram/domain/repository/bookmark_collection"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	categoryrepoiface "github.com/sunibgram/domain/repository/category"
 	chatrepoiface "github.com/sunibgram/domain/repository/chat"
@@ -43,6 +44,7 @@ import (
 	violationrepoiface "github.com/sunibgram/domain/repository/violation"
 	"github.com/sunibgram/infrastructure/cache"
 	bookmarkrepo "github.com/sunibgram/infrastructure/repository/bookmark"
+	bookmarkcollectionrepo "github.com/sunibgram/infrastructure/repository/bookmark_collection"
 	cacherepo "github.com/sunibgram/infrastructure/repository/cache"
 	categoryrepo "github.com/sunibgram/infrastructure/repository/category"
 	chatrepo "github.com/sunibgram/infrastructure/repository/chat"
@@ -101,6 +103,7 @@ type Repositories struct {
 	ThreadMedia          threadmediarepoiface.IThreadMediaRepository
 	Like                 likerepoiface.ILikeRepository
 	Bookmark             bookmarkrepoiface.IBookmarkRepository
+	BookmarkCollection   bookmarkcollectionrepoiface.IBookmarkCollectionRepository
 	ThreadPin            threadpinrepoiface.IThreadPinRepository
 	Category             categoryrepoiface.ICategoryRepository
 	Violation            violationrepoiface.IViolationRepository
@@ -148,6 +151,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		ThreadMedia:          threadmediarepo.NewThreadMediaRepository(w, r, c),
 		Like:                 likerepo.NewLikeRepository(w, r, c, patchCount),
 		Bookmark:             bookmarkrepo.NewBookmarkRepository(w, r, c, patchCount),
+		BookmarkCollection:   bookmarkcollectionrepo.NewBookmarkCollectionRepository(w, r),
 		ThreadPin:            threadpinrepo.NewThreadPinRepository(w, r, c),
 		Category:             categoryrepo.NewCategoryRepository(w, r, c),
 		Violation:            violationrepo.NewViolationRepository(w, r),

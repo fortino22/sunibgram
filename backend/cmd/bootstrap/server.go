@@ -86,6 +86,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.Event,
 		ctrls.Like,
 		ctrls.Bookmark,
+		ctrls.BookmarkCollection,
 		ctrls.ThreadPin,
 		ctrls.Repost,
 		ctrls.ThreadSummary,

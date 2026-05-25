@@ -5,6 +5,7 @@ import (
 
 	authctrl "github.com/sunibgram/webapi/controller/auth"
 	bookmarkctrl "github.com/sunibgram/webapi/controller/bookmark"
+	bookmarkcollectionctrl "github.com/sunibgram/webapi/controller/bookmark_collection"
 	cachectrl "github.com/sunibgram/webapi/controller/cache"
 	categoryctrl "github.com/sunibgram/webapi/controller/category"
 	chatctrl "github.com/sunibgram/webapi/controller/chat"
@@ -61,6 +62,7 @@ type Controllers struct {
 	Explore             *explorectrl.ExploreController
 	Like                *likectrl.LikeController
 	Bookmark            *bookmarkctrl.BookmarkController
+	BookmarkCollection  *bookmarkcollectionctrl.BookmarkCollectionController
 	ThreadPin           *threadpinctrl.ThreadPinController
 	Repost              *repostctrl.RepostController
 	ThreadSummary       *threadsummaryctrl.ThreadSummaryController
@@ -106,6 +108,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		Explore:             explorectrl.NewExploreController(svcs.Explore, svcs.UserProfile, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.Thread, svcs.Community, svcs.ThreadPoll),
 		Like:                likectrl.NewLikeController(svcs.Like, svcs.Bookmark, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
 		Bookmark:            bookmarkctrl.NewBookmarkController(svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
+		BookmarkCollection:  bookmarkcollectionctrl.NewBookmarkCollectionController(svcs.BookmarkCollection, svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
 		ThreadPin:           threadpinctrl.NewThreadPinController(svcs.ThreadPin),
 		Repost:              repostctrl.NewRepostController(svcs.Thread, svcs.ThreadMedia),
 		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary),

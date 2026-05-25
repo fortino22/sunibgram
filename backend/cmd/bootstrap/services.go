@@ -5,6 +5,7 @@ import (
 
 	authuc "github.com/sunibgram/application/usecase/auth"
 	bookmarkuc "github.com/sunibgram/application/usecase/bookmark"
+	bookmarkcollectionuc "github.com/sunibgram/application/usecase/bookmark_collection"
 	cacheuc "github.com/sunibgram/application/usecase/cache"
 	categoryuc "github.com/sunibgram/application/usecase/category"
 	chatuc "github.com/sunibgram/application/usecase/chat"
@@ -43,6 +44,7 @@ import (
 	violationuc "github.com/sunibgram/application/usecase/violation"
 	authsvciface "github.com/sunibgram/domain/service/auth"
 	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
+	bookmarkcollectionsvciface "github.com/sunibgram/domain/service/bookmark_collection"
 	cachesvciface "github.com/sunibgram/domain/service/cache"
 	categorysvciface "github.com/sunibgram/domain/service/category"
 	chatsvciface "github.com/sunibgram/domain/service/chat"
@@ -101,6 +103,7 @@ type Services struct {
 	ThreadMedia          threadmediasvciface.IThreadMediaService
 	Like                 likesvciface.ILikeService
 	Bookmark             bookmarksvciface.IBookmarkService
+	BookmarkCollection   bookmarkcollectionsvciface.IBookmarkCollectionService
 	ThreadPin            threadpinsvciface.IThreadPinService
 	Category             categorysvciface.ICategoryService
 	Violation            violationsvciface.IViolationService
@@ -133,7 +136,8 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
 	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, summary)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
-	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
+	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, repos.BookmarkCollection)
+	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
@@ -153,6 +157,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		ThreadMedia:          threadmediauc.NewThreadMediaService(repos.Thread, repos.ThreadMedia, ext.Storage),
 		Like:                 like,
 		Bookmark:             bookmark,
+		BookmarkCollection:   bookmarkCollection,
 		ThreadPin:            threadpinuc.NewThreadPinService(repos.ThreadPin, repos.Thread),
 		Category:             categoryuc.NewCategoryService(repos.Category),
 		Violation:            violationuc.NewViolationService(repos.Violation),
