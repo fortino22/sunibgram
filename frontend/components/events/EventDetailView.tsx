@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { ArrowLeft, Bookmark, CalendarDays, Link2, LoaderCircle, MapPin, Pencil, UserCheck, UserPlus } from 'lucide-react';
+import { ArrowLeft, Bookmark, CalendarDays, Link2, LoaderCircle, MapPin, Pencil } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -203,6 +203,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('official');
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
+  const [joinHovered, setJoinHovered] = useState(false);
   const user = useAuthStore((s) => s.user);
   const { openOfficialEventPost } = useComposeStore();
 
@@ -317,30 +318,48 @@ export function EventDetailView({ eventId }: { eventId: string }) {
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {/* Join / Leave */}
-          <button
-            type="button"
-            onClick={() => isJoined ? leave.mutate() : join.mutate()}
-            disabled={join.isPending || leave.isPending}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '8px 18px',
-              borderRadius: 999,
-              border: `1.5px solid ${isJoined ? 'var(--border)' : 'var(--text)'}`,
-              background: isJoined ? 'transparent' : 'var(--text)',
-              color: isJoined ? 'var(--text-secondary)' : 'var(--bg)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: join.isPending || leave.isPending ? 'not-allowed' : 'pointer',
-              opacity: join.isPending || leave.isPending ? 0.6 : 1,
-            }}
-          >
-            {join.isPending || leave.isPending
-              ? <LoaderCircle size={15} className="animate-spin" />
-              : isJoined ? <UserCheck size={15} /> : <UserPlus size={15} />}
-            {isJoined ? 'Joined' : 'Join'}
-          </button>
+          {isJoined ? (
+            <button
+              type="button"
+              onClick={() => leave.mutate()}
+              disabled={leave.isPending}
+              onMouseEnter={() => setJoinHovered(true)}
+              onMouseLeave={() => setJoinHovered(false)}
+              style={{
+                padding: '7px 18px',
+                borderRadius: 999,
+                border: `1px solid ${joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : '#808080'}`,
+                background: 'transparent',
+                color: joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : 'var(--text)',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: leave.isPending ? 'default' : 'pointer',
+                opacity: leave.isPending ? 0.6 : 1,
+                transition: 'color 0.15s, border-color 0.15s',
+              }}
+            >
+              {leave.isPending ? 'Leaving…' : joinHovered ? 'Leave' : 'Joined'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => join.mutate()}
+              disabled={join.isPending}
+              style={{
+                padding: '7px 18px',
+                borderRadius: 999,
+                border: 'none',
+                background: 'var(--text)',
+                color: 'var(--bg)',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: join.isPending ? 'default' : 'pointer',
+                opacity: join.isPending ? 0.6 : 1,
+              }}
+            >
+              {join.isPending ? 'Joining…' : 'Join'}
+            </button>
+          )}
 
           {/* Official post button — creator only */}
           {user?.id === event.userId && (
