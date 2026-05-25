@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useCommunity, useCommunityUsers } from '@/hooks/useCommunities';
 import { useUpdateMemberRole } from '@/hooks/useCommunityMutations';
 import { useAuthStore } from '@/stores/authStore';
@@ -248,20 +249,7 @@ export default function CommunityMembersPage() {
                       <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
                         {member.name || member.username}
                       </span>
-                      {member.is_premium && (
-                        <span
-                          style={{
-                            fontSize: 10,
-                            background: 'var(--accent-soft)',
-                            color: 'var(--accent)',
-                            padding: '1px 5px',
-                            borderRadius: 4,
-                            fontWeight: 600,
-                          }}
-                        >
-                          PRO
-                        </span>
-                      )}
+                      {member.is_premium && <VerifiedBadge size={15} />}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
                       @{member.username}

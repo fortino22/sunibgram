@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Users, Repeat2, Pin } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
@@ -132,21 +133,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
             <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em' }}>
               {thread.author.name || thread.author.username}
             </span>
-            {thread.author.is_premium && (
-              <span
-                style={{
-                  fontSize: 10,
-                  background: 'var(--accent-soft)',
-                  color: 'var(--accent)',
-                  padding: '1px 5px',
-                  borderRadius: 4,
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                }}
-              >
-                PRO
-              </span>
-            )}
+            {thread.author.is_premium && <VerifiedBadge size={15} />}
             <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
               @{thread.author.username}
             </span>

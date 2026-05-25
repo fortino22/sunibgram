@@ -28,12 +28,6 @@ interface RawExploreCommunity {
   is_join: boolean;
 }
 
-interface RawTrendingHashtag {
-  name: string;
-  thread_count: number;
-  score: number;
-}
-
 // Frontend types
 export interface ExploreUser {
   userId: number;
@@ -64,12 +58,6 @@ export interface ExploreCommunity {
   communityName: string;
   memberCount: number;
   isJoin: boolean;
-}
-
-export interface TrendingHashtag {
-  name: string;
-  threadCount: number;
-  score: number;
 }
 
 function mapPerson(raw: RawExplorePerson): ExplorePerson {
@@ -145,16 +133,4 @@ export async function getSuggestedPeople(token: string, limit = 10): Promise<Exp
     token
   );
   return raw.data.map(mapPerson);
-}
-
-export async function getTrendingHashtags(token: string | null, limit = 10): Promise<TrendingHashtag[]> {
-  const raw = await api.get<{ data: RawTrendingHashtag[] }>(
-    `/api/hashtags/trending?limit=${limit}`,
-    token ?? undefined
-  );
-  return raw.data.map((h) => ({
-    name: h.name,
-    threadCount: h.thread_count,
-    score: h.score,
-  }));
 }
