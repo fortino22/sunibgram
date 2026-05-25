@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"os"
 	"strings"
+	"time"
 
 	fibersocketio "github.com/gofiber/contrib/socketio"
 	"github.com/gofiber/contrib/websocket"
@@ -16,7 +15,18 @@ import (
 	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
 	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 	"github.com/sunibgram/infrastructure/cache"
+	"github.com/sunibgram/infrastructure/ratelimit"
+	"github.com/sunibgram/webapi/middleware"
 )
+
+const expectedIssuer = "sunibgram-api"
+
+var wsConnectLimiter *ratelimit.RateLimiter
+
+// InitRateLimiter wires the per-IP WS connect limiter at boot. Called from bootstrap.
+func InitRateLimiter(c *cache.Cache) {
+	wsConnectLimiter = ratelimit.New(c, "ws_connect", 30, time.Minute)
+}
 
 const claimKindAccess = "access"
 
@@ -47,6 +57,12 @@ func Mount(app *fiber.App, hub sockethubsvciface.IHub, roomService chatroomsvcif
 	app.Use("/ws", func(c *fiber.Ctx) error {
 		if !websocket.IsWebSocketUpgrade(c) {
 			return fiber.ErrUpgradeRequired
+		}
+
+		if wsConnectLimiter != nil {
+			if err := wsConnectLimiter.Allow(c.IP()); err != nil {
+				return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"message": err.Error()})
+			}
 		}
 
 		if _, err := authenticateSocket(c, sessionCache); err != nil {
@@ -157,7 +173,7 @@ func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
 		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, errors.New("unexpected signing method")
 		}
-		return []byte(jwtSecret()), nil
+		return middleware.JWTSecret(), nil
 	})
 	if err != nil || !token.Valid {
 		return nil, errors.New("invalid or expired token")
@@ -170,15 +186,10 @@ func parseAccessToken(tokenStr string) (jwt.MapClaims, error) {
 	if kind, _ := claims["kind"].(string); kind != claimKindAccess {
 		return nil, errors.New("wrong token type")
 	}
-	return claims, nil
-}
-
-func jwtSecret() string {
-	s := os.Getenv("JWT_SECRET")
-	if s == "" {
-		log.Fatal("JWT_SECRET is required")
+	if iss, _ := claims["iss"].(string); iss != "" && iss != expectedIssuer {
+		return nil, errors.New("invalid token issuer")
 	}
-	return s
+	return claims, nil
 }
 
 func numericClaim(value any) (uint, bool) {

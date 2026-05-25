@@ -100,7 +100,8 @@ func (r *CacheRepository) InvalidateUserForYouFeeds(ctx context.Context, userID 
 	if userID == 0 {
 		return nil
 	}
-	return r.cache.InvalidateTag(ctx, infrarepoShared.UserForYouTag(userID))
+	infrarepoShared.IncrForYouVersion(ctx, r.cache, userID)
+	return nil
 }
 
 func (r *CacheRepository) InvalidateThreadChain(ctx context.Context, rootID uint) error {

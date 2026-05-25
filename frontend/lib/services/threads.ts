@@ -134,6 +134,7 @@ export interface FeedItemResponse {
   is_bookmarked?: boolean;
   is_reposted?: boolean;
   is_pin?: boolean;
+  pinned_by_admin?: boolean;
   reply_permission?: string;
 }
 

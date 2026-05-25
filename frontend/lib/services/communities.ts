@@ -15,7 +15,6 @@ export interface CommunityData {
   category_name: string;
   visibility: CommunityVisibility;
   banner_url: string;
-  avatar_url?: string | null;
   member_count: number;
   top_members: CommunityTopMemberData[];
   created_at: string;
@@ -78,7 +77,6 @@ export interface DiscoverCommunityData {
   name: string;
   member_count: number;
   category_name: string;
-  avatar_url?: string;
   banner_url?: string;
   top_members: DiscoverCommunityMemberData[];
 }
@@ -355,6 +353,18 @@ export function declineCommunityJoinRequest(
     undefined,
     token
   );
+}
+
+export function getCommunityThreadsBySort(
+  id: number | string,
+  sort: 'latest' | 'top' | 'likes',
+  token: string,
+  params?: { page?: number; limit?: number }
+): Promise<ThreadListResponse> {
+  const search = new URLSearchParams({ sort });
+  if (params?.page !== undefined) search.set('page', String(params.page));
+  if (params?.limit !== undefined) search.set('limit', String(params.limit));
+  return api.get<ThreadListResponse>(`/api/communities/${id}/threads/sort?${search.toString()}`, token);
 }
 
 export function getCommunityThreadsLatest(

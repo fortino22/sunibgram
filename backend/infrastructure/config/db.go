@@ -2,12 +2,23 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"regexp"
 	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+var dbPasswordRedactor = regexp.MustCompile(`password=\S+`)
+
+func sanitizeDBError(err error) string {
+	if err == nil {
+		return ""
+	}
+	return dbPasswordRedactor.ReplaceAllString(err.Error(), "password=REDACTED")
+}
 
 func NewPostgresWrite() *gorm.DB {
 	return newPostgres("write")
@@ -33,19 +44,21 @@ func newPostgres(role string) *gorm.DB {
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(fmt.Sprintf("failed to connect to postgres (%s): %v", role, err))
+		log.Printf("postgres connect failed role=%s: %s", role, sanitizeDBError(err))
+		panic("postgres connect failed")
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		panic(fmt.Sprintf("failed to get sql.DB handle (%s): %v", role, err))
+		log.Printf("sql.DB handle failed role=%s: %s", role, sanitizeDBError(err))
+		panic("sql.DB handle failed")
 	}
 	if role == "read" {
-		sqlDB.SetMaxOpenConns(100)
-		sqlDB.SetMaxIdleConns(50)
+		sqlDB.SetMaxOpenConns(40)
+		sqlDB.SetMaxIdleConns(10)
 	} else {
-		sqlDB.SetMaxOpenConns(75)
-		sqlDB.SetMaxIdleConns(35)
+		sqlDB.SetMaxOpenConns(20)
+		sqlDB.SetMaxIdleConns(5)
 	}
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	sqlDB.SetConnMaxIdleTime(5 * time.Minute)

@@ -76,15 +76,6 @@ func (r *threadCached) trackUserFeedKey(ctx context.Context, userID uint, key st
 	r.cache.RegisterCacheKey(ctx, infrarepoShared.UserFeedsTag(userID), key)
 }
 
-// trackForYouKey registers a foryou source/newcount cache key under the user's
-// foryou tag.
-func (r *threadCached) trackForYouKey(ctx context.Context, userID uint, key string) {
-	if userID == 0 {
-		return
-	}
-	r.cache.RegisterCacheKey(ctx, infrarepoShared.UserForYouTag(userID), key)
-}
-
 func (r *threadCached) invalidateFeedCachesByThreadID(ctx context.Context, threadID uint) {
 	_ = r.cache.InvalidateTag(ctx, infrarepoShared.ThreadFeedsTag(threadID))
 }
@@ -131,14 +122,16 @@ func (r *threadCached) invalidateFollowingFeedCache(ctx context.Context) {
 	_ = r.cache.InvalidateTag(ctx, infrarepoShared.ThreadFollowingGlobalTag())
 }
 
-// invalidateForYouFeedCacheForUser drops the per-user candidate caches and the
-// "new posts" counter cache so the next feed read fetches fresh content from
-// the DB. The session seed is intentionally preserved here so a user scrolling
-// the feed does not see the page order shuffle when a like/comment fires.
-// Seed invalidation only happens via InvalidateForYouSeed, called from the
-// explicit refresh endpoint.
+// invalidateForYouFeedCacheForUser bumps the user's For You cache version so
+// every src:* and newcount:* entry the user has cached becomes orphan in one
+// atomic INCR. No SMEMBERS, no DELs. Orphan keys TTL-expire (30–60 s).
+//
+// The session seed is intentionally preserved here so a user scrolling the
+// feed does not see the page order shuffle when a like/comment fires. Seed
+// invalidation only happens via InvalidateForYouSeed, called from the explicit
+// refresh endpoint.
 func (r *threadCached) invalidateForYouFeedCacheForUser(ctx context.Context, userID uint) {
-	_ = r.cache.InvalidateTag(ctx, infrarepoShared.UserForYouTag(userID))
+	infrarepoShared.IncrForYouVersion(ctx, r.cache, userID)
 }
 
 func (r *threadCached) invalidateForYouFeedCachesForFollowers(ctx context.Context, userID uint) {

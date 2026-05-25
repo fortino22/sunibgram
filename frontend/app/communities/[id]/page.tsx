@@ -107,7 +107,8 @@ export default function CommunityDetailPage() {
     membershipOverride === 'none' ? null :
     membershipOverride !== null ? membershipOverride :
     listRole;
-  const isAdmin = myRole === 'ADMIN';
+  const isAdmin = myRole === 'ADMIN' || isOwnerByCreation;
+  const effectiveCommunityRole: CommunityRole | null = isOwnerByCreation ? 'ADMIN' : myRole;
 
   const threadTabs: { id: Tab; label: string }[] = [
     { id: 'top', label: 'Top' },
@@ -167,6 +168,19 @@ export default function CommunityDetailPage() {
     }
   }
 
+  if (showMembersPanel) {
+    return (
+      <div>
+        <CommunityMembersPanel
+          communityId={communityId}
+          communityName={community.name}
+          myRole={myRole}
+          onClose={() => setShowMembersPanel(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Top bar */}
@@ -220,7 +234,7 @@ export default function CommunityDetailPage() {
         onRequest={handleRequest}
         onCancelRequest={handleCancelRequest}
         onEdit={() => setShowEdit(true)}
-        onDelete={handleDelete}
+        onShowMembers={() => setShowMembersPanel(true)}
       />
 
       {/* Tab bar */}
@@ -264,14 +278,15 @@ export default function CommunityDetailPage() {
           {!latestQuery.isLoading && (latestQuery.data?.data ?? []).length === 0 && (
             <EmptyState title="No posts yet" subtitle="Be the first to post in this community." />
           )}
-          {(latestQuery.data?.data ?? []).map((t) => (
+          {(latestQuery.data?.data ?? []).slice().sort((a, b) => (b.pinned_by_admin ? 1 : 0) - (a.pinned_by_admin ? 1 : 0)).map((t) => (
             <ThreadCard
               key={t.id}
               thread={t}
-              communityRole={myRole}
+              communityRole={effectiveCommunityRole}
               onPinThread={(id) => pinThreadMutation.mutate(id)}
               onUnpinThread={(id) => unpinThreadMutation.mutate(id)}
               pinningThread={pinThreadMutation.isPending || unpinThreadMutation.isPending}
+              inCommunityContext
             />
           ))}
         </>
@@ -288,14 +303,15 @@ export default function CommunityDetailPage() {
           {!topQuery.isLoading && (topQuery.data?.data ?? []).length === 0 && (
             <EmptyState title="No posts yet" subtitle="Top posts will appear here." />
           )}
-          {(topQuery.data?.data ?? []).map((t) => (
+          {(topQuery.data?.data ?? []).slice().sort((a, b) => (b.pinned_by_admin ? 1 : 0) - (a.pinned_by_admin ? 1 : 0)).map((t) => (
             <ThreadCard
               key={t.id}
               thread={t}
-              communityRole={myRole}
+              communityRole={effectiveCommunityRole}
               onPinThread={(id) => pinThreadMutation.mutate(id)}
               onUnpinThread={(id) => unpinThreadMutation.mutate(id)}
               pinningThread={pinThreadMutation.isPending || unpinThreadMutation.isPending}
+              inCommunityContext
             />
           ))}
         </>
@@ -371,17 +387,11 @@ export default function CommunityDetailPage() {
           community={community}
           onClose={() => setShowEdit(false)}
           onSuccess={() => setShowEdit(false)}
+          onDelete={handleDelete}
+          deletePending={deleteMutation.isPending}
         />
       )}
 
-      {/* Members management panel */}
-      {showMembersPanel && (
-        <CommunityMembersPanel
-          communityId={communityId}
-          myRole={myRole}
-          onClose={() => setShowMembersPanel(false)}
-        />
-      )}
     </div>
   );
 }

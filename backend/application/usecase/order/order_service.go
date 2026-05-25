@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,9 +32,10 @@ type OrderService struct {
 	snapClient              snap.Client
 }
 
-func NewOrderService(orderRepo orderrepoiface.IOrderRepository, userRepo userrepoiface.IUserRepository, premiumSubscriptionRepo premiumsubscriptionrepoiface.IPremiumSubscriptionRepository, communityRepo communityrepoiface.ICommunityRepository, cacheRepo cacherepoiface.ICacheRepository) ordersvciface.IOrderService {
-	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
-	envStr := os.Getenv("MIDTRANS_ENV")
+func NewOrderService(orderRepo orderrepoiface.IOrderRepository, userRepo userrepoiface.IUserRepository, premiumSubscriptionRepo premiumsubscriptionrepoiface.IPremiumSubscriptionRepository, communityRepo communityrepoiface.ICommunityRepository, cacheRepo cacherepoiface.ICacheRepository, serverKey, envStr string) ordersvciface.IOrderService {
+	if serverKey == "" {
+		panic("midtrans server key is required")
+	}
 
 	env := midtrans.Sandbox
 	if envStr == "production" {

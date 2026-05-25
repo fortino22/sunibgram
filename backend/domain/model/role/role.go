@@ -2,7 +2,10 @@ package rolemodel
 
 import "time"
 
-const DefaultRoleName = "user"
+const (
+	DefaultRoleName = "user"
+	RoleAdmin       = "admin"
+)
 
 type Role struct {
 	RoleID    uint   `gorm:"primaryKey;autoIncrement"`

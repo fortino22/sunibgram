@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	notificationmodel "github.com/sunibgram/domain/model/notification"
+	rolemodel "github.com/sunibgram/domain/model/role"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
 	dtoutils "github.com/sunibgram/webapi/dto/_shared"
@@ -31,7 +32,7 @@ func (c *NotificationController) Send(ctx *fiber.Ctx) error {
 	if err := ctx.BodyParser(&req); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid payload"})
 	}
-	if claims.RoleName != "admin" && req.SenderUserID != claims.UserID {
+	if claims.RoleName != rolemodel.RoleAdmin && req.SenderUserID != claims.UserID {
 		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 
@@ -91,7 +92,7 @@ func (c *NotificationController) Delete(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	err := c.notificationService.DeleteNotification(id, claims.UserID, claims.RoleName == "admin")
+	err := c.notificationService.DeleteNotification(id, claims.UserID, claims.RoleName == rolemodel.RoleAdmin)
 	if err != nil {
 		if err.Error() == "forbidden" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})

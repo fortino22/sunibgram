@@ -4,11 +4,11 @@ import (
 	"crypto/sha512"
 	"crypto/subtle"
 	"fmt"
-	"os"
 
 	"github.com/gofiber/fiber/v2"
 
 	ordermodel "github.com/sunibgram/domain/model/order"
+	rolemodel "github.com/sunibgram/domain/model/role"
 	ordersvciface "github.com/sunibgram/domain/service/order"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -17,11 +17,15 @@ import (
 )
 
 type OrderController struct {
-	orderService ordersvciface.IOrderService
+	orderService        ordersvciface.IOrderService
+	midtransServerKey   string
 }
 
-func NewOrderController(orderService ordersvciface.IOrderService) *OrderController {
-	return &OrderController{orderService: orderService}
+func NewOrderController(orderService ordersvciface.IOrderService, midtransServerKey string) *OrderController {
+	if midtransServerKey == "" {
+		panic("midtrans server key is required")
+	}
+	return &OrderController{orderService: orderService, midtransServerKey: midtransServerKey}
 }
 
 func (c *OrderController) BuyPremium(ctx *fiber.Ctx) error {
@@ -114,7 +118,7 @@ func (c *OrderController) Cancel(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
-	if order.UserID != claims.UserID && claims.RoleName != "admin" {
+	if order.UserID != claims.UserID && claims.RoleName != rolemodel.RoleAdmin {
 		return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "forbidden"})
 	}
 
@@ -131,7 +135,7 @@ func (c *OrderController) MidtransNotification(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid payload"})
 	}
 
-	if err := verifyMidtransSignature(payload); err != nil {
+	if err := c.verifyMidtransSignature(payload); err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: "invalid signature"})
 	}
 
@@ -142,14 +146,13 @@ func (c *OrderController) MidtransNotification(ctx *fiber.Ctx) error {
 	return ctx.SendStatus(fiber.StatusOK)
 }
 
-func verifyMidtransSignature(payload map[string]interface{}) error {
+func (c *OrderController) verifyMidtransSignature(payload map[string]interface{}) error {
 	orderID, _ := payload["order_id"].(string)
 	statusCode, _ := payload["status_code"].(string)
 	grossAmount, _ := payload["gross_amount"].(string)
 	incomingSig, _ := payload["signature_key"].(string)
 
-	serverKey := os.Getenv("MIDTRANS_SERVER_KEY")
-	raw := orderID + statusCode + grossAmount + serverKey
+	raw := orderID + statusCode + grossAmount + c.midtransServerKey
 	hash := sha512.Sum512([]byte(raw))
 	expected := fmt.Sprintf("%x", hash)
 

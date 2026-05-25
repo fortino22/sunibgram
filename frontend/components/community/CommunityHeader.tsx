@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { CommunityData, CommunityRole } from '@/lib/services/communities';
 import { Avatar } from '@/components/shared/Avatar';
 
@@ -20,7 +21,7 @@ interface CommunityHeaderProps {
   onRequest: () => void;
   onCancelRequest: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  onShowMembers: () => void;
 }
 
 export function CommunityHeader({
@@ -40,8 +41,9 @@ export function CommunityHeader({
   onRequest,
   onCancelRequest,
   onEdit,
-  onDelete,
+  onShowMembers,
 }: CommunityHeaderProps) {
+  const [joinedHovered, setJoinedHovered] = useState(false);
   const isMember = myRole !== null;
   const isPublic = community.visibility === 'PUBLIC';
 
@@ -65,19 +67,24 @@ export function CommunityHeader({
             Edit
           </button>
           <button
-            onClick={onDelete}
+            onClick={onLeave}
+            disabled={leavePending}
+            onMouseEnter={() => setJoinedHovered(true)}
+            onMouseLeave={() => setJoinedHovered(false)}
             style={{
               padding: '7px 18px',
               borderRadius: 999,
-              border: '1px solid #808080',
+              border: `1px solid ${joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : '#808080'}`,
               background: 'transparent',
-              color: 'var(--error, #e53e3e)',
+              color: joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : 'var(--text)',
               fontSize: 14,
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: leavePending ? 'default' : 'pointer',
+              opacity: leavePending ? 0.6 : 1,
+              transition: 'color 0.15s, border-color 0.15s',
             }}
           >
-            Delete
+            {leavePending ? 'Leaving…' : joinedHovered ? 'Leave' : 'Joined'}
           </button>
         </div>
       );
@@ -88,19 +95,22 @@ export function CommunityHeader({
         <button
           onClick={onLeave}
           disabled={leavePending}
+          onMouseEnter={() => setJoinedHovered(true)}
+          onMouseLeave={() => setJoinedHovered(false)}
           style={{
             padding: '7px 18px',
             borderRadius: 999,
-            border: '1px solid #808080',
+            border: `1px solid ${joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : '#808080'}`,
             background: 'transparent',
-            color: 'var(--text)',
+            color: joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : 'var(--text)',
             fontSize: 14,
             fontWeight: 600,
             cursor: leavePending ? 'default' : 'pointer',
             opacity: leavePending ? 0.6 : 1,
+            transition: 'color 0.15s, border-color 0.15s',
           }}
         >
-          {leavePending ? 'Leaving…' : 'Joined'}
+          {leavePending ? 'Leaving…' : joinedHovered ? 'Leave' : 'Joined'}
         </button>
       );
     }
@@ -211,7 +221,18 @@ export function CommunityHeader({
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={onShowMembers}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
             {/* Stacked member avatars */}
             {(community.top_members ?? []).length > 0 && (
               <div style={{ display: 'flex' }}>
@@ -246,7 +267,7 @@ export function CommunityHeader({
                 · Admin
               </span>
             )}
-          </div>
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={onPinToggle}

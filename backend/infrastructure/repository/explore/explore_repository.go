@@ -161,11 +161,6 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 		Joins("LEFT JOIN categories ON categories.id = communities.category_id").
 		Where("communities.name ILIKE ? ESCAPE '\\' OR communities.description ILIKE ? ESCAPE '\\' OR categories.name ILIKE ? ESCAPE '\\'", pattern, pattern, pattern)
 
-	var total int64
-	if err := base.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-
 	var communities []exploremodel.ExploreCommunityResult
 	if err := base.
 		Select(`
@@ -177,9 +172,18 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id AND community_members.user_id = ?", requesterID).
 		Order("communities.member_count DESC, communities.created_at DESC").
 		Offset(offset).
-		Limit(limit).
+		Limit(limit + 1).
 		Scan(&communities).Error; err != nil {
 		return nil, 0, err
+	}
+
+	hasMore := len(communities) > limit
+	if hasMore {
+		communities = communities[:limit]
+	}
+	total := int64(offset + len(communities))
+	if hasMore {
+		total++
 	}
 
 	result = cachedExploreCommunities{Communities: communities, Total: total}

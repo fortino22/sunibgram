@@ -13,9 +13,11 @@ interface EditCommunityModalProps {
   community: CommunityData;
   onClose: () => void;
   onSuccess: () => void;
+  onDelete: () => void;
+  deletePending: boolean;
 }
 
-export function EditCommunityModal({ community, onClose, onSuccess }: EditCommunityModalProps) {
+export function EditCommunityModal({ community, onClose, onSuccess, onDelete, deletePending }: EditCommunityModalProps) {
   const { data: categoriesData } = useCategories();
   const categories = categoriesData?.data ?? [];
   const { mutateAsync, isPending, error } = useUpdateCommunity(community.community_id);
@@ -145,7 +147,8 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
         <div
           onClick={() => bannerRef.current?.click()}
           style={{
-            height: 130,
+            aspectRatio: '2.31',
+            width: '100%',
             background: bannerPreview ? `url(${bannerPreview}) center/cover no-repeat` : 'var(--bg-subtle)',
             cursor: 'pointer',
             display: 'flex',
@@ -221,23 +224,23 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
                 {keepRuleIds.length + newRules.length}/10
               </span>
             </div>
-            {(community.rules ?? []).map((rule) => (
-              <div key={rule.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-                <input
-                  type="checkbox"
-                  checked={keepRuleIds.includes(rule.id)}
-                  onChange={(e) => {
-                    setKeepRuleIds(
-                      e.target.checked
-                        ? [...keepRuleIds, rule.id]
-                        : keepRuleIds.filter((id) => id !== rule.id)
-                    );
-                  }}
-                  style={{ marginTop: 2, flexShrink: 0, cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: 13, color: keepRuleIds.includes(rule.id) ? 'var(--text)' : 'var(--text-tertiary)', lineHeight: 1.5 }}>
+            {(community.rules ?? []).filter((rule) => keepRuleIds.includes(rule.id)).map((rule) => (
+              <div key={rule.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, flex: 1 }}>
                   {rule.text}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setKeepRuleIds(keepRuleIds.filter((id) => id !== rule.id))}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--text-tertiary)',
+                    cursor: 'pointer', padding: '2px 4px', fontSize: 16, lineHeight: 1,
+                    flexShrink: 0, display: 'flex', alignItems: 'center',
+                  }}
+                  title="Remove rule"
+                >
+                  ✕
+                </button>
               </div>
             ))}
             {newRules.map((rule, i) => (
@@ -293,6 +296,21 @@ export function EditCommunityModal({ community, onClose, onSuccess }: EditCommun
               {error instanceof Error ? error.message : 'Something went wrong'}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deletePending}
+            style={{
+              width: '100%', padding: '12px', borderRadius: 999,
+              border: '1px solid var(--error, #e53e3e)', background: 'transparent',
+              color: 'var(--error, #e53e3e)', fontSize: 15, fontWeight: 700,
+              cursor: deletePending ? 'default' : 'pointer',
+              opacity: deletePending ? 0.5 : 1,
+            }}
+          >
+            {deletePending ? 'Deleting…' : 'Delete Community'}
+          </button>
 
           <button
             type="submit"

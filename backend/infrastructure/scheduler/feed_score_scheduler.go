@@ -3,13 +3,13 @@ package scheduler
 import (
 	"context"
 	"log"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
 
 	communitymodel "github.com/sunibgram/domain/model/community"
 	threadmodel "github.com/sunibgram/domain/model/thread"
-	usermodel "github.com/sunibgram/domain/model/user"
 	"github.com/sunibgram/infrastructure/cache"
 )
 
@@ -39,16 +39,21 @@ func (s *FeedScoreScheduler) Start(ctx context.Context) {
 }
 
 func (s *FeedScoreScheduler) run() {
-	// IS DISTINCT FROM skips WAL writes for rows whose feed_score did not move
-	// since the last tick — most cold threads stay constant, so this cuts WAL
-	// churn dramatically without changing any read-side semantics.
+	// feed_score stores RAW weighted engagement (no decay). Read-time decay
+	// (1 / (1 + age_h / forYouHalflifeHours)) is the only decay applied — see
+	// FindForYouFeed.addCandidates. Storing the raw signal lets every feed
+	// variant (For You, trending, search) apply its own decay curve without
+	// re-running the scheduler, and keeps the stored value interpretable.
+	//
+	// IS DISTINCT FROM skips WAL writes for rows whose raw score did not move
+	// since the last tick — most cold threads stay constant after their first
+	// minute of life.
 	if err := s.db.Exec(`
 		UPDATE threads
 		SET feed_score = new_score
 		FROM (
 			SELECT thread_id,
-				(like_count::float + 3.0 * comment_count::float + 5.0 * repost_count::float + 4.0 * bookmark_count::float)
-				/ (1.0 + POWER(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0, 1.5)) AS new_score
+				(like_count::float + 3.0 * comment_count::float + 5.0 * repost_count::float + 4.0 * bookmark_count::float) AS new_score
 			FROM threads
 			WHERE created_at > NOW() - INTERVAL '7 days'
 		) computed
@@ -59,8 +64,26 @@ func (s *FeedScoreScheduler) run() {
 		return
 	}
 
-	var threads []threadmodel.Thread
-	if err := preloadSchedulerThreadDetails(s.db).
+	// Global trending now caches as a Redis ZSET of (thread_id → feed_score)
+	// instead of a JSON-serialized []Thread. Two big wins:
+	//   1. Redis payload: 100 thread IDs+scores ≈ 3 KB vs 100 fully-preloaded
+	//      threads ≈ 200 KB (50–70× smaller).
+	//   2. Per-request deserialization: readers only decode ints/floats; the
+	//      full thread graph is hydrated via the existing per-thread cache
+	//      (thread:id:<id>) on demand for the rows that actually surface.
+	//
+	// The thread:id:<id> cache is populated as a side effect of hydrateThreads
+	// for any rows fetched from the DB, so steady-state reads serve trending
+	// entirely from per-thread cache without re-querying threads.
+	// Explicit gorm column tags so the Find() scan resolves correctly even if
+	// GORM's NamingStrategy changes upstream. Fields project the only two
+	// columns the ZSET cache needs.
+	type trendingRow struct {
+		ThreadID  uint    `gorm:"column:thread_id"`
+		FeedScore float64 `gorm:"column:feed_score"`
+	}
+	var rows []trendingRow
+	if err := s.db.Model(&threadmodel.Thread{}).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
 		Joins("LEFT JOIN user_settings ON user_settings.user_id = threads.user_id").
 		Where("threads.created_at > NOW() - INTERVAL '7 days'").
@@ -68,14 +91,22 @@ func (s *FeedScoreScheduler) run() {
 		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false).
 		Where("threads.parent_id IS NULL OR (threads.like_count + threads.repost_count + threads.comment_count) > 0").
+		Select("threads.thread_id, threads.feed_score").
 		Order("threads.feed_score DESC").
 		Limit(100).
-		Find(&threads).Error; err != nil {
+		Find(&rows).Error; err != nil {
 		log.Printf("global trending feed refresh failed: %v", err)
 		return
 	}
 
-	if err := s.cache.Set(context.Background(), "feed:trending:global", threads, 5*time.Minute); err != nil {
+	members := make([]cache.ZSetMember, len(rows))
+	for i, row := range rows {
+		members[i] = cache.ZSetMember{
+			Member: strconv.FormatUint(uint64(row.ThreadID), 10),
+			Score:  row.FeedScore,
+		}
+	}
+	if err := s.cache.ZAddReplace(context.Background(), "feed:trending:global", members, 5*time.Minute); err != nil {
 		log.Printf("global trending feed cache set failed: %v", err)
 		return
 	}
@@ -83,31 +114,3 @@ func (s *FeedScoreScheduler) run() {
 	log.Println("feed scores recomputed")
 }
 
-func preloadSchedulerThreadUser(db *gorm.DB) *gorm.DB {
-	return db.Select("user_id", "name", "user_name", "is_premium")
-}
-
-// schedulerUserJoinSelect mirrors userJoinSelect in the repository package
-// for the scheduler's Joins("User", ...) form. Restricts loaded user columns
-// to public fields.
-func schedulerUserJoinSelect(db *gorm.DB) *gorm.DB {
-	return db.Session(&gorm.Session{NewDB: true}).
-		Model(&usermodel.User{}).
-		Select("user_id", "name", "user_name", "is_premium")
-}
-
-// Phase 3 — all 1:1 relations flattened into one JOIN query. Mirrors the
-// repository-package preloadThreadDetails. Only ThreadEvents.Event chains
-// remain as Preload (1:N, can't flatten). Join ordering matters: parent
-// relations registered before child paths so GORM skips re-adding parent
-// when traversing the nested Joins("OriginalThread.User", ...) chain.
-func preloadSchedulerThreadDetails(db *gorm.DB) *gorm.DB {
-	return db.
-		Joins("User", schedulerUserJoinSelect(db)).
-		Joins("Community").
-		Joins("OriginalThread").
-		Joins("OriginalThread.User", schedulerUserJoinSelect(db)).
-		Joins("OriginalThread.Community").
-		Preload("ThreadEvents.Event").
-		Preload("OriginalThread.ThreadEvents.Event")
-}

@@ -4,23 +4,26 @@
 
 ## Feed Score (Stored Column)
 
-Threads have a precomputed `feed_score` column updated every 1 minute by `infrastructure/scheduler/feed_score_scheduler.go` for content from the last 7 days:
+Threads have a precomputed `feed_score` column updated every 1 minute by `infrastructure/scheduler/feed_score_scheduler.go` for content from the last 7 days. The stored value is the **raw weighted engagement** — no decay applied:
 
 ```sql
 UPDATE threads
-SET feed_score = (
-  like_count + 3.0 * comment_count + 5.0 * repost_count + 4.0 * bookmark_count
-) / (
-  1.0 + POWER(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0, 1.5)
-)
-WHERE created_at > NOW() - INTERVAL '7 days';
+SET feed_score = computed.new_score
+FROM (
+  SELECT thread_id,
+    (like_count + 3.0 * comment_count + 5.0 * repost_count + 4.0 * bookmark_count) AS new_score
+  FROM threads
+  WHERE created_at > NOW() - INTERVAL '7 days'
+) computed
+WHERE threads.thread_id = computed.thread_id
+  AND threads.feed_score IS DISTINCT FROM computed.new_score;
 ```
 
-Threads older than 7 days are reset to `feed_score = 0` (only when `feed_score <> 0`, so cold rows aren't rewritten).
+The `IS DISTINCT FROM` predicate skips WAL writes for rows whose score did not move since the previous tick — most cold threads stay constant after their first minute of life.
 
-After the score recompute the scheduler also re-populates the **global trending cache** (`feed:trending:global`, TTL `5 min`) with the top 100 public, non-private, visibility-filtered threads ordered by `feed_score DESC`. Because the scheduler ticks every 1 min and the TTL is 5 min, the global source is effectively always cache-warm; the in-repo `forYouTrendingTTL = 2 min` only takes effect if the scheduler is down.
+Decay is applied **only at read time** in `FindForYouFeed.addCandidates` (see [Scoring](#scoring) below). Storing the raw signal lets every feed variant (For You, search, future Following Trending) apply its own decay curve without re-running the scheduler, and keeps the column interpretable.
 
-Combined with the read-time decay (see [Scoring](#scoring)), the effective ranking applies decay **twice**: once by the scheduler with exponent 1.5 inside `feed_score`, and once at merge time with a linear ~6h half-life. The two are intentional — the stored score determines DB-side `ORDER BY` and the read-time decay does final ranking — but be aware they compound.
+After the score recompute the scheduler refreshes the **global trending cache** as a Redis **ZSET** at key `feed:trending:global` (TTL `5 min`). The ZSET stores `thread_id → feed_score` pairs (top 100 public, non-private, visibility-filtered threads ordered by `feed_score DESC`). Readers load IDs+scores from the ZSET and hydrate full thread objects via the per-thread cache (`thread:id:<id>`) — see [Caching](#caching). Because the scheduler ticks every 1 min and the TTL is 5 min, the global source is effectively always cache-warm; the in-repo `forYouTrendingTTL = 2 min` only takes effect if the scheduler is down.
 
 ## Candidate Sources
 
@@ -46,7 +49,7 @@ The four source queries run **in parallel** via `sync.WaitGroup` inside `FindFor
 
 ## Scoring
 
-For each candidate, an effective score is computed at merge time:
+For each candidate, an effective score is computed at merge time. `feed_score` is the raw weighted engagement stored by the scheduler (no decay applied); read-time decay is the only decay in the system:
 
 ```text
 age_hours = max(0, now - thread.created_at in hours)
@@ -54,6 +57,8 @@ is_fresh  = age < forYouFreshWindow (15 min)
 decay     = 1 / (1 + age_hours / 6)        # log-style halflife ~6h
 score     = thread.feed_score * source_weight * decay
 ```
+
+Storing raw engagement + applying decay at read time matches the pattern used by Reddit, Hacker News, and Twitter's Heavy Ranker — the stored value stays interpretable and the decay curve is tunable without scheduler downtime.
 
 Floor boosts (applied in `addCandidates`):
 
@@ -68,6 +73,10 @@ The non-own fresh floor (`0.1`) only exists so a `feed_score = 0` post survives 
 
 If the same thread appears in multiple sources, the highest score is kept (dedupe by `thread_id`). Candidates with `score < 0.01` and not in the fresh window are dropped before sorting.
 
+### Reply weight
+
+Reply candidates have their effective source weight multiplied by `forYouReplyWeight = 0.5` inside `addCandidates`. Replies surface for engagement context but never dominate top-level posts at the same raw `feed_score`.
+
 ## Ordering — Fresh Band + Seeded Band Shuffle
 
 Pure score sort is deterministic and makes the feed feel frozen. Pure random shuffle destroys ranking. The algorithm splits the merged candidates into two slices, processes them independently, then concatenates `[fresh..., ranked...]`:
@@ -75,12 +84,20 @@ Pure score sort is deterministic and makes the feed feel frozen. Pure random shu
 1. **Split** by `created_at` against `forYouFreshWindow` (15 min):
    - `fresh` — `created_at > now - 15min`
    - `ranked` — everything else
-2. **Fresh band** — sort `fresh` by `created_at DESC`, then cap at `forYouFreshCap = 5`. Overflow (6th item and beyond) spills into `ranked` so the top of the feed never becomes a pure Latest tab when the network is busy.
+2. **Fresh band** — sort `fresh` by `created_at DESC`, then cap at `forYouEffectiveFreshCap(limit) = min(5, ceil(0.2 * limit))` (mobile `limit=10` → 2 slots; desktop `limit=20` → 4 slots; never above the `forYouFreshCap = 5` ceiling). Overflow spills into `ranked` so the top of the feed never becomes a pure Latest tab when the network is busy.
 3. **Ranked band** — sort by `score` DESC (tiebreak `created_at` DESC), then bucket candidates into **score bands** of width `0.5` (`band = floor(score / 0.5)`) and shuffle within each band using a deterministic PRNG seeded from the user's current feed seed.
 
-The top 5 items of the feed are always the newest fresh threads (sorted by `created_at`, regardless of `feed_score`). Below that, high-scoring trending content sits in the top ranked bands, with band-internal order varying per session.
+The top of the feed (up to `forYouEffectiveFreshCap(limit)` slots — typically 2–4 depending on page limit, capped at 5) is always the newest fresh threads (sorted by `created_at`, regardless of `feed_score`). Below that, high-scoring trending content sits in the top ranked bands, with band-internal order varying per session.
 
-After concatenation, an **author cap of 20** is applied: at most 20 threads per author across the whole feed. For repost threads, the cap counts against the *original* author's id.
+After concatenation, a **position-aware author cap** is applied:
+
+| Output position prefix | Max threads per author within prefix |
+|---|---|
+| Top 10 | 3 |
+| Top 25 | 5 |
+| Whole feed (up to `forYouCandidateCap = 800`) | 20 |
+
+The strictest applicable tier wins. Top of feed therefore has stronger variety than the tail — one chatty author cannot fill positions 1–10, but can hold up to 20 threads across the full result if their content is strong throughout. For repost threads, the cap counts against the *original* author's id.
 
 The full candidate list is then sliced for the requested page (`offset = (page-1) * limit`).
 
@@ -120,7 +137,7 @@ Auth-protected. Returns `{ "count": N }` — the number of feed-eligible, visibi
 | `feed:foryou:user:{userID}:src:following` | 60 s | Following candidate cache |
 | `feed:foryou:user:{userID}:src:community` | 60 s | Community candidate cache |
 | `feed:foryou:user:{userID}:newcount:{since_id}` | 30 s | "New posts" banner counter |
-| `feed:trending:global` | 5 min (scheduler-warmed every 1 min) / 2 min (lazy fallback) | Global trending candidate cache, shared across users |
+| `feed:trending:global` (Redis ZSET) | 5 min (scheduler-warmed every 1 min) / 2 min (lazy fallback) | Top-100 `thread_id → feed_score` pairs; hydrated to full threads via `thread:id:<id>` cache. ~3 KB vs ~200 KB of JSON in the previous shape. |
 
 Per-user keys are registered under tag `UserForYouTag(userID)` so a single `cache.InvalidateTag` drops all `src:*` and `newcount:*` entries for a user. The global key is NOT tagged — invalidation must be direct (`cache.Delete(ctx, "feed:trending:global")`) and is required when fields embedded in the cached `[]threadmodel.Thread` change (e.g. `Faculty.Update/Delete`, `Event.Update/Delete`, premium toggles for any included author — see backend `CLAUDE.md` mutation cheatsheet).
 

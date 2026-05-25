@@ -1,7 +1,7 @@
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
-import { type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
+import { MoreHorizontal, Pencil, Trash2, Pin, PinOff, Flag } from 'lucide-react';
+import { type CSSProperties, type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
 import type { CommunityRole } from '@/lib/services/communities';
 
 interface ThreadOptionsMenuProps {
@@ -15,7 +15,27 @@ interface ThreadOptionsMenuProps {
   pinning?: boolean;
   onPin?: () => void;
   onUnpin?: () => void;
+  onReport?: () => void;
 }
+
+const ITEM_BASE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  width: '100%',
+  padding: '9px 14px',
+  background: 'transparent',
+  border: 'none',
+  fontSize: 14,
+  fontWeight: 600,
+  color: 'var(--text)',
+  textAlign: 'left',
+  cursor: 'pointer',
+  minHeight: 38,
+  lineHeight: 1.2,
+};
+
+const ICON_SIZE = 16;
 
 export function ThreadOptionsMenu({
   onEdit,
@@ -28,29 +48,24 @@ export function ThreadOptionsMenu({
   pinning = false,
   onPin,
   onUnpin,
+  onReport,
 }: ThreadOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const iconSize = compact ? 16 : 18;
+  const triggerIconSize = compact ? 16 : 18;
   const canCommunityPin = communityRole === 'ADMIN';
 
   useEffect(() => {
-    if (!open) {
-      return undefined;
-    }
+    if (!open) return undefined;
 
     function handlePointerDown(event: globalThis.MouseEvent | TouchEvent) {
       const target = event.target;
-      if (!(target instanceof Node) || menuRef.current?.contains(target) === true) {
-        return;
-      }
-
+      if (!(target instanceof Node) || menuRef.current?.contains(target) === true) return;
       setOpen(false);
     }
 
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('touchstart', handlePointerDown);
-
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('touchstart', handlePointerDown);
@@ -64,130 +79,161 @@ export function ThreadOptionsMenu({
 
   function handleToggle(event: ReactMouseEvent<HTMLButtonElement>) {
     stopEvent(event);
-    if (disabled) {
-      return;
-    }
-
+    if (disabled) return;
     setOpen((current) => !current);
   }
 
-  function handleEdit(event: ReactMouseEvent<HTMLButtonElement>) {
-    stopEvent(event);
-    setOpen(false);
-    onEdit?.();
+  function wrap(callback?: () => void) {
+    return (event: ReactMouseEvent<HTMLButtonElement>) => {
+      stopEvent(event);
+      setOpen(false);
+      callback?.();
+    };
   }
 
-  function handleDelete(event: ReactMouseEvent<HTMLButtonElement>) {
-    stopEvent(event);
-    setOpen(false);
-    onDelete?.();
+  function onItemEnter(event: ReactMouseEvent<HTMLButtonElement>) {
+    if (event.currentTarget.disabled) return;
+    event.currentTarget.style.background = 'var(--sidebar-hover)';
   }
 
-  function handlePin(event: ReactMouseEvent<HTMLButtonElement>) {
-    stopEvent(event);
-    setOpen(false);
-    onPin?.();
-  }
-
-  function handleUnpin(event: ReactMouseEvent<HTMLButtonElement>) {
-    stopEvent(event);
-    setOpen(false);
-    onUnpin?.();
+  function onItemLeave(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.currentTarget.style.background = 'transparent';
   }
 
   return (
-    <div ref={menuRef} className="relative shrink-0" onClick={(event) => event.stopPropagation()}>
+    <div
+      ref={menuRef}
+      style={{ position: 'relative', flexShrink: 0 }}
+      onClick={(event) => event.stopPropagation()}
+    >
       <button
         type="button"
         aria-label="More options"
         aria-expanded={open}
         onClick={handleToggle}
         disabled={disabled}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-opacity"
+        onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 32,
+          width: 32,
+          borderRadius: '50%',
+          border: 'none',
           color: 'var(--text-tertiary)',
           background: 'transparent',
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer',
+          transition: 'background 0.15s ease',
         }}
       >
-        <MoreHorizontal size={iconSize} strokeWidth={1.9} />
+        <MoreHorizontal size={triggerIconSize} strokeWidth={1.9} />
       </button>
 
       {open && (
         <div
-          className="absolute right-0 top-full z-30 mt-2 min-w-[168px] rounded-xl border p-1.5 shadow-lg"
+          role="menu"
           style={{
-            borderColor: 'var(--border)',
+            position: 'absolute',
+            right: 0,
+            top: '100%',
+            zIndex: 50,
+            marginTop: 6,
+            minWidth: 220,
+            borderRadius: 14,
+            border: '1px solid var(--border)',
             background: 'var(--bg-card)',
-            boxShadow: '0 18px 40px rgba(15, 20, 25, 0.16)',
+            boxShadow: '0 10px 28px rgba(0, 0, 0, 0.35)',
+            padding: '6px 0',
+            overflow: 'hidden',
           }}
         >
           {onEdit && (
             <button
               type="button"
-              onClick={handleEdit}
-              className="flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
-              style={{ color: 'var(--text)' }}
+              role="menuitem"
+              onClick={wrap(onEdit)}
+              onMouseEnter={onItemEnter}
+              onMouseLeave={onItemLeave}
+              style={ITEM_BASE}
             >
-              Edit
+              <Pencil size={ICON_SIZE} strokeWidth={2} />
+              Edit post
             </button>
           )}
+
           {onDelete && (
             <button
               type="button"
-              onClick={handleDelete}
+              role="menuitem"
+              onClick={wrap(onDelete)}
+              onMouseEnter={onItemEnter}
+              onMouseLeave={onItemLeave}
               disabled={deleting}
-              className={`${onEdit ? 'mt-1 ' : ''}flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium`}
               style={{
+                ...ITEM_BASE,
                 color: 'var(--coral)',
                 opacity: deleting ? 0.5 : 1,
                 cursor: deleting ? 'not-allowed' : 'pointer',
               }}
             >
-              {deleting ? 'Deleting...' : 'Delete'}
+              <Trash2 size={ICON_SIZE} strokeWidth={2} />
+              {deleting ? 'Deleting...' : 'Delete post'}
             </button>
           )}
 
-          {canCommunityPin && (onPin ?? onUnpin) && (
-            <div
+          {canCommunityPin && !isPinned && onPin && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={wrap(onPin)}
+              onMouseEnter={onItemEnter}
+              onMouseLeave={onItemLeave}
+              disabled={pinning}
               style={{
-                borderTop: '1px solid var(--border)',
-                marginTop: 4,
-                paddingTop: 4,
+                ...ITEM_BASE,
+                opacity: pinning ? 0.5 : 1,
+                cursor: pinning ? 'not-allowed' : 'pointer',
               }}
             >
-              {!isPinned && onPin && (
-                <button
-                  type="button"
-                  onClick={handlePin}
-                  disabled={pinning}
-                  className="flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
-                  style={{
-                    color: 'var(--text)',
-                    opacity: pinning ? 0.5 : 1,
-                    cursor: pinning ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {pinning ? 'Pinning...' : 'Pin post'}
-                </button>
-              )}
-              {isPinned && onUnpin && (
-                <button
-                  type="button"
-                  onClick={handleUnpin}
-                  disabled={pinning}
-                  className="flex min-h-10 w-full items-center rounded-lg px-4 py-2.5 text-left text-sm font-medium"
-                  style={{
-                    color: 'var(--text-secondary)',
-                    opacity: pinning ? 0.5 : 1,
-                    cursor: pinning ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {pinning ? 'Unpinning...' : 'Unpin post'}
-                </button>
-              )}
-            </div>
+              <Pin size={ICON_SIZE} strokeWidth={2} />
+              {pinning ? 'Pinning...' : 'Pin post'}
+            </button>
+          )}
+
+          {canCommunityPin && isPinned && onUnpin && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={wrap(onUnpin)}
+              onMouseEnter={onItemEnter}
+              onMouseLeave={onItemLeave}
+              disabled={pinning}
+              style={{
+                ...ITEM_BASE,
+                opacity: pinning ? 0.5 : 1,
+                cursor: pinning ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <PinOff size={ICON_SIZE} strokeWidth={2} />
+              {pinning ? 'Unpinning...' : 'Unpin post'}
+            </button>
+          )}
+
+          {onReport && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={wrap(onReport)}
+              onMouseEnter={onItemEnter}
+              onMouseLeave={onItemLeave}
+              style={ITEM_BASE}
+            >
+              <Flag size={ICON_SIZE} strokeWidth={2} />
+              Report post
+            </button>
           )}
         </div>
       )}

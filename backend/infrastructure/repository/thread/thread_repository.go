@@ -24,6 +24,16 @@ type threadCached struct {
 	// same For You source key onto a single underlying DB query. Eliminates
 	// thundering-herd at TTL expiry.
 	forYouSingleflight singleflight.Group
+	// forYouMetrics records cache hit/miss + DB latency counters for the For
+	// You pipeline. Read via the exposed Snapshot() accessor.
+	forYouMetrics forYouMetrics
+}
+
+// ForYouMetricsSnapshot returns a copy of the For You feed cache/latency
+// counters. Intended for an admin observability endpoint; safe to call
+// concurrently with feed traffic.
+func (r *threadCached) ForYouMetricsSnapshot() ForYouMetricsSnapshot {
+	return r.forYouMetrics.Snapshot()
 }
 
 type ThreadDB struct {

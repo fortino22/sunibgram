@@ -13,13 +13,13 @@ import (
 )
 
 func RegisterAuthRoutes(api fiber.Router, ctrl *authctrl.AuthController, verificationCtrl *verificationctrl.VerificationController, authMW fiber.Handler, c *cache.Cache) {
-	otpSendLimiter := ratelimit.New(c, "auth_otp_send_ip", 3, 10*time.Minute)
-	otpSendRateLimit := func(c *fiber.Ctx) error {
-		if err := otpSendLimiter.Allow(c.IP()); err != nil {
-			return c.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
-		}
-		return c.Next()
-	}
+	// otpSendLimiter := ratelimit.New(c, "auth_otp_send_ip", 3, 10*time.Minute)
+	// otpSendRateLimit := func(c *fiber.Ctx) error {
+	// 	if err := otpSendLimiter.Allow(c.IP()); err != nil {
+	// 		return c.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
+	// 	}
+	// 	return c.Next()
+	// }
 
 	authIPLimiter := ratelimit.New(c, "auth_ip", 10, 5*time.Minute)
 	authIPRateLimit := func(c *fiber.Ctx) error {
@@ -31,8 +31,8 @@ func RegisterAuthRoutes(api fiber.Router, ctrl *authctrl.AuthController, verific
 
 	auth := api.Group("/auth")
 	auth.Post("/register", authIPRateLimit, ctrl.Register)
-	auth.Post("/login/otp/send", otpSendRateLimit, verificationCtrl.SendLoginOTP)
-	auth.Post("/login", authIPRateLimit, ctrl.LoginWithOTP)
+	auth.Post("/login/otp/send", verificationCtrl.SendLoginOTP)
+	auth.Post("/login", ctrl.LoginWithOTP)
 	auth.Post("/login/prod", authIPRateLimit, ctrl.LoginProd)
 	auth.Post("/refresh", authIPRateLimit, ctrl.Refresh)
 	auth.Post("/logout", authMW, ctrl.Logout)

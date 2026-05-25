@@ -130,7 +130,7 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
             cursor: 'pointer',
           }}
         >
-          + Create
+          Create
         </button>
       </div>
 

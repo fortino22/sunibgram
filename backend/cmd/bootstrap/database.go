@@ -12,6 +12,7 @@ import (
 	"github.com/sunibgram/infrastructure/scheduler"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
 	"github.com/sunibgram/webapi/middleware"
+	webapisocket "github.com/sunibgram/webapi/socket"
 )
 
 type Database struct {
@@ -32,6 +33,7 @@ func NewCache() *cache.Cache {
 		log.Printf("community members cache startup flush error: %v", err)
 	}
 	middleware.Init(c)
+	webapisocket.InitRateLimiter(c)
 	ctrlshared.SetFeedBuilderCache(c)
 	return c
 }

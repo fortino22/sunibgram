@@ -137,9 +137,13 @@ export default function CommunitiesPage() {
                 fontSize: 13,
                 fontWeight: 700,
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
               }}
             >
-              + Create
+              <Icon name="plus" size={14} />
+              Create
             </button>
           </div>
         </div>

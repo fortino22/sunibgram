@@ -153,7 +153,8 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
         <div
           onClick={() => bannerRef.current?.click()}
           style={{
-            height: 130,
+            aspectRatio: '2.31',
+            width: '100%',
             background: bannerPreview
               ? `url(${bannerPreview}) center/cover no-repeat`
               : 'var(--bg-subtle)',

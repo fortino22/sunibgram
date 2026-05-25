@@ -98,8 +98,18 @@ func (r *ChatRepository) Delete(id uint) error {
 func (r *ChatRepository) MarkRoomRead(roomID, userID uint) ([]uint, error) {
 	var ids []uint
 	err := r.writeDB.Raw(
-		`UPDATE chats SET is_read = true WHERE room_id = ? AND sender_id != ? AND is_read = false AND deleted_at IS NULL RETURNING chat_id`,
-		roomID, userID,
+		`UPDATE chats SET is_read = true
+		 WHERE room_id = ?
+		   AND sender_id != ?
+		   AND is_read = false
+		   AND deleted_at IS NULL
+		   AND EXISTS (
+		     SELECT 1 FROM chat_room_members
+		     WHERE chat_room_members.room_id = chats.room_id
+		       AND chat_room_members.user_id = ?
+		   )
+		 RETURNING chat_id`,
+		roomID, userID, userID,
 	).Scan(&ids).Error
 	return ids, err
 }

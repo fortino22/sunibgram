@@ -227,9 +227,10 @@ func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
 	}
 	ctx := context.Background()
 	_ = r.cache.Delete(ctx, "feed:trending:global")
+	// For You caches use a version-counter (IncrForYouVersion) instead of a tag.
+	infrarepoShared.IncrForYouVersion(ctx, r.cache, userID)
 	// Tag-based invalidation.
 	//   infrarepoShared.UserFeedsTag           → thread:userfeed/usermedia/following:<uid>:*
-	//   infrarepoShared.UserForYouTag          → feed:foryou:user:<uid>:*
 	//   infrarepoShared.ViewerThreadFeedsTag   → thread:my-communities:user:<uid>:* + all
 	//                            other viewer-scoped feed slices
 	//   infrarepoShared.InteractionUserListTag → bookmarks/likes:user:<uid>:*
@@ -239,7 +240,6 @@ func (r *UserRepository) invalidateUserThreadCaches(userID uint) {
 	//   families.
 	_ = r.cache.InvalidateTags(ctx,
 		infrarepoShared.UserFeedsTag(userID),
-		infrarepoShared.UserForYouTag(userID),
 		infrarepoShared.ViewerThreadFeedsTag(userID),
 		infrarepoShared.InteractionUserListTag("bookmarks", userID),
 		infrarepoShared.InteractionUserListTag("likes", userID),

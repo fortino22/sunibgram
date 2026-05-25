@@ -145,6 +145,36 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_user_rel_follower_created ON user_relationships(follower_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_user_rel_following_created ON user_relationships(following_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_verification_codes_expires_at ON verification_codes(expires_at)",
+
+		// For You source-query indexes. Each source's WHERE + ORDER BY pattern
+		// gets one composite. The fresh-first boolean in ORDER BY cannot be
+		// indexed directly (parameter-dependent), but the secondary sort
+		// columns are covered so Postgres only has to bucket-sort the LIMIT 100
+		// in memory after using the index for the filter.
+		//
+		// findForYouOwn: WHERE user_id = ? AND created_at > cutoff ORDER BY ..., feed_score DESC
+		"CREATE INDEX IF NOT EXISTS idx_threads_user_created ON threads(user_id, created_at DESC)",
+
+		// findForYouCommunity / findForYouFollowing: JOIN community_members and
+		// user_relationships; the JOIN itself is keyed on community_id /
+		// follower_id. Composite on (community_id, created_at DESC) plus the
+		// existing follower_created index covers the JOIN's outer side.
+		"CREATE INDEX IF NOT EXISTS idx_threads_community_created ON threads(community_id, created_at DESC) WHERE community_id IS NOT NULL",
+		"CREATE INDEX IF NOT EXISTS idx_community_members_user_community ON community_members(user_id, community_id)",
+
+		// findForYouGlobal: ORDER BY feed_score DESC, created_at DESC over the
+		// 7-day window. Partial WHERE feed_score > 0 keeps the index small —
+		// only rows with engagement are indexed. Cold rows (zero engagement)
+		// drop out of the index automatically as their feed_score stays 0.
+		// Old rows past 7d that retain a non-zero feed_score remain indexed
+		// but the source-query WHERE clause filters them out.
+		"CREATE INDEX IF NOT EXISTS idx_threads_score_created ON threads(feed_score DESC, created_at DESC) WHERE feed_score > 0",
+
+		// CountNewSinceID: WHERE thread_id > since_id with visibility filters.
+		// The PRIMARY KEY already covers thread_id ordering, but adding type +
+		// created_at on top helps when since_id is small (large scan) and the
+		// visibility predicates filter most of the table.
+		"CREATE INDEX IF NOT EXISTS idx_threads_type_created ON threads(type, created_at DESC)",
 	}
 	for _, s := range stmts {
 		db.Exec(s)

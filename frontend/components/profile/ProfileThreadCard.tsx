@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Users, Repeat2 } from 'lucide-react';
+import { Users, Repeat2, Pin } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
+import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import type { CommunityRole } from '@/lib/services/communities';
@@ -31,16 +32,19 @@ interface ProfileThreadCardProps {
   onPinThread?: (threadId: number) => void;
   onUnpinThread?: (threadId: number) => void;
   pinningThread?: boolean;
+  inCommunityContext?: boolean;
 }
 
-export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParentContext = false, onLike, onRepost, onBookmark, onReply, communityRole, onPinThread, onUnpinThread, pinningThread }: ProfileThreadCardProps) {
+export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParentContext = false, onLike, onRepost, onBookmark, onReply, communityRole, onPinThread, onUnpinThread, pinningThread, inCommunityContext = false }: ProfileThreadCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
+  const canReport = currentUserId != null && currentUserId !== thread.author.id;
   const replyUsername = replyingTo ?? thread.parent_context?.author.username;
   const replyUserId = replyingToId ?? thread.parent_context?.author.id;
 
@@ -59,6 +63,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
   }
 
   return (
+    <>
     <article
       onClick={() => router.push(`/thread/${thread.id}`)}
       style={{
@@ -83,20 +88,23 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
         </div>
       )}
 
-      {thread.is_pin && (
+      {inCommunityContext && thread.pinned_by_admin && (
         <div
           style={{
-            padding: '8px 20px 0 55px',
+            padding: '8px 20px 0 52px',
             display: 'flex',
             alignItems: 'center',
             gap: 5,
           }}
         >
-          <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>📌 Pinned</span>
+          <Pin size={13} strokeWidth={2.5} color="var(--text-tertiary)" />
+          <span style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>
+            Pinned by Community admin
+          </span>
         </div>
       )}
 
-      {thread.community && !thread.reposted_by_username && (
+      {thread.community && !thread.reposted_by_username && !(inCommunityContext && thread.pinned_by_admin) && (
         <div
           style={{
             padding: `${thread.reposted_by_username ? '4px' : '10px'} 20px 0 55px`,
@@ -143,7 +151,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               @{thread.author.username}
             </span>
             <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
-            {(canManage || communityRole === 'ADMIN') && (
+            {(canManage || canReport) && (
               <div
                 style={{ marginLeft: 'auto' }}
                 onClick={(e) => e.stopPropagation()}
@@ -155,10 +163,11 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
                   disabled={updateMutation.isPending}
                   compact
                   communityRole={communityRole}
-                  isPinned={thread.is_pin === true}
+                  isPinned={thread.pinned_by_admin === true}
                   pinning={pinningThread}
                   onPin={onPinThread ? () => onPinThread(thread.id) : undefined}
                   onUnpin={onUnpinThread ? () => onUnpinThread(thread.id) : undefined}
+                  onReport={canReport ? () => setReportModalOpen(true) : undefined}
                 />
               </div>
             )}
@@ -260,5 +269,15 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
         </div>
       </div>
     </article>
+
+    {reportModalOpen && (
+      <div onClick={(e) => e.stopPropagation()}>
+        <ReportPostModal
+          postId={thread.id}
+          onClose={() => setReportModalOpen(false)}
+        />
+      </div>
+    )}
+    </>
   );
 }

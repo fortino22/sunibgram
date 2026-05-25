@@ -8,9 +8,9 @@ import (
 	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 )
 
-const subscriptionExpiryInterval = 1 * time.Hour
+const subscriptionExpiryInterval = 24 * time.Hour
 
-// RunSubscriptionExpiry expires premium subscriptions every hour. Honors ctx
+// RunSubscriptionExpiry expires premium subscriptions once per day. Honors ctx
 // cancellation for graceful shutdown.
 func RunSubscriptionExpiry(ctx context.Context, svc premiumsubscriptionsvciface.IPremiumSubscriptionService) {
 	ticker := time.NewTicker(subscriptionExpiryInterval)
