@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ProfilePageHeader } from '@/components/profile/ProfilePageHeader';
 import { ProfileBanner } from '@/components/profile/ProfileBanner';
-import { FollowListTab } from '@/components/profile/FollowListTab';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
 import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
@@ -34,19 +33,13 @@ function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps)
       replyingTo={replyingTo}
       replyingToId={replyingToId}
       onLike={() => {
-        if (!like.isPending) {
-          like.mutate(thread.is_liked === true);
-        }
+        if (!like.isPending) like.mutate(thread.is_liked === true);
       }}
       onRepost={() => {
-        if (!repost.isPending) {
-          repost.mutate(thread.is_reposted === true);
-        }
+        if (!repost.isPending) repost.mutate(thread.is_reposted === true);
       }}
       onBookmark={() => {
-        if (!bookmark.isPending) {
-          bookmark.mutate(thread.is_bookmarked === true);
-        }
+        if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true);
       }}
     />
   );
@@ -54,6 +47,7 @@ function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps)
 
 export default function UserProfilePage() {
   const params = useParams<{ userId: string }>();
+  const router = useRouter();
   const routeUserId = Number(params.userId);
   const hasValidUserId = Number.isInteger(routeUserId) && routeUserId > 0;
   const profileUserId = hasValidUserId ? routeUserId : undefined;
@@ -99,34 +93,17 @@ export default function UserProfilePage() {
   }, [repliesQuery]);
 
   if (!hasValidUserId) {
-    return (
-      <EmptyState
-        title="Profile unavailable"
-        subtitle="Invalid profile id."
-      />
-    );
+    return <EmptyState title="Profile unavailable" subtitle="Invalid profile id." />;
   }
 
-  if (isLoading) {
-    return <ProfileSkeleton />;
-  }
+  if (isLoading) return <ProfileSkeleton />;
 
   if (isError) {
-    return (
-      <EmptyState
-        title="Profile unavailable"
-        subtitle={error.message}
-      />
-    );
+    return <EmptyState title="Profile unavailable" subtitle={error.message} />;
   }
 
   if (!profile) {
-    return (
-      <EmptyState
-        title="Profile unavailable"
-        subtitle="This profile could not be loaded."
-      />
-    );
+    return <EmptyState title="Profile unavailable" subtitle="This profile could not be loaded." />;
   }
 
   const isOwn = currentUserId === profile.id;
@@ -166,8 +143,8 @@ export default function UserProfilePage() {
         isFollowing={isFollowing}
         followPending={follow.isPending || unfollow.isPending}
         onFollowToggle={handleFollowToggle}
-        onFollowersClick={() => setActiveTab('followers')}
-        onFollowingClick={() => setActiveTab('following')}
+        onFollowersClick={() => router.push(`/profile/${profile.id}/followers?tab=followers`)}
+        onFollowingClick={() => router.push(`/profile/${profile.id}/followers?tab=following`)}
       />
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -205,10 +182,6 @@ export default function UserProfilePage() {
       {activeTab === 'likes' && (
         <EmptyState title="Likes are private" subtitle="Only the account owner can see their likes." />
       )}
-
-      {activeTab === 'followers' && <FollowListTab userId={profile.id} type="followers" />}
-
-      {activeTab === 'following' && <FollowListTab userId={profile.id} type="following" />}
     </div>
   );
 }

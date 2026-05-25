@@ -104,7 +104,7 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
           type="button"
           aria-label="Back"
           onClick={() => router.back()}
-          className="inline-flex items-center justify-center rounded-full"
+          className="inline-flex items-center justify-center rounded-full transition-colors hover:bg-white/20 cursor-pointer"
           style={{
             width: 36,
             height: 36,

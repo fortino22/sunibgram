@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { ProfilePageHeader } from '@/components/profile/ProfilePageHeader';
 import { ProfileBanner } from '@/components/profile/ProfileBanner';
-import { FollowListTab } from '@/components/profile/FollowListTab';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
 import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
@@ -75,6 +75,7 @@ function LikeCard({ thread }: { thread: ThreadItem }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>('threads');
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -147,8 +148,8 @@ export default function ProfilePage() {
         onFollowToggle={() => {}}
         followPending={false}
         onEditClick={() => setShowEditModal(true)}
-        onFollowersClick={() => setActiveTab('followers')}
-        onFollowingClick={() => setActiveTab('following')}
+        onFollowersClick={() => router.push(`/profile/${profile.id}/followers?tab=followers`)}
+        onFollowingClick={() => router.push(`/profile/${profile.id}/followers?tab=following`)}
       />
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
@@ -188,10 +189,6 @@ export default function ProfilePage() {
           ? <EmptyState title="No likes yet" subtitle="Posts you've liked will appear here." />
           : likes.map((t) => <LikeCard key={t.id} thread={t} />)
       )}
-
-      {activeTab === 'followers' && <FollowListTab userId={profile.id} type="followers" />}
-
-      {activeTab === 'following' && <FollowListTab userId={profile.id} type="following" />}
 
       {showEditModal && (
         <ProfileEditModal profile={profile} onClose={() => setShowEditModal(false)} />

@@ -1102,6 +1102,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                               height: 42,
                               borderRadius: 12,
                               background: 'var(--bg-card)',
+                              paddingLeft: 16,
                             }}
                           />
                         </div>
@@ -1204,6 +1205,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                       <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Days</span>
                       <select
                         value={pollDays}
+                        className="poll-select"
                         onChange={(e) => {
                           const val = Number(e.target.value);
                           pollForm.setValue('days', val, { shouldDirty: true, shouldValidate: true });
@@ -1233,6 +1235,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                       <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Hours</span>
                       <select
                         value={pollHours}
+                        className="poll-select"
                         onChange={(e) => {
                           const val = Number(e.target.value);
                           pollForm.setValue('hours', val, { shouldDirty: true, shouldValidate: true });
@@ -1262,6 +1265,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                       <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Minutes</span>
                       <select
                         value={pollMinutes < ((pollDays > 0 || pollHours > 0) ? 0 : 5) ? ((pollDays > 0 || pollHours > 0) ? 0 : 5) : pollMinutes}
+                        className="poll-select"
                         onChange={(e) => {
                           const val = Number(e.target.value);
                           pollForm.setValue('minutes', val, { shouldDirty: true, shouldValidate: true });
@@ -1301,13 +1305,15 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   onClick={handleRemovePoll}
                   style={{
                     marginTop: 4,
-                    border: 'none',
+                    border: '1px solid var(--coral)',
+                    borderRadius: 12,
                     background: 'transparent',
                     color: 'var(--coral)',
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: 700,
-                    padding: 0,
-                    textAlign: 'left',
+                    padding: '12px 0',
+                    width: '100%',
+                    textAlign: 'center',
                     cursor: 'pointer',
                   }}
                 >

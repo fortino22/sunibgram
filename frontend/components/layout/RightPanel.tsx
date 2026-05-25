@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { SearchDropdown } from './SearchDropdown';
 import { TrendingHashtags } from './TrendingHashtags';
+import { TrendingEvents } from './TrendingEvents';
 
 export function RightPanel() {
   const pathname = usePathname();
@@ -19,6 +20,9 @@ export function RightPanel() {
 
         {/* Trending hashtags */}
         <TrendingHashtags title="Trending on campus" initialVisibleCount={5} />
+
+        {/* Trending events */}
+        <TrendingEvents />
 
         {/* Footer links */}
         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.8 }}>

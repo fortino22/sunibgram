@@ -1,14 +1,12 @@
 'use client';
 
-export type ProfileTab = 'threads' | 'replies' | 'media' | 'likes' | 'followers' | 'following';
+export type ProfileTab = 'threads' | 'replies' | 'media' | 'likes';
 
 const TABS: { id: ProfileTab; label: string }[] = [
   { id: 'threads', label: 'Threads' },
   { id: 'replies', label: 'Replies' },
   { id: 'media', label: 'Media' },
   { id: 'likes', label: 'Likes' },
-  { id: 'followers', label: 'Followers' },
-  { id: 'following', label: 'Following' },
 ];
 
 interface ProfileTabsProps {
