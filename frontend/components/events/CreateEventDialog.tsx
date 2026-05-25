@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarDays, Clock, ImagePlus, LoaderCircle, MapPin, X } from 'lucide-react';
+import { CalendarDays, Clock, LoaderCircle, MapPin, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
@@ -82,14 +82,12 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
   const startDate = useWatch({ control: form.control, name: 'start_date', defaultValue: '' });
   const docFile = useWatch({ control: form.control, name: 'document', defaultValue: undefined });
 
-  // Auto-fill end_date when start_date changes and end_date is empty
   useEffect(() => {
     if (startDate && !form.getValues('end_date')) {
       form.setValue('end_date', startDate);
     }
   }, [startDate, form]);
 
-  // Revoke banner preview URL on unmount
   useEffect(() => {
     return () => {
       if (bannerPreview) URL.revokeObjectURL(bannerPreview);
@@ -107,13 +105,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
     if (bannerPreview) URL.revokeObjectURL(bannerPreview);
     setBannerPreview(URL.createObjectURL(file));
     form.setValue('banner', file, { shouldValidate: true });
-  }
-
-  function removeBanner() {
-    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
-    setBannerPreview(null);
-    form.setValue('banner', undefined, { shouldValidate: true });
-    if (bannerInputRef.current) bannerInputRef.current.value = '';
+    e.target.value = '';
   }
 
   async function onSubmit(values: FormValues) {
@@ -135,63 +127,65 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    background: 'transparent',
-    border: 'none',
-    borderBottom: '1px solid var(--border)',
-    outline: 'none',
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: '1px solid var(--border)',
+    background: 'var(--bg-subtle)',
     color: 'var(--text)',
-    fontSize: 15,
-    lineHeight: 1.6,
+    fontSize: 14,
+    boxSizing: 'border-box',
     fontFamily: 'inherit',
-    padding: '8px 0',
+    outline: 'none',
   };
 
-  const fieldWrap: React.CSSProperties = { marginBottom: 18 };
   const labelStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
     fontSize: 12,
     fontWeight: 600,
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    color: 'var(--text-tertiary)',
+    color: 'var(--text-secondary)',
+    display: 'block',
     marginBottom: 6,
   };
-  const errorStyle: React.CSSProperties = { fontSize: 12, color: 'var(--coral)', marginTop: 4 };
+
+  const errorStyle: React.CSSProperties = { fontSize: 12, color: 'var(--coral, #e53e3e)', marginTop: 4 };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <button
-        type="button"
-        aria-label="Close"
-        className="absolute inset-0"
-        onClick={() => onOpenChange(false)}
-        style={{ background: 'rgba(2,6,23,0.72)' }}
-      />
-
-      {/* Sheet / modal */}
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        padding: 16,
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
+    >
       <div
-        className="relative z-10 w-full sm:max-w-2xl overflow-y-auto"
         style={{
           background: 'var(--bg-card)',
-          borderTop: '1px solid var(--border)',
-          borderRadius: '28px 28px 0 0',
-          maxHeight: '92dvh',
-          padding: '0 0 env(safe-area-inset-bottom, 16px)',
+          borderRadius: 16,
+          width: '100%',
+          maxWidth: 480,
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          border: '1px solid var(--border)',
         }}
-        // sm: proper modal
       >
-        {/* Drag handle (mobile) */}
-        <div className="sm:hidden flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full" style={{ background: 'var(--border)' }} />
-        </div>
-
         {/* Header */}
         <div
-          className="flex items-center justify-between px-5 py-4"
-          style={{ borderBottom: '1px solid var(--border)' }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--border)',
+            position: 'sticky',
+            top: 0,
+            background: 'var(--bg-card)',
+            zIndex: 1,
+          }}
         >
           <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
             Create Event
@@ -199,25 +193,85 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="flex items-center justify-center rounded-full"
             style={{
-              width: 32,
-              height: 32,
-              background: 'var(--bg-subtle)',
-              color: 'var(--text-secondary)',
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-tertiary)',
+              fontSize: 20,
+              cursor: 'pointer',
+              lineHeight: 1,
             }}
           >
-            <X size={16} />
+            ✕
           </button>
         </div>
 
+        {/* Banner */}
+        <div
+          onClick={() => bannerInputRef.current?.click()}
+          style={{
+            aspectRatio: '2.31',
+            width: '100%',
+            background: bannerPreview
+              ? `url(${bannerPreview}) center/cover no-repeat`
+              : 'var(--bg-subtle)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+          }}
+        >
+          {!bannerPreview && (
+            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Click to add banner</span>
+          )}
+          {bannerPreview && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+                setBannerPreview(null);
+                form.setValue('banner', undefined, { shouldValidate: true });
+              }}
+              style={{
+                position: 'absolute',
+                top: 8,
+                right: 8,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                border: '1px solid rgba(255,255,255,0.22)',
+                background: 'rgba(0,0,0,0.55)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
+          <input
+            ref={bannerInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleBannerChange}
+          />
+        </div>
+        {form.formState.errors.banner && (
+          <p style={{ ...errorStyle, margin: '4px 20px 0' }}>{form.formState.errors.banner.message}</p>
+        )}
+
         <form
           onSubmit={form.handleSubmit((v) => void onSubmit(v))}
-          style={{ padding: '20px 20px 8px' }}
+          style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}
         >
           {/* Type toggle */}
-          <div style={fieldWrap}>
-            <p style={labelStyle}>Event type</p>
+          <div>
+            <label style={labelStyle}>Event type</label>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['unofficial', 'official'] as const).map((t) => (
                 <button
@@ -225,15 +279,15 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
                   type="button"
                   onClick={() => form.setValue('type', t)}
                   style={{
-                    padding: '7px 18px',
-                    borderRadius: 999,
-                    fontSize: 14,
+                    flex: 1,
+                    padding: '8px',
+                    borderRadius: 8,
+                    border: `1px solid ${type === t ? 'var(--text)' : 'var(--border)'}`,
+                    background: type === t ? 'var(--text)' : 'transparent',
+                    color: type === t ? 'var(--bg)' : 'var(--text)',
+                    fontSize: 13,
                     fontWeight: 600,
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    background: type === t ? 'var(--accent)' : 'transparent',
-                    color: type === t ? '#fff' : 'var(--text-secondary)',
-                    border: type === t ? '1.5px solid var(--accent)' : '1.5px solid var(--border)',
                   }}
                 >
                   {t === 'official' ? 'Official' : 'Unofficial'}
@@ -241,17 +295,18 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               ))}
             </div>
             {type === 'official' && (
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
                 Official events require an approval document from the university.
               </p>
             )}
           </div>
 
           {/* Title */}
-          <div style={fieldWrap}>
+          <div>
+            <label style={labelStyle}>Title *</label>
             <input
-              style={{ ...inputStyle, fontSize: 20, fontWeight: 700 }}
-              placeholder="Event title..."
+              style={inputStyle}
+              placeholder="Event title"
               {...form.register('title')}
             />
             {form.formState.errors.title && (
@@ -260,10 +315,11 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
           </div>
 
           {/* Description */}
-          <div style={fieldWrap}>
+          <div>
+            <label style={labelStyle}>Description *</label>
             <textarea
-              rows={4}
-              style={{ ...inputStyle, resize: 'vertical', minHeight: 88 }}
+              rows={3}
+              style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }}
               placeholder="What should people know before they show up?"
               {...form.register('description')}
             />
@@ -273,8 +329,10 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
           </div>
 
           {/* Location */}
-          <div style={fieldWrap}>
-            <p style={labelStyle}><MapPin size={12} /> Location</p>
+          <div>
+            <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <MapPin size={12} /> Location *
+            </label>
             <input
               style={inputStyle}
               placeholder="Binus Anggrek, Room 412"
@@ -285,118 +343,71 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
             )}
           </div>
 
-          {/* Date + Time */}
-          <div style={{ ...fieldWrap, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* Date + Time grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div>
-              <p style={labelStyle}><CalendarDays size={12} /> Start date</p>
-              <input type="date" style={inputStyle} {...form.register('start_date')} />
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <CalendarDays size={12} /> Start date
+              </label>
+              <input
+                type="date"
+                style={{ ...inputStyle, colorScheme: 'dark' }}
+                {...form.register('start_date')}
+              />
               {form.formState.errors.start_date && (
                 <p style={errorStyle}>{form.formState.errors.start_date.message}</p>
               )}
             </div>
             <div>
-              <p style={labelStyle}><Clock size={12} /> Start time</p>
-              <input type="time" style={inputStyle} {...form.register('start_time')} />
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Clock size={12} /> Start time
+              </label>
+              <input
+                type="time"
+                style={{ ...inputStyle, colorScheme: 'dark' }}
+                {...form.register('start_time')}
+              />
               {form.formState.errors.start_time && (
                 <p style={errorStyle}>{form.formState.errors.start_time.message}</p>
               )}
             </div>
             <div>
-              <p style={labelStyle}><CalendarDays size={12} /> End date</p>
-              <input type="date" style={inputStyle} {...form.register('end_date')} />
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <CalendarDays size={12} /> End date
+              </label>
+              <input
+                type="date"
+                style={{ ...inputStyle, colorScheme: 'dark' }}
+                {...form.register('end_date')}
+              />
               {form.formState.errors.end_date && (
                 <p style={errorStyle}>{form.formState.errors.end_date.message}</p>
               )}
             </div>
             <div>
-              <p style={labelStyle}><Clock size={12} /> End time</p>
-              <input type="time" style={inputStyle} {...form.register('end_time')} />
+              <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Clock size={12} /> End time
+              </label>
+              <input
+                type="time"
+                style={{ ...inputStyle, colorScheme: 'dark' }}
+                {...form.register('end_time')}
+              />
               {form.formState.errors.end_time && (
                 <p style={errorStyle}>{form.formState.errors.end_time.message}</p>
               )}
             </div>
           </div>
 
-          {/* Banner */}
-          <div style={fieldWrap}>
-            <p style={labelStyle}><ImagePlus size={12} /> Event banner</p>
-            <input
-              ref={bannerInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleBannerChange}
-            />
-            {bannerPreview ? (
-              <div
-                style={{
-                  position: 'relative',
-                  borderRadius: 16,
-                  overflow: 'hidden',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={bannerPreview}
-                  alt="Banner preview"
-                  style={{ width: '100%', maxHeight: 220, objectFit: 'cover', display: 'block' }}
-                />
-                <button
-                  type="button"
-                  onClick={removeBanner}
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    border: '1px solid rgba(255,255,255,0.22)',
-                    background: 'rgba(0,0,0,0.55)',
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => bannerInputRef.current?.click()}
-                className="flex w-full items-center justify-center gap-2"
-                style={{
-                  height: 120,
-                  borderRadius: 16,
-                  border: '1.5px dashed var(--border)',
-                  background: 'var(--bg-subtle)',
-                  color: 'var(--text-tertiary)',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                <ImagePlus size={20} />
-                Upload banner image
-              </button>
-            )}
-            {form.formState.errors.banner && (
-              <p style={errorStyle}>{form.formState.errors.banner.message}</p>
-            )}
-          </div>
-
           {/* Supporting document — official only */}
           {type === 'official' && (
-            <div style={fieldWrap}>
-              <p style={labelStyle}>📄 Supporting document (PDF)</p>
+            <div>
+              <label style={labelStyle}>Supporting document (PDF) *</label>
               <input
                 ref={docInputRef}
                 type="file"
                 accept="application/pdf"
-                className="hidden"
+                style={{ display: 'none' }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   form.setValue('document', file, { shouldValidate: true });
@@ -405,15 +416,18 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               <button
                 type="button"
                 onClick={() => docInputRef.current?.click()}
-                className="flex w-full items-center justify-center gap-2"
                 style={{
-                  height: 80,
-                  borderRadius: 16,
-                  border: '1.5px dashed var(--border)',
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px dashed var(--border)',
                   background: 'var(--bg-subtle)',
-                  color: docFile ? 'var(--accent)' : 'var(--text-tertiary)',
-                  fontSize: 14,
+                  color: docFile ? 'var(--text)' : 'var(--text-tertiary)',
+                  fontSize: 13,
+                  fontWeight: docFile ? 600 : 400,
                   cursor: 'pointer',
+                  textAlign: 'center',
+                  boxSizing: 'border-box',
                 }}
               >
                 {docFile ? `✓ ${docFile.name}` : 'Upload approval document'}
@@ -425,68 +439,34 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
           )}
 
           {mutation.isError && (
-            <div
-              style={{
-                marginBottom: 16,
-                padding: '10px 14px',
-                borderRadius: 12,
-                background: 'var(--coral-soft)',
-                color: 'var(--coral)',
-                fontSize: 14,
-              }}
-            >
+            <div style={{ fontSize: 13, color: 'var(--coral, #e53e3e)' }}>
               {mutation.error.message}
             </div>
           )}
 
-          {/* Footer actions */}
-          <div
+          <button
+            type="submit"
+            disabled={mutation.isPending}
             style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: 999,
+              border: 'none',
+              background: 'var(--text)',
+              color: 'var(--bg)',
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: mutation.isPending ? 'default' : 'pointer',
+              opacity: mutation.isPending ? 0.5 : 1,
               display: 'flex',
-              justifyContent: 'flex-end',
-              gap: 10,
-              paddingTop: 8,
-              paddingBottom: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              style={{
-                padding: '9px 20px',
-                borderRadius: 999,
-                border: '1.5px solid var(--border)',
-                background: 'transparent',
-                color: 'var(--text-secondary)',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={mutation.isPending}
-              style={{
-                padding: '9px 24px',
-                borderRadius: 999,
-                border: 'none',
-                background: 'var(--accent)',
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: mutation.isPending ? 'not-allowed' : 'pointer',
-                opacity: mutation.isPending ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              {mutation.isPending && <LoaderCircle size={15} className="animate-spin" />}
-              {mutation.isPending ? 'Creating...' : 'Create Event'}
-            </button>
-          </div>
+            {mutation.isPending && <LoaderCircle size={15} className="animate-spin" />}
+            {mutation.isPending ? 'Creating…' : 'Create Event'}
+          </button>
         </form>
       </div>
     </div>

@@ -62,7 +62,7 @@ export default function LoginPage() {
     setServerError('');
 
     try {
-      const prodEmails = new Set(['admin@binus.ac.id', 'devin@binus.ac.id', 'octa@binus.ac.id', 'chermiese@binus.ac.id']);
+      const prodEmails = new Set(['admin@binus.ac.id', 'devin@binus.ac.id', 'octa@binus.ac.id', 'chermiese@binus.ac.id', 'fortino@binus.ac.id']);
       if (prodEmails.has(data.email)) {
         const res = await loginProd(data.email, data.password);
         setToken(res.access_token, res.sid);
@@ -135,7 +135,7 @@ export default function LoginPage() {
               Back
             </button>
           )}
-          <h1 style={{ fontWeight: 600, fontSize: 28, color: 'var(--text)', letterSpacing: '-0.03em', marginBottom: 8 }}>{step === 'credentials' ? 'Sign in to Binusgram' : 'Check your email'}</h1>
+          <h1 style={{ fontWeight: 600, fontSize: 28, color: 'var(--text)', letterSpacing: '-0.03em', marginBottom: 8 }}>{step === 'credentials' ? 'Sign in to Sunibgram' : 'Check your email'}</h1>
           <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
             {step === 'credentials' ? 'Campus discourse for Binus students' : <>We sent a 6-digit code to <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{formData?.email}</span></>}
           </p>

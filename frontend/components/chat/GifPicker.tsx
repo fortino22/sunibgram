@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Grid } from '@giphy/react-components';
 import { GiphyFetch } from '@giphy/js-fetch-api';
 import type { IGif } from '@giphy/js-types';
@@ -19,6 +19,19 @@ export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerP
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const [gridWidth, setGridWidth] = useState(0);
+
+  useEffect(() => {
+    const el = gridContainerRef.current;
+    if (!el) return;
+    // Subtract horizontal padding (6 + 6 = 12) so the grid never exceeds the scroll area.
+    const measure = () => setGridWidth(Math.max(0, el.clientWidth - 12));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const fetchGifs = useCallback(
     (offset: number) => {
@@ -48,8 +61,9 @@ export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerP
       style={{
         ...(placement === 'above'
           ? { position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, right: 0 }
-          : { position: 'relative' }),
-        maxHeight: 380,
+          : { position: 'relative', width: '100%' }),
+        maxHeight: 'min(380px, 50vh)',
+        maxWidth: 'calc(100vw - 32px)',
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: 12,
@@ -68,7 +82,7 @@ export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerP
           value={query}
           onChange={handleQueryChange}
           placeholder="Search GIFs…"
-          style={{ flex: 1, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
+          style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
         />
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-muted)' }}>
           <X size={16} />
@@ -84,16 +98,18 @@ export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerP
 
       {/* GIF grid */}
       {gf && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
-          <Grid
-            key={activeQuery}
-            columns={3}
-            width={330}
-            fetchGifs={fetchGifs}
-            onGifClick={handleGifClick}
-            noLink
-            hideAttribution
-          />
+        <div ref={gridContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: 6 }}>
+          {gridWidth > 0 && (
+            <Grid
+              key={`${activeQuery}-${gridWidth}`}
+              columns={3}
+              width={gridWidth}
+              fetchGifs={fetchGifs}
+              onGifClick={handleGifClick}
+              noLink
+              hideAttribution
+            />
+          )}
         </div>
       )}
 

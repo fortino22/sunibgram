@@ -21,121 +21,102 @@ function formatEventTimeRange(startIso: string | null, endIso: string | null): s
       start.getDate() === end.getDate();
 
     if (sameDay) {
-      const dateLabel = start.toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      });
-      const startTimeLabel = start.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-      const endTimeLabel = end.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-
-      return `${dateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
+      const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const startT = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const endT = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      return `${dateLabel}, ${startT} – ${endT}`;
     }
 
-    const fullOptions: Intl.DateTimeFormatOptions = {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    };
-
-    return `${start.toLocaleString('en-US', fullOptions)} - ${end.toLocaleString('en-US', fullOptions)}`;
+    const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' };
+    return `${start.toLocaleString('en-US', opts)} – ${end.toLocaleString('en-US', opts)}`;
   }
 
-  if (start) {
-    return start.toLocaleString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
+  const single = start ?? end;
+  if (single) {
+    return single.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
-  if (end) {
-    return end.toLocaleString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  }
-
-  return [startIso, endIso].filter(Boolean).join(' - ');
+  return [startIso, endIso].filter(Boolean).join(' – ');
 }
 
 export function EventCard({ event }: { event: EventItem }) {
   return (
     <Link
       href={`/events/${event.id}`}
-      className="block transition-opacity hover:opacity-95"
-      style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}
+      className="block"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '14px 20px',
+        borderBottom: '1px solid var(--border)',
+        background: 'transparent',
+        textDecoration: 'none',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
     >
-      <article style={{ padding: '16px 20px' }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+      {/* Thumbnail */}
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 10,
+          background: event.banner
+            ? `url(${event.banner}) center/cover no-repeat`
+            : 'var(--bg-subtle)',
+          border: '1px solid var(--border)',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {!event.banner && <CalendarDays size={20} style={{ color: 'var(--text-tertiary)' }} />}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
           <span
             style={{
-              padding: '3px 10px',
-              borderRadius: 999,
-              fontSize: 12,
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--text)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {event.title}
+          </span>
+          <span
+            style={{
+              fontSize: 11,
               fontWeight: 600,
-              background: event.type === 'official' ? 'var(--accent-soft)' : 'var(--bg-subtle)',
-              color: event.type === 'official' ? 'var(--accent)' : 'var(--text-secondary)',
-              border: `1px solid ${event.type === 'official' ? 'var(--accent-soft)' : 'var(--border)'}`,
+              color: 'var(--text-tertiary)',
+              border: '1px solid var(--border)',
+              borderRadius: 999,
+              padding: '1px 6px',
+              flexShrink: 0,
             }}
           >
             {event.type === 'official' ? 'Official' : 'Unofficial'}
           </span>
         </div>
 
-        <h3
-          style={{
-            fontSize: 17,
-            fontWeight: 700,
-            color: 'var(--text)',
-            marginBottom: 6,
-            lineHeight: 1.35,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {event.title}
-        </h3>
-
-        <p
-          style={{
-            fontSize: 14,
-            color: 'var(--text-secondary)',
-            lineHeight: 1.6,
-            marginBottom: 12,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
-          {event.description}
-        </p>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
           {(event.startTime || event.endTime) && (
             <span
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 4,
                 fontSize: 13,
                 color: 'var(--text-tertiary)',
               }}
             >
-              <CalendarDays size={13} />
+              <CalendarDays size={12} />
               {formatEventTimeRange(event.startTime, event.endTime)}
             </span>
           )}
@@ -144,17 +125,17 @@ export function EventCard({ event }: { event: EventItem }) {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5,
+                gap: 4,
                 fontSize: 13,
                 color: 'var(--text-tertiary)',
               }}
             >
-              <MapPin size={13} />
+              <MapPin size={12} />
               {event.location}
             </span>
           )}
         </div>
-      </article>
+      </div>
     </Link>
   );
 }

@@ -11,6 +11,7 @@ import (
 	communitymodel "github.com/sunibgram/domain/model/community"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	bookmarkrepoiface "github.com/sunibgram/domain/repository/bookmark"
+	bookmarkcollectionrepoiface "github.com/sunibgram/domain/repository/bookmark_collection"
 	communityrepoiface "github.com/sunibgram/domain/repository/community"
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
@@ -21,13 +22,14 @@ import (
 )
 
 type BookmarkService struct {
-	bookmarkRepo  bookmarkrepoiface.IBookmarkRepository
-	threadRepo    threadrepoiface.IThreadRepository
-	communityRepo communityrepoiface.ICommunityRepository
-	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
-	settingsRepo  usersettingsrepoiface.IUserSettingsRepository
-	followRepo    followrepoiface.IFollowRepository
-	notification  notificationsvciface.INotificationService
+	bookmarkRepo   bookmarkrepoiface.IBookmarkRepository
+	threadRepo     threadrepoiface.IThreadRepository
+	communityRepo  communityrepoiface.ICommunityRepository
+	memberRepo     communitymemberrepoiface.ICommunityMemberRepository
+	settingsRepo   usersettingsrepoiface.IUserSettingsRepository
+	followRepo     followrepoiface.IFollowRepository
+	notification   notificationsvciface.INotificationService
+	collectionRepo bookmarkcollectionrepoiface.IBookmarkCollectionRepository
 }
 
 func NewBookmarkService(
@@ -38,15 +40,17 @@ func NewBookmarkService(
 	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
 	followRepo followrepoiface.IFollowRepository,
 	notification notificationsvciface.INotificationService,
+	collectionRepo bookmarkcollectionrepoiface.IBookmarkCollectionRepository,
 ) bookmarksvciface.IBookmarkService {
 	return &BookmarkService{
-		bookmarkRepo:  bookmarkRepo,
-		threadRepo:    threadRepo,
-		communityRepo: communityRepo,
-		memberRepo:    memberRepo,
-		settingsRepo:  settingsRepo,
-		followRepo:    followRepo,
-		notification:  notification,
+		bookmarkRepo:   bookmarkRepo,
+		threadRepo:     threadRepo,
+		communityRepo:  communityRepo,
+		memberRepo:     memberRepo,
+		settingsRepo:   settingsRepo,
+		followRepo:     followRepo,
+		notification:   notification,
+		collectionRepo: collectionRepo,
 	}
 }
 
@@ -101,6 +105,9 @@ func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
 	}
 	if err := s.bookmarkRepo.Delete(userID, threadID); err != nil {
 		return err
+	}
+	if s.collectionRepo != nil {
+		_ = s.collectionRepo.RemoveItemsByBookmark(userID, threadID)
 	}
 	s.threadRepo.InvalidateThread(threadID)
 	return nil

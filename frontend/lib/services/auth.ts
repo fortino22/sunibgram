@@ -19,10 +19,12 @@ export interface RegisterParams {
   email: string;
   password: string;
   confirmPassword: string;
+  gender: string;
+  birthdayDate: string;
+  facultyId: number | string;
   avatar?: File | null;
   banner?: File | null;
   bio?: string;
-  facultyId?: number | string;
 }
 
 export interface LoginParams {
@@ -61,8 +63,10 @@ export function register(params: RegisterParams): Promise<MessageResponse> {
   formData.append('email', params.email);
   formData.append('password', params.password);
   formData.append('confirm_password', params.confirmPassword);
+  formData.append('gender', params.gender);
+  formData.append('birthday_date', params.birthdayDate);
+  formData.append('faculty_id', String(params.facultyId));
   appendOptionalString(formData, 'bio', params.bio);
-  appendOptionalString(formData, 'faculty_id', params.facultyId);
 
   if (params.avatar) {
     formData.append('avatar', params.avatar);
