@@ -63,7 +63,7 @@ func (c *BookmarkCollectionController) Create(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
-	return ctx.Status(fiber.StatusCreated).JSON(bookmarkcollectiondto.ToCollectionResponse(collection))
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"collection_id": collection.ID})
 }
 
 func (c *BookmarkCollectionController) List(ctx *fiber.Ctx) error {
@@ -171,25 +171,6 @@ func (c *BookmarkCollectionController) RemoveThread(ctx *fiber.Ctx) error {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "thread removed from collection successfully"})
-}
-
-func (c *BookmarkCollectionController) CollectionIDsForThread(ctx *fiber.Ctx) error {
-	claims, ok := ctrlshared.RequireAuth(ctx)
-	if !ok {
-		return nil
-	}
-	threadID, ok := ctrlshared.ParseIDParam(ctx, "threadId", "thread")
-	if !ok {
-		return nil
-	}
-	ids, err := c.svc.CollectionIDsForThread(claims.UserID, threadID)
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
-	}
-	if ids == nil {
-		ids = []uint{}
-	}
-	return ctx.Status(fiber.StatusOK).JSON(bookmarkcollectiondto.CollectionIDsResponse{CollectionIDs: ids})
 }
 
 func (c *BookmarkCollectionController) ListThreads(ctx *fiber.Ctx) error {

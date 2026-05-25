@@ -14,7 +14,6 @@ func RegisterBookmarkCollectionRoutes(
 	g := api.Group("/bookmark-collections", auth)
 	g.Post("/", ctrl.Create)
 	g.Get("/", ctrl.List)
-	g.Get("/by-thread/:threadId", ctrl.CollectionIDsForThread)
 	g.Get("/:id", ctrl.Get)
 	g.Patch("/:id", ctrl.Update)
 	g.Delete("/:id", ctrl.Delete)

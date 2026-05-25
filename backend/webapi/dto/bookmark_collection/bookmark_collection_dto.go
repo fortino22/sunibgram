@@ -49,6 +49,3 @@ type CollectionThreadsResponse struct {
 	Meta threaddto.FeedMeta           `json:"meta"`
 }
 
-type CollectionIDsResponse struct {
-	CollectionIDs []uint `json:"collection_ids"`
-}

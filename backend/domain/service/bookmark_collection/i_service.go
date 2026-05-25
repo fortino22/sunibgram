@@ -16,6 +16,5 @@ type IBookmarkCollectionService interface {
 
 	AddThread(userID, collectionID, threadID uint) error
 	RemoveThread(userID, collectionID, threadID uint) error
-	CollectionIDsForThread(userID, threadID uint) ([]uint, error)
 	ListThreads(userID, collectionID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error)
 }
