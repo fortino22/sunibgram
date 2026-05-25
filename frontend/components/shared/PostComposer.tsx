@@ -1291,6 +1291,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
           {showGifPicker && (
             <div style={{ position: 'relative', marginBottom: 8 }}>
               <GifPicker
+                placement="inline"
                 onSelect={(url) => void handleGifSelect(url)}
                 onClose={() => setShowGifPicker(false)}
               />
