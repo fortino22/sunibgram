@@ -38,6 +38,9 @@ services:
       - ./backend/.env.docker
     ports:
       - "8080:8080"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     depends_on:
       postgres:
         condition: service_healthy
