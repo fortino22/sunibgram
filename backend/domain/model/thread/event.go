@@ -125,9 +125,10 @@ func ValidateEventAttachmentFile(file multipart.File) error {
 }
 
 type ThreadEvent struct {
-	ThreadID  uint      `gorm:"primaryKey;column:thread_id"`
-	EventID   string    `gorm:"type:varchar(36);primaryKey;column:event_id"`
-	CreatedAt time.Time `gorm:"type:timestamptz"`
-	Thread    Thread    `gorm:"foreignKey:ThreadID;references:ThreadID;constraint:OnDelete:CASCADE"`
-	Event     Event     `gorm:"foreignKey:EventID;references:ID;constraint:OnDelete:CASCADE"`
+	ThreadID   uint      `gorm:"primaryKey;column:thread_id"`
+	EventID    string    `gorm:"type:varchar(36);primaryKey;column:event_id"`
+	IsOfficial bool      `gorm:"not null;default:false;column:is_official"`
+	CreatedAt  time.Time `gorm:"type:timestamptz"`
+	Thread     Thread    `gorm:"foreignKey:ThreadID;references:ThreadID;constraint:OnDelete:CASCADE"`
+	Event      Event     `gorm:"foreignKey:EventID;references:ID;constraint:OnDelete:CASCADE"`
 }

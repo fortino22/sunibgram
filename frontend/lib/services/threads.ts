@@ -172,6 +172,7 @@ export interface ThreadMutationParams {
   isPrivate?: boolean;
   poll?: ThreadPollInput;
   replyPermission?: string;
+  eventId?: string;
 }
 
 export const DEFAULT_THREAD_CHAIN_PARAMS: Required<PaginationParams> = {
@@ -205,6 +206,9 @@ function buildThreadFormData(params: ThreadMutationParams): FormData {
   }
   if (params.replyPermission && !params.parentId) {
     formData.append('reply_permission', params.replyPermission);
+  }
+  if (params.eventId !== undefined) {
+    formData.append('event_id', params.eventId);
   }
   params.files?.forEach((file) => {
     formData.append('files', file);
@@ -302,6 +306,24 @@ export function getThreadChain(
 
 export function createThread(params: ThreadMutationParams, token: string): Promise<ThreadResponse> {
   return api.post<ThreadResponse>('/api/threads', buildThreadFormData(params), token);
+}
+
+export interface EventThreadParams {
+  content: string;
+  files?: File[];
+  eventId: string;
+  isOfficial: boolean;
+  parentId?: number | string;
+}
+
+export function createEventThread(params: EventThreadParams, token: string): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append('content', params.content);
+  formData.append('event_id', params.eventId);
+  formData.append('is_official', params.isOfficial ? 'true' : 'false');
+  if (params.parentId !== undefined) formData.append('parent_id', String(params.parentId));
+  params.files?.forEach((file) => formData.append('files', file));
+  return api.post<{ message: string }>('/api/threads-event', formData, token);
 }
 
 export function voteOnPoll(

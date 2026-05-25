@@ -104,6 +104,85 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "thread created successfully"})
 }
 
+func (c *ThreadController) CreateEventThread(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	content := ctx.FormValue("content")
+	files := ThreadMediaFiles(ctx)
+	if err := threadmediamodel.ValidateThreadMediaCount(len(files)); err != nil {
+		return ctx.Status(fiber.StatusUnprocessableEntity).JSON(authdto.ErrorResponse{Message: err.Error()})
+	}
+
+	var parentID *uint
+	if raw := ctx.FormValue("parent_id"); raw != "" {
+		if pid, err := strconv.ParseUint(raw, 10, 64); err == nil {
+			v := uint(pid)
+			parentID = &v
+		}
+	}
+
+	eventID, _, err := ParseOptionalEventID(ctx)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	if eventID == nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "event_id is required"})
+	}
+
+	isOfficial := parseBoolForm(ctx, "is_official")
+
+	var replyPermission *string
+	if raw := strings.TrimSpace(ctx.FormValue("reply_permission")); raw != "" {
+		replyPermission = &raw
+	}
+
+	pollInput, _, hasPoll, err := threadpollctrl.ParseCreatePollFromMultipart(ctx)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	if hasPoll && parentID != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "polls are only allowed on post-type threads"})
+	}
+
+	thread, err := c.threadService.CreateEventThread(ctx.Context(), claims.UserID, content, parentID, eventID, replyPermission, isOfficial)
+	if err != nil {
+		switch err.Error() {
+		case "not allowed to reply to this thread", "forbidden":
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
+		}
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+
+	if len(files) > 0 {
+		if _, err := c.mediaService.Upload(ctx.Context(), thread.ThreadID, claims.UserID, files); err != nil {
+			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
+			return ctrlshared.HandleServiceError(ctx, err)
+		}
+	}
+
+	if hasPoll {
+		if _, err := c.pollService.Create(ctx.Context(), thread.ThreadID, claims.UserID, pollInput); err != nil {
+			_ = c.mediaService.DeleteByThread(ctx.Context(), thread.ThreadID)
+			_ = c.threadService.Delete(ctx.Context(), thread.ThreadID, claims.UserID)
+			return ctrlshared.HandleServiceError(ctx, err)
+		}
+	}
+
+	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "thread created successfully"})
+}
+
+func parseBoolForm(ctx *fiber.Ctx, key string) bool {
+	raw := strings.TrimSpace(ctx.FormValue(key))
+	switch strings.ToLower(raw) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
+}
+
 func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 	claims, ok := ctrlshared.RequireAuth(ctx)
 	if !ok {

@@ -299,6 +299,7 @@ func (r *eventRepository) Delete(id string) error {
 }
 
 func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter, sort string, page, limit int) ([]threadmodel.Thread, int64, error) {
+	_ = ownerUserID
 	ctx := context.Background()
 	key := eventThreadsKey(eventID, filter, sort, threadrepo.ThreadVisibilityCachePart(requesterID), page, limit)
 	var result cachedEventThreads
@@ -339,9 +340,35 @@ func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requeste
 	}
 	switch filter {
 	case "official":
-		q = q.Where("threads.user_id = ?", ownerUserID)
+		q = q.Where(`EXISTS (
+			SELECT 1 FROM thread_events te2
+			WHERE te2.event_id = ?
+			AND te2.is_official = TRUE
+			AND te2.thread_id IN (
+				threads.thread_id,
+				COALESCE(threads.original_thread_id, 0),
+				COALESCE(threads.root_id, 0),
+				COALESCE(threads.parent_id, 0),
+				COALESCE(original.thread_id, 0),
+				COALESCE(original.root_id, 0),
+				COALESCE(original.parent_id, 0)
+			)
+		)`, eventID)
 	case "unofficial":
-		q = q.Where("threads.user_id != ?", ownerUserID)
+		q = q.Where(`EXISTS (
+			SELECT 1 FROM thread_events te2
+			WHERE te2.event_id = ?
+			AND te2.is_official = FALSE
+			AND te2.thread_id IN (
+				threads.thread_id,
+				COALESCE(threads.original_thread_id, 0),
+				COALESCE(threads.root_id, 0),
+				COALESCE(threads.parent_id, 0),
+				COALESCE(original.thread_id, 0),
+				COALESCE(original.root_id, 0),
+				COALESCE(original.parent_id, 0)
+			)
+		)`, eventID)
 	}
 	q.Count(&total)
 	offset := (page - 1) * limit
