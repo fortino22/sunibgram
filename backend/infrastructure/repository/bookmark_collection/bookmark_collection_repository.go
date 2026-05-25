@@ -130,14 +130,6 @@ func (r *bookmarkCollectionRepository) ItemExists(collectionID, threadID uint) (
 	return exists, err
 }
 
-func (r *bookmarkCollectionRepository) CollectionIDsForBookmark(userID, threadID uint) ([]uint, error) {
-	var ids []uint
-	err := r.readDB.Model(&bookmarkcollectionmodel.BookmarkCollectionItem{}).
-		Where("user_id = ? AND thread_id = ?", userID, threadID).
-		Pluck("collection_id", &ids).Error
-	return ids, err
-}
-
 func (r *bookmarkCollectionRepository) FindThreadsByCollection(collectionID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	type row struct {
 		ThreadID  uint

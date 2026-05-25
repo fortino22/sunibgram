@@ -20,6 +20,5 @@ type IBookmarkCollectionRepository interface {
 	RemoveItem(collectionID, threadID uint) error
 	RemoveItemsByBookmark(userID, threadID uint) error
 	ItemExists(collectionID, threadID uint) (bool, error)
-	CollectionIDsForBookmark(userID, threadID uint) ([]uint, error)
 	FindThreadsByCollection(collectionID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error)
 }

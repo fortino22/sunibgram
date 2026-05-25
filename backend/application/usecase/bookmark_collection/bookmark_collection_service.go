@@ -174,10 +174,6 @@ func (s *BookmarkCollectionService) RemoveThread(userID, collectionID, threadID 
 	return s.collectionRepo.RemoveItem(collectionID, threadID)
 }
 
-func (s *BookmarkCollectionService) CollectionIDsForThread(userID, threadID uint) ([]uint, error) {
-	return s.collectionRepo.CollectionIDsForBookmark(userID, threadID)
-}
-
 func (s *BookmarkCollectionService) ListThreads(userID, collectionID uint, page, limit int) ([]threadmodel.Thread, []time.Time, int64, error) {
 	if _, err := s.ownCollection(userID, collectionID); err != nil {
 		return nil, nil, 0, err

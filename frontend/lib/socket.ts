@@ -1,15 +1,19 @@
 type Handler = (data: unknown) => void;
 
+const SUBPROTOCOL = 'sunibgram.access.v1';
+
 class SocketManager {
   private ws: WebSocket | null = null;
   private listeners = new Map<string, Set<Handler>>();
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private currentUrl = '';
+  private currentToken = '';
   private active = false;
 
   connect(token: string, baseUrl: string) {
     const wsBase = baseUrl.replace(/\/$/, '').replace(/^http/, 'ws');
-    this.currentUrl = `${wsBase}/ws?token=${encodeURIComponent(token)}`;
+    this.currentUrl = `${wsBase}/ws`;
+    this.currentToken = token;
     this.active = true;
     this.open();
   }
@@ -54,7 +58,7 @@ class SocketManager {
       return;
     }
 
-    this.ws = new WebSocket(this.currentUrl);
+    this.ws = new WebSocket(this.currentUrl, [SUBPROTOCOL, this.currentToken]);
 
     this.ws.onmessage = (e) => {
       try {

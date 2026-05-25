@@ -86,6 +86,9 @@ func Mount(app *fiber.App, hub sockethubsvciface.IHub, roomService chatroomsvcif
 		if _, token := subprotocolToken(kws.Conn.Headers("Sec-WebSocket-Protocol")); token != "" {
 			tokenStr = token
 		}
+		if tokenStr == "" {
+			tokenStr = kws.Query("token")
+		}
 		userID, err := validateToken(tokenStr, sessionCache)
 		if err != nil {
 			kws.Close()
@@ -132,6 +135,9 @@ func authenticateSocket(c *fiber.Ctx, sessionCache *cache.Cache) (uint, error) {
 		if _, token := subprotocolToken(c.Get("Sec-WebSocket-Protocol")); token != "" {
 			tokenStr = token
 		}
+	}
+	if tokenStr == "" {
+		tokenStr = c.Query("token")
 	}
 	return validateToken(tokenStr, sessionCache)
 }
