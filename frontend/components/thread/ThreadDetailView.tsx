@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ArrowLeft, Repeat2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
@@ -121,11 +122,7 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
               <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                 {author.name}
               </span>
-              {author.is_premium && (
-                <span style={{ fontSize: 10, background: 'var(--accent-soft)', color: 'var(--accent)', padding: '1px 5px', borderRadius: 4, fontWeight: 600, letterSpacing: '0.02em' }}>
-                  PRO
-                </span>
-              )}
+              {author.is_premium && <VerifiedBadge size={15} />}
               {root.is_pin && (
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>Pinned</span>
               )}

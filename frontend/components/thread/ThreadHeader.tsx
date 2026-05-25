@@ -1,5 +1,6 @@
 import type { FeedParentContext } from '@/lib/services/threads';
 import { cn } from '@/lib/utils';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import type { ThreadAuthorWithAvatar } from './threadUtils';
 import { truncateContent } from './threadUtils';
 
@@ -34,11 +35,7 @@ export function ThreadHeader({
         <span className="truncate text-sm font-bold" style={{ color: 'var(--text)' }}>
           {author.name || author.username}
         </span>
-        {author.is_premium && (
-          <span aria-label="Premium" title="Premium" className="shrink-0 text-sm" style={{ color: 'var(--amber)' }}>
-            ★
-          </span>
-        )}
+        {author.is_premium && <VerifiedBadge size={15} />}
         <span className="shrink-0 text-sm" style={{ color: 'var(--text-tertiary)' }}>
           @{author.username}
         </span>

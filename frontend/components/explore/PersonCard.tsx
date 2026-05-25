@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import type { ExplorePerson } from '@/lib/services/explore';
 
 interface PersonCardProps {
@@ -53,9 +54,7 @@ export function PersonCard({ person, showDivider = true }: PersonCardProps) {
           >
             {person.name}
           </span>
-          {person.isPremium && (
-            <span style={{ color: 'var(--amber)', fontSize: 13, flexShrink: 0 }}>★</span>
-          )}
+          {person.isPremium && <VerifiedBadge size={15} />}
         </div>
         <div
           style={{

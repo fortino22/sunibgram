@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { CreateEventDialog } from '@/components/events/CreateEventDialog';
@@ -53,27 +53,20 @@ function EventSection({
   );
 }
 
+type Filter = 'all' | 'trending' | 'running' | 'upcoming';
+
 export function EventsFeedPanel({ active }: { active: boolean }) {
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [trendingFilterActive, setTrendingFilterActive] = useState(false);
-  const [runningFilterActive, setRunningFilterActive] = useState(false);
-  const [upcomingFilterActive, setUpcomingFilterActive] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
   const query = useEventsFeed(active);
 
   const trending = query.data?.trending ?? [];
   const running = query.data?.running ?? [];
   const future = query.data?.future ?? [];
-  const showAllEvents = !trendingFilterActive && !runningFilterActive && !upcomingFilterActive;
-  const showTrendingSection = showAllEvents || trendingFilterActive;
-  const showRunningSection = showAllEvents || runningFilterActive;
-  const showUpcomingSection = showAllEvents || upcomingFilterActive;
-
-  function resetFilters() {
-    setTrendingFilterActive(false);
-    setRunningFilterActive(false);
-    setUpcomingFilterActive(false);
-  }
+  const showTrendingSection = filter === 'all' || filter === 'trending';
+  const showRunningSection = filter === 'all' || filter === 'running';
+  const showUpcomingSection = filter === 'all' || filter === 'upcoming';
 
   return (
     <>
@@ -120,16 +113,20 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
           type="button"
           onClick={() => setDialogOpen(true)}
           style={{
-            padding: '7px 18px',
+            padding: '7px 14px',
             borderRadius: 999,
-            background: 'var(--accent)',
-            color: '#fff',
-            fontSize: 14,
+            background: 'var(--text)',
+            color: 'var(--bg)',
+            fontSize: 13,
             fontWeight: 700,
             border: 'none',
             cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
           }}
         >
+          <Plus size={14} strokeWidth={2.5} />
           Create
         </button>
       </div>
@@ -141,89 +138,39 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
       <div
         style={{
           display: 'flex',
-          gap: 10,
-          padding: '14px 20px 10px',
+          gap: 8,
+          padding: '4px 16px 12px',
           overflowX: 'auto',
           borderBottom: '1px solid var(--border)',
-          background: 'var(--bg-card)',
+          scrollbarWidth: 'none',
         }}
       >
-        <button
-          type="button"
-          onClick={resetFilters}
-          aria-pressed={showAllEvents}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 999,
-            border: `1px solid ${showAllEvents ? 'var(--accent)' : 'var(--border)'}`,
-            background: showAllEvents ? 'var(--accent)' : 'transparent',
-            color: showAllEvents ? '#fff' : 'var(--text-secondary)',
-            fontSize: 13,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          See All
-        </button>
-        <button
-          type="button"
-          onClick={() => setTrendingFilterActive((current) => !current)}
-          aria-pressed={trendingFilterActive}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 999,
-            border: `1px solid ${trendingFilterActive ? 'var(--accent)' : 'var(--border)'}`,
-            background: trendingFilterActive ? 'var(--accent)' : 'transparent',
-            color: trendingFilterActive ? '#fff' : 'var(--text-secondary)',
-            fontSize: 13,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          Trending
-        </button>
-        <button
-          type="button"
-          onClick={() => setRunningFilterActive((current) => !current)}
-          aria-pressed={runningFilterActive}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 999,
-            border: `1px solid ${runningFilterActive ? 'var(--accent)' : 'var(--border)'}`,
-            background: runningFilterActive ? 'var(--accent)' : 'transparent',
-            color: runningFilterActive ? '#fff' : 'var(--text-secondary)',
-            fontSize: 13,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          Running Now
-        </button>
-        <button
-          type="button"
-          onClick={() => setUpcomingFilterActive((current) => !current)}
-          aria-pressed={upcomingFilterActive}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 999,
-            border: `1px solid ${upcomingFilterActive ? 'var(--accent)' : 'var(--border)'}`,
-            background: upcomingFilterActive ? 'var(--accent)' : 'transparent',
-            color: upcomingFilterActive ? '#fff' : 'var(--text-secondary)',
-            fontSize: 13,
-            fontWeight: 700,
-            whiteSpace: 'nowrap',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          Upcoming
-        </button>
+        {([
+          { key: 'all', label: 'All' },
+          { key: 'trending', label: 'Trending' },
+          { key: 'running', label: 'Running Now' },
+          { key: 'upcoming', label: 'Upcoming' },
+        ] as { key: Filter; label: string }[]).map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            style={{
+              padding: '6px 16px',
+              borderRadius: 999,
+              border: `1px solid ${filter === key ? 'var(--text)' : 'var(--border)'}`,
+              background: filter === key ? 'var(--text)' : 'transparent',
+              color: filter === key ? 'var(--bg)' : 'var(--text)',
+              fontSize: 13,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {query.isLoading ? (

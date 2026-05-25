@@ -12,8 +12,23 @@ export const signupSchema = z
       .string()
       .email('Invalid email address')
       .endsWith('@binus.ac.id', 'Must use your @binus.ac.id email'),
-    password: z.string().min(8, 'Password must be at least 8 characters'),
+    password: z
+      .string()
+      .min(10, 'Password must be at least 10 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number'),
     confirmPassword: z.string(),
+    gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say'], 'Gender is required'),
+    birthdayDate: z
+      .string()
+      .min(1, 'Birthday is required')
+      .refine((val) => {
+        const d = new Date(val);
+        return !isNaN(d.getTime()) && d <= new Date();
+      }, 'Must be a valid past date'),
+    facultyId: z.string().min(1, 'Faculty ID is required'),
+    bio: z.string().max(500, 'Bio too long').optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -25,7 +40,7 @@ export const loginSchema = z.object({
     .string()
     .email('Invalid email address')
     .endsWith('@binus.ac.id', 'Must use your @binus.ac.id email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 export const verificationCodeSchema = z.object({
@@ -43,7 +58,12 @@ export const forgotPasswordEmailSchema = z.object({
 
 export const forgotPasswordResetSchema = z
   .object({
-    newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+    newPassword: z
+      .string()
+      .min(10, 'Password must be at least 10 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number'),
     confirmPassword: z.string(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {

@@ -5,7 +5,7 @@ export interface FacultyMessageResponse {
 }
 
 export interface Faculty {
-  id: number;
+  faculty_id: number;
   faculty_name: string;
   [key: string]: unknown;
 }

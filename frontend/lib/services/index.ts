@@ -5,3 +5,4 @@ export * from './follows';
 export * from './communities';
 export * from './orders';
 export * from './faculties';
+export * from './hashtags';

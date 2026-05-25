@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import type { TrendingHashtag } from '@/lib/services/explore';
+import type { TrendingHashtag } from '@/lib/services/hashtags';
 
 interface TrendingSectionProps {
   hashtags: TrendingHashtag[];
