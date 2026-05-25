@@ -172,6 +172,7 @@ export interface ThreadMutationParams {
   isPrivate?: boolean;
   poll?: ThreadPollInput;
   replyPermission?: string;
+  eventId?: string;
 }
 
 export const DEFAULT_THREAD_CHAIN_PARAMS: Required<PaginationParams> = {
@@ -205,6 +206,9 @@ function buildThreadFormData(params: ThreadMutationParams): FormData {
   }
   if (params.replyPermission && !params.parentId) {
     formData.append('reply_permission', params.replyPermission);
+  }
+  if (params.eventId !== undefined) {
+    formData.append('event_id', params.eventId);
   }
   params.files?.forEach((file) => {
     formData.append('files', file);

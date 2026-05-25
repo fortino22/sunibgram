@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, Check, BarChart3, Plus, UserCheck } from 'lucide-react';
+import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, Users, Check, BarChart3, Plus, UserCheck, CalendarDays } from 'lucide-react';
 import {
   type ChangeEvent,
   type FormEvent,
@@ -29,6 +29,7 @@ import {
 } from '@/lib/services/communities';
 import { Input } from '@/components/ui/input';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
+import { useMyJoinedEventItems } from '@/hooks/useMyJoinedEventItems';
 import type { ThreadDetailData } from '@/hooks/useThread';
 import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import { toast } from 'sonner';
@@ -50,6 +51,8 @@ export interface PostComposerProps {
   parentId?: number;
   formId?: string;
   onSuccess?: () => void;
+  preselectedEventId?: string;
+  preselectedEventTitle?: string;
 }
 
 interface MutateContext {
@@ -147,7 +150,7 @@ function buildPollDuration(values: Pick<PollFormValues, 'days' | 'hours' | 'minu
   return values.days * 24 * 60 * 60 + values.hours * 60 * 60 + values.minutes * 60;
 }
 
-export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess }: PostComposerProps) {
+export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess, preselectedEventId, preselectedEventTitle }: PostComposerProps) {
   const isReply = parentId !== undefined;
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -155,6 +158,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const { data: profile } = useMyProfile();
   const { data: joinedCommData } = useJoinedCommunities();
   const communities = joinedCommData?.data ?? [];
+  const { data: joinedEvents = [] } = useMyJoinedEventItems();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -172,6 +176,9 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
   // Audience
   const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ id: string; title: string; banner?: string } | null>(
+    preselectedEventId ? { id: preselectedEventId, title: preselectedEventTitle ?? '' } : null
+  );
   const [showAudienceMenu, setShowAudienceMenu] = useState(false);
 
   // Reply permission
@@ -453,8 +460,18 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       toast.error('Polls can only be posted to Everyone with the current backend.');
       return;
     }
-
     setSelectedCommunity(community);
+    setSelectedEvent(null);
+    setShowAudienceMenu(false);
+  }
+
+  function handleSelectEvent(event: { id: string; title: string; banner?: string } | null) {
+    if (event && pollEnabled) {
+      toast.error('Polls can only be posted to Everyone.');
+      return;
+    }
+    setSelectedEvent(event);
+    setSelectedCommunity(null);
     setShowAudienceMenu(false);
   }
 
@@ -463,7 +480,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       return;
     }
 
-    if (selectedCommunity) {
+    if (selectedCommunity || selectedEvent) {
       toast.error('Polls can only be posted to Everyone with the current backend.');
       return;
     }
@@ -566,7 +583,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     }
 
     try {
-      if (!isReply && selectedCommunity) {
+      if (!isReply && selectedEvent) {
+        await mutation.mutateAsync({
+          content: normalizedContent,
+          files: selectedFiles,
+          eventId: selectedEvent.id,
+        });
+      } else if (!isReply && selectedCommunity) {
         await communityMutation.mutateAsync({
           communityId: selectedCommunity.community_id,
           content: normalizedContent,
@@ -598,6 +621,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       if (!isReply) {
         resetPollComposer();
         setReplyPermission('EVERYONE');
+        if (!preselectedEventId) setSelectedEvent(null);
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
       onSuccess?.();
@@ -645,7 +669,12 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   fontFamily: 'inherit',
                 }}
               >
-                {selectedCommunity ? (
+                {selectedEvent ? (
+                  <>
+                    <CalendarDays size={13} />
+                    {selectedEvent.title}
+                  </>
+                ) : selectedCommunity ? (
                   <>
                     <Users size={13} />
                     {selectedCommunity.name}
@@ -681,14 +710,14 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   {/* Everyone option */}
                   <button
                     type="button"
-                    onClick={() => handleSelectAudience(null)}
+                    onClick={() => { handleSelectAudience(null); handleSelectEvent(null); }}
                     style={{
                       width: '100%',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 12,
                       padding: '10px 16px',
-                      background: selectedCommunity === null ? 'var(--bg-subtle)' : 'transparent',
+                      background: selectedCommunity === null && selectedEvent === null ? 'var(--bg-subtle)' : 'transparent',
                       border: 'none',
                       cursor: 'pointer',
                       textAlign: 'left',
@@ -704,7 +733,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                       <Globe size={20} color="#fff" />
                     </div>
                     <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Everyone</span>
-                    {selectedCommunity === null && <Check size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
+                    {selectedCommunity === null && selectedEvent === null && <Check size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
                   </button>
 
                   {communities.length > 0 && (
@@ -751,6 +780,48 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                           {selectedCommunity?.community_id === c.community_id && (
                             <Check size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                           )}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {joinedEvents.length > 0 && (
+                    <>
+                      <div style={{ padding: '8px 16px 4px', fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        My Events
+                      </div>
+                      {joinedEvents.map((e) => (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => handleSelectEvent({ id: e.id, title: e.title, banner: e.banner })}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '10px 16px',
+                            background: selectedEvent?.id === e.id ? 'var(--bg-subtle)' : 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <div style={{ position: 'relative', width: 56, height: 40, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-subtle)' }}>
+                            {e.banner ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={e.banner} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            ) : (
+                              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <CalendarDays size={18} style={{ color: 'var(--text-tertiary)' }} />
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{e.title}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'capitalize' }}>{e.type}</div>
+                          </div>
+                          {selectedEvent?.id === e.id && <Check size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}
                         </button>
                       ))}
                     </>
@@ -1385,9 +1456,9 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               {!isReply && (
                 <button
                   type="button"
-                  title={selectedCommunity ? 'Polls are only available for posts to Everyone' : pollEnabled ? 'Poll added' : 'Add poll'}
+                  title={selectedCommunity || selectedEvent ? 'Polls are only available for posts to Everyone' : pollEnabled ? 'Poll added' : 'Add poll'}
                   onClick={handleAddPoll}
-                  disabled={pollEnabled || selectedCommunity !== null}
+                  disabled={pollEnabled || selectedCommunity !== null || selectedEvent !== null}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1398,8 +1469,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     background: 'none',
                     border: 'none',
                     color: pollEnabled ? 'var(--accent)' : 'var(--text-secondary)',
-                    cursor: pollEnabled || selectedCommunity !== null ? 'not-allowed' : 'pointer',
-                    opacity: pollEnabled || selectedCommunity !== null ? 0.55 : 1,
+                    cursor: pollEnabled || selectedCommunity !== null || selectedEvent !== null ? 'not-allowed' : 'pointer',
+                    opacity: pollEnabled || selectedCommunity !== null || selectedEvent !== null ? 0.55 : 1,
                     transition: 'color 0.15s',
                   }}
                 >

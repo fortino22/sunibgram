@@ -15,6 +15,26 @@ import (
 )
 
 func (s *ThreadService) Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, replyPermission *string) (*threadmodel.Thread, error) {
+	return s.createThread(ctx, userID, content, parentID, eventID, replyPermission, false)
+}
+
+func (s *ThreadService) CreateEventThread(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, replyPermission *string, isOfficial bool) (*threadmodel.Thread, error) {
+	if eventID == nil || *eventID == "" {
+		return nil, errors.New("event_id is required")
+	}
+	if isOfficial {
+		event, err := s.eventRepo.FindByID(*eventID)
+		if err != nil {
+			return nil, errors.New("event not found")
+		}
+		if event.UserID != userID {
+			return nil, errors.New("forbidden")
+		}
+	}
+	return s.createThread(ctx, userID, content, parentID, eventID, replyPermission, isOfficial)
+}
+
+func (s *ThreadService) createThread(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, replyPermission *string, isOfficial bool) (*threadmodel.Thread, error) {
 	content = strings.TrimSpace(content)
 	if utf8.RuneCountInString(content) > 5000 {
 		return nil, errors.New("content must be 5000 characters or less")
@@ -99,6 +119,7 @@ func (s *ThreadService) Create(ctx context.Context, userID uint, content string,
 		RootID:          rootID,
 		CommunityID:     communityID,
 		EventID:         eventID,
+		IsOfficial:      isOfficial,
 	}
 	if err := s.threadRepo.Save(thread); err != nil {
 		return nil, err

@@ -12,6 +12,7 @@ import (
 
 type IThreadService interface {
 	Create(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, replyPermission *string) (*threadmodel.Thread, error)
+	CreateEventThread(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, replyPermission *string, isOfficial bool) (*threadmodel.Thread, error)
 	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*threadmodel.Thread, error)
 	UpdateReplyPermission(ctx context.Context, threadID, userID uint, replyPermission string) error
 	GetByID(id uint) (*threadmodel.Thread, error)

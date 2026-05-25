@@ -1,16 +1,19 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { ArrowLeft, Bookmark, CalendarDays, Link2, LoaderCircle, MapPin } from 'lucide-react';
+import { ArrowLeft, Bookmark, CalendarDays, Link2, LoaderCircle, MapPin, Pencil, UserCheck, UserPlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
+import { CreateEventThreadModal } from '@/components/events/CreateEventThreadModal';
 import { useEvent } from '@/hooks/useEvent';
 import { useEventActions } from '@/hooks/useEventActions';
+import { useEventJoin } from '@/hooks/useEventJoin';
 import { useEventPosts } from '@/hooks/useEventPosts';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useAuthStore } from '@/stores/authStore';
 
 type Tab = 'official' | 'discussion';
 
@@ -197,9 +200,12 @@ export function EventDetailView({ eventId }: { eventId: string }) {
   const [activeTab, setActiveTab] = useState<Tab>('official');
   const [shareNotice, setShareNotice] = useState<string | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const user = useAuthStore((s) => s.user);
 
   const query = useEvent(eventId);
   const { bookmark, share } = useEventActions(eventId);
+  const { isJoined, join, leave } = useEventJoin(eventId);
 
   if (query.isLoading) {
     return (
@@ -307,6 +313,56 @@ export function EventDetailView({ eventId }: { eventId: string }) {
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {/* Join / Leave */}
+          <button
+            type="button"
+            onClick={() => isJoined ? leave.mutate() : join.mutate()}
+            disabled={join.isPending || leave.isPending}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '8px 18px',
+              borderRadius: 999,
+              border: `1.5px solid ${isJoined ? 'var(--border)' : 'var(--text)'}`,
+              background: isJoined ? 'transparent' : 'var(--text)',
+              color: isJoined ? 'var(--text-secondary)' : 'var(--bg)',
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: join.isPending || leave.isPending ? 'not-allowed' : 'pointer',
+              opacity: join.isPending || leave.isPending ? 0.6 : 1,
+            }}
+          >
+            {join.isPending || leave.isPending
+              ? <LoaderCircle size={15} className="animate-spin" />
+              : isJoined ? <UserCheck size={15} /> : <UserPlus size={15} />}
+            {isJoined ? 'Joined' : 'Join'}
+          </button>
+
+          {/* Official post button — creator only */}
+          {user?.id === event.userId && (
+            <button
+              type="button"
+              onClick={() => setPostModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                padding: '8px 18px',
+                borderRadius: 999,
+                border: '1.5px solid var(--border)',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <Pencil size={15} />
+              Post Update
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleBookmark}
@@ -398,6 +454,15 @@ export function EventDetailView({ eventId }: { eventId: string }) {
       )}
       {activeTab === 'discussion' && (
         <EventPostsPanel eventId={eventId} mode="discussion" active />
+      )}
+
+      {postModalOpen && (
+        <CreateEventThreadModal
+          eventId={eventId}
+          eventTitle={event.title}
+          onClose={() => setPostModalOpen(false)}
+          onSuccess={() => setPostModalOpen(false)}
+        />
       )}
     </div>
   );

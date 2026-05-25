@@ -28,6 +28,8 @@ func RegisterThreadRoutes(
 	threads.Get("/mention", auth, threadCtrl.Mention)
 	threads.Get("/", auth, threadCtrl.GetRoots)
 
+	api.Post("/threads-event", auth, threadCtrl.CreateEventThread)
+
 	threadsAuth := api.Group("/threads", auth)
 	threadsAuth.Post("/", threadCtrl.Create)
 	threadsAuth.Post("/feed/refresh", threadCtrl.RefreshFeed)
