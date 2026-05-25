@@ -17,6 +17,7 @@ import { ThreadHeader } from './ThreadHeader';
 import { ThreadPoll } from './ThreadPoll';
 import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
 import { ImageDetailModal } from './ImageDetailModal';
+import { DeletePostModal } from '@/components/shared/DeletePostModal';
 
 interface ThreadReplyItemProps {
   thread: ThreadItem;
@@ -30,6 +31,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
   const { like, repost, bookmark } = useThreadActions(thread);
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
   const repostLabel = getRepostLabel(thread, currentUserId);
@@ -39,13 +41,10 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
     setIsEditing(false);
   }
 
-  async function handleDelete() {
-    if (!window.confirm('Delete this post?')) {
-      return;
-    }
-
+  async function handleDeleteConfirm() {
     try {
       await deleteMutation.mutateAsync();
+      setDeleteModalOpen(false);
     } catch {
       // Mutation state already exposes the error.
     }
@@ -91,7 +90,7 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
           {canManage && (
             <ThreadOptionsMenu
               onEdit={() => setIsEditing(true)}
-              onDelete={() => void handleDelete()}
+              onDelete={() => setDeleteModalOpen(true)}
               deleting={deleteMutation.isPending}
               disabled={updateMutation.isPending}
               compact={compact}
@@ -179,6 +178,12 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
         />
       )}
       </div>
+      <DeletePostModal
+        open={deleteModalOpen}
+        isPending={deleteMutation.isPending}
+        onConfirm={() => void handleDeleteConfirm()}
+        onCancel={() => setDeleteModalOpen(false)}
+      />
     </div>
   );
 }

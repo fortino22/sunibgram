@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import type { ThreadDetailData } from '@/hooks/useThread';
 import {
   deleteThread,
@@ -109,6 +109,19 @@ export function useThreadManagement(
         { queryKey: ['thread'] },
         (current) => removeSingleThread(current, threadId)
       );
+      queryClient.setQueriesData<InfiniteData<ThreadListResponse>>(
+        { queryKey: ['event'] },
+        (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              data: page.data.filter((item) => item.id !== threadId),
+            })),
+          };
+        }
+      );
 
       options.onDeleteSuccess?.();
 
@@ -117,6 +130,7 @@ export function useThreadManagement(
         queryClient.invalidateQueries({ queryKey: ['likes'] }),
         queryClient.invalidateQueries({ queryKey: ['thread'] }),
         queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
+        queryClient.invalidateQueries({ queryKey: ['event'], refetchType: 'none' }),
       ]);
     },
   });
