@@ -65,12 +65,10 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
   }
 
   return (
-    <main
-      className="mx-auto min-h-screen max-w-[600px]"
+    <div
       style={{
         background: 'var(--bg-card)',
-        borderLeft: '1px solid var(--border)',
-        borderRight: '1px solid var(--border)',
+        minHeight: '100vh',
       }}
     >
       <header
@@ -245,6 +243,6 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setDeleteModalOpen(false)}
       />
-    </main>
+    </div>
   );
 }

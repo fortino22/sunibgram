@@ -21,8 +21,6 @@ export default function ThreadPage() {
           margin: '0 auto',
           minHeight: '100vh',
           background: 'var(--bg-card)',
-          borderLeft: '1px solid var(--border)',
-          borderRight: '1px solid var(--border)',
           color: 'var(--text)',
           padding: 24,
         }}

@@ -9,16 +9,22 @@ import (
 )
 
 var facultyNames = []string{
-	"School of Computer Science",
-	"School of Information Systems",
+	"BINUS ASO School of Engineering",
 	"BINUS Business School",
-	"School of Business Management",
+	"BINUS GRADUATE PROGRAM",
+	"BINUS ONLINE",
+	"Doctor of Computer Science",
+	"Faculty of Digital Communication and Hotel and Tourism",
+	"Faculty of Digital Communication and Hotel and Tourism",
 	"Faculty of Engineering",
-	"School of Design",
 	"Faculty of Humanities",
 	"School of Accounting",
-	"Faculty of Digital Communication and Hotel & Tourism",
+	"School of Computer Science",
+	"School of Computing and Creative Arts",
+	"School of Design",
+	"School of Information Systems",
 }
+
 
 func SeedFaculty(db *gorm.DB) {
 	for _, name := range facultyNames {

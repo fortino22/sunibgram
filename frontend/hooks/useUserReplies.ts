@@ -1,19 +1,26 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { getMyReplies, type ThreadListResponse } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 
+const PAGE_SIZE = 20;
+
 export function useUserReplies(userId: number | string | null | undefined) {
   const token = useAuthStore((s) => s.token);
-  return useQuery<ThreadListResponse>({
+  return useInfiniteQuery<ThreadListResponse>({
     queryKey: ['threads', userId, 'replies'],
-    queryFn: () => {
+    queryFn: ({ pageParam }) => {
       if (!token || userId === null || userId === undefined || userId === '') {
         throw new Error('A valid user id is required to load user replies.');
       }
-
-      return getMyReplies(userId, { limit: 20 }, token);
+      const page = typeof pageParam === 'number' ? pageParam : 1;
+      return getMyReplies(userId, { page, limit: PAGE_SIZE }, token);
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.data.length, 0);
+      return loaded < lastPage.meta.total ? allPages.length + 1 : undefined;
     },
     enabled: !!token && userId !== null && userId !== undefined && userId !== '',
   });

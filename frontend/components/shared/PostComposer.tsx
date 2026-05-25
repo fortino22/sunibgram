@@ -440,10 +440,9 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
           queryClient.invalidateQueries({ queryKey: ['thread', parentId] }),
         ]);
       } else {
-        // Mark stale but don't refetch immediately so post stays at top
         await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['threads', 'feed'], refetchType: 'none' }),
-          queryClient.invalidateQueries({ queryKey: ['threads'], refetchType: 'none' }),
+          queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] }),
+          queryClient.invalidateQueries({ queryKey: ['threads'] }),
         ]);
       }
     },

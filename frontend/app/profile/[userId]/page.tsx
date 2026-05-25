@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { ProfilePageHeader } from '@/components/profile/ProfilePageHeader';
 import { ProfileBanner } from '@/components/profile/ProfileBanner';
@@ -65,6 +65,39 @@ export default function UserProfilePage() {
   const repliesQuery = useUserReplies(profileUserId);
   const { follow, unfollow } = useFollowUser(profileUserId, [profileUserId]);
 
+  const threadsSentinelRef = useRef<HTMLDivElement>(null);
+  const repliesSentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = threadsSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && threadsQuery.hasNextPage && !threadsQuery.isFetchingNextPage) {
+          void threadsQuery.fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [threadsQuery]);
+
+  useEffect(() => {
+    const sentinel = repliesSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && repliesQuery.hasNextPage && !repliesQuery.isFetchingNextPage) {
+          void repliesQuery.fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [repliesQuery]);
+
   if (!hasValidUserId) {
     return (
       <EmptyState
@@ -98,8 +131,8 @@ export default function UserProfilePage() {
 
   const isOwn = currentUserId === profile.id;
   const isFollowing = !!profile.is_following;
-  const threads = threadsQuery.data?.data ?? [];
-  const replies = repliesQuery.data?.data ?? [];
+  const threads = threadsQuery.data?.pages.flatMap((p) => p.data) ?? [];
+  const replies = repliesQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const mediaThreads = threads.filter((t) => t.media.length > 0);
 
   const joinedMonth = profile.created_at
@@ -141,20 +174,26 @@ export default function UserProfilePage() {
       {activeTab === 'threads' && (
         threads.length === 0
           ? <EmptyState title="No threads yet" subtitle="Posts will appear here." />
-          : threads.map((t) => <ConnectedCard key={t.id} thread={t} />)
+          : <>
+              {threads.map((t) => <ConnectedCard key={t.id} thread={t} />)}
+              <div ref={threadsSentinelRef} style={{ height: 1 }} />
+            </>
       )}
 
       {activeTab === 'replies' && (
         replies.length === 0
           ? <EmptyState title="No replies yet" subtitle="Replies to others will appear here." />
-          : replies.map((t) => (
-            <ConnectedCard
-              key={t.id}
-              thread={t}
-              replyingTo={t.parent_context?.author.username}
-              replyingToId={t.parent_context?.author.id}
-            />
-          ))
+          : <>
+              {replies.map((t) => (
+                <ConnectedCard
+                  key={t.id}
+                  thread={t}
+                  replyingTo={t.parent_context?.author.username}
+                  replyingToId={t.parent_context?.author.id}
+                />
+              ))}
+              <div ref={repliesSentinelRef} style={{ height: 1 }} />
+            </>
       )}
 
       {activeTab === 'media' && (

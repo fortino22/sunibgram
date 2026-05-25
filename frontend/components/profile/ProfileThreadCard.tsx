@@ -128,40 +128,67 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
       )}
 
       <div style={{ padding: (thread.reposted_by_username || thread.community) ? '2px 20px 14px' : '14px 20px', display: 'flex', gap: 12 }}>
-        <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
+        <Link href={`/profile/${thread.author.id}`} onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+          <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
+        </Link>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: replyUsername ? 2 : 4 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-              {thread.author.name || thread.author.username}
-            </span>
-            {thread.author.is_premium && <VerifiedBadge size={15} />}
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-              @{thread.author.username}
-            </span>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
-            {(canManage || canReport) && (
-              <div
-                style={{ marginLeft: 'auto' }}
+          <div style={{ marginBottom: replyUsername ? 2 : 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Link
+                href={`/profile/${thread.author.id}`}
                 onClick={(e) => e.stopPropagation()}
+                style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em', textDecoration: 'none' }}
               >
-                <ThreadOptionsMenu
-                  onEdit={canManage ? () => setIsEditing(true) : undefined}
-                  onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
-                  deleting={deleteMutation.isPending}
-                  disabled={updateMutation.isPending}
-                  compact
-                  communityRole={communityRole}
-                  isPinned={thread.pinned_by_admin === true}
-                  pinning={pinningThread}
-                  onPin={onPinThread ? () => onPinThread(thread.id) : undefined}
-                  onUnpin={onUnpinThread ? () => onUnpinThread(thread.id) : undefined}
-                  onReport={canReport ? () => setReportModalOpen(true) : undefined}
-                />
+                {thread.author.name || thread.author.username}
+              </Link>
+              {thread.author.is_premium && <VerifiedBadge size={15} />}
+              <Link
+                href={`/profile/${thread.author.id}`}
+                onClick={(e) => e.stopPropagation()}
+                style={{ fontSize: 13, color: 'var(--text-tertiary)', textDecoration: 'none' }}
+              >
+                @{thread.author.username}
+              </Link>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
+              {(canManage || canReport) && (
+                <div style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                  <ThreadOptionsMenu
+                    onEdit={canManage ? () => setIsEditing(true) : undefined}
+                    onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
+                    deleting={deleteMutation.isPending}
+                    disabled={updateMutation.isPending}
+                    compact
+                    communityRole={communityRole}
+                    isPinned={thread.pinned_by_admin === true}
+                    pinning={pinningThread}
+                    onPin={onPinThread ? () => onPinThread(thread.id) : undefined}
+                    onUnpin={onUnpinThread ? () => onUnpinThread(thread.id) : undefined}
+                    onReport={canReport ? () => setReportModalOpen(true) : undefined}
+                  />
+                </div>
+              )}
+            </div>
+            {thread.author.faculty && (
+              <div style={{ marginTop: 2 }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: 'var(--accent-soft)',
+                    color: 'var(--accent)',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {thread.author.faculty.faculty_name}
+                </span>
               </div>
             )}
           </div>
-
+          
           {replyUsername && (
             <div style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 4, letterSpacing: '-0.01em' }}>
               Replying to{' '}
