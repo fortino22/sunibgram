@@ -1,7 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type { ThreadDetailData } from '@/hooks/useThread';
+import { useMutation, useQueryClient, type QueryClient, type InfiniteData } from '@tanstack/react-query';
 import {
   likeThread, unlikeThread,
   bookmarkThread, unbookmarkThread,
@@ -27,12 +26,8 @@ function isThreadListResponse(value: unknown): value is ThreadListResponse {
   );
 }
 
-function isThreadDetailData(value: unknown): value is ThreadDetailData {
-  return (
-    isRecord(value) &&
-    isThreadItem(value.root) &&
-    Array.isArray(value.replies)
-  );
+function isInfiniteThreadListData(value: unknown): value is InfiniteData<ThreadListResponse> {
+  return isRecord(value) && Array.isArray(value.pages) && (value.pages as unknown[]).every(isThreadListResponse);
 }
 
 function updateThreadList(
@@ -46,15 +41,14 @@ function updateThreadList(
   };
 }
 
-function updateThreadDetail(
-  current: ThreadDetailData,
+function updateInfiniteThreadList(
+  current: InfiniteData<ThreadListResponse>,
   threadId: number,
   updater: (thread: ThreadItem) => ThreadItem
-): ThreadDetailData {
+): InfiniteData<ThreadListResponse> {
   return {
     ...current,
-    root: current.root.id === threadId ? updater(current.root) : current.root,
-    replies: current.replies.map((thread) => (thread.id === threadId ? updater(thread) : thread)),
+    pages: current.pages.map((page) => updateThreadList(page, threadId, updater)),
   };
 }
 
@@ -166,40 +160,30 @@ function patchThreadCaches(
   threadId: number,
   updater: (thread: ThreadItem) => ThreadItem
 ) {
+  function patchAny(current: unknown): unknown {
+    if (isInfiniteThreadListData(current)) return updateInfiniteThreadList(current, threadId, updater);
+    if (isThreadListResponse(current)) return updateThreadList(current, threadId, updater);
+    return current;
+  }
+
+  queryClient.setQueriesData({ queryKey: ['threads'] }, patchAny);
+  queryClient.setQueriesData({ queryKey: ['likes'] }, patchAny);
+  queryClient.setQueriesData({ queryKey: ['bookmarks'] }, patchAny);
+  queryClient.setQueriesData({ queryKey: ['explore'] }, patchAny);
   queryClient.setQueriesData(
-    { queryKey: ['threads'] },
-    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
+    { queryKey: ['thread-root'] },
+    (current: unknown) => (isThreadItem(current) && current.id === threadId ? updater(current) : current)
   );
   queryClient.setQueriesData(
-    { queryKey: ['likes'] },
-    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
-  );
-  queryClient.setQueriesData(
-    { queryKey: ['bookmarks'] },
-    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
-  );
-  queryClient.setQueriesData(
-    { queryKey: ['explore'] },
-    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
-  );
-  queryClient.setQueriesData(
-    { queryKey: ['thread-chain'] },
-    (current: unknown) => (isThreadDetailData(current) ? updateThreadDetail(current, threadId, updater) : current)
+    { queryKey: ['thread-replies'] },
+    (current: unknown) => (isInfiniteThreadListData(current) ? updateInfiniteThreadList(current, threadId, updater) : current)
   );
   queryClient.setQueriesData(
     { queryKey: ['thread'] },
     (current: unknown) => (isThreadItem(current) && current.id === threadId ? updater(current) : current)
   );
-  // Community thread tabs: ['community', id, 'threads', 'latest'|'top'|'media']
-  queryClient.setQueriesData(
-    { queryKey: ['community'] },
-    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
-  );
-  // Community feed/explore/search: ['communities', 'threads', ...]
-  queryClient.setQueriesData(
-    { queryKey: ['communities', 'threads'] },
-    (current: unknown) => (isThreadListResponse(current) ? updateThreadList(current, threadId, updater) : current)
-  );
+  queryClient.setQueriesData({ queryKey: ['community'] }, patchAny);
+  queryClient.setQueriesData({ queryKey: ['communities', 'threads'] }, patchAny);
 }
 
 function patchInteractionList(

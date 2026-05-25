@@ -1,7 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import type { ThreadDetailData } from '@/hooks/useThread';
+import { useMutation, useQueryClient, type QueryClient, type InfiniteData } from '@tanstack/react-query';
 import {
   voteOnPoll,
   type PollResponse,
@@ -55,8 +54,12 @@ function isThreadListResponse(value: unknown): value is ThreadListResponse {
   );
 }
 
-function isThreadDetailData(value: unknown): value is ThreadDetailData {
-  return isRecord(value) && isThreadItem(value.root) && Array.isArray(value.replies);
+function isInfiniteThreadListData(value: unknown): value is InfiniteData<{ data: ThreadItem[] }> {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.pages) &&
+    (value.pages as unknown[]).every((p) => isRecord(p) && Array.isArray((p as Record<string, unknown>).data))
+  );
 }
 
 function roundPercent(value: number): number {
@@ -167,13 +170,19 @@ function patchPollCaches(queryClient: QueryClient, pollId: number, optionId: num
     );
   }
   queryClient.setQueriesData(
-    { queryKey: ['thread-chain'] },
+    { queryKey: ['thread-root'] },
+    (current: unknown) => (isThreadItem(current) ? patchThreadItem(current, pollId, optionId) : current)
+  );
+  queryClient.setQueriesData(
+    { queryKey: ['thread-replies'] },
     (current: unknown) =>
-      isThreadDetailData(current)
+      isInfiniteThreadListData(current)
         ? {
             ...current,
-            root: patchThreadItem(current.root, pollId, optionId),
-            replies: current.replies.map((reply) => patchThreadItem(reply, pollId, optionId)),
+            pages: current.pages.map((page) => ({
+              ...page,
+              data: page.data.map((reply) => patchThreadItem(reply, pollId, optionId)),
+            })),
           }
         : current
   );

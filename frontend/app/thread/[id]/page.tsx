@@ -7,13 +7,13 @@ import { useThreadChain } from '@/hooks/useThread';
 
 export default function ThreadPage() {
   const { id } = useParams<{ id: string }>();
-  const chainQuery = useThreadChain(id);
+  const chain = useThreadChain(id);
 
-  if (chainQuery.isLoading) {
+  if (chain.isLoading) {
     return <ThreadDetailSkeleton />;
   }
 
-  if (chainQuery.isError || chainQuery.data === undefined) {
+  if (chain.isError || chain.root === undefined) {
     return (
       <main
         style={{
@@ -32,8 +32,11 @@ export default function ThreadPage() {
 
   return (
     <ThreadDetailView
-      root={chainQuery.data.root}
-      replies={chainQuery.data.replies}
+      root={chain.root}
+      replies={chain.replies}
+      hasNextPage={chain.hasNextPage}
+      fetchNextPage={chain.fetchNextPage}
+      isFetchingNextPage={chain.isFetchingNextPage}
     />
   );
 }

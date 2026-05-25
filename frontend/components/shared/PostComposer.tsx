@@ -22,7 +22,6 @@ import {
   type ThreadMutationParams,
   type ThreadResponse,
   type ThreadItem,
-  type ThreadListResponse,
 } from '@/lib/services/threads';
 import {
   createCommunityThread,
@@ -32,7 +31,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
 import { useMyJoinedEventItems } from '@/hooks/useMyJoinedEventItems';
-import type { ThreadDetailData } from '@/hooks/useThread';
 import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import { toast } from 'sonner';
 import { GifPicker } from '@/components/chat/GifPicker';
@@ -59,8 +57,8 @@ export interface PostComposerProps {
 }
 
 interface MutateContext {
-  previousChain?: [readonly unknown[], ThreadDetailData | undefined][];
-  previousFeed?: [readonly unknown[], ThreadListResponse | undefined][];
+  previousFeed?: [readonly unknown[], unknown][];
+  previousReplies?: [readonly unknown[], unknown][];
   savedContent: string;
 }
 
@@ -322,13 +320,14 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       const now = new Date().toISOString();
 
       if (isReply) {
-        await queryClient.cancelQueries({ queryKey: ['thread-chain'] });
-        const previousChain = queryClient.getQueriesData<ThreadDetailData>({ queryKey: ['thread-chain'] });
+        await queryClient.cancelQueries({ queryKey: ['thread-replies', parentId] });
+        await queryClient.cancelQueries({ queryKey: ['thread-root', parentId] });
+        const previousReplies = queryClient.getQueriesData({ queryKey: ['thread-replies', parentId] });
 
         const optimisticReply: ThreadItem = {
           type: 'THREAD',
           id: -Date.now(),
-          parent_id: parentId,
+          parent_id: parentId ?? null,
           root_id: null,
           community: undefined,
           content: params.content,
@@ -351,27 +350,36 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
           is_pin: false,
         };
 
-        queryClient.setQueriesData<ThreadDetailData>(
-          { queryKey: ['thread-chain'] },
+        queryClient.setQueriesData<ThreadItem | undefined>(
+          { queryKey: ['thread-root', parentId] },
           (old) => {
-            if (!old || old.root.id !== parentId) return old;
+            if (!old?.stats) return old;
+            return { ...old, stats: { ...old.stats, comments: old.stats.comments + 1 } };
+          }
+        );
+
+        queryClient.setQueriesData<{ pages: Array<{ data: ThreadItem[] }> } | undefined>(
+          { queryKey: ['thread-replies', parentId] },
+          (old) => {
+            if (!old?.pages) return old;
+            const lastPage = old.pages[old.pages.length - 1];
+            if (!lastPage) return old;
             return {
               ...old,
-              root: {
-                ...old.root,
-                stats: { ...old.root.stats, comments: old.root.stats.comments + 1 },
-              },
-              replies: [...old.replies, optimisticReply],
+              pages: [
+                ...old.pages.slice(0, -1),
+                { ...lastPage, data: [...lastPage.data, optimisticReply] },
+              ],
             };
           }
         );
 
         const savedContent = content;
         setContent('');
-        return { previousChain, savedContent };
+        return { previousReplies, savedContent };
       } else {
         await queryClient.cancelQueries({ queryKey: ['threads', 'feed'] });
-        const previousFeed = queryClient.getQueriesData<ThreadListResponse>({ queryKey: ['threads', 'feed'] });
+        const previousFeed = queryClient.getQueriesData({ queryKey: ['threads', 'feed'] });
 
         const optimisticThread: ThreadItem = {
           type: 'THREAD',
@@ -399,14 +407,17 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
           is_pin: false,
         };
 
-        queryClient.setQueriesData<ThreadListResponse>(
+        queryClient.setQueriesData<{ pages: Array<{ data: ThreadItem[]; meta: { total: number } }> } | undefined>(
           { queryKey: ['threads', 'feed'] },
           (old) => {
-            if (!old) return old;
+            if (!old?.pages?.[0]) return old;
+            const firstPage = old.pages[0];
             return {
               ...old,
-              data: [optimisticThread, ...old.data],
-              meta: { ...old.meta, total: old.meta.total + 1 },
+              pages: [
+                { ...firstPage, data: [optimisticThread, ...firstPage.data], meta: { ...firstPage.meta, total: firstPage.meta.total + 1 } },
+                ...old.pages.slice(1),
+              ],
             };
           }
         );
@@ -418,8 +429,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     },
     onError: (_err, _params, context) => {
       if (context) {
-        if (context.previousChain) {
-          for (const [key, data] of context.previousChain) {
+        if (context.previousReplies) {
+          for (const [key, data] of context.previousReplies) {
             queryClient.setQueryData(key, data);
           }
         }
@@ -436,7 +447,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] }),
           queryClient.invalidateQueries({ queryKey: ['threads'] }),
-          queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
+          queryClient.invalidateQueries({ queryKey: ['thread-root', parentId] }),
+          queryClient.invalidateQueries({ queryKey: ['thread-replies', parentId] }),
           queryClient.invalidateQueries({ queryKey: ['thread', parentId] }),
         ]);
       } else {
@@ -902,7 +914,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             rows={isReply ? 2 : 2}
             style={{
               width: '100%',
-              resize: 'vertical',
+              resize: 'none',
               minHeight: isReply ? 48 : 48,
               background: 'transparent',
               border: 'none',

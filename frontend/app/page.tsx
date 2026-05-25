@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useLayoutEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { CreatePostBox } from '@/components/shared/CreatePostBox';
 import { ThreadCard } from '@/components/thread/ThreadCard';
@@ -144,8 +144,8 @@ export default function HomePage() {
     : null;
 
   const threadsQuery = useThreads();
-  const followingQuery = useFollowingThreads(1, 10, isFollowing);
-  const facultyQuery = useFacultyThreads(facultyId, 1, 10, isFaculty);
+  const followingQuery = useFollowingThreads(isFollowing);
+  const facultyQuery = useFacultyThreads(facultyId, isFaculty);
   const pinnedCommunitiesQuery = usePinnedCommunities();
 
   const activeQuery = isFollowing
@@ -154,8 +154,25 @@ export default function HomePage() {
     ? facultyQuery
     : threadsQuery;
 
-  const activeThreads = activeQuery.data?.data ?? [];
+  const activeThreads = activeQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const pinnedCommunities = pinnedCommunitiesQuery.data?.data ?? [];
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && activeQuery.hasNextPage && !activeQuery.isFetchingNextPage) {
+          void activeQuery.fetchNextPage();
+        }
+      },
+      { rootMargin: '300px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeQuery]);
 
   const allTabs: Tab[] = [
     { id: 'for-you', label: 'For You' },
@@ -357,6 +374,10 @@ export default function HomePage() {
           {activeThreads.map((thread: ThreadItem) => (
             <ThreadCard key={thread.id} thread={thread} />
           ))}
+          <div ref={sentinelRef} style={{ height: 1 }} />
+          {activeQuery.isFetchingNextPage && (
+            <div>{Array.from({ length: 2 }, (_, i) => <ThreadCardSkeleton key={i} />)}</div>
+          )}
         </div>
       ) : (
         <EmptyFeed emptyKey={activeTab} />
