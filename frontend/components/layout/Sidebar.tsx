@@ -136,7 +136,7 @@ export function Sidebar() {
   const unreadNotifications = useNotificationStore((s) => s.unreadCount);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/clear-session', { method: 'POST' });
+    await fetch('/auth/clear-session', { method: 'POST' });
     logout();
     queryClient.clear();
     router.replace('/login');

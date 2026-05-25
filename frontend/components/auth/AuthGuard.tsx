@@ -76,7 +76,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       }
 
       try {
-        const response = await fetch('/api/auth/refresh');
+        const response = await fetch('/auth/refresh');
 
         if (!response.ok) {
           throw new Error('Refresh failed');

@@ -50,7 +50,7 @@ export default function LoginPage() {
   });
 
   const setSessionCookie = async (sid: string) => {
-    const response = await fetch('/api/auth/set-session', {
+    const response = await fetch('/auth/set-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sid }),

@@ -4,7 +4,7 @@ import { MainWrapper } from '@/components/layout/MainWrapper';
 import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'Binusgram — Campus Discourse',
+  title: 'Sunibgram',
   description: 'University social media platform for Binus students',
 };
 
