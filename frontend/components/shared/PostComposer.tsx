@@ -18,6 +18,7 @@ import { useMyProfile } from '@/hooks/useMyProfile';
 import { useAuthStore } from '@/stores/authStore';
 import {
   createThread,
+  createEventThread,
   type ThreadMutationParams,
   type ThreadResponse,
   type ThreadItem,
@@ -53,6 +54,7 @@ export interface PostComposerProps {
   onSuccess?: () => void;
   preselectedEventId?: string;
   preselectedEventTitle?: string;
+  preselectedIsOfficialEvent?: boolean;
 }
 
 interface MutateContext {
@@ -150,7 +152,7 @@ function buildPollDuration(values: Pick<PollFormValues, 'days' | 'hours' | 'minu
   return values.days * 24 * 60 * 60 + values.hours * 60 * 60 + values.minutes * 60;
 }
 
-export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess, preselectedEventId, preselectedEventTitle }: PostComposerProps) {
+export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess, preselectedEventId, preselectedEventTitle, preselectedIsOfficialEvent }: PostComposerProps) {
   const isReply = parentId !== undefined;
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -584,11 +586,14 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
     try {
       if (!isReply && selectedEvent) {
-        await mutation.mutateAsync({
+        if (!token) throw new Error('Not authenticated.');
+        await createEventThread({
           content: normalizedContent,
           files: selectedFiles,
           eventId: selectedEvent.id,
-        });
+          isOfficial: preselectedIsOfficialEvent ?? false,
+        }, token);
+        void queryClient.invalidateQueries({ queryKey: ['event', selectedEvent.id] });
       } else if (!isReply && selectedCommunity) {
         await communityMutation.mutateAsync({
           communityId: selectedCommunity.community_id,

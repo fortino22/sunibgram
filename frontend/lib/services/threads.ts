@@ -308,6 +308,24 @@ export function createThread(params: ThreadMutationParams, token: string): Promi
   return api.post<ThreadResponse>('/api/threads', buildThreadFormData(params), token);
 }
 
+export interface EventThreadParams {
+  content: string;
+  files?: File[];
+  eventId: string;
+  isOfficial: boolean;
+  parentId?: number | string;
+}
+
+export function createEventThread(params: EventThreadParams, token: string): Promise<{ message: string }> {
+  const formData = new FormData();
+  formData.append('content', params.content);
+  formData.append('event_id', params.eventId);
+  formData.append('is_official', params.isOfficial ? 'true' : 'false');
+  if (params.parentId !== undefined) formData.append('parent_id', String(params.parentId));
+  params.files?.forEach((file) => formData.append('files', file));
+  return api.post<{ message: string }>('/api/threads-event', formData, token);
+}
+
 export function voteOnPoll(
   id: number | string,
   optionId: number,
