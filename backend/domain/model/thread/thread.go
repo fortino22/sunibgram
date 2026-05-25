@@ -54,4 +54,5 @@ type Thread struct {
 	ThreadEvents     []ThreadEvent `gorm:"foreignKey:ThreadID;references:ThreadID"`
 	EventID          *string       `gorm:"-"`
 	EventIDUpdated   bool          `gorm:"-"`
+	IsOfficial       bool          `gorm:"-"`
 }

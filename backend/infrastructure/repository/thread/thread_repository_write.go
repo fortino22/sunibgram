@@ -17,7 +17,7 @@ func (r *threadCached) Save(thread *threadmodel.Thread) error {
 	if err := r.db.writeDB.Create(thread).Error; err != nil {
 		return err
 	}
-	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventID != nil); err != nil {
+	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.IsOfficial, thread.EventID != nil); err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -99,7 +99,7 @@ func (r *threadCached) Update(thread *threadmodel.Thread) error {
 		}).Error; err != nil {
 		return err
 	}
-	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.EventIDUpdated); err != nil {
+	if err := r.syncThreadEvent(thread.ThreadID, thread.EventID, thread.IsOfficial, thread.EventIDUpdated); err != nil {
 		return err
 	}
 	ctx := context.Background()
@@ -184,7 +184,7 @@ func (r *threadCached) validateThreadEventExists(eventID *string) error {
 	return nil
 }
 
-func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace bool) error {
+func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, isOfficial, replace bool) error {
 	if !replace {
 		return nil
 	}
@@ -203,7 +203,7 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, replace b
 		_ = r.cache.InvalidateTag(ctx, infrarepoShared.EventThreadsGlobalTag())
 		return nil
 	}
-	if err := r.db.writeDB.Create(&threadmodel.ThreadEvent{ThreadID: threadID, EventID: *eventID}).Error; err != nil {
+	if err := r.db.writeDB.Create(&threadmodel.ThreadEvent{ThreadID: threadID, EventID: *eventID, IsOfficial: isOfficial}).Error; err != nil {
 		return err
 	}
 	if !hadOldEvent || oldEventID != *eventID {
