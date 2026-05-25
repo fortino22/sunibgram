@@ -89,6 +89,9 @@ function EventDetailHeader({ onBack }: { onBack: () => void }) {
   return (
     <div
       style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 20,
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
