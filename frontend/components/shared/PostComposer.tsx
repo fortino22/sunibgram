@@ -739,10 +739,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                                 <Users size={18} style={{ color: 'var(--text-muted)' }} />
                               </div>
                             )}
-                            {c.avatar_url && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={c.avatar_url} alt={c.name} style={{ position: 'absolute', bottom: 2, right: 2, width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', border: '1px solid var(--bg-card)' }} />
-                            )}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{c.name}</div>
