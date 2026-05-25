@@ -22,6 +22,7 @@ import {
   type ThreadMutationParams,
   type ThreadResponse,
   type ThreadItem,
+  type ThreadListResponse,
 } from '@/lib/services/threads';
 import {
   createCommunityThread,
@@ -58,7 +59,8 @@ export interface PostComposerProps {
 }
 
 interface MutateContext {
-  previousChain: [readonly unknown[], ThreadDetailData | undefined][];
+  previousChain?: [readonly unknown[], ThreadDetailData | undefined][];
+  previousFeed?: [readonly unknown[], ThreadListResponse | undefined][];
   savedContent: string;
 }
 
@@ -316,78 +318,134 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       if (token === null) throw new Error('Authentication token is required.');
       return createThread(params, token);
     },
-    onMutate: isReply
-      ? async (params) => {
-          await queryClient.cancelQueries({ queryKey: ['thread-chain'] });
-          const previousChain = queryClient.getQueriesData<ThreadDetailData>({ queryKey: ['thread-chain'] });
+    onMutate: async (params) => {
+      const now = new Date().toISOString();
 
-          const now = new Date().toISOString();
-          const optimisticReply: ThreadItem = {
-            type: 'THREAD',
-            id: -Date.now(),
-            parent_id: parentId,
-            root_id: null,
-            community: undefined,
-            content: params.content,
-            created_at: now,
-            updated_at: now,
-            time_ago: 'now',
-            author: {
-              id: user?.id ?? 0,
-              name: profile?.name ?? '',
-              username: user?.username ?? '',
-              is_premium: false,
-              avatar_url: profile?.avatar ?? null,
-              faculty: undefined,
-            },
-            stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
-            media: [],
-            is_liked: false,
-            is_bookmarked: false,
-            is_reposted: false,
-            is_pin: false,
-          };
+      if (isReply) {
+        await queryClient.cancelQueries({ queryKey: ['thread-chain'] });
+        const previousChain = queryClient.getQueriesData<ThreadDetailData>({ queryKey: ['thread-chain'] });
 
-          queryClient.setQueriesData<ThreadDetailData>(
-            { queryKey: ['thread-chain'] },
-            (old) => {
-              if (!old || old.root.id !== parentId) return old;
-              return {
-                ...old,
-                root: {
-                  ...old.root,
-                  stats: { ...old.root.stats, comments: old.root.stats.comments + 1 },
-                },
-                replies: [...old.replies, optimisticReply],
-              };
-            }
-          );
+        const optimisticReply: ThreadItem = {
+          type: 'THREAD',
+          id: -Date.now(),
+          parent_id: parentId,
+          root_id: null,
+          community: undefined,
+          content: params.content,
+          created_at: now,
+          updated_at: now,
+          time_ago: 'now',
+          author: {
+            id: user?.id ?? 0,
+            name: profile?.name ?? '',
+            username: user?.username ?? '',
+            is_premium: false,
+            avatar_url: profile?.avatar ?? null,
+            faculty: undefined,
+          },
+          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
+          media: [],
+          is_liked: false,
+          is_bookmarked: false,
+          is_reposted: false,
+          is_pin: false,
+        };
 
-          const savedContent = content;
-          setContent('');
-          return { previousChain, savedContent };
-        }
-      : undefined,
+        queryClient.setQueriesData<ThreadDetailData>(
+          { queryKey: ['thread-chain'] },
+          (old) => {
+            if (!old || old.root.id !== parentId) return old;
+            return {
+              ...old,
+              root: {
+                ...old.root,
+                stats: { ...old.root.stats, comments: old.root.stats.comments + 1 },
+              },
+              replies: [...old.replies, optimisticReply],
+            };
+          }
+        );
+
+        const savedContent = content;
+        setContent('');
+        return { previousChain, savedContent };
+      } else {
+        await queryClient.cancelQueries({ queryKey: ['threads', 'feed'] });
+        const previousFeed = queryClient.getQueriesData<ThreadListResponse>({ queryKey: ['threads', 'feed'] });
+
+        const optimisticThread: ThreadItem = {
+          type: 'THREAD',
+          id: -Date.now(),
+          parent_id: null,
+          root_id: null,
+          community: undefined,
+          content: params.content,
+          created_at: now,
+          updated_at: now,
+          time_ago: 'now',
+          author: {
+            id: user?.id ?? 0,
+            name: profile?.name ?? '',
+            username: user?.username ?? '',
+            is_premium: false,
+            avatar_url: profile?.avatar ?? null,
+            faculty: undefined,
+          },
+          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
+          media: [],
+          is_liked: false,
+          is_bookmarked: false,
+          is_reposted: false,
+          is_pin: false,
+        };
+
+        queryClient.setQueriesData<ThreadListResponse>(
+          { queryKey: ['threads', 'feed'] },
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              data: [optimisticThread, ...old.data],
+              meta: { ...old.meta, total: old.meta.total + 1 },
+            };
+          }
+        );
+
+        const savedContent = content;
+        setContent('');
+        return { previousFeed, savedContent };
+      }
+    },
     onError: (_err, _params, context) => {
       if (context) {
-        for (const [key, data] of context.previousChain) {
-          queryClient.setQueryData(key, data);
+        if (context.previousChain) {
+          for (const [key, data] of context.previousChain) {
+            queryClient.setQueryData(key, data);
+          }
+        }
+        if (context.previousFeed) {
+          for (const [key, data] of context.previousFeed) {
+            queryClient.setQueryData(key, data);
+          }
         }
         setContent(context.savedContent);
       }
     },
     onSuccess: async () => {
-      const invalidations: Promise<void>[] = [
-        queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] }),
-        queryClient.invalidateQueries({ queryKey: ['threads'] }),
-      ];
       if (isReply) {
-        invalidations.push(
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] }),
+          queryClient.invalidateQueries({ queryKey: ['threads'] }),
           queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
           queryClient.invalidateQueries({ queryKey: ['thread', parentId] }),
-        );
+        ]);
+      } else {
+        // Mark stale but don't refetch immediately so post stays at top
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['threads', 'feed'], refetchType: 'none' }),
+          queryClient.invalidateQueries({ queryKey: ['threads'], refetchType: 'none' }),
+        ]);
       }
-      await Promise.all(invalidations);
     },
   });
 

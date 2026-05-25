@@ -93,6 +93,7 @@ export default function CommunitiesPage() {
           position: 'sticky',
           top: 0,
           zIndex: 10,
+          background: 'oklch(10.5% 0.005 260 / 0.92)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border)',
         }}
@@ -170,102 +171,79 @@ export default function CommunitiesPage() {
             </button>
           ))}
         </div>
-      </div>
 
-      {activeTab === 'home' && (
-        <>
-          {communities.length > 0 && (
-            <div
-              ref={sliderRef}
-              onMouseDown={onSliderMouseDown}
-              onMouseMove={onSliderMouseMove}
-              onMouseUp={onSliderMouseUp}
-              onMouseLeave={onSliderMouseUp}
-              style={{
-                display: 'flex',
-                gap: 12,
-                padding: '16px 20px 12px',
-                overflowX: 'auto',
-                borderBottom: '1px solid var(--border)',
-                scrollbarWidth: 'thin',
-                scrollbarColor: 'var(--border) transparent',
-                paddingBottom: 12,
-                cursor: 'grab',
-              }}
-            >
-              {communities.map((c) => (
-                <button
-                  key={c.community_id}
-                  onClick={() => { if (drag.current.moved) return; router.push(`/communities/${c.community_id}`); }}
+        {/* Communities strip — home tab */}
+        {activeTab === 'home' && communities.length > 0 && (
+          <div
+            ref={sliderRef}
+            onMouseDown={onSliderMouseDown}
+            onMouseMove={onSliderMouseMove}
+            onMouseUp={onSliderMouseUp}
+            onMouseLeave={onSliderMouseUp}
+            style={{
+              display: 'flex',
+              gap: 12,
+              padding: '12px 20px',
+              overflowX: 'auto',
+              borderTop: '1px solid var(--border)',
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'var(--border) transparent',
+              cursor: 'grab',
+            }}
+          >
+            {communities.map((c) => (
+              <button
+                key={c.community_id}
+                onClick={() => { if (drag.current.moved) return; router.push(`/communities/${c.community_id}`); }}
+                style={{
+                  position: 'relative',
+                  flexShrink: 0,
+                  width: 140,
+                  height: 90,
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  border: '1px solid var(--border)',
+                  background: c.banner_url
+                    ? `url(${c.banner_url}) center/cover no-repeat`
+                    : 'var(--bg-subtle)',
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                <div
                   style={{
-                    position: 'relative',
-                    flexShrink: 0,
-                    width: 140,
-                    height: 90,
-                    borderRadius: 12,
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.72) 100%)',
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: 7,
+                    left: 8,
+                    right: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#fff',
+                    textAlign: 'left',
                     overflow: 'hidden',
-                    border: '1px solid var(--border)',
-                    background: c.banner_url
-                      ? `url(${c.banner_url}) center/cover no-repeat`
-                      : 'var(--bg-subtle)',
-                    cursor: 'pointer',
-                    padding: 0,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical' as const,
+                    lineHeight: '1.3',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.6)',
                   }}
                 >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.72) 100%)',
-                    }}
-                  />
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: 7,
-                      left: 8,
-                      right: 8,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: '#fff',
-                      textAlign: 'left',
-                      overflow: 'hidden',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical' as const,
-                      lineHeight: '1.3',
-                      textShadow: '0 1px 3px rgba(0,0,0,0.6)',
-                    }}
-                  >
-                    {c.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+                  {c.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
-          {homeFeedQuery.isLoading && (
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
-              Loading...
-            </div>
-          )}
-          {homeFeedQuery.isError && (
-            <EmptyState title="Failed to load" subtitle="Could not fetch community threads." />
-          )}
-          {!homeFeedQuery.isLoading && !homeFeedQuery.isError && (
-            homeThreads.length === 0 ? (
-              <EmptyState title="No posts yet" subtitle="Join communities to see their posts here." />
-            ) : (
-              homeThreads.map((thread) => (
-                <CommunityThreadCard key={thread.id} thread={thread} />
-              ))
-            )
-          )}
-        </>
-      )}
-
-      {activeTab === 'explore' && (
-        <>
+        {/* Category chips — explore tab */}
+        {activeTab === 'explore' && (
           <div
             ref={categorySliderRef}
             onMouseDown={onCategoryMouseDown}
@@ -277,7 +255,7 @@ export default function CommunitiesPage() {
               gap: 8,
               padding: '12px 20px',
               overflowX: 'auto',
-              borderBottom: '1px solid var(--border)',
+              borderTop: '1px solid var(--border)',
               cursor: 'grab',
               scrollbarWidth: 'thin',
               scrollbarColor: 'var(--border) transparent',
@@ -321,7 +299,34 @@ export default function CommunitiesPage() {
               </button>
             ))}
           </div>
+        )}
+      </div>
 
+      {activeTab === 'home' && (
+        <>
+
+          {homeFeedQuery.isLoading && (
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
+              Loading...
+            </div>
+          )}
+          {homeFeedQuery.isError && (
+            <EmptyState title="Failed to load" subtitle="Could not fetch community threads." />
+          )}
+          {!homeFeedQuery.isLoading && !homeFeedQuery.isError && (
+            homeThreads.length === 0 ? (
+              <EmptyState title="No posts yet" subtitle="Join communities to see their posts here." />
+            ) : (
+              homeThreads.map((thread) => (
+                <CommunityThreadCard key={thread.id} thread={thread} />
+              ))
+            )
+          )}
+        </>
+      )}
+
+      {activeTab === 'explore' && (
+        <>
           {exploreFeedQuery.isLoading && (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
               Loading...

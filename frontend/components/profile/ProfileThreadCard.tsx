@@ -10,6 +10,7 @@ import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
+import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import type { CommunityRole } from '@/lib/services/communities';
@@ -43,6 +44,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const author = getThreadAuthor(thread);
   const canManage = isOwnThread(thread, currentUserId);
   const canReport = currentUserId != null && currentUserId !== thread.author.id;
@@ -54,10 +56,10 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
     setIsEditing(false);
   }
 
-  async function handleDelete() {
-    if (!window.confirm('Delete this post?')) return;
+  async function handleDeleteConfirm() {
     try {
       await deleteMutation.mutateAsync();
+      setDeleteModalOpen(false);
     } catch {
       // Mutation state already exposes the error.
     }
@@ -145,7 +147,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               >
                 <ThreadOptionsMenu
                   onEdit={canManage ? () => setIsEditing(true) : undefined}
-                  onDelete={canManage ? () => void handleDelete() : undefined}
+                  onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
                   deleting={deleteMutation.isPending}
                   disabled={updateMutation.isPending}
                   compact
@@ -265,6 +267,12 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
         />
       </div>
     )}
+    <DeletePostModal
+      open={deleteModalOpen}
+      isPending={deleteMutation.isPending}
+      onConfirm={() => void handleDeleteConfirm()}
+      onCancel={() => setDeleteModalOpen(false)}
+    />
     </>
   );
 }
