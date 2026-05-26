@@ -40,8 +40,7 @@ export function useNotificationSocket({
   accessToken,
 }: UseNotificationSocketOptions): UseNotificationSocketResult {
   const queryClient = useQueryClient();
-  const increment  = useNotificationStore((s) => s.increment);
-  const addToast   = useNotificationStore((s) => s.addToast);
+  const increment = useNotificationStore((s) => s.increment);
 
   const handleMessage = useCallback(
     (message: ServerEnvelope): void => {
@@ -75,7 +74,6 @@ export function useNotificationSocket({
           );
 
           increment();
-          addToast(item);
           break;
         }
 
@@ -98,7 +96,7 @@ export function useNotificationSocket({
         }
       }
     },
-    [queryClient, increment, addToast],
+    [queryClient, increment],
   );
 
   const socket = useWebSocket({
