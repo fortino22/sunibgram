@@ -88,6 +88,11 @@ func (s *LikeService) Like(userID, threadID uint) error {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
+	if wrapperIDs, err := s.threadRepo.RepostWrapperIDsByOriginal(threadID); err == nil {
+		for _, wid := range wrapperIDs {
+			s.threadRepo.InvalidateThread(wid)
+		}
+	}
 	helper.SendInteractionNotification(s.notification, "like", "liked your thread", userID, thread.UserID, threadID)
 	return nil
 }
@@ -119,6 +124,11 @@ func (s *LikeService) Unlike(userID, threadID uint) error {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
+	if wrapperIDs, err := s.threadRepo.RepostWrapperIDsByOriginal(threadID); err == nil {
+		for _, wid := range wrapperIDs {
+			s.threadRepo.InvalidateThread(wid)
+		}
+	}
 	return nil
 }
 

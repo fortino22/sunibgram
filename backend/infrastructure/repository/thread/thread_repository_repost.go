@@ -37,6 +37,18 @@ func (r *threadCached) AreThreadsReposted(userID uint, threadIDs []uint) (map[ui
 	return result, nil
 }
 
+// RepostWrapperIDsByOriginal returns the thread_ids of all REPOST rows whose
+// original_thread_id matches. Used to invalidate repost wrapper caches when the
+// original thread state changes (like/unlike/bookmark counter on original).
+func (r *threadCached) RepostWrapperIDsByOriginal(originalThreadID uint) ([]uint, error) {
+	var ids []uint
+	err := r.db.readDB.Model(&threadmodel.Thread{}).
+		Select("thread_id").
+		Where("type = ? AND original_thread_id = ?", threadmodel.ThreadTypeRepost, originalThreadID).
+		Scan(&ids).Error
+	return ids, err
+}
+
 func (r *threadCached) AllRepostedOriginalIDs(userID uint) ([]uint, error) {
 	var ids []uint
 	err := r.db.readDB.Model(&threadmodel.Thread{}).

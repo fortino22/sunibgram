@@ -25,6 +25,7 @@ type IThreadRepository interface {
 	ExistsRepost(userID, originalThreadID uint) (bool, error)
 	AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error)
 	AllRepostedOriginalIDs(userID uint) ([]uint, error)
+	RepostWrapperIDsByOriginal(originalThreadID uint) ([]uint, error)
 	DeleteRepost(userID, originalThreadID uint) error
 	FindCommunityTop(communityID, requesterUserID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
 	FindCommunityLatest(communityID, requesterUserID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)

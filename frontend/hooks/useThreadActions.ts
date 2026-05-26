@@ -353,16 +353,6 @@ export function useThreadActions(thread: ThreadItem) {
       const isReposted = context?.isReposted ?? false;
       patchThreadCaches(queryClient, effectiveId, (current) => revertRepostsState(current, isReposted));
     },
-    onSettled: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['threads'] }),
-        queryClient.invalidateQueries({ queryKey: ['thread'] }),
-        queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
-        queryClient.invalidateQueries({ queryKey: ['explore'] }),
-        queryClient.invalidateQueries({ queryKey: ['community'] }),
-        queryClient.invalidateQueries({ queryKey: ['communities', 'threads'] }),
-      ]);
-    },
   });
 
   return { like, bookmark, repost };
