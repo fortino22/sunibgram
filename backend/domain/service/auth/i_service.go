@@ -9,8 +9,9 @@ import (
 )
 
 var (
-	ErrSessionRevoked   = errors.New("session expired or revoked")
-	ErrSessionTransient = errors.New("session lookup temporarily unavailable")
+	ErrSessionRevoked     = errors.New("session expired or revoked")
+	ErrSessionTransient   = errors.New("session lookup temporarily unavailable")
+	ErrRefreshRateLimited = errors.New("refresh rate limit exceeded")
 )
 
 type IAuthService interface {

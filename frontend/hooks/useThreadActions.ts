@@ -214,33 +214,6 @@ function patchInteractionList(
   );
 }
 
-function findCanonicalThread(queryClient: QueryClient, effectiveId: number): ThreadItem | null {
-  let found: ThreadItem | null = null;
-  const scan = (current: unknown) => {
-    if (found) return;
-    if (isInfiniteThreadListData(current)) {
-      for (const page of current.pages) {
-        const hit = page.data.find((t) => effectiveThreadID(t) === effectiveId);
-        if (hit) { found = hit; return; }
-      }
-    } else if (isThreadListResponse(current)) {
-      const hit = current.data.find((t) => effectiveThreadID(t) === effectiveId);
-      if (hit) { found = hit; return; }
-    } else if (isThreadItem(current) && effectiveThreadID(current) === effectiveId) {
-      found = current;
-    }
-  };
-  for (const key of [['threads'], ['likes'], ['bookmarks'], ['explore'], ['thread-root'], ['thread'], ['community'], ['communities', 'threads']]) {
-    if (found) break;
-    const entries = queryClient.getQueriesData({ queryKey: key });
-    for (const [, data] of entries) {
-      scan(data);
-      if (found) break;
-    }
-  }
-  return found;
-}
-
 export function useThreadActions(thread: ThreadItem) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
@@ -250,8 +223,6 @@ export function useThreadActions(thread: ThreadItem) {
     : thread.id;
 
   const readCanonicalFlag = (key: 'is_liked' | 'is_bookmarked' | 'is_reposted'): boolean => {
-    const canonical = findCanonicalThread(queryClient, effectiveId);
-    if (canonical) return canonical[key] === true;
     return thread[key] === true;
   };
 

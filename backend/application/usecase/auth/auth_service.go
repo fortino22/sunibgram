@@ -56,6 +56,7 @@ type AuthService struct {
 	userSettingsRepo usersettingsrepoiface.IUserSettingsRepository
 	cache            *cache.Cache
 	otpFailLimiter   *ratelimit.RateLimiter
+	refreshLimiter   *ratelimit.RateLimiter
 }
 
 func NewAuthService(
@@ -72,7 +73,14 @@ func NewAuthService(
 		userSettingsRepo: userSettingsRepo,
 		cache:            c,
 		otpFailLimiter:   ratelimit.New(c, "auth_otp_fail", 5, 10*time.Minute),
+		refreshLimiter:   ratelimit.New(c, "auth_refresh", 60, time.Minute),
 	}
+}
+
+const refreshResultTTL = 3 * time.Second
+
+func refreshResultKey(sid string) string {
+	return fmt.Sprintf("refresh:result:%s", sid)
 }
 
 func sessionKey(sid string) string {
@@ -302,6 +310,16 @@ func (s *AuthService) RefreshToken(ctx context.Context, sid string) (usermodel.T
 		return usermodel.TokenPair{}, errors.New("sid is required")
 	}
 
+	// Idempotent response cache — spam within window returns same pair.
+	var cached usermodel.TokenPair
+	if err := s.cache.Get(ctx, refreshResultKey(sid), &cached); err == nil {
+		return cached, nil
+	}
+
+	if err := s.refreshLimiter.Allow(sid); err != nil {
+		return usermodel.TokenPair{}, authsvciface.ErrRefreshRateLimited
+	}
+
 	var userID uint
 	if err := s.cache.Get(ctx, sessionKey(sid), &userID); err != nil {
 		if s.cache.Miss(err) {
@@ -321,7 +339,13 @@ func (s *AuthService) RefreshToken(ctx context.Context, sid string) (usermodel.T
 	}
 	_ = s.cache.SAdd(ctx, userSessionsKey(userID), sid, dur)
 
-	return generateTokenPair(user, sid)
+	pair, err := generateTokenPair(user, sid)
+	if err != nil {
+		return usermodel.TokenPair{}, err
+	}
+
+	_ = s.cache.Set(ctx, refreshResultKey(sid), pair, refreshResultTTL)
+	return pair, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, sid string) error {
@@ -332,6 +356,7 @@ func (s *AuthService) Logout(ctx context.Context, sid string) error {
 	if err := s.cache.Get(ctx, sessionKey(sid), &userID); err == nil {
 		_ = s.cache.SRem(ctx, userSessionsKey(userID), sid)
 	}
+	_ = s.cache.Delete(ctx, refreshResultKey(sid))
 	return s.cache.Delete(ctx, sessionKey(sid))
 }
 

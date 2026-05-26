@@ -54,6 +54,14 @@ export async function GET() {
     return NextResponse.json({ authenticated: false, revoked: true });
   }
 
+  if (response.status === 429) {
+    const retryAfter = response.headers.get('retry-after') ?? '1';
+    return NextResponse.json(
+      { authenticated: false, transient: true, retry_after: Number(retryAfter) || 1 },
+      { status: 429, headers: { 'Retry-After': retryAfter } }
+    );
+  }
+
   if (!response.ok) {
     return NextResponse.json({ authenticated: false, transient: true }, { status: 503 });
   }
