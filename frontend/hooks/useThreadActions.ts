@@ -30,6 +30,13 @@ function isInfiniteThreadListData(value: unknown): value is InfiniteData<ThreadL
   return isRecord(value) && Array.isArray(value.pages) && (value.pages as unknown[]).every(isThreadListResponse);
 }
 
+function effectiveThreadID(t: ThreadItem): number {
+  if (t.type?.toLowerCase() === 'repost' && typeof t.original_thread_id === 'number') {
+    return t.original_thread_id;
+  }
+  return t.id;
+}
+
 function updateThreadList(
   current: ThreadListResponse,
   threadId: number,
@@ -37,7 +44,7 @@ function updateThreadList(
 ): ThreadListResponse {
   return {
     ...current,
-    data: current.data.map((thread) => (thread.id === threadId ? updater(thread) : thread)),
+    data: current.data.map((thread) => (effectiveThreadID(thread) === threadId ? updater(thread) : thread)),
   };
 }
 
@@ -172,7 +179,7 @@ function patchThreadCaches(
   queryClient.setQueriesData({ queryKey: ['explore'] }, patchAny);
   queryClient.setQueriesData(
     { queryKey: ['thread-root'] },
-    (current: unknown) => (isThreadItem(current) && current.id === threadId ? updater(current) : current)
+    (current: unknown) => (isThreadItem(current) && effectiveThreadID(current) === threadId ? updater(current) : current)
   );
   queryClient.setQueriesData(
     { queryKey: ['thread-replies'] },
@@ -180,7 +187,7 @@ function patchThreadCaches(
   );
   queryClient.setQueriesData(
     { queryKey: ['thread'] },
-    (current: unknown) => (isThreadItem(current) && current.id === threadId ? updater(current) : current)
+    (current: unknown) => (isThreadItem(current) && effectiveThreadID(current) === threadId ? updater(current) : current)
   );
   queryClient.setQueriesData({ queryKey: ['community'] }, patchAny);
   queryClient.setQueriesData({ queryKey: ['communities', 'threads'] }, patchAny);
@@ -210,8 +217,9 @@ export function useThreadActions(thread: ThreadItem) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
 
-  const isRepost = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number';
-  const effectiveId = isRepost ? (thread.original_thread_id as number) : thread.id;
+  const effectiveId = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number'
+    ? thread.original_thread_id
+    : thread.id;
 
   const like = useMutation({
     mutationFn: (isLiked: boolean) => {
@@ -233,10 +241,7 @@ export function useThreadActions(thread: ThreadItem) {
         queryClient.cancelQueries({ queryKey: ['communities', 'threads'] }),
       ]);
 
-      patchThreadCaches(queryClient, thread.id, (current) => updateLikesState(current, isLiked));
-      if (isRepost) {
-        patchThreadCaches(queryClient, effectiveId, (current) => updateLikesState(current, isLiked));
-      }
+      patchThreadCaches(queryClient, effectiveId, (current) => updateLikesState(current, isLiked));
 
       patchInteractionList(
         queryClient,
@@ -246,10 +251,7 @@ export function useThreadActions(thread: ThreadItem) {
       );
     },
     onError: (_, isLiked) => {
-      patchThreadCaches(queryClient, thread.id, (current) => revertLikesState(current, isLiked));
-      if (isRepost) {
-        patchThreadCaches(queryClient, effectiveId, (current) => revertLikesState(current, isLiked));
-      }
+      patchThreadCaches(queryClient, effectiveId, (current) => revertLikesState(current, isLiked));
 
       patchInteractionList(
         queryClient,
@@ -283,10 +285,7 @@ export function useThreadActions(thread: ThreadItem) {
         queryClient.cancelQueries({ queryKey: ['communities', 'threads'] }),
       ]);
 
-      patchThreadCaches(queryClient, thread.id, (current) => updateBookmarksState(current, isBookmarked));
-      if (isRepost) {
-        patchThreadCaches(queryClient, effectiveId, (current) => updateBookmarksState(current, isBookmarked));
-      }
+      patchThreadCaches(queryClient, effectiveId, (current) => updateBookmarksState(current, isBookmarked));
 
       patchInteractionList(
         queryClient,
@@ -296,10 +295,7 @@ export function useThreadActions(thread: ThreadItem) {
       );
     },
     onError: (_, isBookmarked) => {
-      patchThreadCaches(queryClient, thread.id, (current) => revertBookmarksState(current, isBookmarked));
-      if (isRepost) {
-        patchThreadCaches(queryClient, effectiveId, (current) => revertBookmarksState(current, isBookmarked));
-      }
+      patchThreadCaches(queryClient, effectiveId, (current) => revertBookmarksState(current, isBookmarked));
 
       patchInteractionList(
         queryClient,
@@ -331,16 +327,10 @@ export function useThreadActions(thread: ThreadItem) {
         queryClient.cancelQueries({ queryKey: ['communities', 'threads'] }),
       ]);
 
-      patchThreadCaches(queryClient, thread.id, (current) => updateRepostsState(current, isReposted));
-      if (isRepost) {
-        patchThreadCaches(queryClient, effectiveId, (current) => updateRepostsState(current, isReposted));
-      }
+      patchThreadCaches(queryClient, effectiveId, (current) => updateRepostsState(current, isReposted));
     },
     onError: (_, isReposted) => {
-      patchThreadCaches(queryClient, thread.id, (current) => revertRepostsState(current, isReposted));
-      if (isRepost) {
-        patchThreadCaches(queryClient, effectiveId, (current) => revertRepostsState(current, isReposted));
-      }
+      patchThreadCaches(queryClient, effectiveId, (current) => revertRepostsState(current, isReposted));
     },
     onSettled: async () => {
       await Promise.all([

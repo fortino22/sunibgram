@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { type AuthUser, useAuthStore } from '@/stores/authStore';
 
@@ -62,14 +62,20 @@ function isRefreshResponse(value: unknown): value is RefreshResponse {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { token, isAuthenticated, initialized, setToken, setUser, setInitialized, logout } =
-    useAuthStore();
+  const isAuthenticated = useAuthStore((s: { isAuthenticated: boolean }) => s.isAuthenticated);
+  const initialized = useAuthStore((s: { initialized: boolean }) => s.initialized);
   const router = useRouter();
+  const attemptedRef = useRef(false);
 
   useEffect(() => {
+    if (attemptedRef.current) return;
+    attemptedRef.current = true;
+
     let cancelled = false;
 
     const refresh = async () => {
+      const { token, setToken, setUser, setInitialized, logout } = useAuthStore.getState();
+
       if (token) {
         setInitialized(true);
         return;
@@ -106,7 +112,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     return () => {
       cancelled = true;
     };
-  }, [logout, router, setInitialized, setToken, setUser, token]);
+  }, [router]);
 
   useEffect(() => {
     if (initialized && !isAuthenticated) {
