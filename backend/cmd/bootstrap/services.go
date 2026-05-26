@@ -134,7 +134,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.Cache, notification)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
 	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
-	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, summary)
+	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, summary, repos.User)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, repos.BookmarkCollection)
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)

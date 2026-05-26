@@ -158,6 +158,7 @@ func (s *ThreadService) createThread(ctx context.Context, userID uint, content s
 	if parent != nil {
 		helper.SendCommentNotification(s.notification, userID, parent.UserID, thread.ThreadID)
 	}
+	helper.SendMentionNotifications(s.notification, s.userRepo, userID, thread.ThreadID, content)
 	return thread, nil
 }
 
@@ -198,6 +199,7 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)
 	}
+	helper.SendMentionNotifications(s.notification, s.userRepo, userID, thread.ThreadID, content)
 	return thread, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	userrepoiface "github.com/sunibgram/domain/repository/user"
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -27,6 +28,7 @@ type ThreadService struct {
 	followRepo     followrepoiface.IFollowRepository
 	notification   notificationsvciface.INotificationService
 	summaryService threadsummarysvciface.IThreadSummaryService
+	userRepo       userrepoiface.IUserRepository
 }
 
 func NewThreadService(
@@ -41,6 +43,7 @@ func NewThreadService(
 	followRepo followrepoiface.IFollowRepository,
 	notification notificationsvciface.INotificationService,
 	summaryService threadsummarysvciface.IThreadSummaryService,
+	userRepo userrepoiface.IUserRepository,
 ) threadsvciface.IThreadService {
 	return &ThreadService{
 		threadRepo:     threadRepo,
@@ -54,5 +57,6 @@ func NewThreadService(
 		followRepo:     followRepo,
 		notification:   notification,
 		summaryService: summaryService,
+		userRepo:       userRepo,
 	}
 }
