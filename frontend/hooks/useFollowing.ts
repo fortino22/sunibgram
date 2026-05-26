@@ -1,14 +1,20 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { getFollowing, type FollowListResponse } from '@/lib/services/follows';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { getFollowing } from '@/lib/services/follows';
 import { useAuthStore } from '@/stores/authStore';
 
-export function useFollowing(userId: number | string) {
+export function useFollowing(userId: number | string | undefined) {
   const token = useAuthStore((s) => s.token);
-  return useQuery<FollowListResponse>({
+  return useInfiniteQuery({
     queryKey: ['following', userId],
-    queryFn: () => getFollowing(userId, token!, { limit: 100 }),
+    queryFn: ({ pageParam }) =>
+      getFollowing(userId!, token!, { page: pageParam as number, limit: 20 }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const { page, limit, total } = lastPage.meta;
+      return page * limit < total ? page + 1 : undefined;
+    },
     enabled: !!token && !!userId,
   });
 }

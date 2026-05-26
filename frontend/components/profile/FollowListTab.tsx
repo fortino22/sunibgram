@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent } from 'react';
+import { useRef, useEffect, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -16,6 +16,7 @@ type FollowListType = 'followers' | 'following';
 interface FollowListTabProps {
   userId: number | string;
   type: FollowListType;
+  filterPremium?: boolean;
 }
 
 interface FollowUserCardProps {
@@ -23,7 +24,7 @@ interface FollowUserCardProps {
   initialIsFollowing?: boolean;
 }
 
-function FollowUserCard({ user, initialIsFollowing }: FollowUserCardProps) {
+export function FollowUserCard({ user, initialIsFollowing }: FollowUserCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { data: userProfile } = useProfile(user.user_id);
@@ -35,17 +36,12 @@ function FollowUserCard({ user, initialIsFollowing }: FollowUserCardProps) {
 
   function handleFollowToggle(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
-
-    if (isPending) {
-      return;
-    }
-
+    if (isPending) return;
     if (isFollowing) {
       unfollow.mutate();
-      return;
+    } else {
+      follow.mutate();
     }
-
-    follow.mutate();
   }
 
   return (
@@ -125,13 +121,31 @@ function FollowUserCard({ user, initialIsFollowing }: FollowUserCardProps) {
   );
 }
 
-export function FollowListTab({ userId, type }: FollowListTabProps) {
+export function FollowListTab({ userId, type, filterPremium = false }: FollowListTabProps) {
   const currentUserId = useAuthStore((state) => state.user?.id);
   const followersQuery = useFollowers(userId);
   const followingQuery = useFollowing(userId);
   const query = type === 'followers' ? followersQuery : followingQuery;
-  const users = query.data?.data ?? [];
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const allUsers = query.data?.pages.flatMap((p) => p.data) ?? [];
+  const users = filterPremium ? allUsers.filter((u) => u.is_premium) : allUsers;
   const isOwnFollowingList = type === 'following' && currentUserId === Number(userId);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && query.hasNextPage && !query.isFetchingNextPage) {
+          void query.fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [query]);
 
   if (query.isLoading) {
     return (
@@ -152,8 +166,14 @@ export function FollowListTab({ userId, type }: FollowListTabProps) {
   if (users.length === 0) {
     return (
       <EmptyState
-        title={`No ${type} yet`}
-        subtitle={type === 'followers' ? 'When people follow this profile, they will appear here.' : 'Accounts followed by this profile will appear here.'}
+        title={filterPremium ? 'No verified followers' : `No ${type} yet`}
+        subtitle={
+          filterPremium
+            ? 'Followers with premium accounts will appear here.'
+            : type === 'followers'
+              ? 'When people follow this profile, they will appear here.'
+              : 'Accounts followed by this profile will appear here.'
+        }
       />
     );
   }
@@ -167,6 +187,12 @@ export function FollowListTab({ userId, type }: FollowListTabProps) {
           initialIsFollowing={isOwnFollowingList ? true : undefined}
         />
       ))}
+      <div ref={sentinelRef} style={{ height: 1 }} />
+      {query.isFetchingNextPage && (
+        <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>
+          Loading…
+        </div>
+      )}
     </div>
   );
 }

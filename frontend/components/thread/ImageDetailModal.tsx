@@ -101,10 +101,9 @@ export interface ImageDetailModalProps {
 export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavigate }: ImageDetailModalProps) {
   const [showPanel, setShowPanel] = useState(false);
 
-  const { data: chainData, isLoading: repliesLoading } = useThreadChain(thread.id);
+  const { replies, isLoading: repliesLoading } = useThreadChain(thread.id);
   const { like, repost, bookmark } = useThreadActions(thread);
   const author = getThreadAuthor(thread);
-  const replies = chainData?.replies ?? [];
 
   const current = media[currentIndex];
   const hasPrev = currentIndex > 0;

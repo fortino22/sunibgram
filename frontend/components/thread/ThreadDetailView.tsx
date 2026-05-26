@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Repeat2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
@@ -17,6 +17,7 @@ import { ThreadActions } from './ThreadActions';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
+import { ThreadCardSkeleton } from './skeletons/ThreadCardSkeleton';
 import { ImageDetailModal } from './ImageDetailModal';
 import { ThreadPoll } from './ThreadPoll';
 import { getAuthorAvatarUrl, getRepostLabel, getThreadAuthor, isOwnThread } from './threadUtils';
@@ -32,9 +33,12 @@ function formatThreadDate(dateStr: string): string {
 interface ThreadDetailViewProps {
   root: ThreadItem;
   replies: ThreadItem[];
+  hasNextPage?: boolean;
+  fetchNextPage?: () => void;
+  isFetchingNextPage?: boolean;
 }
 
-export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
+export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, isFetchingNextPage }: ThreadDetailViewProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(root.id, {
@@ -49,6 +53,22 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
   const canManage = isOwnThread(root, currentUserId);
   const canReport = currentUserId != null && currentUserId !== root.author.id;
   const repostLabel = getRepostLabel(root, currentUserId);
+  const repliesSentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = repliesSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage?.();
+        }
+      },
+      { rootMargin: '300px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   async function handleSave(params: ThreadMutationParams) {
     await updateMutation.mutateAsync(params);
@@ -65,12 +85,10 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
   }
 
   return (
-    <main
-      className="mx-auto min-h-screen max-w-[600px]"
+    <div
       style={{
         background: 'var(--bg-card)',
-        borderLeft: '1px solid var(--border)',
-        borderRight: '1px solid var(--border)',
+        minHeight: '100vh',
       }}
     >
       <header
@@ -86,7 +104,7 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
           type="button"
           aria-label="Back"
           onClick={() => router.back()}
-          className="inline-flex items-center justify-center rounded-full"
+          className="inline-flex items-center justify-center rounded-full transition-colors hover:bg-white/20 cursor-pointer"
           style={{
             width: 36,
             height: 36,
@@ -220,6 +238,10 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
       />
 
       <ReplyTree threads={replies} />
+      <div ref={repliesSentinelRef} style={{ height: 1 }} />
+      {isFetchingNextPage && (
+        <div>{Array.from({ length: 2 }, (_, i) => <ThreadCardSkeleton key={i} />)}</div>
+      )}
 
       {lightboxState !== null && (
         <ImageDetailModal
@@ -245,6 +267,6 @@ export function ThreadDetailView({ root, replies }: ThreadDetailViewProps) {
         onConfirm={() => void handleDeleteConfirm()}
         onCancel={() => setDeleteModalOpen(false)}
       />
-    </main>
+    </div>
   );
 }

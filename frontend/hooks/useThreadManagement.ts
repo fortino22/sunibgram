@@ -1,7 +1,6 @@
 'use client';
 
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import type { ThreadDetailData } from '@/hooks/useThread';
 import {
   deleteThread,
   updateThread,
@@ -27,24 +26,6 @@ function removeThreadFromList(
   return {
     ...current,
     data: current.data.filter((item) => item.id !== threadId),
-  };
-}
-
-function removeThreadFromDetail(
-  current: ThreadDetailData | undefined,
-  threadId: number
-): ThreadDetailData | undefined {
-  if (current === undefined) {
-    return current;
-  }
-
-  if (current.root.id === threadId) {
-    return current;
-  }
-
-  return {
-    ...current,
-    replies: current.replies.filter((reply) => reply.id !== threadId),
   };
 }
 
@@ -79,7 +60,8 @@ export function useThreadManagement(
         queryClient.invalidateQueries({ queryKey: ['threads'] }),
         queryClient.invalidateQueries({ queryKey: ['likes'] }),
         queryClient.invalidateQueries({ queryKey: ['thread'] }),
-        queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
+        queryClient.invalidateQueries({ queryKey: ['thread-root'] }),
+        queryClient.invalidateQueries({ queryKey: ['thread-replies'] }),
       ]);
     },
   });
@@ -101,9 +83,18 @@ export function useThreadManagement(
         { queryKey: ['likes'] },
         (current) => removeThreadFromList(current, threadId)
       );
-      queryClient.setQueriesData<ThreadDetailData | undefined>(
-        { queryKey: ['thread-chain'] },
-        (current) => removeThreadFromDetail(current, threadId)
+      queryClient.setQueriesData<InfiniteData<ThreadListResponse>>(
+        { queryKey: ['thread-replies'] },
+        (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            pages: current.pages.map((page) => ({
+              ...page,
+              data: page.data.filter((item) => item.id !== threadId),
+            })),
+          };
+        }
       );
       queryClient.setQueriesData<ThreadResponse | undefined>(
         { queryKey: ['thread'] },
@@ -129,7 +120,8 @@ export function useThreadManagement(
         queryClient.invalidateQueries({ queryKey: ['threads'] }),
         queryClient.invalidateQueries({ queryKey: ['likes'] }),
         queryClient.invalidateQueries({ queryKey: ['thread'] }),
-        queryClient.invalidateQueries({ queryKey: ['thread-chain'] }),
+        queryClient.invalidateQueries({ queryKey: ['thread-root'] }),
+        queryClient.invalidateQueries({ queryKey: ['thread-replies'] }),
         queryClient.invalidateQueries({ queryKey: ['event'], refetchType: 'none' }),
       ]);
     },
