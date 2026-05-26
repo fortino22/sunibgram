@@ -21,7 +21,7 @@ func RegisterAuthRoutes(api fiber.Router, ctrl *authctrl.AuthController, verific
 	// 	return c.Next()
 	// }
 
-	authIPLimiter := ratelimit.New(c, "auth_ip", 10, 5*time.Minute)
+	authIPLimiter := ratelimit.New(c, "auth_ip", 100, 5*time.Minute)
 	authIPRateLimit := func(c *fiber.Ctx) error {
 		if err := authIPLimiter.Allow(c.IP()); err != nil {
 			return c.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
