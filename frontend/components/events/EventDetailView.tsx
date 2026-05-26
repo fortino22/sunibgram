@@ -1,14 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { ArrowLeft, Bookmark, CalendarDays, Link2, LoaderCircle, MapPin, Pencil } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ArrowLeft, CalendarDays, MapPin, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
+import { EditEventDialog } from '@/components/events/EditEventDialog';
+import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { useEvent } from '@/hooks/useEvent';
-import { useEventActions } from '@/hooks/useEventActions';
+import { useDeleteEvent } from '@/hooks/useDeleteEvent';
 import { useEventJoin } from '@/hooks/useEventJoin';
 import { useEventPosts } from '@/hooks/useEventPosts';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -201,14 +203,16 @@ function EventPostsPanel({
 export function EventDetailView({ eventId }: { eventId: string }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('official');
-  const [shareNotice, setShareNotice] = useState<string | null>(null);
-  const [bookmarked, setBookmarked] = useState(false);
   const [joinHovered, setJoinHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const user = useAuthStore((s) => s.user);
   const { openOfficialEventPost } = useComposeStore();
 
   const query = useEvent(eventId);
-  const { bookmark, share } = useEventActions(eventId);
+  const deleteMutation = useDeleteEvent();
   const { isJoined, join, leave } = useEventJoin(eventId);
 
   if (query.isLoading) {
@@ -237,27 +241,10 @@ export function EventDetailView({ eventId }: { eventId: string }) {
   }
 
   const event = query.data;
+  const isCreator = user?.id === event.userId;
 
-  async function handleShare() {
-    try {
-      const result = await share.mutateAsync();
-      if (navigator.share) {
-        await navigator.share({ title: event.title, text: event.description, url: result.shareableLink });
-      } else if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(result.shareableLink);
-      }
-      setShareNotice('Link copied!');
-      setTimeout(() => setShareNotice(null), 3000);
-    } catch (err) {
-      setShareNotice(err instanceof Error ? err.message : 'Could not share.');
-    }
-  }
-
-  function handleBookmark() {
-    if (bookmark.isPending) return;
-    bookmark.mutate(bookmarked, {
-      onSuccess: () => setBookmarked((b) => !b),
-    });
+  function handleDeleteConfirm() {
+    deleteMutation.mutate(eventId, { onSuccess: () => router.back() });
   }
 
   return (
@@ -276,7 +263,103 @@ export function EventDetailView({ eventId }: { eventId: string }) {
       )}
 
       {/* Event info */}
-      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid var(--border)', position: 'relative' }}>
+        {/* Triple-dot menu — creator only */}
+        {isCreator && (
+          <div ref={menuRef} style={{ position: 'absolute', top: 20, right: 20 }}>
+            <button
+              type="button"
+              aria-label="Event options"
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-tertiary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 4,
+                borderRadius: '50%',
+              }}
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {menuOpen && (
+              <>
+                {/* backdrop to close */}
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 49 }}
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 32,
+                    right: 0,
+                    zIndex: 50,
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    minWidth: 140,
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setEditOpen(true); }}
+                    style={{
+                      width: '100%',
+                      padding: '11px 16px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: 'var(--text)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+                  >
+                    <Pencil size={15} />
+                    Edit event
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setDeleteConfirmOpen(true); }}
+                    style={{
+                      width: '100%',
+                      padding: '11px 16px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      color: 'var(--coral, #e53e3e)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'none'; }}
+                  >
+                    <Trash2 size={15} />
+                    Delete event
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <div style={{ marginBottom: 12 }}>
           <span
             style={{
@@ -362,7 +445,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           )}
 
           {/* Official post button — creator only */}
-          {user?.id === event.userId && (
+          {isCreator && (
             <button
               type="button"
               onClick={() => openOfficialEventPost(eventId, event.title)}
@@ -384,55 +467,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
               Post Official
             </button>
           )}
-
-          <button
-            type="button"
-            onClick={handleBookmark}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '8px 18px',
-              borderRadius: 999,
-              border: '1.5px solid var(--border)',
-              background: bookmarked ? 'var(--accent)' : 'transparent',
-              color: bookmarked ? '#fff' : 'var(--text-secondary)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            {bookmark.isPending ? <LoaderCircle size={15} className="animate-spin" /> : <Bookmark size={15} />}
-            {bookmarked ? 'Saved' : 'Save'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void handleShare()}
-            disabled={share.isPending}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '8px 18px',
-              borderRadius: 999,
-              border: '1.5px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--text-secondary)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: share.isPending ? 'not-allowed' : 'pointer',
-              opacity: share.isPending ? 0.6 : 1,
-            }}
-          >
-            {share.isPending ? <LoaderCircle size={15} className="animate-spin" /> : <Link2 size={15} />}
-            Share
-          </button>
         </div>
-
-        {shareNotice && (
-          <p style={{ marginTop: 10, fontSize: 13, color: 'var(--text-tertiary)' }}>{shareNotice}</p>
-        )}
       </div>
 
       {/* Tab bar */}
@@ -478,6 +513,18 @@ export function EventDetailView({ eventId }: { eventId: string }) {
         <EventPostsPanel eventId={eventId} mode="discussion" active />
       )}
 
+      {editOpen && (
+        <EditEventDialog open={editOpen} onOpenChange={setEditOpen} event={event} />
+      )}
+
+      <DeletePostModal
+        open={deleteConfirmOpen}
+        isPending={deleteMutation.isPending}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        title="Delete event?"
+        description="This can't be undone and the event will be removed for all participants."
+      />
     </div>
   );
 }
