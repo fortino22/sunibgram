@@ -202,6 +202,9 @@ func (c *AuthController) Refresh(ctx *fiber.Ctx) error {
 			return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 		case errors.Is(err, authsvciface.ErrSessionTransient):
 			return ctx.Status(fiber.StatusServiceUnavailable).JSON(authdto.ErrorResponse{Message: err.Error()})
+		case errors.Is(err, authsvciface.ErrRefreshRateLimited):
+			ctx.Set("Retry-After", "1")
+			return ctx.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{Message: err.Error()})
 		default:
 			return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}

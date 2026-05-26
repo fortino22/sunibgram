@@ -10,6 +10,7 @@ export interface RefreshRevoked {
 
 export interface RefreshTransient {
   status: 'transient';
+  retryAfterMs?: number;
 }
 
 export type RefreshResult = RefreshOk | RefreshRevoked | RefreshTransient;
@@ -20,6 +21,7 @@ interface RefreshPayload {
   sid?: string;
   revoked?: boolean;
   transient?: boolean;
+  retry_after?: number;
 }
 
 function isRefreshPayload(value: unknown): value is RefreshPayload {
@@ -53,6 +55,13 @@ async function doRefresh(): Promise<RefreshResult> {
 
   if (data.revoked === true) {
     return { status: 'revoked' };
+  }
+
+  if (response.status === 429) {
+    const retryAfterSec = typeof data.retry_after === 'number'
+      ? data.retry_after
+      : Number(response.headers.get('retry-after') ?? '1') || 1;
+    return { status: 'transient', retryAfterMs: Math.max(100, retryAfterSec * 1000) };
   }
 
   if (data.transient === true || response.status >= 500) {

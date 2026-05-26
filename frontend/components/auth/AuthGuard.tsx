@@ -90,8 +90,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
         }
 
         // transient — backoff + retry, do NOT logout
-        const delay = TRANSIENT_BACKOFF_MS[i];
-        if (delay === undefined) break;
+        const backoff = TRANSIENT_BACKOFF_MS[i];
+        if (backoff === undefined) break;
+        const delay = result.retryAfterMs ?? backoff;
         await new Promise<void>((resolve) => setTimeout(resolve, delay));
       }
 
