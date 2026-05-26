@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { useMutation, useQueryClient, type QueryClient, type InfiniteData } from '@tanstack/react-query';
 import {
   likeThread, unlikeThread,
@@ -254,16 +255,21 @@ export function useThreadActions(thread: ThreadItem) {
     return thread[key] === true;
   };
 
+  const likeIntentRef = useRef<boolean>(false);
+  const bookmarkIntentRef = useRef<boolean>(false);
+  const repostIntentRef = useRef<boolean>(false);
+
   const like = useMutation({
     mutationFn: async () => {
       if (!token) {
         throw new Error('Authentication token is required to like this thread.');
       }
-      const isLiked = readCanonicalFlag('is_liked');
+      const isLiked = likeIntentRef.current;
       return isLiked ? unlikeThread(effectiveId, token) : likeThread(effectiveId, token);
     },
     onMutate: async () => {
       const isLiked = readCanonicalFlag('is_liked');
+      likeIntentRef.current = isLiked;
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['threads'] }),
         queryClient.cancelQueries({ queryKey: ['likes'] }),
@@ -306,11 +312,12 @@ export function useThreadActions(thread: ThreadItem) {
       if (!token) {
         throw new Error('Authentication token is required to bookmark this thread.');
       }
-      const isBookmarked = readCanonicalFlag('is_bookmarked');
+      const isBookmarked = bookmarkIntentRef.current;
       return isBookmarked ? unbookmarkThread(effectiveId, token) : bookmarkThread(effectiveId, token);
     },
     onMutate: async () => {
       const isBookmarked = readCanonicalFlag('is_bookmarked');
+      bookmarkIntentRef.current = isBookmarked;
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['threads'] }),
         queryClient.cancelQueries({ queryKey: ['likes'] }),
@@ -353,11 +360,12 @@ export function useThreadActions(thread: ThreadItem) {
       if (!token) {
         throw new Error('Authentication token is required to repost this thread.');
       }
-      const isReposted = readCanonicalFlag('is_reposted');
+      const isReposted = repostIntentRef.current;
       return isReposted ? unrepostThread(effectiveId, token) : repostThread(effectiveId, token);
     },
     onMutate: async () => {
       const isReposted = readCanonicalFlag('is_reposted');
+      repostIntentRef.current = isReposted;
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['threads'] }),
         queryClient.cancelQueries({ queryKey: ['thread'] }),
