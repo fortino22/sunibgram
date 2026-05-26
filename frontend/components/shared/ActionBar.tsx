@@ -33,14 +33,14 @@ export function ActionBar({
   onReply,
   size = 'md',
 }: ActionBarProps) {
-  const iconSize = size === 'sm' ? 15 : 18;
-  const sw = size === 'sm' ? 1.8 : 2;
+  const iconSize = size === 'sm' ? 18 : 20;
+  const sw = 2;
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, color: 'var(--text-tertiary)' }}>
       <ActionButton aria-label="Reply" onClick={onReply} size={size}>
         <MessageCircle size={iconSize} strokeWidth={sw} />
-        <span style={{ fontSize: size === 'sm' ? 13 : 14 }}>{stats.comments}</span>
+        <span style={{ fontSize: 14 }}>{stats.comments}</span>
       </ActionButton>
 
       <ActionButton
@@ -50,7 +50,7 @@ export function ActionBar({
         size={size}
       >
         <Repeat2 size={iconSize} strokeWidth={sw} />
-        <span style={{ fontSize: size === 'sm' ? 13 : 14 }}>{stats.reposts}</span>
+        <span style={{ fontSize: 14 }}>{stats.reposts}</span>
       </ActionButton>
 
       <ActionButton
@@ -60,7 +60,7 @@ export function ActionBar({
         size={size}
       >
         <Heart size={iconSize} strokeWidth={sw} fill={isLiked ? 'var(--coral)' : 'none'} />
-        <span style={{ fontSize: size === 'sm' ? 13 : 14 }}>{stats.likes}</span>
+        <span style={{ fontSize: 14 }}>{stats.likes}</span>
       </ActionButton>
 
       <ActionButton
@@ -74,7 +74,6 @@ export function ActionBar({
           strokeWidth={sw}
           fill={isBookmarked ? 'var(--accent)' : 'none'}
         />
-        <span style={{ fontSize: size === 'sm' ? 13 : 14 }}>{stats.bookmarks}</span>
       </ActionButton>
     </div>
   );
