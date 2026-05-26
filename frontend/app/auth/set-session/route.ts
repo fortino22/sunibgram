@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const SID_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  sameSite: 'lax' as const,
   path: '/',
   maxAge: 60 * 60 * 24 * 7,
 };

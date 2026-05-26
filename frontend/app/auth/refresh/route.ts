@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const SID_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  sameSite: 'lax' as const,
   path: '/',
   maxAge: 60 * 60 * 24 * 7,
 };
@@ -30,7 +30,7 @@ export async function GET() {
     const sid = cookieStore.get('sid')?.value;
 
     if (!sid) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ authenticated: false });
     }
 
     const baseUrl = (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
@@ -45,13 +45,15 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      cookieStore.delete('sid');
+      return NextResponse.json({ authenticated: false });
     }
 
     const data: unknown = await response.json();
 
     if (!isRefreshResponse(data)) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      cookieStore.delete('sid');
+      return NextResponse.json({ authenticated: false });
     }
 
     if (data.sid !== sid) {
@@ -59,6 +61,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      authenticated: true,
       access_token: data.access_token,
       sid: data.sid,
     });
