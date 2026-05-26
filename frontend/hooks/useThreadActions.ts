@@ -210,13 +210,16 @@ export function useThreadActions(thread: ThreadItem) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
 
+  const isRepost = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number';
+  const effectiveId = isRepost ? (thread.original_thread_id as number) : thread.id;
+
   const like = useMutation({
     mutationFn: (isLiked: boolean) => {
       if (!token) {
         throw new Error('Authentication token is required to like this thread.');
       }
 
-      return isLiked ? unlikeThread(thread.id, token) : likeThread(thread.id, token);
+      return isLiked ? unlikeThread(effectiveId, token) : likeThread(effectiveId, token);
     },
     onMutate: async (isLiked) => {
       await Promise.all([
@@ -231,6 +234,9 @@ export function useThreadActions(thread: ThreadItem) {
       ]);
 
       patchThreadCaches(queryClient, thread.id, (current) => updateLikesState(current, isLiked));
+      if (isRepost) {
+        patchThreadCaches(queryClient, effectiveId, (current) => updateLikesState(current, isLiked));
+      }
 
       patchInteractionList(
         queryClient,
@@ -241,6 +247,9 @@ export function useThreadActions(thread: ThreadItem) {
     },
     onError: (_, isLiked) => {
       patchThreadCaches(queryClient, thread.id, (current) => revertLikesState(current, isLiked));
+      if (isRepost) {
+        patchThreadCaches(queryClient, effectiveId, (current) => revertLikesState(current, isLiked));
+      }
 
       patchInteractionList(
         queryClient,
@@ -260,7 +269,7 @@ export function useThreadActions(thread: ThreadItem) {
         throw new Error('Authentication token is required to bookmark this thread.');
       }
 
-      return isBookmarked ? unbookmarkThread(thread.id, token) : bookmarkThread(thread.id, token);
+      return isBookmarked ? unbookmarkThread(effectiveId, token) : bookmarkThread(effectiveId, token);
     },
     onMutate: async (isBookmarked) => {
       await Promise.all([
@@ -275,6 +284,9 @@ export function useThreadActions(thread: ThreadItem) {
       ]);
 
       patchThreadCaches(queryClient, thread.id, (current) => updateBookmarksState(current, isBookmarked));
+      if (isRepost) {
+        patchThreadCaches(queryClient, effectiveId, (current) => updateBookmarksState(current, isBookmarked));
+      }
 
       patchInteractionList(
         queryClient,
@@ -285,6 +297,9 @@ export function useThreadActions(thread: ThreadItem) {
     },
     onError: (_, isBookmarked) => {
       patchThreadCaches(queryClient, thread.id, (current) => revertBookmarksState(current, isBookmarked));
+      if (isRepost) {
+        patchThreadCaches(queryClient, effectiveId, (current) => revertBookmarksState(current, isBookmarked));
+      }
 
       patchInteractionList(
         queryClient,
@@ -304,7 +319,7 @@ export function useThreadActions(thread: ThreadItem) {
         throw new Error('Authentication token is required to repost this thread.');
       }
 
-      return isReposted ? unrepostThread(thread.id, token) : repostThread(thread.id, token);
+      return isReposted ? unrepostThread(effectiveId, token) : repostThread(effectiveId, token);
     },
     onMutate: async (isReposted) => {
       await Promise.all([
@@ -317,9 +332,15 @@ export function useThreadActions(thread: ThreadItem) {
       ]);
 
       patchThreadCaches(queryClient, thread.id, (current) => updateRepostsState(current, isReposted));
+      if (isRepost) {
+        patchThreadCaches(queryClient, effectiveId, (current) => updateRepostsState(current, isReposted));
+      }
     },
     onError: (_, isReposted) => {
       patchThreadCaches(queryClient, thread.id, (current) => revertRepostsState(current, isReposted));
+      if (isRepost) {
+        patchThreadCaches(queryClient, effectiveId, (current) => revertRepostsState(current, isReposted));
+      }
     },
     onSettled: async () => {
       await Promise.all([

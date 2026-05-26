@@ -82,9 +82,9 @@ export function TrendingHashtags({
             <div className="min-w-0">
               <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>Campus · Trending</p>
               <p className="mt-0.5 text-[15px] font-bold" style={{ color: 'var(--text)' }}>#{hashtag.name}</p>
-              {hashtag.post_count != null && (
+              {hashtag.threadCount != null && (
                 <p className="mt-0.5 text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
-                  {hashtag.post_count.toLocaleString()} posts
+                  {hashtag.threadCount.toLocaleString()} posts
                 </p>
               )}
             </div>
