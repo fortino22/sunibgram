@@ -17,7 +17,8 @@ interface JwtPayload {
 }
 
 interface RefreshResponse {
-  access_token: string;
+  authenticated: boolean;
+  access_token?: string;
   sid?: string;
 }
 
@@ -55,10 +56,7 @@ function isRefreshResponse(value: unknown): value is RefreshResponse {
   if (typeof value !== 'object' || value === null) return false;
 
   const response = value as Record<string, unknown>;
-  return (
-    typeof response.access_token === 'string' &&
-    (response.sid === undefined || typeof response.sid === 'string')
-  );
+  return typeof response.authenticated === 'boolean';
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
@@ -95,8 +93,16 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
         if (cancelled) return;
 
-        setToken(data.access_token, data.sid ?? null);
-        setUser(decodeJwtUser(data.access_token));
+        const accessToken = data.access_token;
+        if (!data.authenticated || !accessToken) {
+          logout();
+          setInitialized(true);
+          router.replace('/login');
+          return;
+        }
+
+        setToken(accessToken, data.sid ?? null);
+        setUser(decodeJwtUser(accessToken));
         setInitialized(true);
       } catch {
         if (cancelled) return;
