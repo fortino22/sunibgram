@@ -92,6 +92,11 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 		return err
 	}
 	s.threadRepo.InvalidateThread(threadID)
+	if wrapperIDs, err := s.threadRepo.RepostWrapperIDsByOriginal(threadID); err == nil {
+		for _, wid := range wrapperIDs {
+			s.threadRepo.InvalidateThread(wid)
+		}
+	}
 	helper.SendInteractionNotification(s.notification, "bookmark", "bookmarked your thread", userID, thread.UserID, threadID)
 	return nil
 }
@@ -126,6 +131,11 @@ func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
 		_ = s.collectionRepo.RemoveItemsByBookmark(userID, threadID)
 	}
 	s.threadRepo.InvalidateThread(threadID)
+	if wrapperIDs, err := s.threadRepo.RepostWrapperIDsByOriginal(threadID); err == nil {
+		for _, wid := range wrapperIDs {
+			s.threadRepo.InvalidateThread(wid)
+		}
+	}
 	return nil
 }
 
