@@ -210,7 +210,7 @@ export function useThreadActions(thread: ThreadItem) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
 
-  const isRepost = thread.type === 'repost' && typeof thread.original_thread_id === 'number';
+  const isRepost = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number';
   const effectiveId = isRepost ? (thread.original_thread_id as number) : thread.id;
 
   const like = useMutation({

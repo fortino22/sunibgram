@@ -59,6 +59,14 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 	if err != nil {
 		return errors.New("thread not found")
 	}
+	if thread.Type == threadmodel.ThreadTypeRepost && thread.OriginalThreadID != nil {
+		threadID = *thread.OriginalThreadID
+		original, err := s.threadRepo.FindByID(threadID)
+		if err != nil {
+			return errors.New("thread not found")
+		}
+		thread = original
+	}
 	if err := threaduc.CanViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
 		return err
 	}
@@ -92,6 +100,14 @@ func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
 		return errors.New("thread not found")
+	}
+	if thread.Type == threadmodel.ThreadTypeRepost && thread.OriginalThreadID != nil {
+		threadID = *thread.OriginalThreadID
+		original, err := s.threadRepo.FindByID(threadID)
+		if err != nil {
+			return errors.New("thread not found")
+		}
+		thread = original
 	}
 	if err := threaduc.CanViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
 		return err
