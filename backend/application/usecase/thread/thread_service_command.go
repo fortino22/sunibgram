@@ -302,7 +302,7 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 		return err
 	}
 	if exists {
-		return errors.New("already reposted")
+		return nil
 	}
 	repost := &threadmodel.Thread{
 		UserID:           userID,
@@ -331,7 +331,7 @@ func (s *ThreadService) Unrepost(ctx context.Context, userID, threadID uint) err
 		return err
 	}
 	if !exists {
-		return errors.New("not reposted")
+		return nil
 	}
 	if err := s.threadRepo.DeleteRepost(userID, threadID); err != nil {
 		return err

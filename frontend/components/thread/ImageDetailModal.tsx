@@ -75,9 +75,9 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
               isLiked={!!thread.is_liked}
               isReposted={!!thread.is_reposted}
               isBookmarked={!!thread.is_bookmarked}
-              onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
-              onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
-              onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
+              onLike={() => { if (!like.isPending) like.mutate(); }}
+              onRepost={() => { if (!repost.isPending) repost.mutate(); }}
+              onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
               size="sm"
             />
           </div>
@@ -262,9 +262,9 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
                 isLiked={!!thread.is_liked}
                 isReposted={!!thread.is_reposted}
                 isBookmarked={!!thread.is_bookmarked}
-                onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
-                onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
-                onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
+                onLike={() => { if (!like.isPending) like.mutate(); }}
+                onRepost={() => { if (!repost.isPending) repost.mutate(); }}
+                onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
               />
             </div>
 

@@ -148,17 +148,17 @@ export function ThreadReplyItem({ thread, compact = false }: ThreadReplyItemProp
             topMargin={0}
             onLike={() => {
               if (!like.isPending) {
-                like.mutate(thread.is_liked === true);
+                like.mutate();
               }
             }}
             onRepost={() => {
               if (!repost.isPending) {
-                repost.mutate(thread.is_reposted === true);
+                repost.mutate();
               }
             }}
             onBookmark={() => {
               if (!bookmark.isPending) {
-                bookmark.mutate(thread.is_bookmarked === true);
+                bookmark.mutate();
               }
             }}
             onActionClick={(event) => event.stopPropagation()}

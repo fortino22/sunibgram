@@ -25,48 +25,57 @@ function isRefreshResponse(value: unknown): value is RefreshResponse {
 }
 
 export async function GET() {
+  const cookieStore = await cookies();
+  const sid = cookieStore.get('sid')?.value;
+
+  if (!sid) {
+    return NextResponse.json({ authenticated: false, revoked: true });
+  }
+
+  const baseUrl = (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
+  if (!baseUrl) {
+    return NextResponse.json({ message: 'Server misconfiguration', transient: true }, { status: 500 });
+  }
+
+  let response: Response;
   try {
-    const cookieStore = await cookies();
-    const sid = cookieStore.get('sid')?.value;
-
-    if (!sid) {
-      return NextResponse.json({ authenticated: false });
-    }
-
-    const baseUrl = (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
-    if (!baseUrl) {
-      return NextResponse.json({ message: 'Server misconfiguration' }, { status: 500 });
-    }
-
-    const response = await fetch(`${baseUrl}/api/auth/refresh`, {
+    response = await fetch(`${baseUrl}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sid }),
     });
-
-    if (!response.ok) {
-      cookieStore.delete('sid');
-      return NextResponse.json({ authenticated: false });
-    }
-
-    const data: unknown = await response.json();
-
-    if (!isRefreshResponse(data)) {
-      cookieStore.delete('sid');
-      return NextResponse.json({ authenticated: false });
-    }
-
-    if (data.sid !== sid) {
-      cookieStore.set('sid', data.sid, SID_COOKIE_OPTIONS);
-    }
-
-    return NextResponse.json({
-      authenticated: true,
-      access_token: data.access_token,
-      sid: data.sid,
-    });
   } catch (err) {
-    console.error('[/api/auth/refresh]', err);
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+    console.error('[/api/auth/refresh] network', err);
+    return NextResponse.json({ authenticated: false, transient: true }, { status: 503 });
   }
+
+  if (response.status === 401 || response.status === 403) {
+    cookieStore.delete('sid');
+    return NextResponse.json({ authenticated: false, revoked: true });
+  }
+
+  if (!response.ok) {
+    return NextResponse.json({ authenticated: false, transient: true }, { status: 503 });
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    return NextResponse.json({ authenticated: false, transient: true }, { status: 503 });
+  }
+
+  if (!isRefreshResponse(data)) {
+    return NextResponse.json({ authenticated: false, transient: true }, { status: 503 });
+  }
+
+  if (data.sid !== sid) {
+    cookieStore.set('sid', data.sid, SID_COOKIE_OPTIONS);
+  }
+
+  return NextResponse.json({
+    authenticated: true,
+    access_token: data.access_token,
+    sid: data.sid,
+  });
 }

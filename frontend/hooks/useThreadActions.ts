@@ -213,6 +213,33 @@ function patchInteractionList(
   );
 }
 
+function findCanonicalThread(queryClient: QueryClient, effectiveId: number): ThreadItem | null {
+  let found: ThreadItem | null = null;
+  const scan = (current: unknown) => {
+    if (found) return;
+    if (isInfiniteThreadListData(current)) {
+      for (const page of current.pages) {
+        const hit = page.data.find((t) => effectiveThreadID(t) === effectiveId);
+        if (hit) { found = hit; return; }
+      }
+    } else if (isThreadListResponse(current)) {
+      const hit = current.data.find((t) => effectiveThreadID(t) === effectiveId);
+      if (hit) { found = hit; return; }
+    } else if (isThreadItem(current) && effectiveThreadID(current) === effectiveId) {
+      found = current;
+    }
+  };
+  for (const key of [['threads'], ['likes'], ['bookmarks'], ['explore'], ['thread-root'], ['thread'], ['community'], ['communities', 'threads']]) {
+    if (found) break;
+    const entries = queryClient.getQueriesData({ queryKey: key });
+    for (const [, data] of entries) {
+      scan(data);
+      if (found) break;
+    }
+  }
+  return found;
+}
+
 export function useThreadActions(thread: ThreadItem) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
@@ -221,15 +248,22 @@ export function useThreadActions(thread: ThreadItem) {
     ? thread.original_thread_id
     : thread.id;
 
+  const readCanonicalFlag = (key: 'is_liked' | 'is_bookmarked' | 'is_reposted'): boolean => {
+    const canonical = findCanonicalThread(queryClient, effectiveId);
+    if (canonical) return canonical[key] === true;
+    return thread[key] === true;
+  };
+
   const like = useMutation({
-    mutationFn: (isLiked: boolean) => {
+    mutationFn: async () => {
       if (!token) {
         throw new Error('Authentication token is required to like this thread.');
       }
-
+      const isLiked = readCanonicalFlag('is_liked');
       return isLiked ? unlikeThread(effectiveId, token) : likeThread(effectiveId, token);
     },
-    onMutate: async (isLiked) => {
+    onMutate: async () => {
+      const isLiked = readCanonicalFlag('is_liked');
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['threads'] }),
         queryClient.cancelQueries({ queryKey: ['likes'] }),
@@ -249,8 +283,10 @@ export function useThreadActions(thread: ThreadItem) {
         updateLikesState(thread, isLiked),
         isLiked ? 'remove' : 'add'
       );
+      return { isLiked };
     },
-    onError: (_, isLiked) => {
+    onError: (_err, _vars, context) => {
+      const isLiked = context?.isLiked ?? false;
       patchThreadCaches(queryClient, effectiveId, (current) => revertLikesState(current, isLiked));
 
       patchInteractionList(
@@ -266,14 +302,15 @@ export function useThreadActions(thread: ThreadItem) {
   });
 
   const bookmark = useMutation({
-    mutationFn: (isBookmarked: boolean) => {
+    mutationFn: async () => {
       if (!token) {
         throw new Error('Authentication token is required to bookmark this thread.');
       }
-
+      const isBookmarked = readCanonicalFlag('is_bookmarked');
       return isBookmarked ? unbookmarkThread(effectiveId, token) : bookmarkThread(effectiveId, token);
     },
-    onMutate: async (isBookmarked) => {
+    onMutate: async () => {
+      const isBookmarked = readCanonicalFlag('is_bookmarked');
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['threads'] }),
         queryClient.cancelQueries({ queryKey: ['likes'] }),
@@ -293,8 +330,10 @@ export function useThreadActions(thread: ThreadItem) {
         updateBookmarksState(thread, isBookmarked),
         isBookmarked ? 'remove' : 'add'
       );
+      return { isBookmarked };
     },
-    onError: (_, isBookmarked) => {
+    onError: (_err, _vars, context) => {
+      const isBookmarked = context?.isBookmarked ?? false;
       patchThreadCaches(queryClient, effectiveId, (current) => revertBookmarksState(current, isBookmarked));
 
       patchInteractionList(
@@ -310,14 +349,15 @@ export function useThreadActions(thread: ThreadItem) {
   });
 
   const repost = useMutation({
-    mutationFn: (isReposted: boolean) => {
+    mutationFn: async () => {
       if (!token) {
         throw new Error('Authentication token is required to repost this thread.');
       }
-
+      const isReposted = readCanonicalFlag('is_reposted');
       return isReposted ? unrepostThread(effectiveId, token) : repostThread(effectiveId, token);
     },
-    onMutate: async (isReposted) => {
+    onMutate: async () => {
+      const isReposted = readCanonicalFlag('is_reposted');
       await Promise.all([
         queryClient.cancelQueries({ queryKey: ['threads'] }),
         queryClient.cancelQueries({ queryKey: ['thread'] }),
@@ -328,8 +368,10 @@ export function useThreadActions(thread: ThreadItem) {
       ]);
 
       patchThreadCaches(queryClient, effectiveId, (current) => updateRepostsState(current, isReposted));
+      return { isReposted };
     },
-    onError: (_, isReposted) => {
+    onError: (_err, _vars, context) => {
+      const isReposted = context?.isReposted ?? false;
       patchThreadCaches(queryClient, effectiveId, (current) => revertRepostsState(current, isReposted));
     },
     onSettled: async () => {

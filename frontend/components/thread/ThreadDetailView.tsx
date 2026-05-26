@@ -225,9 +225,9 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
             isLiked={root.is_liked === true}
             isReposted={root.is_reposted === true}
             isBookmarked={root.is_bookmarked === true}
-            onLike={() => { if (!like.isPending) like.mutate(root.is_liked === true); }}
-            onRepost={() => { if (!repost.isPending) repost.mutate(root.is_reposted === true); }}
-            onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(root.is_bookmarked === true); }}
+            onLike={() => { if (!like.isPending) like.mutate(); }}
+            onRepost={() => { if (!repost.isPending) repost.mutate(); }}
+            onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
           />
         </div>
       </article>

@@ -37,17 +37,17 @@ function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps)
       replyingToId={replyingToId}
       onLike={() => {
         if (!like.isPending) {
-          like.mutate(thread.is_liked === true);
+          like.mutate();
         }
       }}
       onRepost={() => {
         if (!repost.isPending) {
-          repost.mutate(thread.is_reposted === true);
+          repost.mutate();
         }
       }}
       onBookmark={() => {
         if (!bookmark.isPending) {
-          bookmark.mutate(thread.is_bookmarked === true);
+          bookmark.mutate();
         }
       }}
     />
@@ -65,9 +65,9 @@ function LikeCard({ thread }: { thread: ThreadItem }) {
   return (
     <ProfileThreadCard
       thread={patchedThread}
-      onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
-      onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
-      onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
+      onLike={() => { if (!like.isPending) like.mutate(); }}
+      onRepost={() => { if (!repost.isPending) repost.mutate(); }}
+      onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
     />
   );
 }
