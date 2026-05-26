@@ -11,9 +11,9 @@ function ConnectedReply({ thread }: { thread: ThreadItem }) {
     <ProfileThreadCard
       thread={thread}
       hideParentContext
-      onLike={() => { if (!like.isPending) like.mutate(thread.is_liked === true); }}
-      onRepost={() => { if (!repost.isPending) repost.mutate(thread.is_reposted === true); }}
-      onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true); }}
+      onLike={() => { if (!like.isPending) like.mutate(); }}
+      onRepost={() => { if (!repost.isPending) repost.mutate(); }}
+      onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
     />
   );
 }

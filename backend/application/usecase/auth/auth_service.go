@@ -304,7 +304,10 @@ func (s *AuthService) RefreshToken(ctx context.Context, sid string) (usermodel.T
 
 	var userID uint
 	if err := s.cache.Get(ctx, sessionKey(sid), &userID); err != nil {
-		return usermodel.TokenPair{}, errors.New("session expired or revoked")
+		if s.cache.Miss(err) {
+			return usermodel.TokenPair{}, authsvciface.ErrSessionRevoked
+		}
+		return usermodel.TokenPair{}, authsvciface.ErrSessionTransient
 	}
 
 	user, err := s.userRepo.FindByID(userID)
@@ -314,7 +317,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, sid string) (usermodel.T
 
 	dur := sessionDuration()
 	if err := s.cache.Set(ctx, sessionKey(sid), userID, dur); err != nil {
-		return usermodel.TokenPair{}, errors.New("failed to extend session")
+		return usermodel.TokenPair{}, authsvciface.ErrSessionTransient
 	}
 	_ = s.cache.SAdd(ctx, userSessionsKey(userID), sid, dur)
 

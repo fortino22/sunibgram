@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { type AuthUser, useAuthStore } from '@/stores/authStore';
+import { refreshOnce } from '@/lib/auth/refreshClient';
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -14,12 +15,6 @@ interface JwtPayload {
   email: string;
   role_id: number;
   role_name: string;
-}
-
-interface RefreshResponse {
-  authenticated?: boolean;
-  access_token?: string;
-  sid?: string;
 }
 
 function isJwtPayload(value: unknown): value is JwtPayload {
@@ -52,13 +47,7 @@ function decodeJwtUser(token: string): AuthUser | null {
   }
 }
 
-function isRefreshResponse(value: unknown): value is RefreshResponse {
-  if (typeof value !== 'object' || value === null) return false;
-
-  const response = value as Record<string, unknown>;
-  if (typeof response.authenticated === 'boolean') return true;
-  return typeof response.access_token === 'string';
-}
+const TRANSIENT_BACKOFF_MS = [400, 800, 1600, 3200];
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const isAuthenticated = useAuthStore((s: { isAuthenticated: boolean }) => s.isAuthenticated);
@@ -72,7 +61,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     let cancelled = false;
 
-    const refresh = async () => {
+    const attempt = async () => {
       const { token, setToken, setUser, setInitialized, logout } = useAuthStore.getState();
 
       if (token) {
@@ -80,42 +69,40 @@ export function AuthGuard({ children }: AuthGuardProps) {
         return;
       }
 
-      try {
-        const response = await fetch('/auth/refresh');
-
-        if (!response.ok) {
-          throw new Error('Refresh failed');
-        }
-
-        const data: unknown = await response.json();
-        if (!isRefreshResponse(data)) {
-          throw new Error('Invalid refresh response');
-        }
-
+      for (let i = 0; i <= TRANSIENT_BACKOFF_MS.length; i++) {
         if (cancelled) return;
 
-        const accessToken = data.access_token;
-        const authed = data.authenticated ?? Boolean(accessToken);
-        if (!authed || !accessToken) {
+        const result = await refreshOnce();
+        if (cancelled) return;
+
+        if (result.status === 'ok') {
+          setToken(result.accessToken, result.sid);
+          setUser(decodeJwtUser(result.accessToken));
+          setInitialized(true);
+          return;
+        }
+
+        if (result.status === 'revoked') {
           logout();
           setInitialized(true);
           router.replace('/login');
           return;
         }
 
-        setToken(accessToken, data.sid ?? null);
-        setUser(decodeJwtUser(accessToken));
-        setInitialized(true);
-      } catch {
-        if (cancelled) return;
-
-        logout();
-        setInitialized(true);
-        router.replace('/login');
+        // transient — backoff + retry, do NOT logout
+        const delay = TRANSIENT_BACKOFF_MS[i];
+        if (delay === undefined) break;
+        await new Promise<void>((resolve) => setTimeout(resolve, delay));
       }
+
+      if (cancelled) return;
+      // exhausted retries — mark initialized but do NOT logout; keep cookie
+      // user sees loading -> login prompt only after explicit revoke
+      setInitialized(true);
+      router.replace('/login');
     };
 
-    void refresh();
+    void attempt();
 
     return () => {
       cancelled = true;

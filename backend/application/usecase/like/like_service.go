@@ -82,7 +82,7 @@ func (s *LikeService) Like(userID, threadID uint) error {
 		return err
 	}
 	if exists {
-		return errors.New("already liked")
+		return nil
 	}
 	if err := s.likeRepo.Save(&likemodel.Like{UserID: userID, ThreadID: threadID}); err != nil {
 		return err
@@ -113,7 +113,7 @@ func (s *LikeService) Unlike(userID, threadID uint) error {
 		return err
 	}
 	if !exists {
-		return errors.New("not liked")
+		return nil
 	}
 	if err := s.likeRepo.Delete(userID, threadID); err != nil {
 		return err

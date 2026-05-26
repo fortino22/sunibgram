@@ -1,6 +1,7 @@
 package authctrl
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -196,7 +197,14 @@ func (c *AuthController) Refresh(ctx *fiber.Ctx) error {
 
 	pair, err := c.authService.RefreshToken(ctx.Context(), req.SID)
 	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
+		switch {
+		case errors.Is(err, authsvciface.ErrSessionRevoked):
+			return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
+		case errors.Is(err, authsvciface.ErrSessionTransient):
+			return ctx.Status(fiber.StatusServiceUnavailable).JSON(authdto.ErrorResponse{Message: err.Error()})
+		default:
+			return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
+		}
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(authdto.RefreshResponse{

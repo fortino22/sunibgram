@@ -2,9 +2,15 @@ package authsvciface
 
 import (
 	"context"
+	"errors"
 
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+)
+
+var (
+	ErrSessionRevoked   = errors.New("session expired or revoked")
+	ErrSessionTransient = errors.New("session lookup temporarily unavailable")
 )
 
 type IAuthService interface {

@@ -33,13 +33,13 @@ function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps)
       replyingTo={replyingTo}
       replyingToId={replyingToId}
       onLike={() => {
-        if (!like.isPending) like.mutate(thread.is_liked === true);
+        if (!like.isPending) like.mutate();
       }}
       onRepost={() => {
-        if (!repost.isPending) repost.mutate(thread.is_reposted === true);
+        if (!repost.isPending) repost.mutate();
       }}
       onBookmark={() => {
-        if (!bookmark.isPending) bookmark.mutate(thread.is_bookmarked === true);
+        if (!bookmark.isPending) bookmark.mutate();
       }}
     />
   );
