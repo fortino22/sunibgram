@@ -54,7 +54,10 @@ func (r *BookmarkRepository) Delete(userID, threadID uint) error {
 	r.base.InvalidateUser(ctx, userID)
 	r.patchCount(threadID, "bookmark_count", -1)
 	infrarepoShared.ViewerFlagRemove(r.base.Cache, userID, "bookmarked", threadID)
-	_ = r.base.Cache.InvalidateTag(ctx, infrarepoShared.CommunityThreadsGlobalTag())
+	_ = r.base.Cache.InvalidateTags(ctx,
+		infrarepoShared.CommunityThreadsGlobalTag(),
+		infrarepoShared.ThreadRootsGlobalTag(),
+	)
 	infrarepoShared.InvalidateExploreCache(ctx, r.base.Cache)
 	return nil
 }

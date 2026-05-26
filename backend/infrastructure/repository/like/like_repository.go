@@ -59,7 +59,10 @@ func (r *LikeRepository) Delete(userID, threadID uint) error {
 	r.base.InvalidateUser(ctx, userID)
 	r.patchCount(threadID, "like_count", -1)
 	infrarepoShared.ViewerFlagRemove(r.base.Cache, userID, "liked", threadID)
-	_ = r.base.Cache.InvalidateTag(ctx, infrarepoShared.CommunityThreadsGlobalTag())
+	_ = r.base.Cache.InvalidateTags(ctx,
+		infrarepoShared.CommunityThreadsGlobalTag(),
+		infrarepoShared.ThreadRootsGlobalTag(),
+	)
 	infrarepoShared.InvalidateExploreTopCache(ctx, r.base.Cache)
 	return nil
 }
