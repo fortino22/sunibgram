@@ -128,7 +128,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
       )}
 
       <div style={{ padding: (thread.reposted_by_username || thread.community) ? '2px 20px 14px' : '14px 20px', display: 'flex', gap: 12 }}>
-        <Link href={`/profile/${thread.author.id}`} onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0 }}>
+        <Link href={`/profile/${thread.author.id}`} onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
           <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
         </Link>
 

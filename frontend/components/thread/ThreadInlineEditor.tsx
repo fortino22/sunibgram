@@ -186,69 +186,140 @@ export function ThreadInlineEditor({
   }
 
   return (
-    <div className="mt-2" onClick={(event) => event.stopPropagation()}>
-      <textarea
-        value={content}
-        onChange={(event) => setContent(event.target.value)}
-        rows={compact ? 4 : 5}
-        autoFocus
-        className="w-full resize-y rounded-2xl border bg-transparent px-4 py-4 text-[15px] outline-none"
-        style={{
-          borderColor: 'var(--border)',
-          color: 'var(--text)',
-          lineHeight: 1.6,
-          minHeight: compact ? 120 : 140,
-        }}
-      />
+    <div
+      className="mt-3 overflow-hidden rounded-2xl border"
+      style={{ borderColor: 'var(--border)' }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      {/* Content area */}
+      <div className="px-5 pt-5 pb-4">
+        <textarea
+          value={content}
+          onChange={(event) => setContent(event.target.value)}
+          rows={compact ? 5 : 6}
+          autoFocus
+          className="w-full resize-y bg-transparent text-base outline-none"
+          style={{
+            color: 'var(--text)',
+            lineHeight: 1.7,
+            minHeight: compact ? 148 : 172,
+            border: 'none',
+          }}
+        />
 
-      {initialMedia.length > 0 && (
-        <div className="mt-4">
-          <div
-            className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
-            style={{ color: 'var(--text-tertiary)' }}
-          >
-            Current media
+        {initialMedia.length > 0 && (
+          <div className="mt-4">
+            <div
+              className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              Current media
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {initialMedia.map((item) => {
+                const removed = removedMediaIds.includes(item.media_id);
+                const kind = getRemoteMediaKind(item.url);
+
+                return (
+                  <div
+                    key={item.media_id}
+                    className="relative overflow-hidden rounded-2xl border"
+                    style={{
+                      borderColor: 'var(--border)',
+                      background: 'var(--bg-subtle)',
+                      opacity: removed ? 0.55 : 1,
+                    }}
+                  >
+                    {kind === 'video' ? (
+                      <video
+                        src={item.url}
+                        controls
+                        muted
+                        playsInline
+                        className="block max-h-55 min-h-35 w-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={item.url}
+                        alt=""
+                        className="block max-h-55 min-h-35 w-full object-cover"
+                      />
+                    )}
+
+                    {removed && (
+                      <div
+                        className="absolute inset-x-0 bottom-0 px-3 py-2 text-xs font-medium"
+                        style={{
+                          background: 'rgba(15, 20, 25, 0.72)',
+                          color: '#fff',
+                        }}
+                      >
+                        Removed from this edit
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        stopEvent(event);
+                        toggleExistingMedia(item.media_id);
+                      }}
+                      aria-label={removed ? 'Keep current media' : 'Remove current media'}
+                      className="absolute right-2 top-2 inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2"
+                      style={{
+                        border: '1px solid rgba(255,255,255,0.22)',
+                        background: removed ? 'rgba(15,20,25,0.78)' : 'rgba(0,0,0,0.55)',
+                        color: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {removed ? 'Undo' : <X size={14} />}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {initialMedia.map((item) => {
-              const removed = removedMediaIds.includes(item.media_id);
-              const kind = getRemoteMediaKind(item.url);
+        )}
 
-              return (
+        {previews.length > 0 && (
+          <div className="mt-4">
+            <div
+              className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              New uploads
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {previews.map((preview) => (
                 <div
-                  key={item.media_id}
+                  key={`${preview.file.name}-${preview.file.lastModified}-${preview.file.size}`}
                   className="relative overflow-hidden rounded-2xl border"
                   style={{
                     borderColor: 'var(--border)',
                     background: 'var(--bg-subtle)',
-                    opacity: removed ? 0.55 : 1,
                   }}
                 >
-                  {kind === 'video' ? (
+                  {preview.kind === 'video' ? (
                     <video
-                      src={item.url}
+                      src={preview.url}
                       controls
                       muted
                       playsInline
-                      className="block max-h-[220px] min-h-[140px] w-full object-cover"
+                      className="block max-h-55 min-h-35 w-full object-cover"
+                    />
+                  ) : preview.kind === 'image' ? (
+                    <img
+                      src={preview.url}
+                      alt={preview.file.name}
+                      className="block max-h-55 min-h-35 w-full object-cover"
                     />
                   ) : (
-                    <img
-                      src={item.url}
-                      alt=""
-                      className="block max-h-[220px] min-h-[140px] w-full object-cover"
-                    />
-                  )}
-
-                  {removed && (
                     <div
-                      className="absolute inset-x-0 bottom-0 px-3 py-2 text-xs font-medium"
-                      style={{
-                        background: 'rgba(15, 20, 25, 0.72)',
-                        color: '#fff',
-                      }}
+                      className="flex min-h-35 items-center justify-center px-4 text-center text-sm"
+                      style={{ color: 'var(--text-tertiary)' }}
                     >
-                      Removed from this edit
+                      {preview.file.name}
                     </div>
                   )}
 
@@ -256,91 +327,55 @@ export function ThreadInlineEditor({
                     type="button"
                     onClick={(event) => {
                       stopEvent(event);
-                      toggleExistingMedia(item.media_id);
+                      removeSelectedFile(preview.file);
                     }}
-                    aria-label={removed ? 'Keep current media' : 'Remove current media'}
-                    className="absolute right-2 top-2 inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2"
+                    aria-label={`Remove ${preview.file.name}`}
+                    className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full"
                     style={{
                       border: '1px solid rgba(255,255,255,0.22)',
-                      background: removed ? 'rgba(15,20,25,0.78)' : 'rgba(0,0,0,0.55)',
+                      background: 'rgba(0,0,0,0.55)',
                       color: '#fff',
                       cursor: 'pointer',
                     }}
                   >
-                    {removed ? 'Undo' : <X size={14} />}
+                    <X size={14} />
                   </button>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {previews.length > 0 && (
-        <div className="mt-4">
+        {mediaMessage && (
           <div
-            className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
-            style={{ color: 'var(--text-tertiary)' }}
+            className="mt-3 rounded-xl px-3 py-2 text-[13px]"
+            style={{
+              background: hasUnsupportedMediaState ? 'var(--amber-soft)' : 'var(--bg-subtle)',
+              color: hasUnsupportedMediaState ? 'var(--amber)' : 'var(--text-tertiary)',
+            }}
           >
-            New uploads
+            {mediaMessage}
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {previews.map((preview) => (
-              <div
-                key={`${preview.file.name}-${preview.file.lastModified}-${preview.file.size}`}
-                className="relative overflow-hidden rounded-2xl border"
-                style={{
-                  borderColor: 'var(--border)',
-                  background: 'var(--bg-subtle)',
-                }}
-              >
-                {preview.kind === 'video' ? (
-                  <video
-                    src={preview.url}
-                    controls
-                    muted
-                    playsInline
-                    className="block max-h-[220px] min-h-[140px] w-full object-cover"
-                  />
-                ) : preview.kind === 'image' ? (
-                  <img
-                    src={preview.url}
-                    alt={preview.file.name}
-                    className="block max-h-[220px] min-h-[140px] w-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="flex min-h-[140px] items-center justify-center px-4 text-center text-sm"
-                    style={{ color: 'var(--text-tertiary)' }}
-                  >
-                    {preview.file.name}
-                  </div>
-                )}
+        )}
 
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    stopEvent(event);
-                    removeSelectedFile(preview.file);
-                  }}
-                  aria-label={`Remove ${preview.file.name}`}
-                  className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full"
-                  style={{
-                    border: '1px solid rgba(255,255,255,0.22)',
-                    background: 'rgba(0,0,0,0.55)',
-                    color: '#fff',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
+        {errorMessage && (
+          <div
+            className="mt-3 rounded-xl px-3 py-2 text-[13px]"
+            style={{
+              background: 'var(--coral-soft)',
+              color: 'var(--coral)',
+            }}
+          >
+            {errorMessage}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      {/* Action footer */}
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
+        style={{ borderTop: '1px solid var(--border)' }}
+      >
         <div className="flex flex-wrap items-center gap-3">
           <input
             ref={inputRef}
@@ -353,7 +388,7 @@ export function ThreadInlineEditor({
           />
           <label
             htmlFor={inputId}
-            className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold"
+            className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
             style={{
               border: '1px solid var(--border)',
               background: 'transparent',
@@ -372,64 +407,40 @@ export function ThreadInlineEditor({
             </span>
           )}
         </div>
-      </div>
 
-      {mediaMessage && (
-        <div
-          className="mt-3 rounded-xl px-3 py-2 text-[13px]"
-          style={{
-            background: hasUnsupportedMediaState ? 'var(--amber-soft)' : 'var(--bg-subtle)',
-            color: hasUnsupportedMediaState ? 'var(--amber)' : 'var(--text-tertiary)',
-          }}
-        >
-          {mediaMessage}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={pending}
+            className="inline-flex min-h-10 min-w-24 items-center justify-center rounded-full px-5 py-2.5 text-sm font-bold"
+            style={{
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'var(--text)',
+              cursor: pending ? 'not-allowed' : 'pointer',
+              opacity: pending ? 0.5 : 1,
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={(event) => void handleSubmit(event)}
+            disabled={!canSave}
+            className="inline-flex min-h-10 min-w-20 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
+            style={{
+              background: 'var(--accent)',
+              border: 0,
+              color: '#fff',
+              cursor: canSave ? 'pointer' : 'not-allowed',
+              opacity: canSave ? 1 : 0.5,
+            }}
+          >
+            {pending && <LoaderCircle size={15} className="animate-spin" />}
+            <span>{pending ? 'Saving' : 'Save'}</span>
+          </button>
         </div>
-      )}
-
-      {errorMessage && (
-        <div
-          className="mt-3 rounded-xl px-3 py-2 text-[13px]"
-          style={{
-            background: 'var(--coral-soft)',
-            color: 'var(--coral)',
-          }}
-        >
-          {errorMessage}
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
-        <button
-          type="button"
-          onClick={handleCancel}
-          disabled={pending}
-          className="inline-flex min-h-10 min-w-[96px] items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold"
-          style={{
-            border: '1px solid var(--border)',
-            background: 'transparent',
-            color: 'var(--text)',
-            cursor: pending ? 'not-allowed' : 'pointer',
-            opacity: pending ? 0.5 : 1,
-          }}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={(event) => void handleSubmit(event)}
-          disabled={!canSave}
-          className="inline-flex min-h-10 min-w-[108px] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
-          style={{
-            background: 'var(--accent)',
-            border: 0,
-            color: '#fff',
-            cursor: canSave ? 'pointer' : 'not-allowed',
-            opacity: canSave ? 1 : 0.5,
-          }}
-        >
-          {pending && <LoaderCircle size={16} className="animate-spin" />}
-          <span>{pending ? 'Saving' : 'Save'}</span>
-        </button>
       </div>
     </div>
   );

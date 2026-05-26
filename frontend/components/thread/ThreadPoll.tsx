@@ -143,7 +143,7 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
 
   return (
     <div
-      onClickCapture={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
       style={{ marginTop: compact ? 12 : 16 }}
     >
       <div className="flex flex-col" style={{ gap: 8 }}>

@@ -124,49 +124,47 @@ function patchThreadResponse(thread: ThreadResponse, pollId: number, optionId: n
   };
 }
 
+function patchFeedOrList(current: unknown, pollId: number, optionId: number): unknown {
+  if (isInfiniteThreadListData(current)) {
+    return {
+      ...current,
+      pages: current.pages.map((page) => ({
+        ...page,
+        data: page.data.map((thread) => patchThreadItem(thread, pollId, optionId)),
+      })),
+    };
+  }
+  if (isThreadListResponse(current)) {
+    return { ...current, data: current.data.map((thread) => patchThreadItem(thread, pollId, optionId)) };
+  }
+  return current;
+}
+
 function patchPollCaches(queryClient: QueryClient, pollId: number, optionId: number, communityId?: number) {
   queryClient.setQueriesData(
     { queryKey: ['threads'] },
-    (current: unknown) =>
-      isThreadListResponse(current)
-        ? { ...current, data: current.data.map((thread) => patchThreadItem(thread, pollId, optionId)) }
-        : current
+    (current: unknown) => patchFeedOrList(current, pollId, optionId)
   );
   queryClient.setQueriesData(
     { queryKey: ['likes'] },
-    (current: unknown) =>
-      isThreadListResponse(current)
-        ? { ...current, data: current.data.map((thread) => patchThreadItem(thread, pollId, optionId)) }
-        : current
+    (current: unknown) => patchFeedOrList(current, pollId, optionId)
   );
   queryClient.setQueriesData(
     { queryKey: ['bookmarks'] },
-    (current: unknown) =>
-      isThreadListResponse(current)
-        ? { ...current, data: current.data.map((thread) => patchThreadItem(thread, pollId, optionId)) }
-        : current
+    (current: unknown) => patchFeedOrList(current, pollId, optionId)
   );
   queryClient.setQueriesData(
     { queryKey: ['explore'] },
-    (current: unknown) =>
-      isThreadListResponse(current)
-        ? { ...current, data: current.data.map((thread) => patchThreadItem(thread, pollId, optionId)) }
-        : current
+    (current: unknown) => patchFeedOrList(current, pollId, optionId)
   );
   queryClient.setQueriesData(
     { queryKey: ['communities', 'threads'] },
-    (current: unknown) =>
-      isThreadListResponse(current)
-        ? { ...current, data: current.data.map((thread) => patchThreadItem(thread, pollId, optionId)) }
-        : current
+    (current: unknown) => patchFeedOrList(current, pollId, optionId)
   );
   if (communityId !== undefined) {
     queryClient.setQueriesData(
       { queryKey: ['community', communityId, 'threads'] },
-      (current: unknown) =>
-        isThreadListResponse(current)
-          ? { ...current, data: current.data.map((thread) => patchThreadItem(thread, pollId, optionId)) }
-          : current
+      (current: unknown) => patchFeedOrList(current, pollId, optionId)
     );
   }
   queryClient.setQueriesData(
@@ -175,16 +173,7 @@ function patchPollCaches(queryClient: QueryClient, pollId: number, optionId: num
   );
   queryClient.setQueriesData(
     { queryKey: ['thread-replies'] },
-    (current: unknown) =>
-      isInfiniteThreadListData(current)
-        ? {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              data: page.data.map((reply) => patchThreadItem(reply, pollId, optionId)),
-            })),
-          }
-        : current
+    (current: unknown) => patchFeedOrList(current, pollId, optionId)
   );
   queryClient.setQueriesData(
     { queryKey: ['thread'] },

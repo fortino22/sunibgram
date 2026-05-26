@@ -20,6 +20,7 @@ export function NewPostModal() {
         alignItems: 'flex-start',
         justifyContent: 'center',
         paddingTop: 80,
+        animation: 'modal-backdrop-in 0.18s ease',
       }}
     >
       <div
@@ -32,6 +33,7 @@ export function NewPostModal() {
           overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
           margin: '0 16px',
+          animation: 'modal-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         <div style={{
