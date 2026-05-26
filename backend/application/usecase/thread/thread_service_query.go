@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/sunibgram/application/helper"
+	communitymodel "github.com/sunibgram/domain/model/community"
 	exploremodel "github.com/sunibgram/domain/model/explore"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
@@ -158,8 +159,12 @@ func (s *ThreadService) filterCommunityMemberFeed(requesterID uint, threads []th
 }
 
 func (s *ThreadService) ensureCommunityThreadAccess(communityID, userID uint) error {
-	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
 		return errors.New("community not found")
+	}
+	if community.Visibility == communitymodel.CommunityVisibilityPublic {
+		return nil
 	}
 	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
 		return errors.New("forbidden")
