@@ -1606,10 +1606,10 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               type="submit"
               disabled={!canSubmit}
               style={{
-                background: 'var(--accent)',
+                background: '#fff',
                 border: 'none',
-                borderRadius: 10,
-                color: '#fff',
+                borderRadius: 9999,
+                color: '#000',
                 fontWeight: 600,
                 fontSize: 14,
                 padding: '9px 20px',

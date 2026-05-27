@@ -57,7 +57,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
               flex: 1,
               minWidth: 0,
               minHeight: '100vh',
-              background: 'var(--bg-card)',
+              background: 'var(--bg)',
               borderLeft: '1px solid var(--border)',
               borderRight: '1px solid var(--border)',
             }}

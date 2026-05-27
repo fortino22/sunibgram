@@ -236,10 +236,10 @@ export function CreateEventThreadModal({
             style={{
               width: '100%',
               padding: '12px',
-              borderRadius: 999,
+              borderRadius: 9999,
               border: 'none',
-              background: 'var(--text)',
-              color: 'var(--bg)',
+              background: '#fff',
+              color: '#000',
               fontSize: 15,
               fontWeight: 700,
               cursor: isPending || !content.trim() ? 'default' : 'pointer',

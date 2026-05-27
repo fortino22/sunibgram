@@ -202,10 +202,10 @@ export function CreateCommunityThreadModal({
               disabled={isPending || !content.trim()}
               style={{
                 padding: '8px 20px',
-                borderRadius: 999,
+                borderRadius: 9999,
                 border: 'none',
-                background: 'var(--text)',
-                color: 'var(--bg)',
+                background: '#fff',
+                color: '#000',
                 fontSize: 14,
                 fontWeight: 700,
                 cursor: isPending || !content.trim() ? 'default' : 'pointer',

@@ -68,15 +68,14 @@ body {
 
 /* Responsive layout */
 .sidebar-nav {
-  width: 260px;
+  width: 280px;
   flex-shrink: 0;
   height: 100vh;
   position: sticky;
   top: 0;
-  background: var(--sidebar);
+  background: var(--bg);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border);
   overflow-y: auto;
 }
 

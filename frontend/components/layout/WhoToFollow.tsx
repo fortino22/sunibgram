@@ -77,6 +77,7 @@ export function WhoToFollow() {
 
       <button
         type="button"
+        onClick={() => router.push('/connect')}
         className="w-full text-left text-[15px] transition-colors"
         style={{ padding: '12px 16px', color: 'var(--accent)' }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
