@@ -89,8 +89,8 @@ export default function DiscoverCommunitiesPage() {
       >
         <button
           onClick={() => router.back()}
+          className="btn-ghost"
           style={{
-            background: 'none',
             border: 'none',
             cursor: 'pointer',
             padding: '4px 6px',
@@ -138,6 +138,7 @@ export default function DiscoverCommunitiesPage() {
           {inputValue && (
             <button
               onClick={() => { setInputValue(''); setQuery(''); inputRef.current?.focus(); }}
+              className="hover-dim"
               style={{
                 position: 'absolute',
                 right: 10,
@@ -172,10 +173,10 @@ export default function DiscoverCommunitiesPage() {
               <button
                 key={tab}
                 onClick={() => setSearchTab(tab)}
+                className="btn-ghost"
                 style={{
                   flex: 1,
                   padding: '12px 0',
-                  background: 'none',
                   border: 'none',
                   borderBottom: searchTab === tab ? '2px solid var(--text)' : '2px solid transparent',
                   color: searchTab === tab ? 'var(--text)' : 'var(--text-tertiary)',
@@ -288,6 +289,7 @@ export default function DiscoverCommunitiesPage() {
           >
             <button
               onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(undefined); }}
+              className="hover-dim"
               style={{
                 padding: '6px 16px',
                 borderRadius: 999,
@@ -307,6 +309,7 @@ export default function DiscoverCommunitiesPage() {
               <button
                 key={c.id}
                 onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(c.id); }}
+                className="hover-dim"
                 style={{
                   padding: '6px 16px',
                   borderRadius: 999,

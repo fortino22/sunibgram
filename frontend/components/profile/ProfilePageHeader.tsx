@@ -30,8 +30,8 @@ export function ProfilePageHeader({ name, threadCount }: ProfilePageHeaderProps)
         type="button"
         aria-label="Go back"
         onClick={() => router.back()}
+        className="btn-ghost"
         style={{
-          background: 'none',
           border: 'none',
           cursor: 'pointer',
           color: 'var(--text)',

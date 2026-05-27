@@ -50,6 +50,7 @@ export interface PostComposerProps {
   placeholder?: string;
   parentId?: number;
   formId?: string;
+  autoFocus?: boolean;
   onSuccess?: () => void;
   preselectedEventId?: string;
   preselectedEventTitle?: string;
@@ -152,7 +153,7 @@ function buildPollDuration(values: Pick<PollFormValues, 'days' | 'hours' | 'minu
   return values.days * 24 * 60 * 60 + values.hours * 60 * 60 + values.minutes * 60;
 }
 
-export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess, preselectedEventId, preselectedEventTitle, preselectedIsOfficialEvent }: PostComposerProps) {
+export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, autoFocus = false, onSuccess, preselectedEventId, preselectedEventTitle, preselectedIsOfficialEvent }: PostComposerProps) {
   const isReply = parentId !== undefined;
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -813,7 +814,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
                   {communities.length > 0 && (
                     <>
-                      <div style={{ padding: '8px 16px 4px', fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div style={{ padding: '8px 16px 4px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
                         My Communities
                       </div>
                       {communities.map((c) => (
@@ -861,7 +862,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   )}
                   {joinedEvents.length > 0 && (
                     <>
-                      <div style={{ padding: '8px 16px 4px', fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div style={{ padding: '8px 16px 4px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
                         My Events
                       </div>
                       {joinedEvents.map((e) => (
@@ -912,6 +913,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={placeholder}
+            autoFocus={autoFocus}
             rows={isReply ? 2 : 2}
             style={{
               width: '100%',
@@ -1385,7 +1387,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                 <div
                   style={{
                     position: 'absolute',
-                    bottom: 'calc(100% + 6px)',
+                    top: 'calc(100% + 6px)',
                     left: 0,
                     minWidth: 240,
                     background: 'var(--bg-card)',
@@ -1604,6 +1606,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
             <button
               type="submit"
+              className="btn-solid"
               disabled={!canSubmit}
               style={{
                 background: '#fff',

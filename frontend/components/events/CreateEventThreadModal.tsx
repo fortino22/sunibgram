@@ -232,6 +232,7 @@ export function CreateEventThreadModal({
 
           <button
             type="submit"
+            className="btn-solid"
             disabled={isPending || !content.trim()}
             style={{
               width: '100%',

@@ -53,9 +53,9 @@ export function CommunityRequestCard({
         <button
           disabled={declinePending}
           onClick={() => onDecline(request.user_id)}
+          className="btn-ghost"
           style={{
             ...btnBase,
-            background: 'transparent',
             border: '1px solid var(--border)',
             color: 'var(--text)',
             opacity: declinePending ? 0.6 : 1,
@@ -66,6 +66,7 @@ export function CommunityRequestCard({
         <button
           disabled={approvePending}
           onClick={() => onApprove(request.user_id)}
+          className="btn-solid"
           style={{
             ...btnBase,
             background: 'var(--text)',

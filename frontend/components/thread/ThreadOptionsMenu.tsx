@@ -112,8 +112,8 @@ export function ThreadOptionsMenu({
         aria-expanded={open}
         onClick={handleToggle}
         disabled={disabled}
-        onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.background = 'var(--sidebar-hover)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.background = 'var(--x-blue-soft)'; e.currentTarget.style.color = 'var(--x-blue)'; } }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -126,7 +126,7 @@ export function ThreadOptionsMenu({
           background: 'transparent',
           opacity: disabled ? 0.5 : 1,
           cursor: disabled ? 'not-allowed' : 'pointer',
-          transition: 'background 0.15s ease',
+          transition: 'background 0.15s ease, color 0.15s ease',
         }}
       >
         <MoreHorizontal size={triggerIconSize} strokeWidth={1.9} />

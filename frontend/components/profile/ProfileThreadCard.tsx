@@ -7,6 +7,7 @@ import { Users, Repeat2, Pin } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { ActionBar } from '@/components/shared/ActionBar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
+import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
@@ -42,6 +43,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const [isEditing, setIsEditing] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -69,10 +71,13 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
     <>
     <article
       onClick={() => router.push(`/thread/${thread.id}`)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-card)',
+        background: hovered ? 'var(--bg-hover)' : 'var(--bg-card)',
         cursor: 'pointer',
+        transition: 'background 0.12s ease',
       }}
     >
       {thread.reposted_by_username && (
@@ -128,20 +133,24 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
       )}
 
       <div style={{ padding: (thread.reposted_by_username || thread.community) ? '2px 20px 8px' : '14px 20px 8px', display: 'flex', gap: 12 }}>
-        <Link href={`/profile/${thread.author.id}`} onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
-          <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
-        </Link>
+        <UserHoverCard userId={thread.author.id} style={{ flexShrink: 0, alignSelf: 'flex-start' }}>
+          <Link href={`/profile/${thread.author.id}`} onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+            <Avatar username={thread.author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
+          </Link>
+        </UserHoverCard>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ marginBottom: replyUsername ? 2 : 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Link
-                href={`/profile/${thread.author.id}`}
-                onClick={(e) => e.stopPropagation()}
-                style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em', textDecoration: 'none' }}
-              >
-                {thread.author.name || thread.author.username}
-              </Link>
+              <UserHoverCard userId={thread.author.id}>
+                <Link
+                  href={`/profile/${thread.author.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em', textDecoration: 'none' }}
+                >
+                  {thread.author.name || thread.author.username}
+                </Link>
+              </UserHoverCard>
               {thread.author.is_premium && <VerifiedBadge size={15} />}
               <Link
                 href={`/profile/${thread.author.id}`}

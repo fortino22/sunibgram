@@ -199,6 +199,7 @@ export function CreateCommunityThreadModal({
 
             <button
               type="submit"
+              className="btn-solid"
               disabled={isPending || !content.trim()}
               style={{
                 padding: '8px 20px',

@@ -200,7 +200,8 @@ export default function CommunityDetailPage() {
       >
         <button
           onClick={() => router.back()}
-          style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}
+          className="btn-ghost"
+          style={{ border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}
         >
           <ArrowLeft size={22} />
         </button>
@@ -209,7 +210,8 @@ export default function CommunityDetailPage() {
         </div>
         <button
           onClick={() => router.push('/communities/discover')}
-          style={{ background: 'none', border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}
+          className="btn-ghost"
+          style={{ border: 'none', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4, flexShrink: 0 }}
           title="Search communities"
         >
           <Search size={20} />
@@ -248,6 +250,7 @@ export default function CommunityDetailPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            className="hover-dim"
             style={{
               flex: 1,
               padding: '12px 0',

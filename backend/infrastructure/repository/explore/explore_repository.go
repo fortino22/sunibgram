@@ -168,6 +168,7 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 			communities.community_id,
 			communities.name,
 			communities.member_count,
+			COALESCE(communities.banner_object_name, '') AS banner_object_name,
 			(community_members.user_id IS NOT NULL) AS is_join
 		`).
 		Joins("LEFT JOIN community_members ON community_members.community_id = communities.community_id AND community_members.user_id = ?", requesterID).

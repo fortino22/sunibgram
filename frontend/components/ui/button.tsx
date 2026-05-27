@@ -19,13 +19,28 @@ const sizeClasses: Record<ButtonSize, string> = {
   icon: 'h-10 w-10',
 };
 
+const variantBackground: Record<ButtonVariant, string> = {
+  default: 'var(--accent)',
+  outline: 'var(--bg-card)',
+  ghost: 'transparent',
+};
+
+const variantHoverBackground: Record<ButtonVariant, string> = {
+  default: 'var(--accent-hover)',
+  outline: 'var(--bg-hover)',
+  ghost: 'var(--bg-hover)',
+};
+
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', style, ...props }, ref) => {
+  ({ className, variant = 'default', size = 'default', style, onMouseEnter, onMouseLeave, ...props }, ref) => {
+    const [hovered, setHovered] = React.useState(false);
+    const showHover = hovered && !props.disabled;
+
     return (
       <button
         ref={ref}
@@ -37,13 +52,16 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           sizeClasses[size],
           className
         )}
+        onMouseEnter={(e) => {
+          setHovered(true);
+          onMouseEnter?.(e);
+        }}
+        onMouseLeave={(e) => {
+          setHovered(false);
+          onMouseLeave?.(e);
+        }}
         style={{
-          background:
-            variant === 'default'
-              ? 'var(--accent)'
-              : variant === 'ghost'
-                ? 'transparent'
-                : 'var(--bg-card)',
+          background: showHover ? variantHoverBackground[variant] : variantBackground[variant],
           ...style,
         }}
         {...props}

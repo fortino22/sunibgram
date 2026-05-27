@@ -252,6 +252,7 @@ export default function MessagesPage() {
             </div>
             <button
               onClick={() => setShowNewChat(true)}
+              className="btn-solid"
               style={{
                 padding: '10px 24px',
                 borderRadius: 9999,

@@ -220,6 +220,7 @@ export function ReportPostModal({ postId, onClose }: ReportPostModalProps) {
 
           <button
             type="submit"
+            className="btn-solid"
             disabled={!canSubmit}
             style={{
               width: '100%',

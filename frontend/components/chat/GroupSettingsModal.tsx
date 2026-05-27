@@ -322,6 +322,7 @@ export function GroupSettingsModal({ room, onClose, onLeave }: GroupSettingsModa
                 </div>
 
                 <button
+                  className="btn-solid"
                   onClick={handleSave}
                   disabled={!name.trim() || !hasChanges || update.isPending}
                   style={{
@@ -336,7 +337,7 @@ export function GroupSettingsModal({ room, onClose, onLeave }: GroupSettingsModa
                     cursor: !name.trim() || !hasChanges || update.isPending ? 'not-allowed' : 'pointer',
                     fontFamily: 'inherit',
                     opacity: update.isPending ? 0.7 : 1,
-                    transition: 'background 0.15s',
+                    transition: 'background 0.15s, filter 0.12s ease',
                     marginBottom: 20,
                   }}
                 >
@@ -630,6 +631,7 @@ export function GroupSettingsModal({ room, onClose, onLeave }: GroupSettingsModa
               {/* Add button */}
               <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
                 <button
+                  className="btn-solid"
                   onClick={handleAddMembers}
                   disabled={toAdd.length === 0 || addMembers.isPending}
                   style={{
@@ -644,7 +646,7 @@ export function GroupSettingsModal({ room, onClose, onLeave }: GroupSettingsModa
                     cursor: toAdd.length === 0 || addMembers.isPending ? 'not-allowed' : 'pointer',
                     fontFamily: 'inherit',
                     opacity: addMembers.isPending ? 0.7 : 1,
-                    transition: 'background 0.15s',
+                    transition: 'background 0.15s, filter 0.12s ease',
                   }}
                 >
                   {addMembers.isPending

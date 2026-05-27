@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Repeat2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Avatar } from '@/components/shared/Avatar';
+import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
@@ -136,20 +138,38 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
 
         {/* Author row */}
         <div className="flex items-center" style={{ gap: 12 }}>
-          <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
+          <UserHoverCard userId={author.id} style={{ flexShrink: 0 }}>
+            <Link
+              href={`/profile/${author.id}`}
+              className="transition-opacity hover:opacity-90"
+              style={{ display: 'inline-flex', cursor: 'pointer' }}
+            >
+              <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
+            </Link>
+          </UserHoverCard>
           <div className="min-w-0 flex-1" style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-                {author.name}
-              </span>
+              <UserHoverCard userId={author.id}>
+                <Link
+                  href={`/profile/${author.id}`}
+                  className="hover:underline"
+                  style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', letterSpacing: '-0.01em', textDecoration: 'none' }}
+                >
+                  {author.name}
+                </Link>
+              </UserHoverCard>
               {author.is_premium && <VerifiedBadge size={15} />}
               {root.is_pin && (
                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 'auto' }}>Pinned</span>
               )}
             </div>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
+            <Link
+              href={`/profile/${author.id}`}
+              className="hover:underline"
+              style={{ fontSize: 13, color: 'var(--text-tertiary)', textDecoration: 'none', width: 'fit-content' }}
+            >
               @{author.username}
-            </span>
+            </Link>
           </div>
           {(canManage || canReport) && (
             <ThreadOptionsMenu

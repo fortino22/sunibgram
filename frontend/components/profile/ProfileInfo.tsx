@@ -57,8 +57,8 @@ export function ProfileInfo({
           <button
             type="button"
             onClick={onEditClick}
+            className="btn-ghost"
             style={{
-              background: 'none',
               border: '1px solid var(--border-strong)',
               borderRadius: 20,
               padding: '7px 18px',
@@ -77,8 +77,8 @@ export function ProfileInfo({
             <button
               type="button"
               aria-label="More options"
+              className="btn-ghost"
               style={{
-                background: 'none',
                 border: '1px solid var(--border-strong)',
                 borderRadius: '50%',
                 width: 36,
@@ -96,6 +96,7 @@ export function ProfileInfo({
               type="button"
               onClick={onFollowToggle}
               disabled={followPending}
+              className="hover-dim"
               style={{
                 background: isFollowing ? 'none' : 'var(--text)',
                 border: isFollowing ? '1px solid var(--border-strong)' : '1px solid transparent',
@@ -148,13 +149,13 @@ export function ProfileInfo({
         </div>
 
         <div style={{ display: 'flex', gap: 20, marginTop: 14 }}>
-          <button type="button" onClick={onFollowingClick} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <button type="button" onClick={onFollowingClick} className="hover-underline" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
               {user.following.toLocaleString()}
             </span>
             <span style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>Following</span>
           </button>
-          <button type="button" onClick={onFollowersClick} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <button type="button" onClick={onFollowersClick} className="hover-underline" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
               {user.followers.toLocaleString()}
             </span>

@@ -44,6 +44,7 @@ export function ReplyModal() {
         <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px 0' }}>
           <button
             onClick={closeReply}
+            className="hover-dim"
             style={{
               background: 'none',
               border: 'none',

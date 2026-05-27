@@ -23,7 +23,7 @@ interface RawExplorePerson {
 
 interface RawExploreCommunity {
   community_id: number;
-  community_profile: string;
+  banner_url: string;
   community_name: string;
   member_count: number;
   is_join: boolean;
@@ -56,7 +56,7 @@ export interface ExploreSearchResult {
 
 export interface ExploreCommunity {
   communityId: number;
-  communityProfile: string;
+  banner: string;
   communityName: string;
   memberCount: number;
   isJoin: boolean;
@@ -77,7 +77,7 @@ function mapPerson(raw: RawExplorePerson): ExplorePerson {
 function mapCommunity(raw: RawExploreCommunity): ExploreCommunity {
   return {
     communityId: raw.community_id,
-    communityProfile: raw.community_profile,
+    banner: raw.banner_url ?? '',
     communityName: raw.community_name,
     memberCount: raw.member_count,
     isJoin: raw.is_join,

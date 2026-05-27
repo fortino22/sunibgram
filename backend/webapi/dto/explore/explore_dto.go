@@ -48,4 +48,5 @@ type ExploreCommunityResponse struct {
 	CommunityName string `json:"community_name"`
 	MemberCount   int    `json:"member_count"`
 	IsJoin        bool   `json:"is_join"`
+	BannerURL     string `json:"banner_url"`
 }

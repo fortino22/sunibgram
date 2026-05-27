@@ -112,12 +112,12 @@ export default function CommunitiesPage() {
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
               onClick={() => router.push('/communities/discover')}
+              className="btn-ghost"
               style={{
                 width: 34,
                 height: 34,
                 borderRadius: '50%',
                 border: '1px solid var(--border)',
-                background: 'transparent',
                 color: 'var(--text)',
                 cursor: 'pointer',
                 display: 'flex',
@@ -129,6 +129,7 @@ export default function CommunitiesPage() {
             </button>
             <button
               onClick={() => setShowCreate(true)}
+              className="btn-solid"
               style={{
                 padding: '7px 14px',
                 borderRadius: 999,
@@ -154,10 +155,10 @@ export default function CommunitiesPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
+              className="btn-ghost"
               style={{
                 flex: 1,
                 padding: '12px 0',
-                background: 'none',
                 border: 'none',
                 borderBottom: activeTab === tab ? '2px solid var(--text)' : '2px solid transparent',
                 color: activeTab === tab ? 'var(--text)' : 'var(--text-tertiary)',
@@ -195,6 +196,7 @@ export default function CommunitiesPage() {
               <button
                 key={c.community_id}
                 onClick={() => { if (drag.current.moved) return; router.push(`/communities/${c.community_id}`); }}
+                className="hover-dim"
                 style={{
                   position: 'relative',
                   flexShrink: 0,
@@ -263,6 +265,7 @@ export default function CommunitiesPage() {
           >
             <button
               onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(undefined); }}
+              className="hover-dim"
               style={{
                 padding: '5px 14px',
                 borderRadius: 999,
@@ -282,6 +285,7 @@ export default function CommunitiesPage() {
               <button
                 key={c.id}
                 onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(c.id); }}
+                className="hover-dim"
                 style={{
                   padding: '5px 14px',
                   borderRadius: 999,

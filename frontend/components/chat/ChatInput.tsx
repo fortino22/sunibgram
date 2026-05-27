@@ -352,6 +352,7 @@ export function ChatInput({
             </span>
           </div>
           <button
+            className="hover-dim"
             onClick={onCancelReply}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0 }}
           >
@@ -378,6 +379,7 @@ export function ChatInput({
             Editing message
           </span>
           <button
+            className="hover-dim"
             onClick={handleCancelEdit}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
           >
@@ -393,6 +395,7 @@ export function ChatInput({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={pendingGif} alt="GIF" style={{ width: 96, height: 72, objectFit: 'cover', display: 'block' }} />
             <button
+              className="hover-dim"
               onClick={() => setPendingGif(null)}
               style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             >
@@ -425,6 +428,7 @@ export function ChatInput({
                 </div>
               )}
               <button
+                className="hover-dim"
                 onClick={() => removeFile(idx)}
                 style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
               >

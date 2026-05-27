@@ -107,8 +107,8 @@ function EventDetailHeader({ onBack }: { onBack: () => void }) {
         type="button"
         aria-label="Go back"
         onClick={onBack}
+        className="btn-ghost"
         style={{
-          background: 'none',
           border: 'none',
           cursor: 'pointer',
           color: 'var(--text)',
@@ -271,8 +271,8 @@ export function EventDetailView({ eventId }: { eventId: string }) {
               type="button"
               aria-label="Event options"
               onClick={() => setMenuOpen((o) => !o)}
+              className="btn-ghost"
               style={{
-                background: 'none',
                 border: 'none',
                 cursor: 'pointer',
                 color: 'var(--text-tertiary)',
@@ -404,6 +404,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           {isJoined ? (
             <button
               type="button"
+              className="hover-dim"
               onClick={() => leave.mutate()}
               disabled={leave.isPending}
               onMouseEnter={() => setJoinHovered(true)}
@@ -426,6 +427,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           ) : (
             <button
               type="button"
+              className="btn-solid"
               onClick={() => join.mutate()}
               disabled={join.isPending}
               style={{
@@ -448,6 +450,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           {isCreator && (
             <button
               type="button"
+              className="btn-ghost"
               onClick={() => openOfficialEventPost(eventId, event.title)}
               style={{
                 display: 'inline-flex',
@@ -456,7 +459,6 @@ export function EventDetailView({ eventId }: { eventId: string }) {
                 padding: '8px 18px',
                 borderRadius: 999,
                 border: '1.5px solid var(--border)',
-                background: 'transparent',
                 color: 'var(--text-secondary)',
                 fontSize: 14,
                 fontWeight: 600,
@@ -486,6 +488,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           <button
             key={tab}
             type="button"
+            className="hover-dim"
             onClick={() => setActiveTab(tab)}
             style={{
               flex: 1,

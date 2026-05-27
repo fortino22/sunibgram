@@ -169,7 +169,7 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
                   handleOptionVote(event, canVote, option.option_id, voteMutation.mutate);
                 }
               } : undefined}
-              className="relative w-full overflow-hidden rounded-2xl border text-left transition-colors"
+              className="relative w-full overflow-hidden rounded-2xl border text-left transition-colors hover-dim"
               style={{
                 borderColor: isChosen ? 'var(--accent)' : 'var(--border)',
                 background: 'var(--bg-card)',
@@ -204,6 +204,8 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
                         } : (event) => {
                           event.stopPropagation();
                         }}
+                        onMouseEnter={onImageClick && optionMediaIndex >= 0 ? (event) => { event.currentTarget.style.filter = 'brightness(0.85)'; } : undefined}
+                        onMouseLeave={onImageClick && optionMediaIndex >= 0 ? (event) => { event.currentTarget.style.filter = 'none'; } : undefined}
                         className="shrink-0 overflow-hidden rounded-xl border"
                         style={{
                           width: compact ? 40 : 48,
@@ -215,6 +217,7 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          transition: 'filter 0.12s ease',
                         }}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -17,7 +17,7 @@ export function RightPanel() {
     <aside className="right-panel">
       <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        {/* Search dropdown — hidden on the explore page itself */}
+        {/* Search dropdown — hidden on the explore page (it has its own search bar) */}
         {!isExplorePage && <SearchDropdown />}
 
         {/* Premium trial card */}
@@ -27,7 +27,7 @@ export function RightPanel() {
         <TrendingEvents />
 
         {/* What's happening — trending hashtags */}
-        <TrendingHashtags title="What's happening" initialVisibleCount={5} />
+        <TrendingHashtags title="What's happening" limit={4} />
 
         {/* Who to follow */}
         <WhoToFollow />

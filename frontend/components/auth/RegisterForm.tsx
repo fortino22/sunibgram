@@ -308,8 +308,9 @@ export function RegisterForm({
 
         <button
           type="submit"
+          className="btn-solid"
           disabled={loading}
-          style={{ width: '100%', padding: '11px 0', background: loading ? 'var(--accent-soft)' : 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '-0.01em', fontFamily: 'inherit', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          style={{ width: '100%', padding: '11px 0', background: loading ? 'var(--accent-soft)' : 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '-0.01em', fontFamily: 'inherit', transition: 'filter 0.12s ease', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
           {loading ? (
             <>

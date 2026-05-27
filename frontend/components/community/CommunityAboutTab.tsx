@@ -196,10 +196,10 @@ export function CommunityAboutTab({ communityId, memberCount }: CommunityAboutTa
         <div style={{ padding: '14px 16px 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button
             onClick={() => router.push(`/communities/${communityId}/members`)}
+            className="btn-ghost"
             style={{
               width: '100%',
               padding: '10px 0',
-              background: 'none',
               border: '1px solid var(--border)',
               borderRadius: 999,
               fontSize: 14,

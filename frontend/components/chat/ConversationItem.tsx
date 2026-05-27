@@ -208,6 +208,7 @@ export function ConversationItem({ room, active, isTyping = false, onClick, onMu
           style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}
         >
           <button
+            className="hover-dim"
             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
             style={{
               width: 26,

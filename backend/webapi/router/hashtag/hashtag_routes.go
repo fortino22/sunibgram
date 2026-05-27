@@ -7,5 +7,6 @@ import (
 )
 
 func RegisterHashtagRoutes(api fiber.Router, ctrl *hashtagctrl.HashtagController, auth fiber.Handler) {
+	api.Get("/hashtags/trending/top", auth, ctrl.GetTopTrending)
 	api.Get("/hashtags/trending", auth, ctrl.GetTrending)
 }

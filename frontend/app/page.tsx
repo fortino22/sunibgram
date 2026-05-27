@@ -18,6 +18,23 @@ import type { ThreadItem } from '@/lib/services/threads';
 
 type CommunitySort = 'latest' | 'top' | 'likes';
 
+// Offset-paginated feeds can return the same thread in two pages when the
+// underlying list shifts between page fetches (seed reshuffle on refresh,
+// a deleted thread, periodic feed_score recompute). Duplicate thread.ids
+// become duplicate React keys, which leaves the duped card unclickable.
+// Dedupe by id, keeping first occurrence, before rendering.
+function dedupeThreads(threads: ThreadItem[]): ThreadItem[] {
+  const seen = new Set<number>();
+  const out: ThreadItem[] = [];
+  for (const t of threads) {
+    if (!seen.has(t.id)) {
+      seen.add(t.id);
+      out.push(t);
+    }
+  }
+  return out;
+}
+
 const SORT_OPTIONS: { value: CommunitySort; label: string }[] = [
   { value: 'latest', label: 'Latest' },
   { value: 'top', label: 'Top' },
@@ -46,11 +63,11 @@ function FeedTabButton({ tab, active, onClick }: FeedTabButtonProps) {
   return (
     <button
       onClick={onClick}
+      className="btn-ghost"
       style={{
         flex: 1,
         minWidth: 'max-content',
         padding: '12px 8px',
-        background: 'none',
         border: 'none',
         cursor: 'pointer',
         fontWeight: active ? 600 : 400,
@@ -157,11 +174,11 @@ export default function HomePage() {
     ? facultyQuery
     : threadsQuery;
 
-  const activeThreads = activeQuery.data?.pages.flatMap((p) => p.data) ?? [];
+  const activeThreads = dedupeThreads(activeQuery.data?.pages.flatMap((p) => p.data) ?? []);
   const pinnedCommunities = pinnedCommunitiesQuery.data?.data ?? [];
 
   // For You "new posts" banner — sinceId is the max loaded thread id (PK), not data[0].
-  const forYouThreads = threadsQuery.data?.pages.flatMap((p) => p.data) ?? [];
+  const forYouThreads = dedupeThreads(threadsQuery.data?.pages.flatMap((p) => p.data) ?? []);
   const sinceId = forYouThreads.length ? Math.max(...forYouThreads.map((t) => t.id)) : 0;
   const newCount = useFeedNewCount(sinceId, isForYou);
   const refreshFeed = useRefreshFeed();
@@ -260,13 +277,13 @@ export default function HomePage() {
             <button
               key={opt.value}
               onClick={() => handleSortSelect(opt.value)}
+              className="btn-ghost"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 width: '100%',
                 padding: '11px 14px',
-                background: 'none',
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 14,
@@ -326,11 +343,11 @@ export default function HomePage() {
                     key={t.id}
                     ref={(el) => { if (active) activeCommunityBtnRef.current = el; }}
                     onClick={() => handleTabClick(t.id)}
+                    className="btn-ghost"
                     style={{
                       flex: 1,
                       minWidth: 'max-content',
                       padding: '12px 8px',
-                      background: 'none',
                       border: 'none',
                       cursor: 'pointer',
                       fontWeight: active ? 600 : 400,

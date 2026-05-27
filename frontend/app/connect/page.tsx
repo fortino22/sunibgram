@@ -47,8 +47,8 @@ function ConnectPageInner() {
           type="button"
           aria-label="Go back"
           onClick={() => router.back()}
+          className="btn-ghost"
           style={{
-            background: 'none',
             border: 'none',
             cursor: 'pointer',
             color: 'var(--text)',
@@ -87,10 +87,10 @@ function ConnectPageInner() {
             role="tab"
             aria-selected={activeTab === tab.id}
             onClick={() => setTab(tab.id)}
+            className="btn-ghost"
             style={{
               flex: 1,
               padding: '16px 8px',
-              background: 'none',
               border: 'none',
               cursor: 'pointer',
               fontSize: 15,

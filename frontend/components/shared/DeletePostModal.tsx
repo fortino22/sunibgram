@@ -62,6 +62,7 @@ export function DeletePostModal({ open, isPending = false, onConfirm, onCancel, 
         </p>
         <button
           type="button"
+          className="btn-solid"
           disabled={isPending}
           onClick={onConfirm}
           style={{
@@ -89,6 +90,8 @@ export function DeletePostModal({ open, isPending = false, onConfirm, onCancel, 
           type="button"
           disabled={isPending}
           onClick={onCancel}
+          onMouseEnter={(e) => { if (!isPending) e.currentTarget.style.background = 'var(--bg-hover)'; }}
+          onMouseLeave={(e) => { if (!isPending) e.currentTarget.style.background = 'transparent'; }}
           style={{
             width: '100%',
             padding: '14px 0',
@@ -100,6 +103,7 @@ export function DeletePostModal({ open, isPending = false, onConfirm, onCancel, 
             fontWeight: 700,
             cursor: isPending ? 'not-allowed' : 'pointer',
             opacity: isPending ? 0.7 : 1,
+            transition: 'background 0.12s ease',
             fontFamily: 'inherit',
           }}
         >

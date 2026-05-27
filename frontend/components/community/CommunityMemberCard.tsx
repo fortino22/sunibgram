@@ -56,12 +56,12 @@ export function CommunityMemberCard({
     >
       <button
         onClick={() => router.push(`/profile/${member.user_id}`)}
+        className="btn-ghost"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           flex: 1,
-          background: 'none',
           border: 'none',
           cursor: 'pointer',
           textAlign: 'left',
@@ -88,6 +88,8 @@ export function CommunityMemberCard({
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => setShowActions((v) => !v)}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; e.currentTarget.style.color = 'var(--text)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             style={{
               width: 28,
               height: 28,
@@ -100,6 +102,7 @@ export function CommunityMemberCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              transition: 'background 0.12s ease, color 0.12s ease',
             }}
           >
             ⋯

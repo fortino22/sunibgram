@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 
+import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { OtpInput } from '@/components/auth/OtpInput';
 import {
@@ -122,15 +123,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
-      <div style={{ width: '100%', maxWidth: 400 }}>
+    <AuthSplitLayout>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
           <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           {step === 'otp' && (
-            <button onClick={() => { setStep('credentials'); setServerError(''); }} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, margin: '0 auto 16px', fontFamily: 'inherit', padding: 0 }}>
+            <button onClick={() => { setStep('credentials'); setServerError(''); }} className="btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, margin: '0 auto 16px', fontFamily: 'inherit', padding: 0 }}>
               <ArrowLeft size={14} />
               Back
             </button>
@@ -176,7 +176,7 @@ export default function LoginPage() {
               </button>
               <div style={{ textAlign: 'center', marginTop: 16 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Didn&apos;t receive it? </span>
-                <button onClick={onResendOtp} disabled={loginMutation.isPending || sendLoginOtpMutation.isPending} style={{ background: 'none', border: 'none', cursor: loginMutation.isPending || sendLoginOtpMutation.isPending ? 'not-allowed' : 'pointer', color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', padding: 0, opacity: loginMutation.isPending || sendLoginOtpMutation.isPending ? 0.7 : 1 }}>{sendLoginOtpMutation.isPending ? 'Sending…' : 'Resend code'}</button>
+                <button onClick={onResendOtp} disabled={loginMutation.isPending || sendLoginOtpMutation.isPending} className="hover-dim" style={{ background: 'none', border: 'none', cursor: loginMutation.isPending || sendLoginOtpMutation.isPending ? 'not-allowed' : 'pointer', color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', padding: 0, opacity: loginMutation.isPending || sendLoginOtpMutation.isPending ? 0.7 : 1 }}>{sendLoginOtpMutation.isPending ? 'Sending…' : 'Resend code'}</button>
               </div>
             </>
           )}
@@ -190,8 +190,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
           Don&apos;t have an account? <Link href="/signup" style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>Create account</Link>
         </div>
-      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    </AuthSplitLayout>
   );
 }

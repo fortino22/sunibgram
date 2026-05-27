@@ -22,6 +22,7 @@ export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
       <PostComposer
         placeholder={placeholder}
         parentId={parentId}
+        autoFocus
         onSuccess={() => setExpanded(false)}
       />
     );
@@ -52,6 +53,8 @@ export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
         style={{
           background: 'var(--bg-subtle)',
           border: '1px solid var(--border)',
@@ -63,6 +66,7 @@ export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
           cursor: 'pointer',
           fontFamily: 'inherit',
           flexShrink: 0,
+          transition: 'background 0.12s ease',
         }}
       >
         Reply

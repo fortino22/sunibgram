@@ -38,7 +38,7 @@ export function ActionBar({
 
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, color: 'var(--text-tertiary)' }}>
-      <ActionButton aria-label="Reply" onClick={onReply} size={size}>
+      <ActionButton aria-label="Reply" onClick={onReply} tint="var(--accent)" softTint="var(--accent-soft)" size={size}>
         <MessageCircle size={iconSize} strokeWidth={sw} />
         <span style={{ fontSize: 14 }}>{stats.comments}</span>
       </ActionButton>
@@ -46,7 +46,9 @@ export function ActionBar({
       <ActionButton
         aria-label="Repost"
         onClick={onRepost}
-        color={isReposted ? 'var(--green)' : undefined}
+        active={isReposted}
+        tint="var(--green)"
+        softTint="var(--green-soft)"
         size={size}
       >
         <Repeat2 size={iconSize} strokeWidth={sw} />
@@ -56,7 +58,9 @@ export function ActionBar({
       <ActionButton
         aria-label="Like"
         onClick={onLike}
-        color={isLiked ? 'var(--coral)' : undefined}
+        active={isLiked}
+        tint="var(--coral)"
+        softTint="var(--coral-soft)"
         size={size}
       >
         <Heart size={iconSize} strokeWidth={sw} fill={isLiked ? 'var(--coral)' : 'none'} />
@@ -66,7 +70,9 @@ export function ActionBar({
       <ActionButton
         aria-label="Bookmark"
         onClick={onBookmark}
-        color={isBookmarked ? 'var(--accent)' : undefined}
+        active={isBookmarked}
+        tint="var(--accent)"
+        softTint="var(--accent-soft)"
         size={size}
       >
         <Bookmark
