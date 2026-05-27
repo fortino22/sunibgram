@@ -9,7 +9,10 @@ import (
 	hashtagdto "github.com/sunibgram/webapi/dto/hashtag"
 )
 
-const trendingHashtagLimit = 30
+const (
+	trendingHashtagLimit    = 30
+	topTrendingHashtagLimit = 4
+)
 
 type HashtagController struct {
 	hashtagService hashtagsvciface.IHashtagService
@@ -23,6 +26,14 @@ func NewHashtagController(hashtagService hashtagsvciface.IHashtagService) *Hasht
 
 func (c *HashtagController) GetTrending(ctx *fiber.Ctx) error {
 	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), trendingHashtagLimit)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toTrendingHashtagResponses(hashtags)})
+}
+
+func (c *HashtagController) GetTopTrending(ctx *fiber.Ctx) error {
+	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), topTrendingHashtagLimit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}

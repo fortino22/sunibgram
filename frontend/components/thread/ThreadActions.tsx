@@ -49,14 +49,16 @@ export function ThreadActions({
       className="flex w-full justify-between text-[13px]"
       style={{ marginTop: topMargin, color: 'var(--text-tertiary)' }}
     >
-      <ActionButton aria-label="Comment" onClick={(event) => handleClick(onComment, event)} size={size}>
+      <ActionButton aria-label="Comment" onClick={(event) => handleClick(onComment, event)} tint="var(--accent)" softTint="var(--accent-soft)" size={size}>
         <MessageCircle size={iconSize} strokeWidth={2} />
         <span>{comments}</span>
       </ActionButton>
       <ActionButton
         aria-label="Repost"
         onClick={(event) => handleClick(onRepost, event)}
-        color={isReposted ? 'var(--green)' : undefined}
+        active={isReposted}
+        tint="var(--green)"
+        softTint="var(--green-soft)"
         size={size}
       >
         <Repeat2 size={iconSize} strokeWidth={2} />
@@ -65,7 +67,9 @@ export function ThreadActions({
       <ActionButton
         aria-label="Like"
         onClick={(event) => handleClick(onLike, event)}
-        color={isLiked ? 'var(--coral)' : undefined}
+        active={isLiked}
+        tint="var(--coral)"
+        softTint="var(--coral-soft)"
         size={size}
       >
         <Heart size={iconSize} strokeWidth={2} fill={isLiked ? 'var(--coral)' : 'none'} />
@@ -74,7 +78,9 @@ export function ThreadActions({
       <ActionButton
         aria-label="Bookmark"
         onClick={(event) => handleClick(onBookmark, event)}
-        color={isBookmarked ? 'var(--accent)' : undefined}
+        active={isBookmarked}
+        tint="var(--accent)"
+        softTint="var(--accent-soft)"
         size={size}
       >
         <Bookmark size={iconSize} strokeWidth={2} fill={isBookmarked ? 'var(--accent)' : 'none'} />

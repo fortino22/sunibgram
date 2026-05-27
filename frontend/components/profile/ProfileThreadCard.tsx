@@ -42,6 +42,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const [isEditing, setIsEditing] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -69,10 +70,13 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
     <>
     <article
       onClick={() => router.push(`/thread/${thread.id}`)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-card)',
+        background: hovered ? 'var(--bg-subtle)' : 'var(--bg-card)',
         cursor: 'pointer',
+        transition: 'background 0.12s ease',
       }}
     >
       {thread.reposted_by_username && (
