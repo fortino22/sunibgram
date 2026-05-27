@@ -24,6 +24,7 @@ type ExplorePeopleResponse struct {
 	UserProfilePic string `json:"user_profile_pic"`
 	Username       string `json:"username"`
 	Name           string `json:"name"`
+	Bio            string `json:"bio"`
 	IsPremium      bool   `json:"is_premium"`
 	IsFollowing    bool   `json:"is_following"`
 }

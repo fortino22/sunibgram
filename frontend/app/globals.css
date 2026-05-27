@@ -89,7 +89,7 @@ body {
 }
 
 .right-panel {
-  width: 300px;
+  width: 348px;
   flex-shrink: 0;
   height: 100vh;
   position: sticky;

@@ -14,5 +14,7 @@ type IExploreRepository interface {
 	FindPeople(ctx context.Context, query string, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error)
 	FindMediaPosts(ctx context.Context, query string, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error)
 	FindCommunities(ctx context.Context, query string, requesterID uint, page, limit int) ([]exploremodel.ExploreCommunityResult, int64, error)
-	FindSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error)
+	FindFacultySuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error)
+	FindMutualSuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error)
+	FindRandomSuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error)
 }

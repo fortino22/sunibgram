@@ -80,6 +80,17 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 	})
 }
 
+func (c *EventController) GetTrending(ctx *fiber.Ctx) error {
+	if _, ok := ctrlshared.RequireAuth(ctx); !ok {
+		return nil
+	}
+	events, err := c.eventService.GetTopRunningOrFuture(3)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toListResponses(events))
+}
+
 func (c *EventController) GetPending(ctx *fiber.Ctx) error {
 	claims, ok := ctrlshared.RequireAuth(ctx)
 	if !ok {

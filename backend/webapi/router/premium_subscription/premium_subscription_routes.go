@@ -10,5 +10,6 @@ func RegisterPremiumSubscriptionRoutes(api fiber.Router, premiumSubscriptionCtrl
 	subscriptions := api.Group("/subscriptions")
 
 	subscriptions.Use(auth)
+	subscriptions.Get("/me", premiumSubscriptionCtrl.GetStatus)
 	subscriptions.Post("/trial/activate", premiumSubscriptionCtrl.ActivateTrial)
 }

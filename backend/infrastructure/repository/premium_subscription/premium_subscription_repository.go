@@ -1,6 +1,7 @@
 package premiumsubscriptionrepo
 
 import (
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -31,6 +32,18 @@ func (r *premiumSubscriptionRepository) Upsert(subscription *premiumsubscription
 			SubscriptionEndDate:   subscription.SubscriptionEndDate,
 		}).
 		FirstOrCreate(subscription).Error
+}
+
+func (r *premiumSubscriptionRepository) GetByUserID(userID uint) (*premiumsubscriptionmodel.PremiumSubscription, error) {
+	var subscription premiumsubscriptionmodel.PremiumSubscription
+	err := r.readDB.Where("user_id = ?", userID).First(&subscription).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &subscription, nil
 }
 
 func (r *premiumSubscriptionRepository) IsTrialActivated(userID uint) (bool, error) {

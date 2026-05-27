@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getEvents, type EventGroups } from '@/lib/services/events';
+import { getEvents, getTrendingEvents, type EventGroups, type EventItem } from '@/lib/services/events';
 import { useAuthStore } from '@/stores/authStore';
 
 export function useEventsFeed(enabled = true) {
@@ -14,5 +14,19 @@ export function useEventsFeed(enabled = true) {
       return getEvents(token);
     },
     enabled: token !== null && enabled,
+  });
+}
+
+export function useTrendingEvents() {
+  const token = useAuthStore((state) => state.token);
+
+  return useQuery<EventItem[]>({
+    queryKey: ['events', 'trending'],
+    queryFn: () => {
+      if (token === null) throw new Error('Authentication token required.');
+      return getTrendingEvents(token);
+    },
+    enabled: token !== null,
+    staleTime: 5 * 60 * 1000,
   });
 }

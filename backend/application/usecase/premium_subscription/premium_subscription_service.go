@@ -64,6 +64,20 @@ func (s *PremiumSubscriptionService) ActivateTrial(userID uint) (*premiumsubscri
 	return subscription, nil
 }
 
+func (s *PremiumSubscriptionService) GetStatus(userID uint) (*premiumsubscriptionmodel.PremiumSubscription, bool, error) {
+	sub, err := s.premiumSubscriptionRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, false, err
+	}
+
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return sub, user.IsPremium, nil
+}
+
 func (s *PremiumSubscriptionService) ExpireSubscriptions() error {
 	ownerIDs, err := s.premiumSubscriptionRepo.FindExpiredOwnerIDs()
 	if err != nil {

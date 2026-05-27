@@ -50,6 +50,7 @@ func (c *ExploreController) toPeopleResponses(users []exploremodel.ExploreUserRe
 			UserProfilePic: avatarURL,
 			Username:       item.Username,
 			Name:           item.Name,
+			Bio:            item.Bio,
 			IsPremium:      item.IsPremium,
 			IsFollowing:    item.IsFollowing,
 		}

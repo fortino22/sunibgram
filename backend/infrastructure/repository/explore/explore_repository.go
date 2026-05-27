@@ -44,6 +44,7 @@ type ExploreUserRow struct {
 	UserID           uint
 	Name             string
 	Username         string
+	Bio              string
 	IsPremium        bool
 	AvatarObjectName string
 	IsFollowing      bool
@@ -195,30 +196,57 @@ func (r *exploreRepository) FindCommunities(ctx context.Context, query string, r
 	return communities, total, nil
 }
 
-func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
-	if limit < 1 || limit > 100 {
-		limit = DefaultRepositoryExploreLimit
+// FindFacultySuggestions suggests people who share at least one faculty with the
+// requester and whom the requester does not already follow. Empty if the
+// requester has no faculty (or no faculty peers left to suggest).
+func (r *exploreRepository) FindFacultySuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error) {
+	limit, offset := clampExploreLimitOffset(limit, page)
+
+	key := exploreSectionKey("suggested_faculty", "", fmt.Sprintf("%d:page:%d", requesterID, page), limit)
+	if users, ok := r.getCachedSuggestions(ctx, key); ok {
+		return users, nil
 	}
 
-	key := exploreSectionKey("suggested_people", "", fmt.Sprintf("%d", requesterID), limit)
-	var users []exploremodel.ExploreUserResult
-	if r.cache != nil {
-		if err := r.cache.Get(ctx, key, &users); err == nil {
-			return users, nil
-		}
+	var rows []ExploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("user_faculties AS me").
+		Select(suggestionSelectColumns).
+		Joins("JOIN user_faculties AS peer ON peer.faculty_id = me.faculty_id AND peer.user_id <> me.user_id").
+		Joins("JOIN users ON users.user_id = peer.user_id").
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Joins("LEFT JOIN user_relationships AS existing ON existing.follower_id = ? AND existing.following_id = peer.user_id", requesterID).
+		Where("me.user_id = ?", requesterID).
+		Where("existing.following_id IS NULL").
+		Where("roles.name <> ?", "admin").
+		Group(suggestionGroupColumns).
+		Order("users.is_premium DESC, users.created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	users := mapExploreUserRows(rows)
+	r.cacheSuggestions(ctx, key, users)
+	return users, nil
+}
+
+// FindMutualSuggestions ranks mutual-following candidates (friends-of-friends):
+// people followed by the accounts the requester already follows, ordered by
+// shared-connection count. Empty if the requester follows nobody.
+func (r *exploreRepository) FindMutualSuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error) {
+	limit, offset := clampExploreLimitOffset(limit, page)
+
+	key := exploreSectionKey("suggested_mutual", "", fmt.Sprintf("%d:page:%d", requesterID, page), limit)
+	if users, ok := r.getCachedSuggestions(ctx, key); ok {
+		return users, nil
 	}
 
 	var rows []ExploreUserRow
 	if err := r.readDB.WithContext(ctx).
 		Table("user_relationships AS followed").
-		Select(`
-			users.user_id,
-			users.name,
-			users.user_name AS username,
-			users.is_premium,
-			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-			FALSE AS is_following
-		`).
+		Select(suggestionSelectColumns).
 		Joins("JOIN user_relationships AS suggested ON suggested.follower_id = followed.following_id").
 		Joins("JOIN users ON users.user_id = suggested.following_id").
 		Joins("JOIN roles ON roles.role_id = users.role_id").
@@ -228,30 +256,109 @@ func (r *exploreRepository) FindSuggestedPeople(ctx context.Context, requesterID
 		Where("suggested.following_id <> ?", requesterID).
 		Where("existing.following_id IS NULL").
 		Where("roles.name <> ?", "admin").
-		Group("users.user_id, users.name, users.user_name, users.is_premium, users.created_at, user_profiles.avatar_object_name").
+		Group(suggestionGroupColumns).
 		Order("COUNT(DISTINCT followed.following_id) DESC, users.is_premium DESC, users.created_at DESC").
+		Offset(offset).
 		Limit(limit).
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	users = make([]exploremodel.ExploreUserResult, len(rows))
+	users := mapExploreUserRows(rows)
+	r.cacheSuggestions(ctx, key, users)
+	return users, nil
+}
+
+// FindRandomSuggestions returns random people on the app whom the requester does
+// not already follow. Used as the last-resort fallback for the preview widget.
+func (r *exploreRepository) FindRandomSuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error) {
+	limit, offset := clampExploreLimitOffset(limit, page)
+
+	key := exploreSectionKey("suggested_random", "", fmt.Sprintf("%d:page:%d", requesterID, page), limit)
+	if users, ok := r.getCachedSuggestions(ctx, key); ok {
+		return users, nil
+	}
+
+	var rows []ExploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("users").
+		Select(suggestionSelectColumns).
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Joins("LEFT JOIN user_relationships AS existing ON existing.follower_id = ? AND existing.following_id = users.user_id", requesterID).
+		Where("users.user_id <> ?", requesterID).
+		Where("existing.following_id IS NULL").
+		Where("roles.name <> ?", "admin").
+		Order("RANDOM()").
+		Offset(offset).
+		Limit(limit).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	users := mapExploreUserRows(rows)
+	r.cacheSuggestions(ctx, key, users)
+	return users, nil
+}
+
+// suggestionSelectColumns / suggestionGroupColumns are shared by both suggestion
+// queries so the projected fields (incl. bio) and GROUP BY stay in lockstep.
+const suggestionSelectColumns = `
+	users.user_id,
+	users.name,
+	users.user_name AS username,
+	COALESCE(user_profiles.bio, '') AS bio,
+	users.is_premium,
+	COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+	FALSE AS is_following
+`
+
+const suggestionGroupColumns = "users.user_id, users.name, users.user_name, users.is_premium, users.created_at, user_profiles.bio, user_profiles.avatar_object_name"
+
+func mapExploreUserRows(rows []ExploreUserRow) []exploremodel.ExploreUserResult {
+	users := make([]exploremodel.ExploreUserResult, len(rows))
 	for i, row := range rows {
 		users[i] = exploremodel.ExploreUserResult{
 			UserID:           row.UserID,
 			Name:             row.Name,
 			Username:         row.Username,
+			Bio:              row.Bio,
 			IsPremium:        row.IsPremium,
 			AvatarObjectName: row.AvatarObjectName,
 			IsFollowing:      row.IsFollowing,
 		}
 	}
-	if r.cache != nil {
-		if err := r.cache.Set(ctx, key, users, r.ttl); err == nil {
-			r.cache.RegisterCacheKey(ctx, infrarepoShared.ExploreGlobalTag(), key)
-		}
+	return users
+}
+
+func (r *exploreRepository) getCachedSuggestions(ctx context.Context, key string) ([]exploremodel.ExploreUserResult, bool) {
+	if r.cache == nil {
+		return nil, false
 	}
-	return users, nil
+	var users []exploremodel.ExploreUserResult
+	if err := r.cache.Get(ctx, key, &users); err == nil {
+		return users, true
+	}
+	return nil, false
+}
+
+func (r *exploreRepository) cacheSuggestions(ctx context.Context, key string, users []exploremodel.ExploreUserResult) {
+	if r.cache == nil {
+		return
+	}
+	if err := r.cache.Set(ctx, key, users, r.ttl); err == nil {
+		r.cache.RegisterCacheKey(ctx, infrarepoShared.ExploreGlobalTag(), key)
+	}
+}
+
+// clampExploreLimitOffset normalizes the limit/page pair and returns the
+// effective limit and DB offset.
+func clampExploreLimitOffset(limit, page int) (int, int) {
+	if limit < 1 || limit > 100 {
+		limit = DefaultRepositoryExploreLimit
+	}
+	page = normalizeExplorePage(page)
+	return limit, (page - 1) * limit
 }
 
 func (r *exploreRepository) findExploreThreads(ctx context.Context, section, query string, requesterID uint, types []string, page, limit int, mediaOnly bool, order string) ([]threadmodel.Thread, int64, error) {

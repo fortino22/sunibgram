@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { CalendarDays } from 'lucide-react';
-import { useEventsFeed } from '@/hooks/useEventsFeed';
+import { useTrendingEvents } from '@/hooks/useEventsFeed';
 
 const DEFAULT_VISIBLE_COUNT = 3;
+const HEADING = "Today's Events";
 
 function formatEventTime(startTime: string | null): string {
   if (!startTime) return '';
@@ -13,7 +14,7 @@ function formatEventTime(startTime: string | null): string {
 }
 
 export function TrendingEvents() {
-  const { data, isLoading, isError } = useEventsFeed();
+  const { data, isLoading, isError } = useTrendingEvents();
 
   if (isLoading) {
     return (
@@ -21,16 +22,16 @@ export function TrendingEvents() {
         className="overflow-hidden rounded-2xl"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
       >
-        <h2 className="px-4 pb-1 pt-4 text-xl font-extrabold" style={{ color: 'var(--text)' }}>Events</h2>
+        <h2 className="text-[18px] font-extrabold" style={{ padding: '14px 16px 8px', color: 'var(--text)' }}>{HEADING}</h2>
         <div>
           {Array.from({ length: DEFAULT_VISIBLE_COUNT }, (_, i) => (
-            <div key={i} className="flex items-start gap-3 px-4 py-3">
-              <div className="flex-1 space-y-1.5">
-                <div className="h-3 w-24 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
-                <div className="h-4 w-full animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
-                <div className="h-3 w-20 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
+            <div key={i} className="flex items-start gap-3" style={{ padding: '12px 16px' }}>
+              <div className="flex-1" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="h-2.5 w-20 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
+                <div className="h-3.5 w-full animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
+                <div className="h-2.5 w-16 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
               </div>
-              <div className="h-16 w-16 shrink-0 animate-pulse rounded-xl" style={{ background: 'var(--bg-subtle)' }} />
+              <div className="h-14 w-14 shrink-0 animate-pulse rounded-xl" style={{ background: 'var(--bg-subtle)' }} />
             </div>
           ))}
         </div>
@@ -40,7 +41,7 @@ export function TrendingEvents() {
 
   if (isError) return null;
 
-  const events = data?.trending ?? [];
+  const events = data ?? [];
   if (events.length === 0) return null;
 
   const visible = events.slice(0, DEFAULT_VISIBLE_COUNT);
@@ -50,15 +51,15 @@ export function TrendingEvents() {
       className="overflow-hidden rounded-2xl"
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
     >
-      <h2 className="px-4 pb-1 pt-4 text-xl font-extrabold" style={{ color: 'var(--text)' }}>Events</h2>
+      <h2 className="text-[18px] font-extrabold" style={{ padding: '14px 16px 8px', color: 'var(--text)' }}>{HEADING}</h2>
 
       <div>
         {visible.map((event) => (
           <Link
             key={event.id}
             href={`/events/${event.id}`}
-            className="flex items-start gap-3 px-4 py-3 transition-colors"
-            style={{ color: 'inherit' }}
+            className="flex items-start gap-3 transition-colors"
+            style={{ padding: '12px 16px', color: 'inherit' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
@@ -66,11 +67,11 @@ export function TrendingEvents() {
               <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
                 {event.type === 'official' ? 'Official' : 'Campus'} · Event
               </p>
-              <p className="mt-0.5 line-clamp-2 text-[15px] font-bold leading-snug" style={{ color: 'var(--text)' }}>
+              <p className="line-clamp-2 text-[15px] font-bold leading-snug" style={{ marginTop: 2, color: 'var(--text)' }}>
                 {event.title}
               </p>
               {event.startTime && (
-                <p className="mt-0.5 text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
+                <p className="text-[13px]" style={{ marginTop: 2, color: 'var(--text-tertiary)' }}>
                   {formatEventTime(event.startTime)}
                 </p>
               )}
@@ -80,14 +81,14 @@ export function TrendingEvents() {
               <img
                 src={event.banner}
                 alt=""
-                className="h-16 w-16 shrink-0 rounded-xl object-cover"
+                className="h-14 w-14 shrink-0 rounded-xl object-cover"
               />
             ) : (
               <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl"
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
                 style={{ background: 'var(--bg-subtle)' }}
               >
-                <CalendarDays size={22} style={{ color: 'var(--text-tertiary)' }} />
+                <CalendarDays size={20} style={{ color: 'var(--text-tertiary)' }} />
               </div>
             )}
           </Link>
@@ -96,8 +97,8 @@ export function TrendingEvents() {
 
       <Link
         href="/events"
-        className="block w-full px-4 py-4 text-[15px] transition-colors"
-        style={{ color: 'var(--accent)' }}
+        className="block w-full text-[15px] transition-colors"
+        style={{ padding: '12px 16px', color: 'var(--accent)' }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
       >

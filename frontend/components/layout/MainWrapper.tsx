@@ -47,7 +47,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
           style={{
             display: 'flex',
             width: '100%',
-            maxWidth: 1200,
+            maxWidth: 1280,
             minHeight: '100vh',
           }}
         >

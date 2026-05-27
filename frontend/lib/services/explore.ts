@@ -134,3 +134,8 @@ export async function getSuggestedPeople(token: string, limit = 10): Promise<Exp
   );
   return raw.data.map(mapPerson);
 }
+
+export async function getSuggestedPeoplePreview(token: string): Promise<ExplorePerson[]> {
+  const raw = await api.get<{ data: RawExplorePerson[] }>('/api/users/suggested/preview', token);
+  return (raw.data ?? []).map(mapPerson);
+}

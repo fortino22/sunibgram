@@ -153,6 +153,11 @@ export async function getEvents(token: string): Promise<EventGroups> {
   };
 }
 
+export async function getTrendingEvents(token: string): Promise<EventItem[]> {
+  const response = await api.get<EventListItemResponse[]>('/api/events/trending', token);
+  return (response ?? []).map(mapEventItem);
+}
+
 export async function getEvent(id: string, token: string): Promise<EventDetail> {
   const response = await api.get<EventDetailResponse>(`/api/events/${id}`, token);
   return mapEventDetail(response);

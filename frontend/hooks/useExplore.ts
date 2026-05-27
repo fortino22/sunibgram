@@ -4,6 +4,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import {
   getSuggestedPeople,
+  getSuggestedPeoplePreview,
   searchExplore,
   getTopPosts,
   getLatestPosts,
@@ -23,6 +24,19 @@ export function useSuggestedPeople(limit = 10) {
       return getSuggestedPeople(token, limit);
     },
     enabled: token !== null,
+  });
+}
+
+export function useSuggestedPeoplePreview() {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['explore', 'suggested-preview'],
+    queryFn: () => {
+      if (!token) throw new Error('Not authenticated');
+      return getSuggestedPeoplePreview(token);
+    },
+    enabled: token !== null,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
