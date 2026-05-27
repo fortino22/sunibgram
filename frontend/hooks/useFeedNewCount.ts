@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getFeedNewCount } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 
-const POLL_INTERVAL_MS = 10_000; // 10 seconds
+const POLL_INTERVAL_MS = 180_000; // 3 minutes
 
 // Polls the "new posts" count for the For You feed. `sinceId` is the max loaded thread id;
 // `active` gates polling to when the For You tab is showing.
