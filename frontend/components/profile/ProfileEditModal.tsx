@@ -236,7 +236,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
 
             {error && <div style={{ fontSize: 13, color: 'var(--coral)', marginBottom: 12 }}>{(error as Error).message}</div>}
 
-            <button type="submit" disabled={isPending} style={{ width: '100%', background: 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', color: 'var(--bg)', fontWeight: 700, fontSize: 15, cursor: isPending ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: isPending ? 0.6 : 1 }}>
+            <button type="submit" className="btn-solid" disabled={isPending} style={{ width: '100%', background: 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', color: 'var(--bg)', fontWeight: 700, fontSize: 15, cursor: isPending ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: isPending ? 0.6 : 1 }}>
               {isPending ? 'Saving…' : 'Save'}
             </button>
           </form>

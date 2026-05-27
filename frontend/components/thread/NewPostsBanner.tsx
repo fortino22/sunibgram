@@ -9,11 +9,11 @@ export function NewPostsBanner({ count, onClick }: NewPostsBannerProps) {
     <button
       type="button"
       onClick={onClick}
+      className="btn-ghost"
       style={{
         display: 'block',
         width: '100%',
         padding: '12px',
-        background: 'none',
         border: 'none',
         borderBottom: '1px solid var(--border)',
         cursor: 'pointer',

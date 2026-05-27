@@ -312,6 +312,7 @@ export function CreateCommunityModal({ onClose, onSuccess }: CreateCommunityModa
 
           <button
             type="submit"
+            className="btn-solid"
             disabled={isPending}
             style={{
               width: '100%',

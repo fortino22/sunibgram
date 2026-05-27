@@ -63,11 +63,11 @@ function FeedTabButton({ tab, active, onClick }: FeedTabButtonProps) {
   return (
     <button
       onClick={onClick}
+      className="btn-ghost"
       style={{
         flex: 1,
         minWidth: 'max-content',
         padding: '12px 8px',
-        background: 'none',
         border: 'none',
         cursor: 'pointer',
         fontWeight: active ? 600 : 400,
@@ -277,13 +277,13 @@ export default function HomePage() {
             <button
               key={opt.value}
               onClick={() => handleSortSelect(opt.value)}
+              className="btn-ghost"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 width: '100%',
                 padding: '11px 14px',
-                background: 'none',
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 14,
@@ -343,11 +343,11 @@ export default function HomePage() {
                     key={t.id}
                     ref={(el) => { if (active) activeCommunityBtnRef.current = el; }}
                     onClick={() => handleTabClick(t.id)}
+                    className="btn-ghost"
                     style={{
                       flex: 1,
                       minWidth: 'max-content',
                       padding: '12px 8px',
-                      background: 'none',
                       border: 'none',
                       cursor: 'pointer',
                       fontWeight: active ? 600 : 400,

@@ -48,6 +48,7 @@ export function FollowUserCard({ user, initialIsFollowing }: FollowUserCardProps
     <div
       role="button"
       tabIndex={0}
+      className="btn-ghost"
       onClick={() => router.push(`/profile/${user.user_id}`)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {

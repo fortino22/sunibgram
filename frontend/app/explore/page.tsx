@@ -42,10 +42,10 @@ function TabButton({ label, active, onClick }: { label: string; active: boolean;
     <button
       type="button"
       onClick={onClick}
+      className="btn-ghost"
       style={{
         flex: 1,
         padding: '12px 8px',
-        background: 'none',
         border: 'none',
         cursor: 'pointer',
         fontWeight: active ? 600 : 400,

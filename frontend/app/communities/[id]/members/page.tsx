@@ -110,8 +110,8 @@ export default function CommunityMembersPage() {
       >
         <button
           onClick={() => router.back()}
+          className="btn-ghost"
           style={{
-            background: 'none',
             border: 'none',
             color: 'var(--text)',
             cursor: 'pointer',
@@ -180,6 +180,7 @@ export default function CommunityMembersPage() {
           <button
             key={tab.id}
             onClick={() => setRoleFilter(tab.id)}
+            className="hover-dim"
             style={{
               padding: '5px 14px',
               borderRadius: 999,
@@ -269,6 +270,7 @@ export default function CommunityMembersPage() {
                         onClick={() =>
                           setOpenMenuUserId(isMenuOpen ? null : member.user_id)
                         }
+                        className="btn-ghost"
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -276,7 +278,6 @@ export default function CommunityMembersPage() {
                           padding: '4px 10px',
                           borderRadius: 999,
                           border: `1px solid ${ROLE_COLOR[member.role]}`,
-                          background: 'transparent',
                           color: ROLE_COLOR[member.role],
                           fontSize: 12,
                           fontWeight: 600,

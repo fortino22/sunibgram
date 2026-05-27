@@ -266,11 +266,14 @@ export function ThreadInlineEditor({
                       }}
                       aria-label={removed ? 'Keep current media' : 'Remove current media'}
                       className="absolute right-2 top-2 inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2"
+                      onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
                       style={{
                         border: '1px solid rgba(255,255,255,0.22)',
                         background: removed ? 'rgba(15,20,25,0.78)' : 'rgba(0,0,0,0.55)',
                         color: '#fff',
                         cursor: 'pointer',
+                        transition: 'filter 0.12s ease',
                       }}
                     >
                       {removed ? 'Undo' : <X size={14} />}
@@ -331,11 +334,14 @@ export function ThreadInlineEditor({
                     }}
                     aria-label={`Remove ${preview.file.name}`}
                     className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full"
+                    onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
                     style={{
                       border: '1px solid rgba(255,255,255,0.22)',
                       background: 'rgba(0,0,0,0.55)',
                       color: '#fff',
                       cursor: 'pointer',
+                      transition: 'filter 0.12s ease',
                     }}
                   >
                     <X size={14} />
@@ -413,10 +419,9 @@ export function ThreadInlineEditor({
             type="button"
             onClick={handleCancel}
             disabled={pending}
-            className="inline-flex min-h-10 min-w-24 items-center justify-center rounded-full px-5 py-2.5 text-sm font-bold"
+            className="btn-ghost inline-flex min-h-10 min-w-24 items-center justify-center rounded-full px-5 py-2.5 text-sm font-bold"
             style={{
               border: '1px solid var(--border)',
-              background: 'transparent',
               color: 'var(--text)',
               cursor: pending ? 'not-allowed' : 'pointer',
               opacity: pending ? 0.5 : 1,
@@ -428,7 +433,7 @@ export function ThreadInlineEditor({
             type="button"
             onClick={(event) => void handleSubmit(event)}
             disabled={!canSave}
-            className="inline-flex min-h-10 min-w-20 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
+            className="btn-solid inline-flex min-h-10 min-w-20 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
             style={{
               background: 'var(--accent)',
               border: 0,

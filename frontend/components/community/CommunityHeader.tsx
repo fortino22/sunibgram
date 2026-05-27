@@ -53,11 +53,11 @@ export function CommunityHeader({
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={onEdit}
+            className="btn-ghost"
             style={{
               padding: '7px 18px',
               borderRadius: 999,
               border: '1px solid #808080',
-              background: 'transparent',
               color: 'var(--text)',
               fontSize: 14,
               fontWeight: 600,
@@ -141,6 +141,7 @@ export function CommunityHeader({
         <button
           onClick={onRequest}
           disabled={requestPending}
+          className="btn-solid"
           style={{
             padding: '7px 18px',
             borderRadius: 999,
@@ -162,6 +163,7 @@ export function CommunityHeader({
       <button
         onClick={onJoin}
         disabled={joinPending}
+        className="btn-solid"
         style={{
           padding: '7px 18px',
           borderRadius: 999,
@@ -223,11 +225,11 @@ export function CommunityHeader({
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <button
             onClick={onShowMembers}
+            className="btn-ghost"
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              background: 'none',
               border: 'none',
               cursor: 'pointer',
               padding: 0,
@@ -273,8 +275,8 @@ export function CommunityHeader({
               onClick={onPinToggle}
               disabled={pinPending}
               title={isPinned ? 'Unpin community' : 'Pin community'}
+              className="btn-ghost"
               style={{
-                background: 'none',
                 border: '1px solid #808080',
                 borderRadius: 999,
                 width: 36,

@@ -151,6 +151,41 @@ body {
   100% { background-color: transparent; }
 }
 
+/* ── Reusable hover utilities (declarative; survive re-renders) ──
+   filter-based so they win over inline `background` (different property),
+   and :not(:disabled) keeps disabled buttons inert. */
+.btn-solid {
+  transition: filter 0.12s ease;
+}
+.btn-solid:hover:not(:disabled) {
+  filter: brightness(0.85);
+}
+.btn-solid:active:not(:disabled) {
+  filter: brightness(0.78);
+}
+
+/* Transparent / cancel buttons — tint the background on hover.
+   Use on buttons that do NOT set `background` inline. */
+.btn-ghost {
+  transition: background-color 0.12s ease;
+}
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+/* Subtle icon / image / overlay buttons */
+.hover-dim {
+  transition: filter 0.12s ease;
+}
+.hover-dim:hover {
+  filter: brightness(0.85);
+}
+
+/* Text / count / link buttons — underline on hover */
+.hover-underline:hover {
+  text-decoration: underline;
+}
+
 .poll-select {
   cursor: pointer;
   transition: border-color 0.15s;

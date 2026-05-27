@@ -84,7 +84,7 @@ export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerP
           placeholder="Search GIFs…"
           style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
         />
-        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-muted)' }}>
+        <button className="hover-dim" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', color: 'var(--text-muted)' }}>
           <X size={16} />
         </button>
       </div>

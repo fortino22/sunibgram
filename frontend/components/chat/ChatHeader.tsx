@@ -106,6 +106,7 @@ export function ChatHeader({ room, otherProfile, isTyping, onGroupSettings }: Ch
       {/* Name + subtitle */}
       <div>
         <div
+          className={!isPrivate ? 'btn-ghost' : undefined}
           onClick={!isPrivate ? onGroupSettings : undefined}
           style={{
             fontWeight: 600,

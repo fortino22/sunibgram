@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 
+import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout';
 import { OtpInput } from '@/components/auth/OtpInput';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { signupSchema, type SignupInput, type SignupStep } from '@/components/auth/schemas';
@@ -137,8 +138,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
-      <div style={{ width: '100%', maxWidth: 400 }}>
+    <AuthSplitLayout>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
           <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
         </div>
@@ -147,7 +147,8 @@ export default function SignupPage() {
           {step > 1 && (
             <button
               onClick={() => { setStep((step - 1) as SignupStep); setServerError(''); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, margin: '0 auto 16px', fontFamily: 'inherit', padding: 0 }}
+              className="btn-ghost"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', fontSize: 14, margin: '0 auto 16px', fontFamily: 'inherit', padding: 0 }}
             >
               <ArrowLeft size={14} />
               Back
@@ -194,7 +195,7 @@ export default function SignupPage() {
               </button>
               <div style={{ textAlign: 'center', marginTop: 16 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Didn&apos;t receive it? </span>
-                <button onClick={resendOtp} disabled={loading} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', padding: 0 }}>Resend code</button>
+                <button onClick={resendOtp} disabled={loading} className="hover-dim" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', padding: 0 }}>Resend code</button>
               </div>
             </>
           )}
@@ -208,8 +209,7 @@ export default function SignupPage() {
         <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
           Already have an account? <Link href="/login" style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
         </div>
-      </div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    </AuthSplitLayout>
   );
 }

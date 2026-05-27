@@ -307,13 +307,17 @@ export function EditCommunityModal({ community, onClose, onSuccess, onDelete, de
               color: 'var(--error, #e53e3e)', fontSize: 15, fontWeight: 700,
               cursor: deletePending ? 'default' : 'pointer',
               opacity: deletePending ? 0.5 : 1,
+              transition: 'background 0.12s ease',
             }}
+            onMouseEnter={(e) => { if (!deletePending) e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+            onMouseLeave={(e) => { if (!deletePending) e.currentTarget.style.background = 'transparent'; }}
           >
             {deletePending ? 'Deleting…' : 'Delete Community'}
           </button>
 
           <button
             type="submit"
+            className="btn-solid"
             disabled={isPending || !name.trim()}
             style={{
               width: '100%', padding: '12px', borderRadius: 999, border: 'none',

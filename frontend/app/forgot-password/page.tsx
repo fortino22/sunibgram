@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 
+import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout';
 import { ForgotPasswordFlow } from '@/components/auth/ForgotPasswordFlow';
 
 function ForgotPasswordPageContent() {
@@ -12,17 +13,7 @@ function ForgotPasswordPageContent() {
   const initialEmail = searchParams.get('email') ?? '';
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'var(--bg)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px 16px',
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: 400 }}>
+    <AuthSplitLayout>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
           <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
         </div>
@@ -52,8 +43,7 @@ function ForgotPasswordPageContent() {
             Sign in
           </Link>
         </div>
-      </div>
-    </div>
+    </AuthSplitLayout>
   );
 }
 
@@ -61,17 +51,7 @@ export default function ForgotPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div
-          style={{
-            minHeight: '100vh',
-            background: 'var(--bg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '24px 16px',
-          }}
-        >
-          <div style={{ width: '100%', maxWidth: 400 }}>
+        <AuthSplitLayout>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
               <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
             </div>
@@ -88,8 +68,7 @@ export default function ForgotPasswordPage() {
                 Loading…
               </div>
             </div>
-          </div>
-        </div>
+        </AuthSplitLayout>
       }
     >
       <ForgotPasswordPageContent />

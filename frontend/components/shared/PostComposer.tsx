@@ -1606,6 +1606,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
             <button
               type="submit"
+              className="btn-solid"
               disabled={!canSubmit}
               style={{
                 background: '#fff',

@@ -73,8 +73,8 @@ export function CommunityMembersPanel({ communityId, communityName, myRole, onCl
       >
         <button
           onClick={onClose}
+          className="btn-ghost"
           style={{
-            background: 'none',
             border: 'none',
             cursor: 'pointer',
             color: 'var(--text)',
@@ -129,6 +129,7 @@ export function CommunityMembersPanel({ communityId, communityName, myRole, onCl
           <button
             key={tab.id}
             onClick={() => setRoleFilter(tab.id)}
+            className="hover-dim"
             style={{
               padding: '5px 14px',
               borderRadius: 999,

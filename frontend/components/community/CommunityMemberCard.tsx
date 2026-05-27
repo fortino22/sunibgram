@@ -56,12 +56,12 @@ export function CommunityMemberCard({
     >
       <button
         onClick={() => router.push(`/profile/${member.user_id}`)}
+        className="btn-ghost"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 12,
           flex: 1,
-          background: 'none',
           border: 'none',
           cursor: 'pointer',
           textAlign: 'left',

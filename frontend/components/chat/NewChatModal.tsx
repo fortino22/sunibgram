@@ -365,6 +365,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
               }}
             >
               <button
+                className="btn-solid"
                 onClick={handleChat}
                 disabled={selected.length === 0 || isPending}
                 style={{
@@ -378,7 +379,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
                   fontWeight: 600,
                   fontSize: 15,
                   cursor: selected.length === 0 || isPending ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.15s',
+                  transition: 'background 0.15s, filter 0.12s ease',
                   opacity: isPending ? 0.7 : 1,
                 }}
               >
@@ -511,6 +512,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
               }}
             >
               <button
+                className="btn-solid"
                 onClick={handleCreateGroup}
                 disabled={!groupName.trim() || isPending}
                 style={{
@@ -523,7 +525,7 @@ export function NewChatModal({ onClose, onRoomCreated }: NewChatModalProps) {
                   fontWeight: 600,
                   fontSize: 15,
                   cursor: !groupName.trim() || isPending ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.15s',
+                  transition: 'background 0.15s, filter 0.12s ease',
                   opacity: isPending ? 0.7 : 1,
                 }}
               >
