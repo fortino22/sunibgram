@@ -4,12 +4,15 @@
   --bg:              oklch(9% 0.005 260);
   --bg-subtle:       oklch(12% 0.006 260);
   --bg-card:         oklch(10.5% 0.005 260);
+  --bg-hover:        oklch(15% 0.006 260);
   --sidebar:         oklch(7% 0.005 260);
   --sidebar-hover:   oklch(13% 0.006 260);
   --sidebar-active:  oklch(16% 0.007 260);
   --accent:          oklch(62% 0.2 260);
   --accent-hover:    oklch(57% 0.22 260);
   --accent-soft:     oklch(16% 0.04 260);
+  --x-blue:          #1d9bf0;
+  --x-blue-soft:     rgba(29, 155, 240, 0.12);
   --coral:           oklch(64% 0.18 25);
   --coral-soft:      oklch(16% 0.05 25);
   --green:           oklch(60% 0.16 155);

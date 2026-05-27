@@ -6,18 +6,28 @@ import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { FollowButton } from '@/components/shared/FollowButton';
 import { useSuggestedPeoplePreview } from '@/hooks/useExplore';
 
-const CARD_CLASS = 'overflow-hidden rounded-2xl';
-const CARD_STYLE = { background: 'var(--bg-card)', border: '1px solid var(--border)' } as const;
 const SKELETON_COUNT = 3;
 
-export function WhoToFollow() {
+interface WhoToFollowProps {
+  /** Flat full-width section (no rounded card chrome) — for in-page use like X. */
+  bare?: boolean;
+}
+
+export function WhoToFollow({ bare = false }: WhoToFollowProps) {
   const router = useRouter();
   const { data, isLoading, isError } = useSuggestedPeoplePreview();
 
+  const sectionClass = bare ? '' : 'overflow-hidden rounded-2xl';
+  const sectionStyle = bare
+    ? { borderBottom: '1px solid var(--border)' }
+    : { background: 'var(--bg-card)', border: '1px solid var(--border)' };
+  const headCls = bare ? 'text-[20px]' : 'text-[18px]';
+  const headPad = bare ? '16px 16px 6px' : '14px 16px 8px';
+
   if (isLoading) {
     return (
-      <section className={CARD_CLASS} style={CARD_STYLE}>
-        <h2 className="text-[18px] font-extrabold" style={{ padding: '14px 16px 8px', color: 'var(--text)' }}>Who to follow</h2>
+      <section className={sectionClass} style={sectionStyle}>
+        <h2 className={`${headCls} font-extrabold`} style={{ padding: headPad, color: 'var(--text)' }}>Who to follow</h2>
         <div>
           {Array.from({ length: SKELETON_COUNT }, (_, i) => (
             <div key={i} className="flex items-center gap-2.5" style={{ padding: '12px 16px' }}>
@@ -40,8 +50,8 @@ export function WhoToFollow() {
   if (people.length === 0) return null;
 
   return (
-    <section className={CARD_CLASS} style={CARD_STYLE}>
-      <h2 className="text-[18px] font-extrabold" style={{ padding: '14px 16px 8px', color: 'var(--text)' }}>Who to follow</h2>
+    <section className={sectionClass} style={sectionStyle}>
+      <h2 className={`${headCls} font-extrabold`} style={{ padding: headPad, color: 'var(--text)' }}>Who to follow</h2>
 
       <div>
         {people.map((person) => (
@@ -53,7 +63,7 @@ export function WhoToFollow() {
             onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/profile/${person.userId}`); }}
             className="flex cursor-pointer items-center gap-2.5 transition-colors"
             style={{ padding: '12px 16px' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
             <Avatar username={person.username} avatarUrl={person.userProfilePic || null} size={44} />
@@ -80,7 +90,7 @@ export function WhoToFollow() {
         onClick={() => router.push('/connect')}
         className="w-full text-left text-[15px] transition-colors"
         style={{ padding: '12px 16px', color: 'var(--accent)' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
       >
         Show more

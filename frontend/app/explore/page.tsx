@@ -2,19 +2,17 @@
 
 import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MediaGrid } from '@/components/shared/MediaGrid';
 import { SearchBar } from '@/components/explore/SearchBar';
-import { TrendingSection } from '@/components/explore/TrendingSection';
-import { SuggestedPeopleSection } from '@/components/explore/SuggestedPeopleSection';
 import { PersonCard } from '@/components/explore/PersonCard';
 import { CommunityCard } from '@/components/explore/CommunityCard';
+import { ExploreForYou } from '@/components/explore/ExploreForYou';
+import { TrendingHashtagsTab } from '@/components/explore/TrendingHashtagsTab';
 import {
-  useTrendingHashtags,
-  useSuggestedPeople,
   useExploreTop,
   useExploreLatest,
   useExplorePeople,
@@ -24,6 +22,7 @@ import {
 import type { ThreadItem } from '@/lib/services/threads';
 
 type ExploreTab = 'top' | 'latest' | 'people' | 'media' | 'communities';
+type HomeTab = 'foryou' | 'trending';
 
 const TABS: { id: ExploreTab; label: string }[] = [
   { id: 'top', label: 'Top' },
@@ -33,59 +32,62 @@ const TABS: { id: ExploreTab; label: string }[] = [
   { id: 'communities', label: 'Communities' },
 ];
 
-function TabBar({
-  active,
-  onChange,
-}: {
-  active: ExploreTab;
-  onChange: (tab: ExploreTab) => void;
-}) {
+const HOME_TABS: { id: HomeTab; label: string }[] = [
+  { id: 'foryou', label: 'For You' },
+  { id: 'trending', label: 'Trending' },
+];
+
+function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onClick}
       style={{
-        display: 'flex',
-        borderBottom: '1px solid var(--border)',
+        flex: 1,
+        padding: '12px 8px',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        fontWeight: active ? 600 : 400,
+        fontSize: 14,
+        color: active ? 'var(--text)' : 'var(--text-tertiary)',
+        borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
+        marginBottom: -1,
+        transition: 'all 0.15s ease',
+        whiteSpace: 'nowrap',
+        textAlign: 'center',
+        fontFamily: 'inherit',
+        letterSpacing: '-0.01em',
       }}
     >
+      {label}
+    </button>
+  );
+}
+
+function TabBar({ active, onChange }: { active: ExploreTab; onChange: (tab: ExploreTab) => void }) {
+  return (
+    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
       {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onChange(tab.id)}
-          style={{
-            flex: 1,
-            padding: '12px 0',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontWeight: active === tab.id ? 600 : 400,
-            fontSize: 14,
-            color: active === tab.id ? 'var(--text)' : 'var(--text-tertiary)',
-            borderBottom: active === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
-            marginBottom: -1,
-            transition: 'all 0.15s',
-            whiteSpace: 'nowrap',
-            fontFamily: 'inherit',
-          }}
-        >
-          {tab.label}
-        </button>
+        <TabButton key={tab.id} label={tab.label} active={active === tab.id} onClick={() => onChange(tab.id)} />
       ))}
     </div>
   );
 }
 
+function HomeTabBar({ active, onChange }: { active: HomeTab; onChange: (tab: HomeTab) => void }) {
+  return (
+    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+      {HOME_TABS.map((tab) => (
+        <TabButton key={tab.id} label={tab.label} active={active === tab.id} onClick={() => onChange(tab.id)} />
+      ))}
+    </div>
+  );
+}
 
 function SectionLabel({ title }: { title: string }) {
   return (
-    <div
-      style={{
-        padding: '14px 20px 6px',
-        fontSize: 19,
-        fontWeight: 700,
-        color: 'var(--text)',
-        letterSpacing: '-0.02em',
-      }}
-    >
+    <div style={{ padding: '14px 20px 6px', fontSize: 19, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
       {title}
     </div>
   );
@@ -93,14 +95,7 @@ function SectionLabel({ title }: { title: string }) {
 
 function SectionDivider() {
   return (
-    <div
-      style={{
-        height: 8,
-        background: 'var(--bg-subtle)',
-        borderTop: '1px solid var(--border)',
-        borderBottom: '1px solid var(--border)',
-      }}
-    />
+    <div style={{ height: 8, background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }} />
   );
 }
 
@@ -208,15 +203,20 @@ function TabContent({
 
 function ExploreInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialQ = searchParams.get('q') ?? '';
-  const initialTab = (searchParams.get('tab') as ExploreTab | null) ?? 'top';
 
   const [inputValue, setInputValue] = useState(initialQ);
   const [query, setQuery] = useState(initialQ);
-  const [activeTab, setActiveTab] = useState<ExploreTab>(initialQ ? initialTab : 'top');
+  const [activeTab, setActiveTab] = useState<ExploreTab>('top');
+  const [homeTab, setHomeTabState] = useState<HomeTab>(
+    searchParams.get('tab') === 'trending' ? 'trending' : 'foryou',
+  );
 
-  const trendingQuery = useTrendingHashtags(10);
-  const suggestedQuery = useSuggestedPeople(8);
+  // Keep the home tab in sync with deep links (e.g. "Show more" → ?tab=trending)
+  useEffect(() => {
+    setHomeTabState(searchParams.get('tab') === 'trending' ? 'trending' : 'foryou');
+  }, [searchParams]);
 
   // Debounce search input by 400ms
   useEffect(() => {
@@ -231,6 +231,11 @@ function ExploreInner() {
 
   const hasQuery = query.length > 0;
 
+  function setHomeTab(tab: HomeTab) {
+    setHomeTabState(tab);
+    router.replace(tab === 'foryou' ? '/explore' : `/explore?tab=${tab}`);
+  }
+
   return (
     <div>
       {/* Sticky header */}
@@ -241,42 +246,25 @@ function ExploreInner() {
           zIndex: 10,
           background: 'oklch(10.5% 0.005 260 / 0.92)',
           backdropFilter: 'blur(12px)',
-          borderBottom: hasQuery ? 'none' : '1px solid var(--border)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 16px' }}>
           <SearchBar value={inputValue} onChange={setInputValue} />
         </div>
-        {hasQuery && <TabBar active={activeTab} onChange={setActiveTab} />}
+        {hasQuery ? (
+          <TabBar active={activeTab} onChange={setActiveTab} />
+        ) : (
+          <HomeTabBar active={homeTab} onChange={setHomeTab} />
+        )}
       </div>
 
       {/* Content */}
       {hasQuery ? (
         <TabContent tab={activeTab} query={query} onTabChange={setActiveTab} />
+      ) : homeTab === 'trending' ? (
+        <TrendingHashtagsTab />
       ) : (
-        <>
-          {trendingQuery.isLoading ? (
-            <div style={{ padding: '20px', color: 'var(--text-tertiary)', fontSize: 14 }}>
-              Loading trends…
-            </div>
-          ) : (
-            <TrendingSection hashtags={trendingQuery.data ?? []} />
-          )}
-
-          {!suggestedQuery.isLoading && (suggestedQuery.data?.length ?? 0) > 0 && (
-            <>
-              <div
-                style={{
-                  height: 8,
-                  background: 'var(--bg-subtle)',
-                  borderTop: '1px solid var(--border)',
-                  borderBottom: '1px solid var(--border)',
-                }}
-              />
-              <SuggestedPeopleSection people={suggestedQuery.data ?? []} />
-            </>
-          )}
-        </>
+        <ExploreForYou />
       )}
     </div>
   );

@@ -1385,7 +1385,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                 <div
                   style={{
                     position: 'absolute',
-                    bottom: 'calc(100% + 6px)',
+                    top: 'calc(100% + 6px)',
                     left: 0,
                     minWidth: 240,
                     background: 'var(--bg-card)',

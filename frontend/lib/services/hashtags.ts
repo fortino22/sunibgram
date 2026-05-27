@@ -19,5 +19,11 @@ function mapTrendingHashtag(raw: RawTrendingHashtag): TrendingHashtag {
 
 export async function getTrendingHashtags(token: string): Promise<TrendingHashtag[]> {
   const raw = await api.get<{ data: RawTrendingHashtag[] }>('/api/hashtags/trending', token);
-  return raw.data.map(mapTrendingHashtag);
+  return (raw.data ?? []).map(mapTrendingHashtag);
+}
+
+/** Top-N trending hashtags (compact widget). Backend caps at 4. */
+export async function getTopTrendingHashtags(token: string): Promise<TrendingHashtag[]> {
+  const raw = await api.get<{ data: RawTrendingHashtag[] }>('/api/hashtags/trending/top', token);
+  return (raw.data ?? []).map(mapTrendingHashtag);
 }

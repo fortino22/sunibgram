@@ -11,7 +11,7 @@ import (
 
 const (
 	trendingHashtagLimit    = 30
-	topTrendingHashtagLimit = 4
+	topTrendingHashtagLimit = 6
 )
 
 type HashtagController struct {

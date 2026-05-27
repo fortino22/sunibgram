@@ -28,6 +28,7 @@ export interface UserProfile {
   name?: string;
   username: string;
   email?: string;
+  is_premium?: boolean;
   avatar?: string | null;
   banner?: string | null;
   bio?: string | null;
@@ -46,6 +47,7 @@ function mapProfile(raw: BackendProfileResponse): UserProfile {
     name: raw.name,
     username: raw.username,
     email: raw.email,
+    is_premium: raw.is_premium,
     avatar: raw.avatar_url ?? null,
     banner: raw.banner_url ?? null,
     bio: raw.bio ?? null,
