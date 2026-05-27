@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import {
   getSuggestedPeople,
@@ -85,7 +85,6 @@ export function useExplorePeople(q: string) {
       return getPeople(q, token);
     },
     enabled: token !== null && q.trim().length > 0,
-    placeholderData: keepPreviousData,
   });
 }
 

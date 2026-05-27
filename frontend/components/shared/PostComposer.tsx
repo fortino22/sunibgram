@@ -814,7 +814,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
                   {communities.length > 0 && (
                     <>
-                      <div style={{ padding: '8px 16px 4px', fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div style={{ padding: '8px 16px 4px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
                         My Communities
                       </div>
                       {communities.map((c) => (
@@ -862,7 +862,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   )}
                   {joinedEvents.length > 0 && (
                     <>
-                      <div style={{ padding: '8px 16px 4px', fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <div style={{ padding: '8px 16px 4px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
                         My Events
                       </div>
                       {joinedEvents.map((e) => (

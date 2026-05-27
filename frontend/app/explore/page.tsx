@@ -95,7 +95,7 @@ function SectionLabel({ title }: { title: string }) {
 
 function SectionDivider() {
   return (
-    <div style={{ height: 8, background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }} />
+    <div style={{ height: 1, background: 'var(--border)' }} />
   );
 }
 
@@ -156,7 +156,9 @@ function TabContent({
         {people.length > 0 && (
           <div>
             <SectionLabel title="People" />
-            {people.slice(0, 3).map((p) => <PersonCard key={p.userId} person={p} />)}
+            {people.slice(0, 3).map((p, i, arr) => (
+              <PersonCard key={p.userId} person={p} showDivider={i < arr.length - 1} />
+            ))}
             {people.length > 3 && (
               <ShowMoreButton label="Show more people" onClick={() => onTabChange('people')} />
             )}
@@ -204,37 +206,32 @@ function TabContent({
 function ExploreInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialQ = searchParams.get('q') ?? '';
 
-  const [inputValue, setInputValue] = useState(initialQ);
-  const [query, setQuery] = useState(initialQ);
+  // URL is the single source of truth for the committed search + home tab.
+  // No mirror state → can never desync / get "stuck" on an old query.
+  const query = (searchParams.get('q') ?? '').trim();
+  const homeTab: HomeTab = searchParams.get('tab') === 'trending' ? 'trending' : 'foryou';
+
+  const [inputValue, setInputValue] = useState(query);
   const [activeTab, setActiveTab] = useState<ExploreTab>('top');
-  const [homeTab, setHomeTabState] = useState<HomeTab>(
-    searchParams.get('tab') === 'trending' ? 'trending' : 'foryou',
-  );
 
-  // Keep tab + committed query in sync with the URL (deep links, back/forward,
-  // "Show more" → ?tab=trending). Search is committed only via commitSearch below.
+  // Sync the text box + reset to Top whenever the committed query changes
+  // (new search, hashtag deep-link, back/forward). Typing never changes `query`.
   useEffect(() => {
-    setHomeTabState(searchParams.get('tab') === 'trending' ? 'trending' : 'foryou');
-    const q = searchParams.get('q') ?? '';
-    setQuery(q);
-    setInputValue(q);
-  }, [searchParams]);
+    setInputValue(query);
+    setActiveTab('top');
+  }, [query]);
 
   const hasQuery = query.length > 0;
 
   // Commit a search: typing alone never queries — only this does.
+  // Writes the URL; `query` re-derives from it, the effect syncs the rest.
   function commitSearch(q: string) {
     const v = q.trim();
-    setInputValue(v);
-    setQuery(v);
-    setActiveTab('top');
     router.replace(v ? `/explore?q=${encodeURIComponent(v)}` : '/explore');
   }
 
   function setHomeTab(tab: HomeTab) {
-    setHomeTabState(tab);
     router.replace(tab === 'foryou' ? '/explore' : `/explore?tab=${tab}`);
   }
 

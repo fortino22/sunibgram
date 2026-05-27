@@ -2,16 +2,25 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
-import { Icon } from '@/components/ui/Icon';
 import { useExploreSearch } from '@/hooks/useExplore';
+import {
+  getRecentSearches,
+  addRecentQuery,
+  addRecentUser,
+  removeRecentSearch,
+  clearRecentSearches,
+  recentKey,
+  type RecentSearch,
+} from '@/lib/searchHistory';
 
 export function SearchDropdown() {
   const router = useRouter();
   const [value, setValue] = useState('');
   const [open, setOpen] = useState(false);
   const [debouncedQ, setDebouncedQ] = useState('');
+  const [recent, setRecent] = useState<RecentSearch[]>([]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(value.trim()), 300);
@@ -20,7 +29,15 @@ export function SearchDropdown() {
 
   const { data, isLoading } = useExploreSearch(debouncedQ);
   const users = data?.users.slice(0, 6) ?? [];
-  const showDropdown = open && value.trim().length > 0;
+
+  const trimmed = value.trim();
+  const showResults = open && trimmed.length > 0;
+  const showRecent = open && trimmed.length === 0 && recent.length > 0;
+  const showDropdown = showResults || showRecent;
+
+  function refreshRecent() {
+    setRecent(getRecentSearches());
+  }
 
   function navigate(path: string) {
     setValue('');
@@ -28,50 +45,71 @@ export function SearchDropdown() {
     router.push(path);
   }
 
-  function goSearch(tab?: string) {
-    const params = new URLSearchParams({ q: value.trim() });
+  function goSearch(q: string, tab?: string) {
+    const v = q.trim();
+    if (!v) return;
+    addRecentQuery(v);
+    const params = new URLSearchParams({ q: v });
     if (tab) params.set('tab', tab);
     navigate(`/explore?${params.toString()}`);
   }
 
+  function openUser(user: { userId: number; username: string; name: string; profile: string }) {
+    addRecentUser(user);
+    navigate(`/profile/${user.userId}`);
+  }
+
+  // Same look as the explore search bar — full width (no shrink), full pill.
   const inputRow: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
-    background: open ? 'var(--bg-card)' : 'var(--bg-subtle)',
-    border: `1.5px solid ${open ? 'var(--accent)' : 'var(--border)'}`,
-    borderRadius: showDropdown ? '12px 12px 0 0' : 9999,
-    padding: '8px 14px',
-    transition: 'border-radius 0s, border-color 0.15s, background 0.15s',
-    boxShadow: open ? '0 0 0 3px oklch(64% 0.22 270 / 0.15)' : 'none',
+    width: '100%',
+    background: 'var(--bg-secondary)',
+    border: open ? '1.5px solid var(--accent)' : '1px solid var(--border)',
+    borderRadius: 999,
+    padding: open ? '7.5px 13.5px' : '8px 14px',
+    transition: 'border-color 0.15s',
   };
 
-  const dropdownRow = (last = false): React.CSSProperties => ({
+  const row: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     width: '100%',
-    padding: '11px 14px',
+    padding: '11px 16px',
     background: 'transparent',
     border: 'none',
-    borderBottom: last ? 'none' : '1px solid var(--border)',
     cursor: 'pointer',
     textAlign: 'left',
     fontFamily: 'inherit',
-  });
+  };
+
+  const removeBtn: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--accent)',
+    flexShrink: 0,
+    padding: 4,
+    marginRight: -4,
+  };
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Input */}
+      {/* Input — full-width pill */}
       <div style={inputRow}>
-        <Icon name="search" size={15} color="var(--text-tertiary)" />
+        <Search size={15} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          onFocus={() => setOpen(true)}
+          onFocus={() => { refreshRecent(); setOpen(true); }}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && value.trim()) goSearch(); }}
-          placeholder="Explore campus..."
+          onKeyDown={(e) => { if (e.key === 'Enter' && trimmed) goSearch(value); }}
+          placeholder="Search"
           style={{
             border: 'none',
             background: 'transparent',
@@ -84,6 +122,7 @@ export function SearchDropdown() {
         />
         {value && (
           <button
+            type="button"
             onMouseDown={(e) => { e.preventDefault(); setValue(''); }}
             aria-label="Clear"
             style={{
@@ -105,72 +144,132 @@ export function SearchDropdown() {
         )}
       </div>
 
-      {/* Dropdown */}
+      {/* Floating dropdown card — detached, full width of the panel */}
       {showDropdown && (
         <div
           style={{
             position: 'absolute',
-            top: '100%',
+            top: 'calc(100% + 6px)',
             left: 0,
             right: 0,
             background: 'var(--bg-card)',
-            border: '1.5px solid var(--accent)',
-            borderTop: 'none',
-            borderRadius: '0 0 12px 12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            border: '1px solid var(--border)',
+            borderRadius: 16,
+            boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
             zIndex: 50,
             overflow: 'hidden',
+            paddingBottom: 6,
           }}
         >
-          {/* Search for "query" */}
-          <button
-            onMouseDown={() => goSearch()}
-            style={{ ...dropdownRow(false), borderBottom: '1px solid var(--border)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <Icon name="search" size={14} color="var(--text-secondary)" />
-            <span style={{ fontSize: 14, color: 'var(--text)' }}>
-              Search for <strong>&ldquo;{value.trim()}&rdquo;</strong>
-            </span>
-          </button>
+          {showRecent && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 6px' }}>
+                <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Recent</span>
+                <button
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); clearRecentSearches(); refreshRecent(); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--accent)', fontFamily: 'inherit', padding: 0 }}
+                >
+                  Clear all
+                </button>
+              </div>
 
-          {/* User results */}
-          {isLoading && (
-            <div style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-tertiary)' }}>
-              Searching…
-            </div>
+              {recent.map((item) => (
+                <div
+                  key={recentKey(item)}
+                  role="button"
+                  tabIndex={0}
+                  onMouseDown={() => (item.type === 'query' ? goSearch(item.text) : openUser(item))}
+                  style={row}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {item.type === 'query' ? (
+                    <>
+                      <Search size={17} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.text}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Avatar username={item.username} avatarUrl={item.profile || null} size="sm" />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.name}
+                        </div>
+                        <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>@{item.username}</div>
+                      </div>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Remove"
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeRecentSearch(item); refreshRecent(); }}
+                    style={removeBtn}
+                  >
+                    <X size={17} />
+                  </button>
+                </div>
+              ))}
+            </>
           )}
 
-          {!isLoading && users.map((user, i) => (
-            <button
-              key={user.userId}
-              onMouseDown={() => navigate(`/profile/${user.userId}`)}
-              style={dropdownRow(i === users.length - 1 && true)}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Avatar username={user.username} avatarUrl={user.profile || null} size="sm" />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {user.name}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>@{user.username}</div>
-              </div>
-            </button>
-          ))}
+          {showResults && (
+            <>
+              {/* Search for "query" */}
+              <button
+                type="button"
+                onMouseDown={() => goSearch(value)}
+                style={row}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <Search size={16} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                <span style={{ fontSize: 15, color: 'var(--text)' }}>
+                  Search for <strong>&ldquo;{trimmed}&rdquo;</strong>
+                </span>
+              </button>
 
-          {/* Go to @query */}
-          <button
-            onMouseDown={() => goSearch('people')}
-            style={{ ...dropdownRow(true), borderTop: '1px solid var(--border)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <span style={{ fontSize: 14, color: 'var(--text)' }}>
-              Go to <strong>@{value.trim()}</strong>
-            </span>
-          </button>
+              {isLoading && (
+                <div style={{ padding: '12px 16px', fontSize: 14, color: 'var(--text-tertiary)' }}>
+                  Searching…
+                </div>
+              )}
+
+              {!isLoading && users.map((user) => (
+                <button
+                  key={user.userId}
+                  type="button"
+                  onMouseDown={() => openUser({ userId: user.userId, username: user.username, name: user.name, profile: user.profile })}
+                  style={row}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <Avatar username={user.username} avatarUrl={user.profile || null} size="sm" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user.name}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>@{user.username}</div>
+                  </div>
+                </button>
+              ))}
+
+              {/* Go to @query */}
+              <button
+                type="button"
+                onMouseDown={() => goSearch(value, 'people')}
+                style={row}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span style={{ fontSize: 15, color: 'var(--text)', paddingLeft: 28 }}>
+                  Go to <strong>@{trimmed}</strong>
+                </span>
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
