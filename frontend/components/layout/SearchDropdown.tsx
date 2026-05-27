@@ -89,13 +89,15 @@ export function SearchDropdown() {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'none',
+    background: 'transparent',
     border: 'none',
+    borderRadius: '50%',
     cursor: 'pointer',
     color: 'var(--accent)',
     flexShrink: 0,
     padding: 4,
     marginRight: -4,
+    transition: 'background 0.12s ease',
   };
 
   return (
@@ -124,6 +126,8 @@ export function SearchDropdown() {
           <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); setValue(''); }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--text-secondary)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--text-tertiary)'; }}
             aria-label="Clear"
             style={{
               display: 'flex',
@@ -137,6 +141,7 @@ export function SearchDropdown() {
               cursor: 'pointer',
               color: 'var(--bg)',
               flexShrink: 0,
+              transition: 'background 0.12s ease',
             }}
           >
             <X size={10} />
@@ -168,6 +173,8 @@ export function SearchDropdown() {
                 <button
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); clearRecentSearches(); refreshRecent(); }}
+                  onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--accent)', fontFamily: 'inherit', padding: 0 }}
                 >
                   Clear all
@@ -206,6 +213,8 @@ export function SearchDropdown() {
                     type="button"
                     aria-label="Remove"
                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeRecentSearch(item); refreshRecent(); }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-soft)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     style={removeBtn}
                   >
                     <X size={17} />

@@ -95,13 +95,15 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'none',
+    background: 'transparent',
     border: 'none',
+    borderRadius: '50%',
     cursor: 'pointer',
     color: 'var(--accent)',
     flexShrink: 0,
     padding: 4,
     marginRight: -4,
+    transition: 'background 0.12s ease',
   };
 
   function closeBar() {
@@ -123,6 +125,8 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
           type="button"
           aria-label="Back"
           onMouseDown={closeBar}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           style={{
             position: 'absolute',
             left: 0,
@@ -131,13 +135,15 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'none',
+            background: 'transparent',
             border: 'none',
+            borderRadius: '50%',
             cursor: 'pointer',
             color: 'var(--text)',
             padding: 6,
             marginLeft: -6,
             zIndex: 1,
+            transition: 'background 0.12s ease',
           }}
         >
           <ArrowLeft size={20} />
@@ -171,6 +177,8 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
           <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); handleChange(''); inputRef.current?.focus(); }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--text-secondary)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--text-tertiary)'; }}
             aria-label="Clear search"
             style={{
               display: 'flex',
@@ -184,6 +192,7 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
               cursor: 'pointer',
               color: 'var(--bg)',
               flexShrink: 0,
+              transition: 'background 0.12s ease',
             }}
           >
             <X size={10} />
@@ -222,6 +231,8 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
                 <button
                   type="button"
                   onMouseDown={(e) => { e.preventDefault(); clearRecentSearches(); refreshRecent(); }}
+                  onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -269,6 +280,8 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
                     type="button"
                     aria-label="Remove"
                     onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeRecentSearch(item); refreshRecent(); }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-soft)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     style={removeBtn}
                   >
                     <X size={17} />

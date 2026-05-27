@@ -204,6 +204,8 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
                         } : (event) => {
                           event.stopPropagation();
                         }}
+                        onMouseEnter={onImageClick && optionMediaIndex >= 0 ? (event) => { event.currentTarget.style.opacity = '0.85'; } : undefined}
+                        onMouseLeave={onImageClick && optionMediaIndex >= 0 ? (event) => { event.currentTarget.style.opacity = '1'; } : undefined}
                         className="shrink-0 overflow-hidden rounded-xl border"
                         style={{
                           width: compact ? 40 : 48,
@@ -215,6 +217,7 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          transition: 'opacity 0.12s ease',
                         }}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}

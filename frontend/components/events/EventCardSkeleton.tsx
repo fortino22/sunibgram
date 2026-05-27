@@ -1,20 +1,26 @@
 export function EventCardSkeleton() {
   return (
     <div
-      className="animate-pulse border-b px-5 py-4"
-      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
+      className="animate-pulse"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '14px 20px',
+        borderBottom: '1px solid var(--border)',
+      }}
     >
+      {/* Thumbnail */}
       <div
-        className="mb-4 h-44 rounded-3xl"
-        style={{ background: 'var(--bg-subtle)' }}
+        className="rounded-[10px]"
+        style={{ width: 56, height: 56, flexShrink: 0, background: 'var(--bg-subtle)' }}
       />
-      <div className="mb-3 flex gap-2">
-        <div className="h-6 w-24 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
-        <div className="h-6 w-20 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="mb-2.5 h-4 w-1/2 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
+        <div className="mb-1.5 h-3 w-2/3 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
+        <div className="h-3 w-1/3 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
       </div>
-      <div className="mb-3 h-7 w-2/3 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
-      <div className="mb-2 h-4 w-full rounded-full" style={{ background: 'var(--bg-subtle)' }} />
-      <div className="h-4 w-5/6 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
     </div>
   );
 }

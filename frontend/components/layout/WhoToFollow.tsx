@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { FollowButton } from '@/components/shared/FollowButton';
+import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { useSuggestedPeoplePreview } from '@/hooks/useExplore';
 
 const SKELETON_COUNT = 3;
@@ -66,19 +67,23 @@ export function WhoToFollow({ bare = false }: WhoToFollowProps) {
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
-            <Avatar username={person.username} avatarUrl={person.userProfilePic || null} size={44} />
+            <UserHoverCard userId={person.userId} style={{ flexShrink: 0 }}>
+              <Avatar username={person.username} avatarUrl={person.userProfilePic || null} size={44} />
+            </UserHoverCard>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1">
-                <span className="truncate text-[15px] font-bold" style={{ color: 'var(--text)' }}>
-                  {person.name}
-                </span>
-                {person.isPremium && <VerifiedBadge size={15} />}
+            <UserHoverCard userId={person.userId} style={{ flex: 1, minWidth: 0 }}>
+              <div className="min-w-0 w-full">
+                <div className="flex items-center gap-1">
+                  <span className="truncate text-[15px] font-bold" style={{ color: 'var(--text)' }}>
+                    {person.name}
+                  </span>
+                  {person.isPremium && <VerifiedBadge size={15} />}
+                </div>
+                <div className="truncate text-[14px]" style={{ color: 'var(--text-tertiary)' }}>
+                  @{person.username}
+                </div>
               </div>
-              <div className="truncate text-[14px]" style={{ color: 'var(--text-tertiary)' }}>
-                @{person.username}
-              </div>
-            </div>
+            </UserHoverCard>
 
             <FollowButton userId={person.userId} initialFollowing={person.isFollowing} />
           </div>

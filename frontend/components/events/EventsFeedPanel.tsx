@@ -101,6 +101,13 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                transition: 'background 0.15s ease, border-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!searchOpen) (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)';
+              }}
+              onMouseLeave={(e) => {
+                if (!searchOpen) (e.currentTarget as HTMLElement).style.background = 'transparent';
               }}
             >
               <Search size={16} />
@@ -120,7 +127,10 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 5,
+                transition: 'opacity 0.15s ease',
               }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
             >
               <Plus size={14} strokeWidth={2.5} />
               Create
@@ -217,6 +227,13 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
                 cursor: 'pointer',
+                transition: 'background 0.15s ease, border-color 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (filter !== key) (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)';
+              }}
+              onMouseLeave={(e) => {
+                if (filter !== key) (e.currentTarget as HTMLElement).style.background = 'transparent';
               }}
             >
               {label}
@@ -279,7 +296,7 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
             <>
               {filter === 'all' && running.length > 0 && <SectionHeader label="Running Now" />}
               {running.length > 0
-                ? running.map((event) => <EventCard key={event.id} event={event} />)
+                ? running.map((event) => <EventCard key={event.id} event={event} live />)
                 : filter === 'running' && (
                   <div style={{ padding: '40px 20px' }}>
                     <EmptyState title="No events running now" subtitle="Check back soon or create an event for later." />

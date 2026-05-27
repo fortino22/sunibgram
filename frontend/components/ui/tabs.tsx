@@ -60,6 +60,7 @@ export function TabsTrigger({
 }) {
   const tabs = useTabsContext();
   const active = tabs.value === value;
+  const [hovered, setHovered] = React.useState(false);
 
   return (
     <button
@@ -69,9 +70,11 @@ export function TabsTrigger({
         className
       )}
       style={{
-        background: active ? 'var(--bg-card)' : 'transparent',
-        color: active ? 'var(--text)' : 'var(--text-secondary)',
+        background: active ? 'var(--bg-card)' : hovered ? 'var(--bg-hover)' : 'transparent',
+        color: active || hovered ? 'var(--text)' : 'var(--text-secondary)',
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onClick={() => tabs.onValueChange(value)}
     >
       {children}

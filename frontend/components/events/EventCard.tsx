@@ -39,7 +39,8 @@ function formatEventTimeRange(startIso: string | null, endIso: string | null): s
   return [startIso, endIso].filter(Boolean).join(' – ');
 }
 
-export function EventCard({ event }: { event: EventItem }) {
+export function EventCard({ event, live = false }: { event: EventItem; live?: boolean }) {
+  const isOfficial = event.type === 'official';
   return (
     <Link
       href={`/events/${event.id}`}
@@ -52,6 +53,7 @@ export function EventCard({ event }: { event: EventItem }) {
         borderBottom: '1px solid var(--border)',
         background: 'transparent',
         textDecoration: 'none',
+        transition: 'background 0.15s ease',
       }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -94,15 +96,40 @@ export function EventCard({ event }: { event: EventItem }) {
             style={{
               fontSize: 11,
               fontWeight: 600,
-              color: 'var(--text-tertiary)',
-              border: '1px solid var(--border)',
+              color: isOfficial ? 'var(--accent)' : 'var(--text-tertiary)',
+              background: isOfficial ? 'var(--accent-soft)' : 'transparent',
+              border: `1px solid ${isOfficial ? 'var(--accent-soft)' : 'var(--border)'}`,
               borderRadius: 999,
-              padding: '1px 6px',
+              padding: '1px 7px',
               flexShrink: 0,
             }}
           >
-            {event.type === 'official' ? 'Official' : 'Unofficial'}
+            {isOfficial ? 'Official' : 'Unofficial'}
           </span>
+          {live && (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'var(--green)',
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: 'var(--green)',
+                  animation: 'pulse 1.6s ease-in-out infinite',
+                }}
+              />
+              Live
+            </span>
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>

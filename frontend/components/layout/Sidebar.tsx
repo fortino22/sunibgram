@@ -153,7 +153,12 @@ export function Sidebar() {
     <nav className={`sidebar-nav${isCollapsed ? ' sidebar-collapsed' : ''}`}>
       {/* Logo */}
       <div style={{ padding: isCollapsed ? '20px 0' : '24px 20px 20px', display: 'flex', justifyContent: isCollapsed ? 'center' : undefined }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          aria-label="Refresh Sunibgram"
+          style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+        >
           <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={32} height={32} style={{ borderRadius: 10, flexShrink: 0 }} />
           <span
             className="sidebar-label"
@@ -161,7 +166,7 @@ export function Sidebar() {
           >
             Sunibgram
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Nav items */}
