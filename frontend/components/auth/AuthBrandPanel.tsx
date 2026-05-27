@@ -43,7 +43,7 @@ export function AuthBrandPanel() {
         width="100%"
         height="auto"
         aria-hidden="true"
-        style={{ maxWidth: 520, maxHeight: '84vh' }}
+        style={{ maxWidth: 520, maxHeight: '84vh', transform: 'translateX(-12%)' }}
       >
         <defs>
           <radialGradient
@@ -59,22 +59,25 @@ export function AuthBrandPanel() {
           </radialGradient>
         </defs>
 
-        {/* Thick white outline of the bolt — lit by the cursor gradient */}
-        <path
-          d={BOLT}
-          fill="none"
-          stroke="url(#auth-light)"
-          strokeWidth={26}
-          strokeLinejoin="round"
-        />
-        {/* Carve the center out, leaving two parallel white edges */}
-        <path
-          d={BOLT}
-          fill="none"
-          stroke="var(--bg)"
-          strokeWidth={12}
-          strokeLinejoin="round"
-        />
+        {/* Tilt clockwise so the zigzag reads as an "S" */}
+        <g transform={`rotate(25 ${VBW / 2} ${VBH / 2})`}>
+          {/* Thick white outline of the bolt — lit by the cursor gradient */}
+          <path
+            d={BOLT}
+            fill="none"
+            stroke="url(#auth-light)"
+            strokeWidth={26}
+            strokeLinejoin="round"
+          />
+          {/* Carve the center out, leaving two parallel white edges */}
+          <path
+            d={BOLT}
+            fill="none"
+            stroke="var(--bg)"
+            strokeWidth={12}
+            strokeLinejoin="round"
+          />
+        </g>
       </svg>
     </div>
   );
