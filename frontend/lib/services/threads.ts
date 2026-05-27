@@ -257,6 +257,20 @@ export function getThreads(params: PaginationParams = {}, token: string): Promis
   return api.get<ThreadListResponse>(`/api/threads${query(params)}`, token);
 }
 
+export interface FeedNewCountResponse {
+  count: number;
+}
+
+// Count of For You feed threads created after the given thread id (sinceId = max loaded id).
+export function getFeedNewCount(sinceId: number, token: string): Promise<FeedNewCountResponse> {
+  return api.get<FeedNewCountResponse>(`/api/threads/feed/new-count?since_id=${sinceId}`, token);
+}
+
+// Resets the caller's For You feed seed so the next GET returns a reshuffled order. Returns 204.
+export function refreshFeed(token: string): Promise<void> {
+  return api.post<void>('/api/threads/feed/refresh', undefined, token);
+}
+
 export function getFollowingThreads(
   params: PaginationParams = {},
   token: string

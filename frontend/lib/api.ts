@@ -28,6 +28,11 @@ async function request<T>(
     throw new Error((error as { message?: string }).message ?? 'Request failed');
   }
 
+  // No-content responses (e.g. 204 from POST /threads/feed/refresh) have no JSON body.
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 

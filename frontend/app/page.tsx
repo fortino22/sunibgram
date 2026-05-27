@@ -5,10 +5,13 @@ import { ChevronDown } from 'lucide-react';
 import { CreatePostBox } from '@/components/shared/CreatePostBox';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
+import { NewPostsBanner } from '@/components/thread/NewPostsBanner';
 import { Icon } from '@/components/ui/Icon';
 import { useFollowingThreads } from '@/hooks/useFollowingThreads';
 import { useThreads } from '@/hooks/useThreads';
 import { useFacultyThreads } from '@/hooks/useFacultyThreads';
+import { useFeedNewCount } from '@/hooks/useFeedNewCount';
+import { useRefreshFeed } from '@/hooks/useRefreshFeed';
 import { usePinnedCommunities, useCommunityThreadsBySort } from '@/hooks/useCommunities';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import type { ThreadItem } from '@/lib/services/threads';
@@ -156,6 +159,17 @@ export default function HomePage() {
 
   const activeThreads = activeQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const pinnedCommunities = pinnedCommunitiesQuery.data?.data ?? [];
+
+  // For You "new posts" banner — sinceId is the max loaded thread id (PK), not data[0].
+  const forYouThreads = threadsQuery.data?.pages.flatMap((p) => p.data) ?? [];
+  const sinceId = forYouThreads.length ? Math.max(...forYouThreads.map((t) => t.id)) : 0;
+  const newCount = useFeedNewCount(sinceId, isForYou);
+  const refreshFeed = useRefreshFeed();
+
+  function handleShowNew() {
+    refreshFeed.mutate();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -362,6 +376,10 @@ export default function HomePage() {
       </div>
 
       {(isForYou || isFollowing) && <CreatePostBox />}
+
+      {isForYou && newCount > 0 && (
+        <NewPostsBanner count={newCount} onClick={handleShowNew} />
+      )}
 
       {activeCommunityId ? (
         <ActiveCommunityFeed communityId={activeCommunityId} sort={communitySort} />

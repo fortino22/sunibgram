@@ -21,5 +21,8 @@ export function useThreads() {
       return loaded < lastPage.meta.total ? allPages.length + 1 : undefined;
     },
     enabled: token !== null,
+    // Don't reload the feed when the window regains focus — returning users should see
+    // the same posts/scroll position they left. New posts surface via the banner tap only.
+    refetchOnWindowFocus: false,
   });
 }
