@@ -22,12 +22,12 @@ function TrendingHashtagsLoading({ title }: { title: string }) {
       className="overflow-hidden rounded-2xl"
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
     >
-      <h2 className="px-4 pb-1 pt-4 text-xl font-extrabold" style={{ color: 'var(--text)' }}>{title}</h2>
+      <h2 className="text-[18px] font-extrabold" style={{ padding: '14px 16px 8px', color: 'var(--text)' }}>{title}</h2>
       <div>
         {Array.from({ length: DEFAULT_VISIBLE_COUNT }, (_, i) => (
-          <div key={i} className="px-4 py-3 space-y-1.5">
-            <div className="h-3 w-24 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
-            <div className="h-4 w-36 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
+          <div key={i} style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="h-2.5 w-20 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
+            <div className="h-3.5 w-32 animate-pulse rounded" style={{ background: 'var(--bg-subtle)' }} />
           </div>
         ))}
       </div>
@@ -50,8 +50,8 @@ export function TrendingHashtags({
         className="overflow-hidden rounded-2xl"
         style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
       >
-        <h2 className="px-4 pb-1 pt-4 text-xl font-extrabold" style={{ color: 'var(--text)' }}>{title}</h2>
-        <p className="px-4 pb-4 text-sm" style={{ color: 'var(--text-tertiary)' }}>Unable to load trending hashtags.</p>
+        <h2 className="text-[18px] font-extrabold" style={{ padding: '14px 16px 8px', color: 'var(--text)' }}>{title}</h2>
+        <p className="text-sm" style={{ padding: '4px 16px 14px', color: 'var(--text-tertiary)' }}>Unable to load trending hashtags.</p>
       </div>
     );
   }
@@ -67,34 +67,34 @@ export function TrendingHashtags({
       className="overflow-hidden rounded-2xl"
       style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
     >
-      <h2 className="px-4 pb-1 pt-4 text-xl font-extrabold" style={{ color: 'var(--text)' }}>{title}</h2>
+      <h2 className="text-[18px] font-extrabold" style={{ padding: '14px 16px 8px', color: 'var(--text)' }}>{title}</h2>
 
       <div>
         {visibleHashtags.map((hashtag) => (
           <Link
             key={hashtag.name}
             href={getHashtagHref(hashtag.name)}
-            className="group flex items-start justify-between px-4 py-3 transition-colors"
-            style={{ color: 'inherit' }}
+            className="group flex items-start justify-between transition-colors"
+            style={{ padding: '12px 16px', color: 'inherit' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
             <div className="min-w-0">
-              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>Campus · Trending</p>
-              <p className="mt-0.5 text-[15px] font-bold" style={{ color: 'var(--text)' }}>#{hashtag.name}</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>Trending · Campus</p>
+              <p className="text-[15px] font-bold" style={{ marginTop: 2, color: 'var(--text)' }}>#{hashtag.name}</p>
               {hashtag.threadCount != null && (
-                <p className="mt-0.5 text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
-                  {hashtag.threadCount.toLocaleString()} posts
+                <p className="text-[13px]" style={{ marginTop: 2, color: 'var(--text-tertiary)' }}>
+                  {hashtag.threadCount.toLocaleString()} {hashtag.threadCount === 1 ? 'post' : 'posts'}
                 </p>
               )}
             </div>
             <button
               type="button"
               onClick={(e) => e.preventDefault()}
-              className="ml-2 mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-              style={{ color: 'var(--text-tertiary)' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors"
+              style={{ marginRight: -6, marginTop: -2, color: 'var(--text-tertiary)' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(29,155,240,0.1)'; (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-tertiary)'; }}
               aria-label="More options"
             >
               <MoreHorizontal size={18} />
@@ -107,8 +107,8 @@ export function TrendingHashtags({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="w-full px-4 py-4 text-left text-[15px] transition-colors"
-          style={{ color: 'var(--accent)' }}
+          className="w-full text-left text-[15px] transition-colors"
+          style={{ padding: '12px 16px', color: 'var(--accent)' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >

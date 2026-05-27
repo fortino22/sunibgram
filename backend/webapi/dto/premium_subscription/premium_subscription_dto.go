@@ -15,3 +15,9 @@ type PremiumSubscriptionResponse struct {
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
 }
+
+type SubscriptionStatusResponse struct {
+	IsPremium bool       `json:"is_premium"`
+	IsTrial   bool       `json:"is_trial"`
+	EndDate   *time.Time `json:"end_date,omitempty"`
+}

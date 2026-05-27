@@ -4,6 +4,7 @@ type ExploreUserResult struct {
 	UserID           uint
 	Name             string
 	Username         string
+	Bio              string
 	IsPremium        bool
 	AvatarObjectName string
 	IsFollowing      bool

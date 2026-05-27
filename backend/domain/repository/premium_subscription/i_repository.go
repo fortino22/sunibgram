@@ -11,6 +11,7 @@ var ErrTrialAlreadyActivated = errors.New("trial subscription already activated"
 type IPremiumSubscriptionRepository interface {
 	Create(subscription *premiumsubscriptionmodel.PremiumSubscription) error
 	Upsert(subscription *premiumsubscriptionmodel.PremiumSubscription) error
+	GetByUserID(userID uint) (*premiumsubscriptionmodel.PremiumSubscription, error)
 	IsTrialActivated(userID uint) (bool, error)
 	FindExpiredOwnerIDs() ([]uint, error)
 	ExpireForDev(userID uint) error

@@ -56,8 +56,8 @@ function SidebarItem({ item, active, collapsed }: SidebarItemProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: collapsed ? 'center' : undefined,
-        gap: 12,
-        padding: collapsed ? '10px 0' : '10px 12px',
+        gap: 14,
+        padding: collapsed ? '12px 0' : '12px 14px',
         borderRadius: 10,
         background: active
           ? 'var(--sidebar-active)'
@@ -85,12 +85,12 @@ function SidebarItem({ item, active, collapsed }: SidebarItemProps) {
           }}
         />
       )}
-      <Icon name={item.icon} size={20} color={iconColor} strokeWidth={active ? 2 : 1.7} />
+      <Icon name={item.icon} size={24} color={iconColor} strokeWidth={active ? 2 : 1.7} />
       <span
         className="sidebar-label"
         style={{
-          fontWeight: active ? 600 : 400,
-          fontSize: 15,
+          fontWeight: active ? 700 : 500,
+          fontSize: 18,
           color: iconColor,
           letterSpacing: '-0.01em',
           lineHeight: 1,
@@ -105,7 +105,7 @@ function SidebarItem({ item, active, collapsed }: SidebarItemProps) {
             minWidth: 18,
             height: 18,
             padding: '0 5px',
-            background: 'var(--coral)',
+            background: 'var(--accent)',
             borderRadius: 9999,
             fontSize: 11,
             fontWeight: 500,
@@ -165,7 +165,7 @@ export function Sidebar() {
       </div>
 
       {/* Nav items */}
-      <div style={{ padding: '0 10px', flex: 1 }}>
+      <div style={{ padding: '0 10px 0 10px', paddingRight: isCollapsed ? 10 : 20, flex: 1 }}>
         {NAV_ITEMS.map((item) => {
           const badge = item.id === 'notifications' && unreadNotifications > 0
             ? (unreadNotifications > 99 ? 99 : unreadNotifications)
@@ -176,7 +176,7 @@ export function Sidebar() {
         })}
 
         {/* New Post button */}
-        <div style={{ marginTop: 16, padding: isCollapsed ? '0' : '0 2px', display: 'flex', justifyContent: isCollapsed ? 'center' : undefined }}>
+        <div style={{ marginTop: 16, padding: isCollapsed ? '0' : '0 2px 0 0', display: 'flex', justifyContent: isCollapsed ? 'center' : undefined }}>
           <button
             type="button"
             title={isCollapsed ? 'New Post' : undefined}
@@ -186,25 +186,23 @@ export function Sidebar() {
             style={{
               width: isCollapsed ? 44 : '100%',
               height: isCollapsed ? 44 : undefined,
-              padding: isCollapsed ? undefined : '11px 0',
-              background: postHovered ? 'var(--accent-hover)' : 'var(--accent)',
+              padding: isCollapsed ? undefined : '13px 0',
+              background: postHovered ? '#e6e6e6' : '#fff',
               border: 'none',
               cursor: 'pointer',
-              borderRadius: isCollapsed ? '50%' : 14,
-              color: '#fff',
-              fontWeight: 500,
-              fontSize: 15,
+              borderRadius: 9999,
+              color: '#000',
+              fontWeight: 600,
+              fontSize: 16,
               letterSpacing: '-0.02em',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
               transition: 'background 0.15s ease',
-              boxShadow: '0 4px 16px oklch(64% 0.22 270 / 0.35)',
             }}
           >
-            <Icon name="plus" size={isCollapsed ? 20 : 18} color="#fff" />
-            <span className="sidebar-label">New Post</span>
+            <span className="sidebar-label">Post</span>
           </button>
         </div>
       </div>

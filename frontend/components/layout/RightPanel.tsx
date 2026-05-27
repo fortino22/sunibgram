@@ -2,8 +2,10 @@
 
 import { usePathname } from 'next/navigation';
 import { SearchDropdown } from './SearchDropdown';
+import { PremiumCard } from './PremiumCard';
 import { TrendingHashtags } from './TrendingHashtags';
 import { TrendingEvents } from './TrendingEvents';
+import { WhoToFollow } from './WhoToFollow';
 
 export function RightPanel() {
   const pathname = usePathname();
@@ -13,16 +15,22 @@ export function RightPanel() {
 
   return (
     <aside className="right-panel">
-      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Search dropdown — hidden on the explore page itself */}
         {!isExplorePage && <SearchDropdown />}
 
-        {/* Trending hashtags */}
-        <TrendingHashtags title="Trending on campus" initialVisibleCount={5} />
+        {/* Premium trial card */}
+        <PremiumCard />
 
-        {/* Trending events */}
+        {/* Today's News */}
         <TrendingEvents />
+
+        {/* What's happening — trending hashtags */}
+        <TrendingHashtags title="What's happening" initialVisibleCount={5} />
+
+        {/* Who to follow */}
+        <WhoToFollow />
 
         {/* Footer links */}
         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.8 }}>

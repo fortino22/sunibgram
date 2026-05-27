@@ -258,10 +258,21 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
         </div>
       ) : (
         <>
-          {showTrendingSection && trending.length > 0 && (
+          {filter === 'all' && trending.length === 0 && running.length === 0 && future.length === 0 && (
+            <div style={{ padding: '40px 20px' }}>
+              <EmptyState title="No events yet" subtitle="Be the first to create an event for the community." />
+            </div>
+          )}
+          {showTrendingSection && (
             <>
-              {filter === 'all' && <SectionHeader label="Trending" />}
-              {trending.map((event) => <EventCard key={event.id} event={event} />)}
+              {filter === 'all' && trending.length > 0 && <SectionHeader label="Trending" />}
+              {trending.length > 0
+                ? trending.map((event) => <EventCard key={event.id} event={event} />)
+                : filter === 'trending' && (
+                  <div style={{ padding: '40px 20px' }}>
+                    <EmptyState title="No trending events" subtitle="Nothing trending right now. Check back soon." />
+                  </div>
+                )}
             </>
           )}
           {showRunningSection && (
@@ -276,10 +287,16 @@ export function EventsFeedPanel({ active }: { active: boolean }) {
                 )}
             </>
           )}
-          {showUpcomingSection && future.length > 0 && (
+          {showUpcomingSection && (
             <>
-              {filter === 'all' && <SectionHeader label="Upcoming" />}
-              {future.map((event) => <EventCard key={event.id} event={event} />)}
+              {filter === 'all' && future.length > 0 && <SectionHeader label="Upcoming" />}
+              {future.length > 0
+                ? future.map((event) => <EventCard key={event.id} event={event} />)
+                : filter === 'upcoming' && (
+                  <div style={{ padding: '40px 20px' }}>
+                    <EmptyState title="No upcoming events" subtitle="Nothing scheduled yet. Create an event to get started." />
+                  </div>
+                )}
             </>
           )}
         </>

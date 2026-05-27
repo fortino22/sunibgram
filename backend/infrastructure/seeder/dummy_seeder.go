@@ -31,6 +31,16 @@ var dummyAccounts = []dummyAccount{
 	{Name: "Devin", Username: "devin.hi", Email: "devin@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2002, 8, 25, 0, 0, 0, 0, time.UTC), FacultyName: "School of Information Systems"},
 	{Name: "Fortino", Username: "fortino.hi", Email: "fortino@binus.ac.id", Password: "dummy123", RoleName: "admin", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2003, 11, 7, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
 	{Name: "chermiese", Username: "chermiese", Email: "chermiese@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 2, 19, 0, 0, 0, 0, time.UTC), FacultyName: "School of Design"},
+	{Name: "Aldi", Username: "aldi.hi", Email: "aldi@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2002, 1, 14, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
+	{Name: "Bella", Username: "bella.hi", Email: "bella@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 6, 3, 0, 0, 0, 0, time.UTC), FacultyName: "School of Information Systems"},
+	{Name: "Caesar", Username: "caesar.hi", Email: "caesar@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2001, 9, 21, 0, 0, 0, 0, time.UTC), FacultyName: "School of Accounting"},
+	{Name: "Dina", Username: "dina.hi", Email: "dina@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 12, 30, 0, 0, 0, 0, time.UTC), FacultyName: "School of Design"},
+	{Name: "Eko", Username: "eko.hi", Email: "eko@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2002, 3, 8, 0, 0, 0, 0, time.UTC), FacultyName: "Faculty of Engineering"},
+	{Name: "Fira", Username: "fira.hi", Email: "fira@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2003, 7, 17, 0, 0, 0, 0, time.UTC), FacultyName: "Faculty of Humanities"},
+	{Name: "Gilang", Username: "gilang.hi", Email: "gilang@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2001, 11, 2, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computing and Creative Arts"},
+	{Name: "Hana", Username: "hana.hi", Email: "hana@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2002, 5, 26, 0, 0, 0, 0, time.UTC), FacultyName: "School of Information Systems"},
+	{Name: "Irfan", Username: "irfan.hi", Email: "irfan@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderMale, BirthdayDate: time.Date(2003, 10, 11, 0, 0, 0, 0, time.UTC), FacultyName: "School of Computer Science"},
+	{Name: "Jihan", Username: "jihan.hi", Email: "jihan@binus.ac.id", Password: "dummy123", RoleName: "user", Gender: userprofilemodel.GenderFemale, BirthdayDate: time.Date(2002, 4, 5, 0, 0, 0, 0, time.UTC), FacultyName: "BINUS Business School"},
 }
 
 func SeedDummy(db *gorm.DB) {

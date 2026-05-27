@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Trash2 } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
+import { getNotificationTypeConfig } from './notificationTypeUtils';
 import type { NotificationItem } from '@/lib/services/notifications';
 
 interface NotificationCardProps {
@@ -41,6 +42,7 @@ function formatRelativeTime(isoString: string): string {
 
 export function NotificationCard({ notification, onDelete, isDeleting }: NotificationCardProps) {
   const href = resolveHref(notification);
+  const { Icon, color } = getNotificationTypeConfig(notification.type);
 
   return (
     <div
@@ -52,9 +54,16 @@ export function NotificationCard({ notification, onDelete, isDeleting }: Notific
         borderBottom: '1px solid var(--border)',
         transition: 'background 0.12s',
         position: 'relative',
+        borderLeft: `3px solid transparent`,
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-subtle)'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-subtle)';
+        (e.currentTarget as HTMLDivElement).style.borderLeftColor = color;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+        (e.currentTarget as HTMLDivElement).style.borderLeftColor = 'transparent';
+      }}
     >
       <Link
         href={href}
@@ -67,11 +76,32 @@ export function NotificationCard({ notification, onDelete, isDeleting }: Notific
           textDecoration: 'none',
         }}
       >
-        <Avatar
-          username={notification.actor.username}
-          avatarUrl={notification.actor.avatar_url || null}
-          size="md"
-        />
+        {/* Avatar with type icon badge */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Avatar
+            username={notification.actor.username}
+            avatarUrl={notification.actor.avatar_url || null}
+            size="md"
+          />
+          <div
+            style={{
+              position: 'absolute',
+              bottom: -2,
+              right: -2,
+              background: color,
+              borderRadius: '50%',
+              width: 18,
+              height: 18,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid var(--bg-card)',
+            }}
+          >
+            <Icon size={10} color="#fff" strokeWidth={2.5} />
+          </div>
+        </div>
+
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.4 }}>
             <span style={{ fontWeight: 600 }}>{notification.actor.name}</span>
@@ -101,8 +131,16 @@ export function NotificationCard({ notification, onDelete, isDeleting }: Notific
           alignItems: 'center',
           transition: 'opacity 0.12s, color 0.12s',
         }}
-        onMouseEnter={(e) => { if (!isDeleting) (e.currentTarget as HTMLButtonElement).style.color = 'var(--error, #ef4444)'; (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-tertiary)'; (e.currentTarget as HTMLButtonElement).style.opacity = isDeleting ? '0.4' : '0.6'; }}
+        onMouseEnter={(e) => {
+          if (!isDeleting) {
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--error, #ef4444)';
+            (e.currentTarget as HTMLButtonElement).style.opacity = '1';
+          }
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-tertiary)';
+          (e.currentTarget as HTMLButtonElement).style.opacity = isDeleting ? '0.4' : '0.6';
+        }}
       >
         <Trash2 size={15} />
       </button>

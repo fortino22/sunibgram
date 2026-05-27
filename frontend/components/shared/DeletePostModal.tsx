@@ -9,9 +9,11 @@ interface DeletePostModalProps {
   isPending?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  title?: string;
+  description?: string;
 }
 
-export function DeletePostModal({ open, isPending = false, onConfirm, onCancel }: DeletePostModalProps) {
+export function DeletePostModal({ open, isPending = false, onConfirm, onCancel, title = 'Delete post?', description = "This can't be undone and it will be removed from your profile, the timeline of any accounts that follow you, and from search results." }: DeletePostModalProps) {
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -53,10 +55,10 @@ export function DeletePostModal({ open, isPending = false, onConfirm, onCancel }
           id="delete-modal-title"
           style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', marginBottom: 4 }}
         >
-          Delete post?
+          {title}
         </p>
         <p style={{ fontSize: 14, color: 'rgb(113,118,123)', lineHeight: 1.5, marginBottom: 16 }}>
-          This can&apos;t be undone and it will be removed from your profile, the timeline of any accounts that follow you, and from search results.
+          {description}
         </p>
         <button
           type="button"

@@ -9,7 +9,9 @@ import (
 
 func RegisterUserRoutes(api fiber.Router, followCtrl *followctrl.FollowController, exploreCtrl *explorectrl.ExploreController, auth fiber.Handler) {
 	users := api.Group("/users")
-	users.Get("/suggested", auth, exploreCtrl.GetSuggestedPeople)
+	users.Get("/suggestions/faculty", auth, exploreCtrl.GetFacultySuggestions)
+	users.Get("/suggestions/mutual", auth, exploreCtrl.GetMutualSuggestions)
+	users.Get("/suggested/preview", auth, exploreCtrl.GetSuggestedPeoplePreview)
 	users.Post("/:id/follow", auth, followCtrl.Follow)
 	users.Delete("/:id/unfollow", auth, followCtrl.Unfollow)
 

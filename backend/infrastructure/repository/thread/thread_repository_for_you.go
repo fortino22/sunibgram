@@ -66,15 +66,15 @@ func forYouEffectiveFreshCap(limit int) int {
 
 // authorCapTiers defines position-aware author caps. The feed is scanned in
 // order; the cap at position i is the smallest cap whose threshold is >= i+1.
-// Effect: top-of-feed gets variety (max 3 from one author in the first 10
-// positions, 5 in the first 25, 20 across the whole result). Prevents a
+// Effect: top-of-feed gets variety (max 5 from one author in the first 10
+// positions, 10 in the first 25, 20 across the whole result). Prevents a
 // single chatty author from filling the visible top of feed.
 var authorCapTiers = []struct {
 	upTo int // position threshold (1-based, inclusive)
 	cap  int // max threads from one author within this prefix
 }{
-	{10, 3},
-	{25, 5},
+	{10, 5},
+	{25, 10},
 	{forYouCandidateCap, forYouAuthorCap},
 }
 

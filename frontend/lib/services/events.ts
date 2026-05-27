@@ -72,6 +72,17 @@ export interface CreateEventInput {
   document?: File;
 }
 
+export interface UpdateEventInput {
+  title: string;
+  description: string;
+  location: string;
+  startTime: string;
+  endTime: string;
+  type: 'official' | 'unofficial';
+  banner?: File;
+  document?: File;
+}
+
 export interface EventShareResult {
   shareableLink: string;
   shareCount: number;
@@ -142,6 +153,11 @@ export async function getEvents(token: string): Promise<EventGroups> {
   };
 }
 
+export async function getTrendingEvents(token: string): Promise<EventItem[]> {
+  const response = await api.get<EventListItemResponse[]>('/api/events/trending', token);
+  return (response ?? []).map(mapEventItem);
+}
+
 export async function getEvent(id: string, token: string): Promise<EventDetail> {
   const response = await api.get<EventDetailResponse>(`/api/events/${id}`, token);
   return mapEventDetail(response);
@@ -149,6 +165,34 @@ export async function getEvent(id: string, token: string): Promise<EventDetail> 
 
 export function createEvent(input: CreateEventInput, token: string) {
   return api.post<{ message: string }>('/api/events', buildCreateEventFormData(input), token);
+}
+
+export function updateEvent(id: string, input: UpdateEventInput, token: string) {
+  const formData = new FormData();
+  formData.append('title', input.title);
+  formData.append('description', input.description);
+  formData.append('location', input.location);
+  formData.append('start_time', input.startTime);
+  formData.append('end_time', input.endTime);
+  formData.append('type', input.type);
+  if (input.banner) formData.append('banner', input.banner);
+  if (input.document) formData.append('attachment', input.document);
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
+  return fetch(`${baseUrl}/api/events/${id}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  }).then(async (res) => {
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error((err as { message?: string }).message ?? 'Request failed');
+    }
+    return res.json() as Promise<{ message: string }>;
+  });
+}
+
+export function deleteEvent(id: string, token: string) {
+  return api.delete<{ message: string }>(`/api/events/${id}`, token);
 }
 
 export function bookmarkEvent(id: string, token: string) {

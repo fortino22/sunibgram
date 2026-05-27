@@ -51,6 +51,10 @@ func eventPendingListKey(limit int) string {
 	return fmt.Sprintf("event:pending:list:limit:%d", limit)
 }
 
+func eventTopRunningFutureKey(limit int) string {
+	return fmt.Sprintf("event:top:running-future:limit:%d", limit)
+}
+
 func eventThreadsKey(id, filter, sort, viewer string, page, limit int) string {
 	return fmt.Sprintf("event:threads:%s:filter:%s:sort:%s:viewer:%s:page:%d:limit:%d", id, filter, sort, viewer, page, limit)
 }
@@ -185,6 +189,53 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 		}
 	}
 	return result.Trending, result.Running, result.Future, nil
+}
+
+func (r *eventRepository) FindTopRunningOrFuture(limit int) ([]threadmodel.Event, error) {
+	ctx := context.Background()
+	key := eventTopRunningFutureKey(limit)
+	var events []threadmodel.Event
+	if r.cache != nil {
+		if err := r.cache.Get(ctx, key, &events); err == nil {
+			return events, nil
+		}
+	}
+
+	const trendingOrder = "(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC"
+	now := time.Now().UTC()
+
+	var running []threadmodel.Event
+	if err := r.readDB.
+		Where("status = ?", "approved").
+		Where("start_time <= ? AND end_time >= ?", now, now).
+		Order(trendingOrder).
+		Limit(limit).
+		Find(&running).Error; err != nil {
+		return nil, err
+	}
+
+	events = running
+	// Fill the remaining slots with upcoming (future) events when fewer than
+	// `limit` events are running today.
+	if len(events) < limit {
+		var future []threadmodel.Event
+		if err := r.readDB.
+			Where("status = ?", "approved").
+			Where("start_time > ?", now).
+			Order(trendingOrder).
+			Limit(limit - len(events)).
+			Find(&future).Error; err != nil {
+			return nil, err
+		}
+		events = append(events, future...)
+	}
+
+	if r.cache != nil {
+		if err := r.cache.Set(ctx, key, events, r.ttl); err == nil {
+			r.cache.RegisterCacheKey(ctx, infrarepoShared.EventListsTag(), key)
+		}
+	}
+	return events, nil
 }
 
 func (r *eventRepository) FindPending(limit int) ([]threadmodel.Event, error) {

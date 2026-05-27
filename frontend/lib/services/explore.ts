@@ -16,6 +16,7 @@ interface RawExplorePerson {
   user_profile_pic: string;
   username: string;
   name: string;
+  bio?: string;
   is_premium: boolean;
   is_following: boolean;
 }
@@ -43,6 +44,7 @@ export interface ExplorePerson {
   userProfilePic: string;
   username: string;
   name: string;
+  bio?: string;
   isPremium: boolean;
   isFollowing: boolean;
 }
@@ -66,6 +68,7 @@ function mapPerson(raw: RawExplorePerson): ExplorePerson {
     userProfilePic: raw.user_profile_pic,
     username: raw.username,
     name: raw.name,
+    bio: raw.bio ?? '',
     isPremium: raw.is_premium,
     isFollowing: raw.is_following,
   };
@@ -133,4 +136,25 @@ export async function getSuggestedPeople(token: string, limit = 10): Promise<Exp
     token
   );
   return raw.data.map(mapPerson);
+}
+
+export async function getSuggestedPeoplePreview(token: string): Promise<ExplorePerson[]> {
+  const raw = await api.get<{ data: RawExplorePerson[] }>('/api/users/suggested/preview', token);
+  return (raw.data ?? []).map(mapPerson);
+}
+
+export async function getMutualSuggestions(token: string, page: number, limit = 10): Promise<ExplorePerson[]> {
+  const raw = await api.get<{ data: RawExplorePerson[] }>(
+    `/api/users/suggestions/mutual?page=${page}&limit=${limit}`,
+    token
+  );
+  return (raw.data ?? []).map(mapPerson);
+}
+
+export async function getFacultySuggestions(token: string, page: number, limit = 10): Promise<ExplorePerson[]> {
+  const raw = await api.get<{ data: RawExplorePerson[] }>(
+    `/api/users/suggestions/faculty?page=${page}&limit=${limit}`,
+    token
+  );
+  return (raw.data ?? []).map(mapPerson);
 }

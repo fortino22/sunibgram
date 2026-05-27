@@ -108,6 +108,7 @@ func AutoMigrate(db *gorm.DB) {
 
 	createIndexes(db)
 	addCheckConstraints(db)
+	addColumns(db)
 	addForeignKeys(db)
 	migrateChatEncryption(db)
 
@@ -182,6 +183,10 @@ func createIndexes(db *gorm.DB) {
 	for _, s := range stmts {
 		db.Exec(s)
 	}
+}
+
+func addColumns(db *gorm.DB) {
+	db.Exec(`ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs jsonb DEFAULT '[]'::jsonb`)
 }
 
 func addCheckConstraints(db *gorm.DB) {

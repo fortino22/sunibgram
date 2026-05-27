@@ -138,9 +138,39 @@ func (s *ExploreService) GetCommunities(ctx context.Context, query string, reque
 	return s.exploreRepo.FindCommunities(ctx, query, requesterID, page, limit)
 }
 
-func (s *ExploreService) GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
-	_, limit = helper.NormalizePageLimit(1, limit, defaultExploreLimit)
-	return s.exploreRepo.FindSuggestedPeople(ctx, requesterID, limit)
+func (s *ExploreService) GetFacultySuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error) {
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
+	return s.exploreRepo.FindFacultySuggestions(ctx, requesterID, page, limit)
+}
+
+func (s *ExploreService) GetMutualSuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error) {
+	page, limit = helper.NormalizePageLimit(page, limit, defaultExploreLimit)
+	return s.exploreRepo.FindMutualSuggestions(ctx, requesterID, page, limit)
+}
+
+const suggestedPeoplePreviewLimit = 3
+
+// GetSuggestedPeoplePreview returns up to 3 people for the compact widget,
+// cascading sources: mutual (friends-of-friends) → faculty → random.
+func (s *ExploreService) GetSuggestedPeoplePreview(ctx context.Context, requesterID uint) ([]exploremodel.ExploreUserResult, error) {
+	sources := []func(context.Context, uint, int, int) ([]exploremodel.ExploreUserResult, error){
+		s.exploreRepo.FindMutualSuggestions,
+		s.exploreRepo.FindFacultySuggestions,
+		s.exploreRepo.FindRandomSuggestions,
+	}
+	for _, find := range sources {
+		users, err := find(ctx, requesterID, 1, suggestedPeoplePreviewLimit)
+		if err != nil {
+			return nil, err
+		}
+		if len(users) > 0 {
+			if len(users) > suggestedPeoplePreviewLimit {
+				users = users[:suggestedPeoplePreviewLimit]
+			}
+			return users, nil
+		}
+	}
+	return []exploremodel.ExploreUserResult{}, nil
 }
 
 func normalizeExploreQuery(query string) (string, error) {

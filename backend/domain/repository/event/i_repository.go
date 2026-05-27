@@ -11,6 +11,7 @@ type IEventRepository interface {
 	FindByID(id string) (*threadmodel.Event, error)
 	FindGrouped(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error)
 	FindGroupedApproved(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error)
+	FindTopRunningOrFuture(limit int) ([]threadmodel.Event, error)
 	FindPending(limit int) ([]threadmodel.Event, error)
 	FindAdmin(status, name string, page, limit int) ([]threadmodel.Event, int64, error)
 	FindByUserID(userID uint, status string, page, limit int) ([]threadmodel.Event, int64, error)

@@ -175,6 +175,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const [previews, setPreviews] = useState<FilePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
   const [pollImageUrls, setPollImageUrls] = useState<Record<string, string>>({});
+  const [focusedPollOption, setFocusedPollOption] = useState<number | null>(null);
 
   // Audience
   const [selectedCommunity, setSelectedCommunity] = useState<CommunityData | null>(null);
@@ -1028,7 +1029,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   const optionValue = pollOptions?.[index];
                   const labelValue = optionValue?.label ?? '';
                   const imageUrl = pollImageUrls[field.id];
-                  const optionError = pollForm.formState.errors.options?.[index];
+
 
                   return (
                     <div key={field.id}>
@@ -1042,73 +1043,127 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                           onChange={(event) => void handlePollImageChange(index, field.id, event)}
                           style={{ display: 'none' }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => pollOptionInputRefs.current[field.id]?.click()}
-                          aria-label={`Add image to choice ${index + 1}`}
-                          style={{
-                            width: 42,
-                            height: 42,
-                            borderRadius: 12,
-                            border: '1px solid var(--border)',
-                            background: imageUrl ? 'transparent' : 'var(--bg-subtle)',
-                            color: imageUrl ? 'transparent' : 'var(--text-secondary)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            overflow: 'hidden',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                            position: 'relative',
-                          }}
-                        >
-                          {imageUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => pollOptionInputRefs.current[field.id]?.click()}
+                            aria-label={`Add image to choice ${index + 1}`}
+                            className={imageUrl ? undefined : 'poll-image-btn-empty'}
+                            style={{
+                              width: 68,
+                              height: 68,
+                              borderRadius: 12,
+                              border: '1px solid var(--border)',
+                              background: imageUrl ? 'transparent' : 'var(--bg-subtle)',
+                              color: imageUrl ? 'transparent' : 'var(--text-secondary)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden',
+                              cursor: 'pointer',
+                              position: 'relative',
+                              transition: 'background 0.12s ease',
+                            }}
+                          >
+                            {imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
                               <img
                                 src={imageUrl}
                                 alt=""
                                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                               />
-                              <span
-                                style={{
-                                  position: 'absolute',
-                                  right: 4,
-                                  bottom: 4,
-                                  width: 18,
-                                  height: 18,
-                                  borderRadius: '50%',
-                                  background: 'rgba(15, 23, 42, 0.8)',
-                                  color: '#fff',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <ImagePlus size={11} />
-                              </span>
-                            </>
-                          ) : (
-                            <ImagePlus size={16} />
+                            ) : (
+                              <ImagePlus size={18} />
+                            )}
+                          </button>
+                          {imageUrl && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleRemovePollImage(index, field.id); }}
+                              aria-label={`Remove image from choice ${index + 1}`}
+                              style={{
+                                position: 'absolute',
+                                top: -6,
+                                right: -6,
+                                width: 18,
+                                height: 18,
+                                borderRadius: '50%',
+                                background: 'var(--text)',
+                                color: 'var(--bg-card)',
+                                border: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                zIndex: 1,
+                              }}
+                            >
+                              <X size={11} />
+                            </button>
                           )}
-                        </button>
-
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <Input
-                            placeholder={`Choice ${index + 1}`}
-                            maxLength={MAX_POLL_LABEL_LENGTH}
-                            {...pollForm.register(`options.${index}.label`)}
-                            style={{
-                              height: 42,
-                              borderRadius: 12,
-                              background: 'var(--bg-card)',
-                              paddingLeft: 16,
-                            }}
-                          />
                         </div>
 
-                        <div style={{ minWidth: 54, textAlign: 'right', fontSize: 12, color: 'var(--text-tertiary)' }}>
-                          {countRunes(labelValue)} / {MAX_POLL_LABEL_LENGTH}
+                        <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                          {(() => {
+                            const isActive = focusedPollOption === index || labelValue.length > 0;
+                            return (
+                              <>
+                                <div style={{
+                                  position: 'absolute',
+                                  top: isActive ? 8 : '50%',
+                                  transform: isActive ? 'none' : 'translateY(-50%)',
+                                  left: 16,
+                                  right: 16,
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  pointerEvents: 'none',
+                                  zIndex: 1,
+                                  transition: 'top 0.18s ease, transform 0.18s ease',
+                                }}>
+                                  <span style={{
+                                    fontSize: isActive ? 11 : 15,
+                                    color: focusedPollOption === index ? 'var(--accent)' : 'var(--text-tertiary)',
+                                    fontWeight: isActive ? 500 : 400,
+                                    transition: 'font-size 0.18s ease, color 0.18s ease',
+                                  }}>
+                                    Choice {index + 1}
+                                  </span>
+                                  <span style={{
+                                    fontSize: 11,
+                                    color: 'var(--text-tertiary)',
+                                    opacity: isActive ? 1 : 0,
+                                    transition: 'opacity 0.18s ease',
+                                  }}>
+                                    {countRunes(labelValue)} / {MAX_POLL_LABEL_LENGTH}
+                                  </span>
+                                </div>
+                                <input
+                                  placeholder=""
+                                  maxLength={MAX_POLL_LABEL_LENGTH}
+                                  {...pollForm.register(`options.${index}.label`)}
+                                  onFocus={() => setFocusedPollOption(index)}
+                                  onBlur={() => setFocusedPollOption(null)}
+                                  style={{
+                                    width: '100%',
+                                    height: 68,
+                                    paddingTop: isActive ? 22 : 0,
+                                    paddingBottom: isActive ? 8 : 0,
+                                    paddingLeft: 16,
+                                    paddingRight: 16,
+                                    borderRadius: 12,
+                                    border: `1px solid ${focusedPollOption === index ? 'var(--accent)' : 'var(--border)'}`,
+                                    background: 'var(--bg-card)',
+                                    color: 'var(--text)',
+                                    fontSize: 15,
+                                    outline: 'none',
+                                    transition: 'border-color 0.18s, padding-top 0.18s ease, padding-bottom 0.18s ease',
+                                    fontFamily: 'inherit',
+                                    boxSizing: 'border-box',
+                                  }}
+                                />
+                              </>
+                            );
+                          })()}
                         </div>
 
                         {pollFields.fields.length > 2 && (
@@ -1135,29 +1190,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         )}
                       </div>
 
-                      {(optionError?.label?.message || imageUrl) && (
-                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                          <div style={{ fontSize: 12, color: 'var(--coral)' }}>
-                            {optionError?.label?.message}
-                          </div>
-                          {imageUrl && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePollImage(index, field.id)}
-                              style={{
-                                border: 'none',
-                                background: 'transparent',
-                                color: 'var(--text-tertiary)',
-                                fontSize: 12,
-                                cursor: 'pointer',
-                                padding: 0,
-                              }}
-                            >
-                              Remove image
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -1209,18 +1241,19 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         onChange={(e) => {
                           const val = Number(e.target.value);
                           pollForm.setValue('days', val, { shouldDirty: true, shouldValidate: true });
-                          // If now only minutes selectable and current value is below minimum, clamp to 5
                           if (val === 0 && pollHours === 0 && pollMinutes < 5) {
                             pollForm.setValue('minutes', 5, { shouldDirty: true, shouldValidate: true });
+                          } else if ((val > 0 || pollHours > 0) && pollMinutes < 1) {
+                            pollForm.setValue('minutes', 1, { shouldDirty: true, shouldValidate: true });
                           }
                         }}
                         style={{
                           height: 42,
                           borderRadius: 12,
                           border: '1px solid var(--border)',
-                          background: 'var(--bg-card)',
+                          backgroundColor: 'var(--bg-card)',
                           color: 'var(--text)',
-                          padding: '0 12px',
+                          padding: '0 32px 0 12px',
                           outline: 'none',
                           fontSize: 14,
                         }}
@@ -1239,18 +1272,19 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         onChange={(e) => {
                           const val = Number(e.target.value);
                           pollForm.setValue('hours', val, { shouldDirty: true, shouldValidate: true });
-                          // If now only minutes selectable and current value is below minimum, clamp to 5
                           if (val === 0 && pollDays === 0 && pollMinutes < 5) {
                             pollForm.setValue('minutes', 5, { shouldDirty: true, shouldValidate: true });
+                          } else if ((val > 0 || pollDays > 0) && pollMinutes < 1) {
+                            pollForm.setValue('minutes', 1, { shouldDirty: true, shouldValidate: true });
                           }
                         }}
                         style={{
                           height: 42,
                           borderRadius: 12,
                           border: '1px solid var(--border)',
-                          background: 'var(--bg-card)',
+                          backgroundColor: 'var(--bg-card)',
                           color: 'var(--text)',
-                          padding: '0 12px',
+                          padding: '0 32px 0 12px',
                           outline: 'none',
                           fontSize: 14,
                         }}
@@ -1264,7 +1298,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Minutes</span>
                       <select
-                        value={pollMinutes < ((pollDays > 0 || pollHours > 0) ? 0 : 5) ? ((pollDays > 0 || pollHours > 0) ? 0 : 5) : pollMinutes}
+                        value={pollMinutes < ((pollDays > 0 || pollHours > 0) ? 1 : 5) ? ((pollDays > 0 || pollHours > 0) ? 1 : 5) : pollMinutes}
                         className="poll-select"
                         onChange={(e) => {
                           const val = Number(e.target.value);
@@ -1274,16 +1308,16 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                           height: 42,
                           borderRadius: 12,
                           border: '1px solid var(--border)',
-                          background: 'var(--bg-card)',
+                          backgroundColor: 'var(--bg-card)',
                           color: 'var(--text)',
-                          padding: '0 12px',
+                          padding: '0 32px 0 12px',
                           outline: 'none',
                           fontSize: 14,
                         }}
                       >
                         {Array.from(
-                          { length: (pollDays > 0 || pollHours > 0) ? 60 : 55 },
-                          (_, i) => i + ((pollDays > 0 || pollHours > 0) ? 0 : 5)
+                          { length: (pollDays > 0 || pollHours > 0) ? 59 : 55 },
+                          (_, i) => i + ((pollDays > 0 || pollHours > 0) ? 1 : 5)
                         ).map((v) => (
                           <option key={v} value={v}>{v}</option>
                         ))}
@@ -1295,9 +1329,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                       {pollForm.formState.errors.minutes.message}
                     </div>
                   )}
-                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    {`${Math.floor(pollDurationSeconds / 86400)}d ${Math.floor((pollDurationSeconds % 86400) / 3600)}h ${Math.floor((pollDurationSeconds % 3600) / 60)}m`}
-                  </div>
                 </div>
 
                 <button
@@ -1575,10 +1606,10 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               type="submit"
               disabled={!canSubmit}
               style={{
-                background: 'var(--accent)',
+                background: '#fff',
                 border: 'none',
-                borderRadius: 10,
-                color: '#fff',
+                borderRadius: 9999,
+                color: '#000',
                 fontWeight: 600,
                 fontSize: 14,
                 padding: '9px 20px',

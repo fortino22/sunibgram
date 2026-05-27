@@ -137,15 +137,46 @@ func (c *ExploreController) GetCommunities(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toExploreCommunityResponses(communities)})
 }
 
-func (c *ExploreController) GetSuggestedPeople(ctx *fiber.Ctx) error {
+// GetFacultySuggestions returns people who share a faculty with the requester.
+func (c *ExploreController) GetFacultySuggestions(ctx *fiber.Ctx) error {
 	claims, ok := ctrlshared.RequireAuth(ctx)
 	if !ok {
 		return nil
 	}
 
-	_, limit := ctrlshared.ParsePagination(ctx)
+	page, limit := ctrlshared.ParsePagination(ctx)
 
-	users, err := c.exploreService.GetSuggestedPeople(ctx.Context(), claims.UserID, limit)
+	users, err := c.exploreService.GetFacultySuggestions(ctx.Context(), claims.UserID, page, limit)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toPeopleResponses(users)})
+}
+
+// GetMutualSuggestions returns mutual-following (friends-of-friends) candidates.
+func (c *ExploreController) GetMutualSuggestions(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	page, limit := ctrlshared.ParsePagination(ctx)
+
+	users, err := c.exploreService.GetMutualSuggestions(ctx.Context(), claims.UserID, page, limit)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toPeopleResponses(users)})
+}
+
+// GetSuggestedPeoplePreview returns up to 3 people (mutual → faculty → random).
+func (c *ExploreController) GetSuggestedPeoplePreview(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	users, err := c.exploreService.GetSuggestedPeoplePreview(ctx.Context(), claims.UserID)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}

@@ -20,6 +20,7 @@ func RegisterEventRoutes(
 	events := api.Group("/events", auth)
 	events.Post("/", eventCtrl.Create)
 	events.Get("/", eventCtrl.GetAll)
+	events.Get("/trending", eventCtrl.GetTrending)
 	events.Get("/admin", eventCtrl.GetPending)
 	events.Get("/me", eventCtrl.GetMyEvents)
 	events.Get("/pins/me", pinCtrl.GetMyPins)

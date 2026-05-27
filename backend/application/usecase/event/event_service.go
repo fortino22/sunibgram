@@ -151,6 +151,13 @@ func (s *EventService) GetAll(limit int) ([]threadmodel.Event, []threadmodel.Eve
 	return s.eventRepo.FindGroupedApproved(limit)
 }
 
+func (s *EventService) GetTopRunningOrFuture(limit int) ([]threadmodel.Event, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+	return s.eventRepo.FindTopRunningOrFuture(limit)
+}
+
 func (s *EventService) GetPending(limit int) ([]threadmodel.Event, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 10)
 	return s.eventRepo.FindPending(limit)

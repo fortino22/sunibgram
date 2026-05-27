@@ -54,15 +54,6 @@ export function ThreadActions({
         <span>{comments}</span>
       </ActionButton>
       <ActionButton
-        aria-label="Like"
-        onClick={(event) => handleClick(onLike, event)}
-        color={isLiked ? 'var(--coral)' : undefined}
-        size={size}
-      >
-        <Heart size={iconSize} strokeWidth={2} fill={isLiked ? 'var(--coral)' : 'none'} />
-        <span>{likes}</span>
-      </ActionButton>
-      <ActionButton
         aria-label="Repost"
         onClick={(event) => handleClick(onRepost, event)}
         color={isReposted ? 'var(--green)' : undefined}
@@ -72,13 +63,21 @@ export function ThreadActions({
         <span>{reposts}</span>
       </ActionButton>
       <ActionButton
+        aria-label="Like"
+        onClick={(event) => handleClick(onLike, event)}
+        color={isLiked ? 'var(--coral)' : undefined}
+        size={size}
+      >
+        <Heart size={iconSize} strokeWidth={2} fill={isLiked ? 'var(--coral)' : 'none'} />
+        <span>{likes}</span>
+      </ActionButton>
+      <ActionButton
         aria-label="Bookmark"
         onClick={(event) => handleClick(onBookmark, event)}
         color={isBookmarked ? 'var(--accent)' : undefined}
         size={size}
       >
         <Bookmark size={iconSize} strokeWidth={2} fill={isBookmarked ? 'var(--accent)' : 'none'} />
-        <span>{bookmarks}</span>
       </ActionButton>
     </div>
   );
