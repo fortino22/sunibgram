@@ -27,7 +27,7 @@ export function RightPanel() {
         <TrendingEvents />
 
         {/* What's happening — trending hashtags */}
-        <TrendingHashtags title="What's happening" />
+        <TrendingHashtags title="What's happening" limit={4} />
 
         {/* Who to follow */}
         <WhoToFollow />

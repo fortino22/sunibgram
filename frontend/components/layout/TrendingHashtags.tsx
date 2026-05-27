@@ -11,13 +11,15 @@ interface TrendingHashtagsProps {
   title?: string;
   /** Flat full-width section (no rounded card chrome) — for in-page use like X. */
   bare?: boolean;
+  /** Cap the number of hashtags shown (right panel = 4, explore = 6). */
+  limit?: number;
 }
 
 function getHashtagHref(name: string) {
   return `/explore?q=${encodeURIComponent(`#${name}`)}`;
 }
 
-export function TrendingHashtags({ title = 'Trending on campus', bare = false }: TrendingHashtagsProps) {
+export function TrendingHashtags({ title = 'Trending on campus', bare = false, limit }: TrendingHashtagsProps) {
   const router = useRouter();
   const trendingQuery = useTopTrendingHashtags();
 
@@ -53,7 +55,8 @@ export function TrendingHashtags({ title = 'Trending on campus', bare = false }:
     );
   }
 
-  const hashtags = trendingQuery.data ?? [];
+  const allHashtags = trendingQuery.data ?? [];
+  const hashtags = typeof limit === 'number' ? allHashtags.slice(0, limit) : allHashtags;
   if (hashtags.length === 0) return null;
 
   return (

@@ -35,7 +35,7 @@ export function ExploreForYou() {
     <div>
       {/* Flat full-width sections like X — no card boxes */}
       <TrendingEvents detailed bare />
-      <TrendingHashtags title="What's happening" bare />
+      <TrendingHashtags title="What's happening" bare limit={6} />
       <WhoToFollow bare />
 
       {/* Posts for you — home feed */}

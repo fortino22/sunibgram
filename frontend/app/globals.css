@@ -93,10 +93,9 @@ body {
 .right-panel {
   width: 348px;
   flex-shrink: 0;
-  height: 100vh;
+  align-self: flex-start;
   position: sticky;
   top: 0;
-  overflow-y: auto;
   padding: 20px 0;
   background: var(--bg);
 }
