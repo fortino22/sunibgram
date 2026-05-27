@@ -183,6 +183,7 @@ func (c *ExploreController) toExploreCommunityResponses(communities []exploremod
 			CommunityName: comm.Name,
 			MemberCount:   comm.MemberCount,
 			IsJoin:        comm.IsJoin,
+			BannerURL:     ctrlshared.BuildMediaURL(comm.BannerObjectName, c.communityService.GetURL),
 		}
 	}
 	return responses

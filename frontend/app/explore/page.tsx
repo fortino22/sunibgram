@@ -7,7 +7,7 @@ import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MediaGrid } from '@/components/shared/MediaGrid';
-import { SearchBar } from '@/components/explore/SearchBar';
+import { ExploreSearchBar } from '@/components/explore/ExploreSearchBar';
 import { PersonCard } from '@/components/explore/PersonCard';
 import { CommunityCard } from '@/components/explore/CommunityCard';
 import { ExploreForYou } from '@/components/explore/ExploreForYou';
@@ -213,23 +213,25 @@ function ExploreInner() {
     searchParams.get('tab') === 'trending' ? 'trending' : 'foryou',
   );
 
-  // Keep the home tab in sync with deep links (e.g. "Show more" → ?tab=trending)
+  // Keep tab + committed query in sync with the URL (deep links, back/forward,
+  // "Show more" → ?tab=trending). Search is committed only via commitSearch below.
   useEffect(() => {
     setHomeTabState(searchParams.get('tab') === 'trending' ? 'trending' : 'foryou');
+    const q = searchParams.get('q') ?? '';
+    setQuery(q);
+    setInputValue(q);
   }, [searchParams]);
 
-  // Debounce search input by 400ms
-  useEffect(() => {
-    const timer = setTimeout(() => setQuery(inputValue.trim()), 400);
-    return () => clearTimeout(timer);
-  }, [inputValue]);
-
-  // Reset to Top tab whenever a new search begins
-  useEffect(() => {
-    if (query) setActiveTab('top');
-  }, [query]);
-
   const hasQuery = query.length > 0;
+
+  // Commit a search: typing alone never queries — only this does.
+  function commitSearch(q: string) {
+    const v = q.trim();
+    setInputValue(v);
+    setQuery(v);
+    setActiveTab('top');
+    router.replace(v ? `/explore?q=${encodeURIComponent(v)}` : '/explore');
+  }
 
   function setHomeTab(tab: HomeTab) {
     setHomeTabState(tab);
@@ -249,7 +251,7 @@ function ExploreInner() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 16px' }}>
-          <SearchBar value={inputValue} onChange={setInputValue} />
+          <ExploreSearchBar value={inputValue} onChange={setInputValue} onSubmit={commitSearch} />
         </div>
         {hasQuery ? (
           <TabBar active={activeTab} onChange={setActiveTab} />

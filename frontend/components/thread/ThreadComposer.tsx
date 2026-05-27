@@ -22,6 +22,7 @@ export function ThreadComposer({ placeholder, parentId }: ThreadComposerProps) {
       <PostComposer
         placeholder={placeholder}
         parentId={parentId}
+        autoFocus
         onSuccess={() => setExpanded(false)}
       />
     );

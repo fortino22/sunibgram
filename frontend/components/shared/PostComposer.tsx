@@ -50,6 +50,7 @@ export interface PostComposerProps {
   placeholder?: string;
   parentId?: number;
   formId?: string;
+  autoFocus?: boolean;
   onSuccess?: () => void;
   preselectedEventId?: string;
   preselectedEventTitle?: string;
@@ -152,7 +153,7 @@ function buildPollDuration(values: Pick<PollFormValues, 'days' | 'hours' | 'minu
   return values.days * 24 * 60 * 60 + values.hours * 60 * 60 + values.minutes * 60;
 }
 
-export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, onSuccess, preselectedEventId, preselectedEventTitle, preselectedIsOfficialEvent }: PostComposerProps) {
+export function PostComposer({ placeholder = 'What is happening?!', parentId, formId, autoFocus = false, onSuccess, preselectedEventId, preselectedEventTitle, preselectedIsOfficialEvent }: PostComposerProps) {
   const isReply = parentId !== undefined;
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
@@ -912,6 +913,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder={placeholder}
+            autoFocus={autoFocus}
             rows={isReply ? 2 : 2}
             style={{
               width: '100%',

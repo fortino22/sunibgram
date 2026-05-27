@@ -25,7 +25,7 @@ interface ReplyTreeProps {
 export function ReplyTree({ threads }: ReplyTreeProps) {
   if (threads.length === 0) {
     return (
-      <div className="px-6 py-14 text-center text-[15px]" style={{ color: 'var(--text-tertiary)' }}>
+      <div className="px-6 text-center text-[15px]" style={{ color: 'var(--text-tertiary)', paddingTop: 80, paddingBottom: 64 }}>
         No replies yet.
       </div>
     );

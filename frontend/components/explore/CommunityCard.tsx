@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Avatar } from '@/components/shared/Avatar';
 import type { ExploreCommunity } from '@/lib/services/explore';
 
 interface CommunityCardProps {
@@ -34,10 +33,17 @@ export function CommunityCard({ community, showDivider = true }: CommunityCardPr
         e.currentTarget.style.background = 'transparent';
       }}
     >
-      <Avatar
-        username={community.communityName}
-        avatarUrl={community.communityProfile || null}
-        size="md"
+      <div
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 10,
+          background: community.banner
+            ? `url(${community.banner}) center/cover no-repeat`
+            : 'var(--bg-subtle)',
+          border: '1px solid var(--border)',
+          flexShrink: 0,
+        }}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
