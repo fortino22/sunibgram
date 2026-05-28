@@ -201,41 +201,7 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 	return result, nil
 }
 
-func (r *followRepository) GetMentionFollowing(ctx context.Context, userID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
-	if limit < 1 || limit > 100 {
-		limit = explorerepo.DefaultRepositoryExploreLimit
-	}
-
-	var rows []explorerepo.ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
-		Table("user_relationships").
-		Select(`
-			users.user_id,
-			users.name,
-			users.user_name AS username,
-			users.is_premium,
-			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-			TRUE AS is_following
-		`).
-		Joins("JOIN users ON users.user_id = user_relationships.following_id").
-		Joins("JOIN roles ON roles.role_id = users.role_id").
-		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
-		Where("user_relationships.follower_id = ?", userID).
-		Where("roles.name <> ?", "admin").
-		Order("user_relationships.created_at DESC").
-		Limit(limit).
-		Scan(&rows).Error; err != nil {
-		return nil, err
-	}
-
-	return mentionRowsToResults(rows), nil
-}
-
-func (r *followRepository) SearchMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]exploremodel.ExploreUserResult, error) {
-	if limit < 1 || limit > 100 {
-		limit = explorerepo.DefaultRepositoryExploreLimit
-	}
-
+func (r *followRepository) SearchMentionUsers(ctx context.Context, query string) ([]exploremodel.ExploreUserResult, error) {
 	pattern := explorerepo.LikePattern(query)
 	var rows []explorerepo.ExploreUserRow
 	if err := r.readDB.WithContext(ctx).
@@ -246,15 +212,14 @@ func (r *followRepository) SearchMentionUsers(ctx context.Context, userID uint, 
 			users.user_name AS username,
 			users.is_premium,
 			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
-			(user_relationships.following_id IS NOT NULL) AS is_following
+			FALSE AS is_following
 		`).
 		Joins("JOIN roles ON roles.role_id = users.role_id").
 		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
-		Joins("LEFT JOIN user_relationships ON user_relationships.following_id = users.user_id AND user_relationships.follower_id = ?", userID).
 		Where("roles.name <> ?", "admin").
-		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\'", pattern, pattern).
-		Order("(user_relationships.following_id IS NOT NULL) DESC, users.is_premium DESC, users.created_at DESC").
-		Limit(limit).
+		Where("users.user_name ILIKE ? ESCAPE '\\'", pattern).
+		Order("users.is_premium DESC, users.created_at DESC").
+		Limit(10).
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}

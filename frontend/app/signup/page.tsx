@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ArrowLeft } from 'lucide-react';
-import Image from 'next/image';
+import { Logo } from '@/components/ui/Logo';
 import { useForm } from 'react-hook-form';
 
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout';
@@ -140,7 +140,7 @@ export default function SignupPage() {
   return (
     <AuthSplitLayout>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-          <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
+          <Logo size={48} style={{ color: 'var(--text)' }} />
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>

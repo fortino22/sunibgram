@@ -407,3 +407,20 @@ export function getLikes(token: string): Promise<ThreadListResponse> {
 export function getBookmarks(token: string): Promise<ThreadListResponse> {
   return api.get<ThreadListResponse>('/api/bookmarks', token);
 }
+
+export interface MentionUser {
+  user_id: string;
+  username: string;
+  name: string;
+  is_premium: boolean;
+  user_profile: string;
+  is_following: boolean;
+}
+
+export async function searchMentions(q: string, token: string): Promise<MentionUser[]> {
+  const raw = await api.get<{ data: MentionUser[] | null }>(
+    `/api/threads/mention?q=${encodeURIComponent(q)}`,
+    token
+  );
+  return raw.data ?? [];
+}

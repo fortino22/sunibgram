@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import { Logo } from '@/components/ui/Logo';
 import { useSearchParams } from 'next/navigation';
 
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout';
@@ -15,7 +15,7 @@ function ForgotPasswordPageContent() {
   return (
     <AuthSplitLayout>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-          <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
+          <Logo size={48} style={{ color: 'var(--text)' }} />
         </div>
 
         <div
@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
       fallback={
         <AuthSplitLayout>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-              <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={48} height={48} />
+              <Logo size={48} style={{ color: 'var(--text)' }} />
             </div>
 
             <div

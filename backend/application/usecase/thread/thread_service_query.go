@@ -123,13 +123,11 @@ func (s *ThreadService) GetMyMediaThread(ctx context.Context, requesterID, userI
 }
 
 func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query string, limit int) ([]exploremodel.ExploreUserResult, error) {
-	_, limit = helper.NormalizePageLimit(1, limit, 20)
-
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return s.followRepo.GetMentionFollowing(ctx, userID, limit)
+		return []exploremodel.ExploreUserResult{}, nil
 	}
-	return s.followRepo.SearchMentionUsers(ctx, userID, query, limit)
+	return s.followRepo.SearchMentionUsers(ctx, query)
 }
 
 func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []threadmodel.Thread, parents []*threadmodel.Thread) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {

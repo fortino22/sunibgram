@@ -205,7 +205,8 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
                 <Link
                   href={`/profile/${replyUserId}`}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ color: 'var(--accent)', textDecoration: 'none' }}
+                  className="mention-link"
+                  style={{ color: 'var(--accent)' }}
                 >
                   @{replyUsername}
                 </Link>
