@@ -44,7 +44,6 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
               justifyContent: 'center',
               alignItems: 'stretch',
               padding: 0,
-              background: 'none',
               border: 'none',
               cursor: 'pointer',
               fontSize: 14,

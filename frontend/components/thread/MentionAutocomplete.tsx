@@ -10,8 +10,8 @@ import type { MentionUser } from '@/lib/services/threads';
 interface MentionAutocompleteProps {
   query: string;
   anchorEl: HTMLTextAreaElement | null;
-  caretIndex: number;
   mentionStart: number;
+  caretIndex: number;
   activeIndex: number;
   onActiveIndexChange: (i: number) => void;
   onSelect: (user: MentionUser) => void;
@@ -25,38 +25,38 @@ interface Position {
 }
 
 const MIRROR_COPIED_PROPS = [
-  'boxSizing',
+  'box-sizing',
   'width',
   'height',
-  'overflowX',
-  'overflowY',
-  'borderTopWidth',
-  'borderRightWidth',
-  'borderBottomWidth',
-  'borderLeftWidth',
-  'borderStyle',
-  'paddingTop',
-  'paddingRight',
-  'paddingBottom',
-  'paddingLeft',
-  'fontStyle',
-  'fontVariant',
-  'fontWeight',
-  'fontStretch',
-  'fontSize',
-  'fontSizeAdjust',
-  'lineHeight',
-  'fontFamily',
-  'textAlign',
-  'textTransform',
-  'textIndent',
-  'textDecoration',
-  'letterSpacing',
-  'wordSpacing',
-  'tabSize',
-  'whiteSpace',
-  'wordBreak',
-  'overflowWrap',
+  'overflow-x',
+  'overflow-y',
+  'border-top-width',
+  'border-right-width',
+  'border-bottom-width',
+  'border-left-width',
+  'border-style',
+  'padding-top',
+  'padding-right',
+  'padding-bottom',
+  'padding-left',
+  'font-style',
+  'font-variant',
+  'font-weight',
+  'font-stretch',
+  'font-size',
+  'font-size-adjust',
+  'line-height',
+  'font-family',
+  'text-align',
+  'text-transform',
+  'text-indent',
+  'text-decoration',
+  'letter-spacing',
+  'word-spacing',
+  'tab-size',
+  'white-space',
+  'word-break',
+  'overflow-wrap',
 ] as const;
 
 function getCaretCoordinates(el: HTMLTextAreaElement, position: number): { top: number; left: number; height: number } {
@@ -93,8 +93,8 @@ function getCaretCoordinates(el: HTMLTextAreaElement, position: number): { top: 
 export function MentionAutocomplete({
   query,
   anchorEl,
-  caretIndex,
   mentionStart,
+  caretIndex,
   activeIndex,
   onActiveIndexChange,
   onSelect,
@@ -114,9 +114,9 @@ export function MentionAutocomplete({
     if (!anchorEl) return;
     const update = () => {
       const r = anchorEl.getBoundingClientRect();
-      const caret = getCaretCoordinates(anchorEl, caretIndex);
       const anchor = getCaretCoordinates(anchorEl, mentionStart);
-      const top = r.top + window.scrollY + caret.top - anchorEl.scrollTop + caret.height + 15;
+      const caret = getCaretCoordinates(anchorEl, caretIndex);
+      const top = r.top + window.scrollY + caret.top - anchorEl.scrollTop + caret.height + 6;
       const left = r.left + window.scrollX + anchor.left - anchorEl.scrollLeft;
       setPos({ top, left });
     };
@@ -127,7 +127,7 @@ export function MentionAutocomplete({
       window.removeEventListener('scroll', update, true);
       window.removeEventListener('resize', update);
     };
-  }, [anchorEl, caretIndex, mentionStart]);
+  }, [anchorEl, mentionStart, caretIndex]);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
@@ -150,8 +150,8 @@ export function MentionAutocomplete({
         position: 'absolute',
         top: pos.top,
         left: pos.left,
-        width: 300,
-        maxHeight: 320,
+        width: 340,
+        maxHeight: 360,
         overflowY: 'auto',
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',

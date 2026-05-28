@@ -1042,8 +1042,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             <MentionAutocomplete
               query={mentionState.query}
               anchorEl={textareaEl}
-              caretIndex={mentionState.end}
               mentionStart={mentionState.start}
+              caretIndex={mentionState.end}
               activeIndex={mentionIndex}
               onActiveIndexChange={setMentionIndex}
               onSelect={insertMention}
