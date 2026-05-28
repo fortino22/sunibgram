@@ -3,9 +3,26 @@ package trendingusersvciface
 import (
 	"context"
 
+	trendingusermodel "github.com/sunibgram/domain/model/trending_user"
+	trendingusersnapshotmodel "github.com/sunibgram/domain/model/trending_user_snapshot"
 	trendinguserrepoiface "github.com/sunibgram/domain/repository/trending_user"
+	trendingusersnapshotrepoiface "github.com/sunibgram/domain/repository/trending_user_snapshot"
 )
+
+type MyCurrentResult struct {
+	User *trendingusermodel.TrendingUser
+	Rank *int
+	Page trendinguserrepoiface.TrendingUsersPage
+}
+
+type MyHistoryResult struct {
+	Rows            []trendingusersnapshotmodel.TrendingUserSnapshot
+	AvailableMonths []trendingusersnapshotrepoiface.MonthBucket
+}
 
 type ITrendingUserService interface {
 	GetWeeklyTrending(ctx context.Context, viewerID uint, page, limit int) (trendinguserrepoiface.TrendingUsersPage, error)
+	GetMyCurrent(ctx context.Context, viewerID uint) (MyCurrentResult, error)
+	GetMyHistory(ctx context.Context, viewerID uint, year, month int) (MyHistoryResult, error)
+	GetSnapshotByID(ctx context.Context, viewerID, snapshotID uint) (*trendingusersnapshotmodel.TrendingUserSnapshot, error)
 }

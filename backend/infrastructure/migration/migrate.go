@@ -39,6 +39,7 @@ import (
 	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
 	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
 	trendreportmodel "github.com/sunibgram/domain/model/trend_report"
+	trendingusersnapshotmodel "github.com/sunibgram/domain/model/trending_user_snapshot"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
@@ -103,6 +104,7 @@ func AutoMigrate(db *gorm.DB) {
 		&feedbackmodel.Feedback{},
 		&feedbackmodel.FeedbackVote{},
 		&premiumsubscriptionmodel.PremiumSubscription{},
+		&trendingusersnapshotmodel.TrendingUserSnapshot{},
 	}
 
 	for _, m := range models {
@@ -125,6 +127,7 @@ func AutoMigrate(db *gorm.DB) {
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)
 	seeder.SeedThreadWithReplies(db)
+	seeder.SeedTrendingUserSnapshot(db)
 }
 
 func createIndexes(db *gorm.DB) {

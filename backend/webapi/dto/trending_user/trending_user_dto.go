@@ -46,3 +46,48 @@ type PaginatedTrendingUserResponse struct {
 	Data []TrendingUserResponse `json:"data"`
 	Meta TrendingUserMeta       `json:"meta"`
 }
+
+type MyTrendingCurrentResponse struct {
+	UserID    uint                    `json:"userId"`
+	Username  string                  `json:"username"`
+	Name      string                  `json:"name"`
+	Profile   string                  `json:"profile"`
+	IsPremium bool                    `json:"is_premium"`
+	Rank      *int                    `json:"rank"`
+	Score     float64                 `json:"score"`
+	Detail    TrendingUserScoreDetail `json:"detail"`
+	Meta      TrendingUserMeta        `json:"meta"`
+}
+
+type MyTrendingHistoryItem struct {
+	SnapshotID uint                    `json:"snapshot_id"`
+	WeekStart  string                  `json:"week_start"`
+	Rank       int                     `json:"rank"`
+	Score      float64                 `json:"score"`
+	Detail     TrendingUserScoreDetail `json:"detail"`
+}
+
+type MyTrendingHistoryMonth struct {
+	Year  int `json:"year"`
+	Month int `json:"month"`
+}
+
+type MyTrendingHistoryMeta struct {
+	Year            int                      `json:"year"`
+	Month           int                      `json:"month"`
+	AvailableMonths []MyTrendingHistoryMonth `json:"available_months"`
+}
+
+type MyTrendingHistoryResponse struct {
+	Data []MyTrendingHistoryItem `json:"data"`
+	Meta MyTrendingHistoryMeta   `json:"meta"`
+}
+
+type MyTrendingSnapshotResponse struct {
+	SnapshotID uint                    `json:"snapshot_id"`
+	WeekStart  string                  `json:"week_start"`
+	Rank       int                     `json:"rank"`
+	Score      float64                 `json:"score"`
+	Detail     TrendingUserScoreDetail `json:"detail"`
+	SnapshotAt time.Time               `json:"snapshot_at"`
+}

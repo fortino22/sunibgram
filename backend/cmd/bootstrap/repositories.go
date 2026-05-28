@@ -38,6 +38,7 @@ import (
 	threadpollrepoiface "github.com/sunibgram/domain/repository/thread_poll"
 	trendreportrepoiface "github.com/sunibgram/domain/repository/trend_report"
 	trendinguserrepoiface "github.com/sunibgram/domain/repository/trending_user"
+	trendingusersnapshotrepoiface "github.com/sunibgram/domain/repository/trending_user_snapshot"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
 	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
@@ -82,6 +83,7 @@ import (
 	threadpollrepo "github.com/sunibgram/infrastructure/repository/thread_poll"
 	trendreportrepo "github.com/sunibgram/infrastructure/repository/trend_report"
 	trendinguserrepo "github.com/sunibgram/infrastructure/repository/trending_user"
+	trendingusersnapshotrepo "github.com/sunibgram/infrastructure/repository/trending_user_snapshot"
 	userrepo "github.com/sunibgram/infrastructure/repository/user"
 	userfacultyrepo "github.com/sunibgram/infrastructure/repository/user_faculty"
 	userprofilerepo "github.com/sunibgram/infrastructure/repository/user_profile"
@@ -134,6 +136,7 @@ type Repositories struct {
 	ThreadPoll           threadpollrepoiface.IThreadPollRepository
 	EventThreadPin       eventthreadpinrepoiface.IEventThreadPinRepository
 	TrendingUser         trendinguserrepoiface.ITrendingUserRepository
+	TrendingUserSnapshot trendingusersnapshotrepoiface.ITrendingUserSnapshotRepository
 	TrendReport          trendreportrepoiface.ITrendReportRepository
 }
 
@@ -184,6 +187,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		ThreadPoll:           threadpollrepo.NewThreadPollRepository(w, r, c),
 		EventThreadPin:       eventthreadpinrepo.NewEventThreadPinRepository(w, r, c),
 		TrendingUser:         trendinguserrepo.NewTrendingUserRepository(r, c),
+		TrendingUserSnapshot: trendingusersnapshotrepo.NewTrendingUserSnapshotRepository(w, r),
 		TrendReport:          trendreportrepo.NewTrendReportRepository(w, r),
 	}
 }

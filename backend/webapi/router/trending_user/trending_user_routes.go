@@ -8,4 +8,7 @@ import (
 
 func RegisterTrendingUserRoutes(api fiber.Router, ctrl *trendinguserctrl.TrendingUserController, auth fiber.Handler) {
 	api.Get("/trending-users", auth, ctrl.GetWeeklyTrending)
+	api.Get("/trending-users/my-current", auth, ctrl.GetMyCurrent)
+	api.Get("/trending-users/my-history", auth, ctrl.GetMyHistory)
+	api.Get("/trending-users/snapshots/:snapshotId", auth, ctrl.GetMySnapshot)
 }

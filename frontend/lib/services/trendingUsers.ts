@@ -126,3 +126,198 @@ export async function getTrendingUsers(
     },
   };
 }
+
+interface RawMyTrendingCurrent {
+  userId: number;
+  username: string;
+  name: string;
+  profile: string;
+  is_premium: boolean;
+  rank: number | null;
+  score: number;
+  detail: RawTrendingUser['detail'];
+  meta: RawTrendingUsersMeta;
+}
+
+export interface MyTrendingCurrent {
+  userId: number;
+  username: string;
+  name: string;
+  profile: string;
+  isPremium: boolean;
+  rank: number | null;
+  score: number;
+  received: TrendingUserReceived;
+  given: TrendingUserGiven;
+  meta: TrendingUsersMeta;
+}
+
+export async function getMyTrendingCurrent(token: string): Promise<MyTrendingCurrent> {
+  const raw = await api.get<RawMyTrendingCurrent>('/api/trending-users/my-current', token);
+  return {
+    userId: raw.userId,
+    username: raw.username,
+    name: raw.name,
+    profile: raw.profile,
+    isPremium: raw.is_premium,
+    rank: raw.rank,
+    score: raw.score,
+    received: {
+      likes: raw.detail.received.likes,
+      comments: raw.detail.received.comments,
+      bookmarks: raw.detail.received.bookmarks,
+      reposts: raw.detail.received.reposts,
+      threadCount: raw.detail.received.thread_count,
+    },
+    given: {
+      likes: raw.detail.given.likes,
+      bookmarks: raw.detail.given.bookmarks,
+      comments: raw.detail.given.comments,
+      posts: raw.detail.given.posts,
+    },
+    meta: {
+      total: raw.meta.total,
+      page: raw.meta.page,
+      limit: raw.meta.limit,
+      cachedAt: raw.meta.cached_at,
+      refreshAt: raw.meta.refresh_at,
+      refreshInSeconds: raw.meta.refresh_in_seconds,
+    },
+  };
+}
+
+interface RawMyTrendingHistoryItem {
+  snapshot_id: number;
+  week_start: string;
+  rank: number;
+  score: number;
+  detail: RawTrendingUser['detail'];
+}
+
+interface RawMyTrendingHistoryMonth {
+  year: number;
+  month: number;
+}
+
+interface RawMyTrendingHistoryMeta {
+  year: number;
+  month: number;
+  available_months: RawMyTrendingHistoryMonth[];
+}
+
+interface RawMyTrendingHistoryResponse {
+  data: RawMyTrendingHistoryItem[];
+  meta: RawMyTrendingHistoryMeta;
+}
+
+export interface MyTrendingHistoryItem {
+  snapshotId: number;
+  weekStart: string;
+  rank: number;
+  score: number;
+  received: TrendingUserReceived;
+  given: TrendingUserGiven;
+}
+
+export interface MyTrendingHistoryMonth {
+  year: number;
+  month: number;
+}
+
+export interface MyTrendingHistoryResult {
+  data: MyTrendingHistoryItem[];
+  year: number;
+  month: number;
+  availableMonths: MyTrendingHistoryMonth[];
+}
+
+export async function getMyTrendingHistory(
+  token: string,
+  year?: number,
+  month?: number,
+): Promise<MyTrendingHistoryResult> {
+  const qs = new URLSearchParams();
+  if (year !== undefined && month !== undefined) {
+    qs.set('year', String(year));
+    qs.set('month', String(month));
+  }
+  const path = `/api/trending-users/my-history${qs.toString() ? `?${qs}` : ''}`;
+  const raw = await api.get<RawMyTrendingHistoryResponse>(path, token);
+  const items = (raw.data ?? []).map<MyTrendingHistoryItem>((r) => ({
+    snapshotId: r.snapshot_id,
+    weekStart: r.week_start,
+    rank: r.rank,
+    score: r.score,
+    received: {
+      likes: r.detail.received.likes,
+      comments: r.detail.received.comments,
+      bookmarks: r.detail.received.bookmarks,
+      reposts: r.detail.received.reposts,
+      threadCount: r.detail.received.thread_count,
+    },
+    given: {
+      likes: r.detail.given.likes,
+      bookmarks: r.detail.given.bookmarks,
+      comments: r.detail.given.comments,
+      posts: r.detail.given.posts,
+    },
+  }));
+  return {
+    data: items,
+    year: raw.meta.year,
+    month: raw.meta.month,
+    availableMonths: (raw.meta.available_months ?? []).map((m) => ({
+      year: m.year,
+      month: m.month,
+    })),
+  };
+}
+
+interface RawMyTrendingSnapshot {
+  snapshot_id: number;
+  week_start: string;
+  rank: number;
+  score: number;
+  snapshot_at: string;
+  detail: RawTrendingUser['detail'];
+}
+
+export interface MyTrendingSnapshot {
+  snapshotId: number;
+  weekStart: string;
+  rank: number;
+  score: number;
+  snapshotAt: string;
+  received: TrendingUserReceived;
+  given: TrendingUserGiven;
+}
+
+export async function getMyTrendingSnapshot(
+  token: string,
+  snapshotId: number,
+): Promise<MyTrendingSnapshot> {
+  const raw = await api.get<RawMyTrendingSnapshot>(
+    `/api/trending-users/snapshots/${snapshotId}`,
+    token,
+  );
+  return {
+    snapshotId: raw.snapshot_id,
+    weekStart: raw.week_start,
+    rank: raw.rank,
+    score: raw.score,
+    snapshotAt: raw.snapshot_at,
+    received: {
+      likes: raw.detail.received.likes,
+      comments: raw.detail.received.comments,
+      bookmarks: raw.detail.received.bookmarks,
+      reposts: raw.detail.received.reposts,
+      threadCount: raw.detail.received.thread_count,
+    },
+    given: {
+      likes: raw.detail.given.likes,
+      bookmarks: raw.detail.given.bookmarks,
+      comments: raw.detail.given.comments,
+      posts: raw.detail.given.posts,
+    },
+  };
+}
