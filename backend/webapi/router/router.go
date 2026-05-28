@@ -36,6 +36,7 @@ import (
 	threadpinctrl "github.com/sunibgram/webapi/controller/thread_pin"
 	threadpollctrl "github.com/sunibgram/webapi/controller/thread_poll"
 	threadsummaryctrl "github.com/sunibgram/webapi/controller/thread_summary"
+	trendinguserctrl "github.com/sunibgram/webapi/controller/trending_user"
 	userctrl "github.com/sunibgram/webapi/controller/user"
 	userprofilectrl "github.com/sunibgram/webapi/controller/user_profile"
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
@@ -62,6 +63,7 @@ import (
 	reportroute "github.com/sunibgram/webapi/router/report"
 	threadroute "github.com/sunibgram/webapi/router/thread"
 	threadpollroute "github.com/sunibgram/webapi/router/thread_poll"
+	trendinguserroute "github.com/sunibgram/webapi/router/trending_user"
 	userroute "github.com/sunibgram/webapi/router/user"
 	userprofileroute "github.com/sunibgram/webapi/router/user_profile"
 	usersettingsroute "github.com/sunibgram/webapi/router/user_settings"
@@ -112,6 +114,7 @@ func Register(
 	chatCtrl *chatctrl.ChatController,
 	notificationCtrl *notificationctrl.NotificationController,
 	threadPollCtrl *threadpollctrl.ThreadPollController,
+	trendingUserCtrl *trendinguserctrl.TrendingUserController,
 	c *cache.Cache,
 ) {
 	api := app.Group("/api")
@@ -141,4 +144,5 @@ func Register(
 	chatroute.RegisterChatRoutes(api, chatRoomCtrl, chatCtrl, auth)
 	notificationroute.RegisterNotificationRoutes(api, notificationCtrl, auth)
 	threadpollroute.RegisterThreadPollRoutes(api, threadPollCtrl, auth)
+	trendinguserroute.RegisterTrendingUserRoutes(api, trendingUserCtrl, auth)
 }

@@ -32,6 +32,7 @@ import (
 	ordermodel "github.com/sunibgram/domain/model/order"
 	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 	reportmodel "github.com/sunibgram/domain/model/report"
+	repostmodel "github.com/sunibgram/domain/model/repost"
 	rolemodel "github.com/sunibgram/domain/model/role"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
@@ -69,6 +70,7 @@ func AutoMigrate(db *gorm.DB) {
 		&threadpollmodel.ThreadPollOption{},
 		&threadpollmodel.ThreadPollVote{},
 		&likemodel.Like{},
+		&repostmodel.Repost{},
 		&bookmarkmodel.Bookmark{},
 		&bookmarkcollectionmodel.BookmarkCollection{},
 		&bookmarkcollectionmodel.BookmarkCollectionItem{},

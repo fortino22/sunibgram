@@ -36,6 +36,7 @@ import (
 	threadpinctrl "github.com/sunibgram/webapi/controller/thread_pin"
 	threadpollctrl "github.com/sunibgram/webapi/controller/thread_poll"
 	threadsummaryctrl "github.com/sunibgram/webapi/controller/thread_summary"
+	trendinguserctrl "github.com/sunibgram/webapi/controller/trending_user"
 	userctrl "github.com/sunibgram/webapi/controller/user"
 	userprofilectrl "github.com/sunibgram/webapi/controller/user_profile"
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
@@ -87,6 +88,7 @@ type Controllers struct {
 	Chat                *chatctrl.ChatController
 	Notification        *notificationctrl.NotificationController
 	ThreadPoll          *threadpollctrl.ThreadPollController
+	TrendingUser        *trendinguserctrl.TrendingUserController
 	NotificationHandler *webapisocket.NotificationHandler
 }
 
@@ -133,6 +135,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		Chat:                chatctrl.NewChatController(svcs.Chat, svcs.ChatMedia, svcs.ChatReaction, ext.SocketHub),
 		Notification:        notificationctrl.NewNotificationController(svcs.Notification),
 		ThreadPoll:          threadpollctrl.NewThreadPollController(svcs.ThreadPoll),
+		TrendingUser:        trendinguserctrl.NewTrendingUserController(svcs.TrendingUser, svcs.UserProfile),
 		NotificationHandler: webapisocket.NewNotificationHandler(ext.SocketHub, svcs.Notification),
 	}
 }
