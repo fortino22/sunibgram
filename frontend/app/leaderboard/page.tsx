@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTrendingUsers } from '@/hooks/useTrendingUsers';
 import { LeaderboardPodium } from '@/components/leaderboard/LeaderboardPodium';
 import { LeaderboardRow } from '@/components/leaderboard/LeaderboardRow';
@@ -10,8 +10,15 @@ import { LeaderboardTabs, type LeaderboardTab } from '@/components/leaderboard/L
 import { YourStats } from '@/components/leaderboard/YourStats';
 
 export default function LeaderboardPage() {
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('trending');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (params.get('tab') === 'stats') setActiveTab('stats');
+  }, []);
+
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const { data, isLoading, isError } = useTrendingUsers(1, 20);
 
   const users = useMemo(() => data?.data ?? [], [data]);
@@ -24,6 +31,16 @@ export default function LeaderboardPage() {
   }, [users]);
 
   const selected = selectedUserId !== null ? userById.get(selectedUserId) : undefined;
+
+  const setTab = (tab: LeaderboardTab) => {
+    setActiveTab(tab);
+    if (typeof window === 'undefined') return;
+    const next = new URLSearchParams(window.location.search);
+    if (tab === 'trending') next.delete('tab');
+    else next.set('tab', tab);
+    const qs = next.toString();
+    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+  };
 
   return (
     <div style={{ padding: '24px 24px 80px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -50,7 +67,15 @@ export default function LeaderboardPage() {
             Top contributors ranked by weekly engagement
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+          }}
+        >
           <RefreshCountdown refreshAt={data?.meta.refreshAt} />
           <span
             style={{
@@ -68,7 +93,7 @@ export default function LeaderboardPage() {
         </div>
       </header>
 
-      <LeaderboardTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <LeaderboardTabs activeTab={activeTab} onTabChange={setTab} />
 
       {activeTab === 'trending' && (
         <>

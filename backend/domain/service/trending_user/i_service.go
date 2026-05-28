@@ -2,6 +2,7 @@ package trendingusersvciface
 
 import (
 	"context"
+	"time"
 
 	trendingusermodel "github.com/sunibgram/domain/model/trending_user"
 	trendingusersnapshotmodel "github.com/sunibgram/domain/model/trending_user_snapshot"
@@ -17,12 +18,14 @@ type MyCurrentResult struct {
 
 type MyHistoryResult struct {
 	Rows            []trendingusersnapshotmodel.TrendingUserSnapshot
+	StartDate       time.Time
+	EndDate         time.Time
 	AvailableMonths []trendingusersnapshotrepoiface.MonthBucket
 }
 
 type ITrendingUserService interface {
 	GetWeeklyTrending(ctx context.Context, viewerID uint, page, limit int) (trendinguserrepoiface.TrendingUsersPage, error)
 	GetMyCurrent(ctx context.Context, viewerID uint) (MyCurrentResult, error)
-	GetMyHistory(ctx context.Context, viewerID uint, year, month int) (MyHistoryResult, error)
+	GetMyHistory(ctx context.Context, viewerID uint, startDate, endDate *time.Time) (MyHistoryResult, error)
 	GetSnapshotByID(ctx context.Context, viewerID, snapshotID uint) (*trendingusersnapshotmodel.TrendingUserSnapshot, error)
 }

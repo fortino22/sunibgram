@@ -73,8 +73,8 @@ type MyTrendingHistoryMonth struct {
 }
 
 type MyTrendingHistoryMeta struct {
-	Year            int                      `json:"year"`
-	Month           int                      `json:"month"`
+	StartDate       string                   `json:"start_date"`
+	EndDate         string                   `json:"end_date"`
 	AvailableMonths []MyTrendingHistoryMonth `json:"available_months"`
 }
 

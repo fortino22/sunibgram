@@ -200,8 +200,8 @@ interface RawMyTrendingHistoryMonth {
 }
 
 interface RawMyTrendingHistoryMeta {
-  year: number;
-  month: number;
+  start_date: string;
+  end_date: string;
   available_months: RawMyTrendingHistoryMonth[];
 }
 
@@ -226,20 +226,20 @@ export interface MyTrendingHistoryMonth {
 
 export interface MyTrendingHistoryResult {
   data: MyTrendingHistoryItem[];
-  year: number;
-  month: number;
+  startDate: string;
+  endDate: string;
   availableMonths: MyTrendingHistoryMonth[];
 }
 
 export async function getMyTrendingHistory(
   token: string,
-  year?: number,
-  month?: number,
+  startDate?: string,
+  endDate?: string,
 ): Promise<MyTrendingHistoryResult> {
   const qs = new URLSearchParams();
-  if (year !== undefined && month !== undefined) {
-    qs.set('year', String(year));
-    qs.set('month', String(month));
+  if (startDate && endDate) {
+    qs.set('start_date', startDate);
+    qs.set('end_date', endDate);
   }
   const path = `/api/trending-users/my-history${qs.toString() ? `?${qs}` : ''}`;
   const raw = await api.get<RawMyTrendingHistoryResponse>(path, token);
@@ -264,8 +264,8 @@ export async function getMyTrendingHistory(
   }));
   return {
     data: items,
-    year: raw.meta.year,
-    month: raw.meta.month,
+    startDate: raw.meta.start_date,
+    endDate: raw.meta.end_date,
     availableMonths: (raw.meta.available_months ?? []).map((m) => ({
       year: m.year,
       month: m.month,

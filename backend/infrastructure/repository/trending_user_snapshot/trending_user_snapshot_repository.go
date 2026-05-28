@@ -56,11 +56,11 @@ func (r *trendingUserSnapshotRepository) FindByUser(ctx context.Context, userID 
 	return rows, err
 }
 
-func (r *trendingUserSnapshotRepository) FindByUserAndMonth(ctx context.Context, userID uint, year, month int) ([]trendingusersnapshotmodel.TrendingUserSnapshot, error) {
+func (r *trendingUserSnapshotRepository) FindByUserAndRange(ctx context.Context, userID uint, startDate, endDate time.Time) ([]trendingusersnapshotmodel.TrendingUserSnapshot, error) {
 	var rows []trendingusersnapshotmodel.TrendingUserSnapshot
 	err := r.readDB.WithContext(ctx).
-		Where("user_id = ? AND EXTRACT(YEAR FROM week_start_date) = ? AND EXTRACT(MONTH FROM week_start_date) = ?",
-			userID, year, month).
+		Where("user_id = ? AND week_start_date >= ? AND week_start_date <= ?",
+			userID, startDate, endDate).
 		Order("week_start_date ASC").
 		Find(&rows).Error
 	return rows, err

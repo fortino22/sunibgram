@@ -90,10 +90,24 @@ func (c *TrendingUserController) GetMyHistory(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	year := ctx.QueryInt("year", 0)
-	month := ctx.QueryInt("month", 0)
+	startStr := ctx.Query("start_date", "")
+	endStr := ctx.Query("end_date", "")
 
-	result, err := c.service.GetMyHistory(ctx.Context(), claims.UserID, year, month)
+	var startPtr, endPtr *time.Time
+	if startStr != "" && endStr != "" {
+		s, errS := time.Parse("2006-01-02", startStr)
+		if errS != nil {
+			return ctrlshared.HandleServiceError(ctx, errS)
+		}
+		e, errE := time.Parse("2006-01-02", endStr)
+		if errE != nil {
+			return ctrlshared.HandleServiceError(ctx, errE)
+		}
+		startPtr = &s
+		endPtr = &e
+	}
+
+	result, err := c.service.GetMyHistory(ctx.Context(), claims.UserID, startPtr, endPtr)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -127,15 +141,18 @@ func (c *TrendingUserController) GetMyHistory(ctx *fiber.Ctx) error {
 	for i, m := range result.AvailableMonths {
 		months[i] = trendinguserdto.MyTrendingHistoryMonth{Year: m.Year, Month: m.Month}
 	}
-	respYear, respMonth := year, month
-	if (respYear == 0 || respMonth == 0) && len(months) > 0 {
-		respYear, respMonth = months[0].Year, months[0].Month
+	startOut, endOut := "", ""
+	if !result.StartDate.IsZero() {
+		startOut = result.StartDate.Format("2006-01-02")
+	}
+	if !result.EndDate.IsZero() {
+		endOut = result.EndDate.Format("2006-01-02")
 	}
 	return ctx.Status(fiber.StatusOK).JSON(trendinguserdto.MyTrendingHistoryResponse{
 		Data: data,
 		Meta: trendinguserdto.MyTrendingHistoryMeta{
-			Year:            respYear,
-			Month:           respMonth,
+			StartDate:       startOut,
+			EndDate:         endOut,
 			AvailableMonths: months,
 		},
 	})

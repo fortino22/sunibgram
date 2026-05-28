@@ -3,6 +3,7 @@ package trendinguseruc
 import (
 	"context"
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -43,26 +44,40 @@ func (s *TrendingUserService) GetMyCurrent(ctx context.Context, viewerID uint) (
 	return trendingusersvciface.MyCurrentResult{User: user, Rank: rank, Page: page}, nil
 }
 
-func (s *TrendingUserService) GetMyHistory(ctx context.Context, viewerID uint, year, month int) (trendingusersvciface.MyHistoryResult, error) {
+func (s *TrendingUserService) GetMyHistory(ctx context.Context, viewerID uint, startDate, endDate *time.Time) (trendingusersvciface.MyHistoryResult, error) {
 	months, err := s.snapshotRepo.FindAvailableMonths(ctx, viewerID)
 	if err != nil {
 		return trendingusersvciface.MyHistoryResult{}, err
 	}
 
-	if (year == 0 || month == 0) && len(months) > 0 {
-		year = months[0].Year
-		month = months[0].Month
+	var start, end time.Time
+	if startDate != nil && endDate != nil {
+		start = *startDate
+		end = *endDate
+	} else if len(months) > 0 {
+		// Default: latest month in available data.
+		latest := months[0]
+		start = time.Date(latest.Year, time.Month(latest.Month), 1, 0, 0, 0, 0, time.UTC)
+		end = start.AddDate(0, 1, -1)
+	} else {
+		return trendingusersvciface.MyHistoryResult{AvailableMonths: months}, nil
 	}
 
-	var rows []trendingusersnapshotmodel.TrendingUserSnapshot
-	if year > 0 && month > 0 {
-		rows, err = s.snapshotRepo.FindByUserAndMonth(ctx, viewerID, year, month)
-		if err != nil {
-			return trendingusersvciface.MyHistoryResult{}, err
-		}
+	if end.Before(start) {
+		return trendingusersvciface.MyHistoryResult{}, errors.New("end_date must be on or after start_date")
 	}
 
-	return trendingusersvciface.MyHistoryResult{Rows: rows, AvailableMonths: months}, nil
+	rows, err := s.snapshotRepo.FindByUserAndRange(ctx, viewerID, start, end)
+	if err != nil {
+		return trendingusersvciface.MyHistoryResult{}, err
+	}
+
+	return trendingusersvciface.MyHistoryResult{
+		Rows:            rows,
+		StartDate:       start,
+		EndDate:         end,
+		AvailableMonths: months,
+	}, nil
 }
 
 func (s *TrendingUserService) GetSnapshotByID(ctx context.Context, viewerID, snapshotID uint) (*trendingusersnapshotmodel.TrendingUserSnapshot, error) {

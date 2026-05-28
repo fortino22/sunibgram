@@ -1,6 +1,12 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import {
   CartesianGrid,
   Line,
@@ -16,10 +22,63 @@ import { useMyTrendingCurrent } from '@/hooks/useMyTrendingCurrent';
 import { useMyTrendingHistory } from '@/hooks/useMyTrendingHistory';
 import { SnapshotModal } from './SnapshotModal';
 
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+type RangeMode = 'month' | 'quarter' | 'range';
+
+const MODE_LABEL: Record<RangeMode, string> = {
+  month: 'Month',
+  quarter: 'Quarter',
+  range: 'Custom',
+};
+
+function pad2(n: number): string {
+  return n.toString().padStart(2, '0');
+}
+
+function toISODate(d: Date): string {
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+}
+
+function monthRange(year: number, month: number): { start: string; end: string } {
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+  return { start: toISODate(start), end: toISODate(end) };
+}
+
+function quarterRange(year: number, quarter: number): { start: string; end: string } {
+  const startMonth = (quarter - 1) * 3 + 1;
+  const start = new Date(Date.UTC(year, startMonth - 1, 1));
+  const end = new Date(Date.UTC(year, startMonth + 2, 0));
+  return { start: toISODate(start), end: toISODate(end) };
+}
+
 function formatWeekLabel(weekStart: string): string {
   const d = new Date(weekStart);
   if (Number.isNaN(d.getTime())) return weekStart;
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatRangeLabel(start: string, end: string): string {
+  if (!start || !end) return '';
+  const s = new Date(start);
+  const e = new Date(end);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return `${fmt(s)} → ${fmt(e)}`;
 }
 
 function HoverWrap({
@@ -89,34 +148,164 @@ function StatCell({ label, value }: { label: string; value: number }) {
   );
 }
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+function ModeButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        flex: 1,
+        padding: '8px 12px',
+        borderRadius: 8,
+        border: 'none',
+        background: active ? 'var(--text)' : hover ? 'var(--bg-hover)' : 'transparent',
+        color: active ? 'var(--bg)' : 'var(--text)',
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: '0.02em',
+        cursor: 'pointer',
+        transition: 'background 0.15s ease, color 0.15s ease',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function selectStyle(): CSSProperties {
+  return {
+    background: 'var(--bg-subtle)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    padding: '6px 10px',
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    outline: 'none',
+  };
+}
+
+function inputStyle(): CSSProperties {
+  return {
+    background: 'var(--bg-subtle)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 8,
+    padding: '6px 10px',
+    fontSize: 12,
+    fontWeight: 600,
+    outline: 'none',
+    colorScheme: 'dark',
+  };
+}
+
+interface RangeState {
+  mode: RangeMode;
+  start?: string;
+  end?: string;
+  year?: number;
+  month?: number;
+  quarter?: number;
+}
+
+function readUrlState(): RangeState {
+  const params = new URLSearchParams(window.location.search);
+  const modeRaw = params.get('mode');
+  const mode: RangeMode =
+    modeRaw === 'range' || modeRaw === 'quarter' ? modeRaw : 'month';
+  const year = params.get('year') ? Number(params.get('year')) : undefined;
+  const month = params.get('month') ? Number(params.get('month')) : undefined;
+  const quarter = params.get('quarter') ? Number(params.get('quarter')) : undefined;
+  return {
+    mode,
+    start: params.get('start') || undefined,
+    end: params.get('end') || undefined,
+    year,
+    month,
+    quarter,
+  };
+}
+
+function syncUrl(state: RangeState) {
+  if (typeof window === 'undefined') return;
+  const next = new URLSearchParams(window.location.search);
+  next.set('tab', 'stats');
+  next.set('mode', state.mode);
+  if (state.year !== undefined) next.set('year', String(state.year));
+  else next.delete('year');
+  if (state.month !== undefined) next.set('month', String(state.month));
+  else next.delete('month');
+  if (state.quarter !== undefined) next.set('quarter', String(state.quarter));
+  else next.delete('quarter');
+  if (state.start) next.set('start', state.start);
+  else next.delete('start');
+  if (state.end) next.set('end', state.end);
+  else next.delete('end');
+  const qs = next.toString();
+  window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname);
+}
 
 export function YourStats() {
-  const currentQuery = useMyTrendingCurrent();
-  const [selectedYear, setSelectedYear] = useState<number | undefined>();
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>();
-  const historyQuery = useMyTrendingHistory(selectedYear, selectedMonth);
+  const [rangeState, setRangeState] = useState<RangeState>({ mode: 'month' });
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRangeState(readUrlState());
+  }, []);
+
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<number | null>(null);
+
+  const computedRange = useMemo<{ start?: string; end?: string }>(() => {
+    if (rangeState.mode === 'range' && rangeState.start && rangeState.end) {
+      return { start: rangeState.start, end: rangeState.end };
+    }
+    if (rangeState.mode === 'month' && rangeState.year && rangeState.month) {
+      return monthRange(rangeState.year, rangeState.month);
+    }
+    if (rangeState.mode === 'quarter' && rangeState.year && rangeState.quarter) {
+      return quarterRange(rangeState.year, rangeState.quarter);
+    }
+    return {};
+  }, [rangeState]);
+
+  const currentQuery = useMyTrendingCurrent();
+  const historyQuery = useMyTrendingHistory(computedRange.start, computedRange.end);
 
   const current = currentQuery.data;
   const result = historyQuery.data;
   const history = useMemo(() => result?.data ?? [], [result]);
   const availableMonths = useMemo(() => result?.availableMonths ?? [], [result]);
-  const activeYear = selectedYear ?? result?.year;
-  const activeMonth = selectedMonth ?? result?.month;
+
+  // Backfill year/month from backend default on first load (no URL params present).
+  useEffect(() => {
+    if (rangeState.mode !== 'month') return;
+    if (rangeState.year || rangeState.month) return;
+    if (!result?.startDate) return;
+    const d = new Date(result.startDate);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRangeState((prev) => {
+      if (prev.mode !== 'month' || prev.year || prev.month) return prev;
+      const next: RangeState = {
+        ...prev,
+        year: d.getUTCFullYear(),
+        month: d.getUTCMonth() + 1,
+      };
+      syncUrl(next);
+      return next;
+    });
+  }, [rangeState.mode, rangeState.year, rangeState.month, result?.startDate]);
 
   const chartData = useMemo(
     () =>
@@ -130,6 +319,53 @@ export function YourStats() {
   );
 
   const isLoading = currentQuery.isLoading || historyQuery.isLoading;
+
+  const availableYears = useMemo(() => {
+    const set = new Set<number>();
+    availableMonths.forEach((m) => set.add(m.year));
+    return Array.from(set).sort((a, b) => b - a);
+  }, [availableMonths]);
+
+  const monthsForYear = (year: number): number[] => {
+    const set = new Set<number>();
+    availableMonths.forEach((m) => {
+      if (m.year === year) set.add(m.month);
+    });
+    return Array.from(set).sort((a, b) => a - b);
+  };
+
+  function applyState(next: RangeState) {
+    setRangeState(next);
+    syncUrl(next);
+  }
+
+  function changeMode(nextMode: RangeMode) {
+    const base: RangeState = { mode: nextMode };
+    if (nextMode === 'month' && availableMonths.length > 0) {
+      base.year = availableMonths[0].year;
+      base.month = availableMonths[0].month;
+    } else if (nextMode === 'quarter' && availableMonths.length > 0) {
+      const m = availableMonths[0];
+      base.year = m.year;
+      base.quarter = Math.floor((m.month - 1) / 3) + 1;
+    } else if (nextMode === 'range' && result?.startDate && result?.endDate) {
+      base.start = result.startDate;
+      base.end = result.endDate;
+    }
+    applyState(base);
+  }
+
+  function setMonthSelection(year: number, month: number) {
+    applyState({ mode: 'month', year, month });
+  }
+
+  function setQuarterSelection(year: number, quarter: number) {
+    applyState({ mode: 'quarter', year, quarter });
+  }
+
+  function setRangeSelection(start: string, end: string) {
+    applyState({ mode: 'range', start, end });
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -298,35 +534,120 @@ export function YourStats() {
             }}
           >
             History ({chartData.length || 0} {chartData.length === 1 ? 'week' : 'weeks'})
+            {result?.startDate && result?.endDate && (
+              <span
+                style={{
+                  marginLeft: 10,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: 'var(--text-tertiary)',
+                  textTransform: 'none',
+                  letterSpacing: 0,
+                }}
+              >
+                {formatRangeLabel(result.startDate, result.endDate)}
+              </span>
+            )}
           </div>
-          {availableMonths.length > 0 && (
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: 4,
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
+            padding: 3,
+            marginBottom: 12,
+          }}
+        >
+          {(['month', 'quarter', 'range'] as RangeMode[]).map((m) => (
+            <ModeButton
+              key={m}
+              label={MODE_LABEL[m]}
+              active={rangeState.mode === m}
+              onClick={() => changeMode(m)}
+            />
+          ))}
+        </div>
+
+        {rangeState.mode === 'month' && availableMonths.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
             <select
-              value={activeYear && activeMonth ? `${activeYear}-${activeMonth}` : ''}
+              value={rangeState.year ?? availableYears[0] ?? ''}
               onChange={(e) => {
-                const [y, m] = e.target.value.split('-').map(Number);
-                setSelectedYear(y);
-                setSelectedMonth(m);
+                const y = Number(e.target.value);
+                const months = monthsForYear(y);
+                const m = rangeState.month && months.includes(rangeState.month) ? rangeState.month : months[0];
+                setMonthSelection(y, m);
               }}
-              style={{
-                background: 'var(--bg-subtle)',
-                color: 'var(--text)',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '6px 10px',
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                outline: 'none',
-              }}
+              style={selectStyle()}
             >
-              {availableMonths.map((m) => (
-                <option key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
-                  {MONTH_NAMES[m.month - 1]} {m.year}
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
                 </option>
               ))}
             </select>
-          )}
-        </div>
+            <select
+              value={rangeState.month ?? ''}
+              onChange={(e) =>
+                setMonthSelection(rangeState.year ?? availableYears[0], Number(e.target.value))
+              }
+              style={selectStyle()}
+            >
+              {monthsForYear(rangeState.year ?? availableYears[0] ?? 0).map((m) => (
+                <option key={m} value={m}>
+                  {MONTH_NAMES[m - 1]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {rangeState.mode === 'quarter' && availableMonths.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            <select
+              value={rangeState.year ?? availableYears[0] ?? ''}
+              onChange={(e) =>
+                setQuarterSelection(Number(e.target.value), rangeState.quarter ?? 1)
+              }
+              style={selectStyle()}
+            >
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+            <select
+              value={rangeState.quarter ?? 1}
+              onChange={(e) =>
+                setQuarterSelection(rangeState.year ?? availableYears[0], Number(e.target.value))
+              }
+              style={selectStyle()}
+            >
+              {[1, 2, 3, 4].map((q) => (
+                <option key={q} value={q}>
+                  Q{q} ({MONTH_NAMES[(q - 1) * 3].slice(0, 3)}–{MONTH_NAMES[(q - 1) * 3 + 2].slice(0, 3)})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {rangeState.mode === 'range' && (
+          <RangeInput
+            initialStart={rangeState.start ?? result?.startDate ?? ''}
+            initialEnd={rangeState.end ?? result?.endDate ?? ''}
+            onApply={(s, e) => {
+              setRangeSelection(s, e);
+              historyQuery.refetch();
+            }}
+          />
+        )}
+
         {chartData.length === 0 ? (
           <div
             style={{
@@ -336,10 +657,10 @@ export function YourStats() {
               fontSize: 13,
             }}
           >
-            No history yet — your first snapshot drops next Monday.
+            No snapshots in this range.
           </div>
         ) : (
-          <div style={{ width: '100%', height: 260 }}>
+          <div style={{ width: '100%', height: 260, minWidth: 0, position: 'relative' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -438,6 +759,77 @@ function StatBlock({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function RangeInput({
+  initialStart,
+  initialEnd,
+  onApply,
+}: {
+  initialStart: string;
+  initialEnd: string;
+  onApply: (start: string, end: string) => void;
+}) {
+  const [start, setStart] = useState(initialStart);
+  const [end, setEnd] = useState(initialEnd);
+
+  useEffect(() => {
+    setStart(initialStart);
+    setEnd(initialEnd);
+  }, [initialStart, initialEnd]);
+
+  const valid = start && end && start <= end;
+  const [hover, setHover] = useState(false);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 8,
+        marginBottom: 14,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+      }}
+    >
+      <input
+        type="date"
+        value={start}
+        onChange={(e) => setStart(e.target.value)}
+        style={inputStyle()}
+      />
+      <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>→</span>
+      <input
+        type="date"
+        value={end}
+        onChange={(e) => setEnd(e.target.value)}
+        style={inputStyle()}
+      />
+      <button
+        type="button"
+        disabled={!valid}
+        onClick={() => valid && onApply(start, end)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          padding: '6px 14px',
+          borderRadius: 8,
+          border: '1px solid var(--border)',
+          background: !valid
+            ? 'var(--bg-subtle)'
+            : hover
+              ? 'var(--text-secondary)'
+              : 'var(--text)',
+          color: !valid ? 'var(--text-tertiary)' : 'var(--bg)',
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: valid ? 'pointer' : 'not-allowed',
+          transition: 'background 0.15s ease, color 0.15s ease',
+        }}
+      >
+        Apply
+      </button>
     </div>
   );
 }
