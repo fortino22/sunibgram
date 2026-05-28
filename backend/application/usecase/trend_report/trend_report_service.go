@@ -56,3 +56,7 @@ func (s *trendReportService) CreateReport(ctx context.Context, reporterID uint, 
 func (s *trendReportService) ListReasons(ctx context.Context) ([]trendreportmodel.TrendReportReason, error) {
 	return s.repo.ListReasons(ctx)
 }
+
+func (s *trendReportService) CountByReason(ctx context.Context) ([]trendreportrepoiface.ReasonCount, error) {
+	return s.repo.CountByReason(ctx)
+}

@@ -33,6 +33,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'profile',       href: '/profile',       icon: 'user',     label: 'Profile' },
 ];
 
+const ADMIN_NAV_ITEM: NavItem = { id: 'admin', href: '/admin', icon: 'shield', label: 'Admin' };
+
 interface SidebarItemProps {
   item: NavItem;
   active: boolean;
@@ -132,7 +134,8 @@ export function Sidebar() {
   const [postHovered, setPostHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const avatarSrc = profile?.avatar ?? null;
-  const isCollapsed = pathname.startsWith('/messages');
+  const isCollapsed = pathname.startsWith('/messages') || pathname.startsWith('/admin');
+  const navItems = user?.roleName === 'admin' ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
   const openCompose = useComposeStore((s) => s.openCompose);
   const unreadNotifications = useNotificationStore((s) => s.unreadCount);
 
@@ -175,7 +178,7 @@ export function Sidebar() {
 
       {/* Nav items */}
       <div style={{ padding: '0 10px 0 10px', paddingRight: isCollapsed ? 10 : 20, flex: 1 }}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const badge = item.id === 'notifications' && unreadNotifications > 0
             ? (unreadNotifications > 99 ? 99 : unreadNotifications)
             : item.badge;
