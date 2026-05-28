@@ -5,6 +5,8 @@ import { ImagePlus, LoaderCircle, X, Loader2, Globe, ChevronDown, Smile, Film, U
 import {
   type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -22,7 +24,9 @@ import {
   type ThreadMutationParams,
   type ThreadResponse,
   type ThreadItem,
+  type MentionUser,
 } from '@/lib/services/threads';
+import { MentionAutocomplete } from '@/components/thread/MentionAutocomplete';
 import {
   createCommunityThread,
   type CommunityData,
@@ -173,6 +177,11 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const pollImageUrlsRef = useRef<Record<string, string>>({});
 
   const [content, setContent] = useState('');
+  const [textareaEl, setTextareaEl] = useState<HTMLTextAreaElement | null>(null);
+  const [mentionState, setMentionState] = useState<{ query: string; start: number; end: number } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const mentionResultsRef = useRef<MentionUser[]>([]);
+  const pickedMentionsRef = useRef<Map<string, string>>(new Map());
   const [previews, setPreviews] = useState<FilePreview[]>([]);
   const [compressing, setCompressing] = useState(false);
   const [pollImageUrls, setPollImageUrls] = useState<Record<string, string>>({});
@@ -610,6 +619,81 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     pollFields.remove(index);
   }
 
+  function detectMentionAt(text: string, caret: number): { query: string; start: number; end: number } | null {
+    let i = caret - 1;
+    while (i >= 0 && /[a-zA-Z0-9_.]/.test(text[i])) i--;
+    if (i < 0 || text[i] !== '@') return null;
+    const before = i === 0 ? '' : text[i - 1];
+    if (before && !/\s/.test(before)) return null;
+    const query = text.slice(i + 1, caret);
+    if (query.length > 30) return null;
+    return { query, start: i, end: caret };
+  }
+
+  function handleContentChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    setContent(value);
+    const caret = e.target.selectionStart ?? value.length;
+    const detected = detectMentionAt(value, caret);
+    if (detected) {
+      setMentionState(detected);
+      setMentionIndex(0);
+    } else if (mentionState) {
+      setMentionState(null);
+    }
+  }
+
+  const insertMention = useCallback((user: MentionUser) => {
+    const el = textareaRef.current;
+    const state = mentionState;
+    if (!state) return;
+    const insertion = `@${user.username} `;
+    setContent((prev) => prev.slice(0, state.start) + insertion + prev.slice(state.end));
+    pickedMentionsRef.current.set(user.username, user.user_id);
+    setMentionState(null);
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const pos = state.start + insertion.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }, [mentionState]);
+
+  function handleTextareaKeyDown(e: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (!mentionState) return;
+    const results = mentionResultsRef.current;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setMentionState(null);
+      return;
+    }
+    if (results.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setMentionIndex((i) => (i + 1) % results.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setMentionIndex((i) => (i - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      const target = results[Math.min(mentionIndex, results.length - 1)];
+      if (target) insertMention(target);
+    }
+  }
+
+  const handleMentionResults = useCallback((results: MentionUser[]) => {
+    mentionResultsRef.current = results;
+    setMentionIndex((i) => (results.length === 0 ? 0 : Math.min(i, results.length - 1)));
+  }, []);
+
+  function transformMentionsForSubmit(text: string): string {
+    return text.replace(/@([a-zA-Z0-9_.]+)/g, (full, name: string) => {
+      const id = pickedMentionsRef.current.get(name);
+      return id ? `@[${name}|${id}]` : full;
+    });
+  }
+
   function handleEmojiClick(emojiData: EmojiClickData) {
     const el = textareaRef.current;
     if (!el) {
@@ -655,11 +739,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       }
     }
 
+    const submitContent = transformMentionsForSubmit(normalizedContent);
+
     try {
       if (!isReply && selectedEvent) {
         if (!token) throw new Error('Not authenticated.');
         await createEventThread({
-          content: normalizedContent,
+          content: submitContent,
           files: selectedFiles,
           eventId: selectedEvent.id,
           isOfficial: preselectedIsOfficialEvent ?? false,
@@ -668,13 +754,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       } else if (!isReply && selectedCommunity) {
         await communityMutation.mutateAsync({
           communityId: selectedCommunity.community_id,
-          content: normalizedContent,
+          content: submitContent,
           files: selectedFiles,
         });
       } else {
         const pollValues = pollForm.getValues();
         await mutation.mutateAsync({
-          content: normalizedContent,
+          content: submitContent,
           files: selectedFiles,
           isPrivate: false,
           ...(pollEnabled && {
@@ -692,6 +778,8 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
         });
       }
       if (!isReply) setContent('');
+      pickedMentionsRef.current.clear();
+      setMentionState(null);
       previews.forEach((p) => URL.revokeObjectURL(p.url));
       setPreviews([]);
       if (!isReply) {
@@ -909,9 +997,29 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
           )}
 
           <textarea
-            ref={textareaRef}
+            ref={(el) => {
+              textareaRef.current = el;
+              setTextareaEl(el);
+            }}
             value={content}
-            onChange={(e) => setContent(e.target.value)}
+            onChange={handleContentChange}
+            onKeyDown={handleTextareaKeyDown}
+            onSelect={(e) => {
+              const el = e.currentTarget;
+              const detected = detectMentionAt(el.value, el.selectionStart ?? 0);
+              if (detected) {
+                if (
+                  !mentionState ||
+                  mentionState.query !== detected.query ||
+                  mentionState.start !== detected.start
+                ) {
+                  setMentionState(detected);
+                  setMentionIndex(0);
+                }
+              } else if (mentionState) {
+                setMentionState(null);
+              }
+            }}
             placeholder={placeholder}
             autoFocus={autoFocus}
             rows={isReply ? 2 : 2}
@@ -929,6 +1037,19 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               padding: '12px 14px 10px',
             }}
           />
+
+          {mentionState && (
+            <MentionAutocomplete
+              query={mentionState.query}
+              anchorEl={textareaEl}
+              caretIndex={mentionState.end}
+              activeIndex={mentionIndex}
+              onActiveIndexChange={setMentionIndex}
+              onSelect={insertMention}
+              onClose={() => setMentionState(null)}
+              onResults={handleMentionResults}
+            />
+          )}
 
           {previews.length > 0 && (
             <div

@@ -9,7 +9,7 @@ import (
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
 )
 
-var mentionPattern = regexp.MustCompile(`@([a-zA-Z0-9_.]+)`)
+var mentionPattern = regexp.MustCompile(`@\[([a-zA-Z0-9_.]+)\|\d+\]|@([a-zA-Z0-9_.]+)`)
 
 func SendCommentNotification(
 	notificationService notificationsvciface.INotificationService,
@@ -77,7 +77,11 @@ func SendMentionNotifications(
 	seen := make(map[string]struct{}, len(matches))
 	usernames := make([]string, 0, len(matches))
 	for _, m := range matches {
-		username := strings.ToLower(m[1])
+		raw := m[1]
+		if raw == "" {
+			raw = m[2]
+		}
+		username := strings.ToLower(raw)
 		if _, ok := seen[username]; ok {
 			continue
 		}

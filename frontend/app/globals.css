@@ -90,6 +90,20 @@ body {
   display: none;
 }
 
+.sidebar-logo-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  transition: background-color 0.15s ease;
+}
+
+.sidebar-logo-btn:hover .sidebar-logo-hit {
+  background-color: var(--sidebar-hover);
+}
+
 .right-panel {
   width: 348px;
   flex-shrink: 0;
@@ -183,6 +197,19 @@ body {
 
 /* Text / count / link buttons — underline on hover */
 .hover-underline:hover {
+  text-decoration: underline;
+}
+
+/* Mention / hashtag rich tag — accent bg tint + underline on hover */
+.mention-link {
+  border-radius: 4px;
+  padding: 0 2px;
+  margin: 0 -2px;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.mention-link:hover {
+  background-color: color-mix(in oklab, var(--accent) 14%, transparent);
+  color: var(--accent-hover);
   text-decoration: underline;
 }
 

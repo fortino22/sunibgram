@@ -157,9 +157,12 @@ export function Sidebar() {
           type="button"
           onClick={() => window.location.reload()}
           aria-label="Refresh Sunibgram"
-          style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          className="sidebar-logo-btn"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
         >
-          <Logo size={32} style={{ flexShrink: 0, color: 'var(--text-on-dark)' }} />
+          <span className="sidebar-logo-hit">
+            <Logo size={32} style={{ flexShrink: 0, color: 'var(--text-on-dark)' }} />
+          </span>
           <span
             className="sidebar-label"
             style={{ fontWeight: 500, fontSize: 20, color: 'var(--text-on-dark)', letterSpacing: '-0.02em' }}

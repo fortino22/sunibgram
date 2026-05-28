@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
 import type { FeedParentContext } from '@/lib/services/threads';
+import { renderRichContent } from './MentionText';
 
 interface QuotedPostBoxProps {
   context: FeedParentContext;
@@ -53,7 +54,7 @@ export function QuotedPostBox({ context }: QuotedPostBoxProps) {
             overflow: 'hidden',
           }}
         >
-          {context.content}
+          {renderRichContent(context.content)}
         </p>
       )}
 

@@ -6,10 +6,6 @@ import type { CSSProperties } from 'react';
 const VBW = 384;
 const VBH = 512;
 
-// Lightning-bolt "S" — identical silhouette to AuthBrandPanel. Rendered as a
-// hollow double outline (a thick stroke with a thinner bg stroke carved through
-// its center, like the X on x.com): two parallel edges with a transparent gap
-// down the middle. A white sheen sweeps across on a loop, automatically.
 const BOLT = 'M236 0 L40 300 L190 300 L150 512 L344 224 L190 224 Z';
 
 interface LogoProps {
@@ -26,6 +22,13 @@ export function Logo({ size = 32, className, style, bg = 'var(--bg)' }: LogoProp
   const cx = VBW / 2;
   const cy = VBH / 2;
 
+  // Derive stroke widths from the rendered size so visible edges stay crisp
+  // (~1.5 px each) regardless of size. Default 26/12 at viewBox scale 1 looked
+  // sub-pixel at 32px, producing the blur.
+  const unitPx = VBW / size;
+  const carveSW = unitPx;
+  const outerSW = carveSW + unitPx * 3;
+
   return (
     <svg
       width={size}
@@ -33,6 +36,7 @@ export function Logo({ size = 32, className, style, bg = 'var(--bg)' }: LogoProp
       viewBox={`0 0 ${VBW} ${VBH}`}
       role="img"
       aria-label="Sunibgram"
+      shapeRendering="geometricPrecision"
       className={className}
       style={style}
     >
@@ -58,18 +62,18 @@ export function Logo({ size = 32, className, style, bg = 'var(--bg)' }: LogoProp
       {/* Tilt clockwise so the zigzag reads as an "S" */}
       <g transform={`rotate(25 ${cx} ${cy})`}>
         {/* bolt body */}
-        <path d={BOLT} fill="none" stroke="currentColor" strokeWidth={26} strokeLinejoin="round" />
+        <path d={BOLT} fill="none" stroke="currentColor" strokeWidth={outerSW} strokeLinejoin="round" />
         {/* sweeping glint over the body */}
         <path
           d={BOLT}
           fill="none"
           stroke={`url(#${sheenId})`}
-          strokeWidth={26}
+          strokeWidth={outerSW}
           strokeLinejoin="round"
           style={{ mixBlendMode: 'lighten' }}
         />
         {/* carve the center → hollow double edge */}
-        <path d={BOLT} fill="none" stroke={bg} strokeWidth={12} strokeLinejoin="round" />
+        <path d={BOLT} fill="none" stroke={bg} strokeWidth={carveSW} strokeLinejoin="round" />
       </g>
     </svg>
   );
