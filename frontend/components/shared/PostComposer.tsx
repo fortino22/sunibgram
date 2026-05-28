@@ -1043,6 +1043,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               query={mentionState.query}
               anchorEl={textareaEl}
               caretIndex={mentionState.end}
+              mentionStart={mentionState.start}
               activeIndex={mentionIndex}
               onActiveIndexChange={setMentionIndex}
               onSelect={insertMention}

@@ -53,7 +53,7 @@ export function Logo({ size = 32, className, style, bg = 'var(--bg)' }: LogoProp
             type="translate"
             values="-1 0; 1 0; 1 0"
             keyTimes="0; 0.45; 1"
-            dur="3.5s"
+            dur="2s"
             repeatCount="indefinite"
           />
         </linearGradient>

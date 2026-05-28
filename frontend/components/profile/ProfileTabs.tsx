@@ -20,44 +20,53 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
       role="tablist"
       style={{
         display: 'flex',
-        gap: 4,
-        overflowX: 'auto',
         borderBottom: '1px solid var(--border)',
         position: 'sticky',
         top: 77,
         zIndex: 10,
         background: 'oklch(10.5% 0.005 260 / 0.92)',
         backdropFilter: 'blur(12px)',
-        padding: '0 12px',
       }}
     >
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === tab.id}
-          onClick={() => onTabChange(tab.id)}
-          style={{
-            flexShrink: 0,
-            padding: '14px 12px',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: 14,
-            fontWeight: activeTab === tab.id ? 700 : 400,
-            color: activeTab === tab.id ? 'var(--text)' : 'var(--text-tertiary)',
-            borderBottom: activeTab === tab.id ? '2px solid var(--accent)' : '2px solid transparent',
-            fontFamily: 'inherit',
-            letterSpacing: '-0.01em',
-            whiteSpace: 'nowrap',
-            transition: 'all 0.15s ease',
-            marginBottom: -1,
-          }}
-        >
-          {tab.label}
-        </button>
-      ))}
+      {TABS.map((tab) => {
+        const isActive = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onTabChange(tab.id)}
+            className="btn-ghost"
+            style={{
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'stretch',
+              padding: 0,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: isActive ? 700 : 400,
+              color: isActive ? 'var(--text)' : 'var(--text-tertiary)',
+              fontFamily: 'inherit',
+              letterSpacing: '-0.01em',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span
+              style={{
+                padding: '16px 0',
+                borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                marginBottom: -1,
+              }}
+            >
+              {tab.label}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

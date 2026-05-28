@@ -11,6 +11,7 @@ interface MentionAutocompleteProps {
   query: string;
   anchorEl: HTMLTextAreaElement | null;
   caretIndex: number;
+  mentionStart: number;
   activeIndex: number;
   onActiveIndexChange: (i: number) => void;
   onSelect: (user: MentionUser) => void;
@@ -93,6 +94,7 @@ export function MentionAutocomplete({
   query,
   anchorEl,
   caretIndex,
+  mentionStart,
   activeIndex,
   onActiveIndexChange,
   onSelect,
@@ -113,8 +115,9 @@ export function MentionAutocomplete({
     const update = () => {
       const r = anchorEl.getBoundingClientRect();
       const caret = getCaretCoordinates(anchorEl, caretIndex);
-      const top = r.top + window.scrollY + caret.top - anchorEl.scrollTop + caret.height + 4;
-      const left = r.left + window.scrollX + caret.left - anchorEl.scrollLeft;
+      const anchor = getCaretCoordinates(anchorEl, mentionStart);
+      const top = r.top + window.scrollY + caret.top - anchorEl.scrollTop + caret.height + 15;
+      const left = r.left + window.scrollX + anchor.left - anchorEl.scrollLeft;
       setPos({ top, left });
     };
     update();
@@ -124,7 +127,7 @@ export function MentionAutocomplete({
       window.removeEventListener('scroll', update, true);
       window.removeEventListener('resize', update);
     };
-  }, [anchorEl, caretIndex]);
+  }, [anchorEl, caretIndex, mentionStart]);
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
