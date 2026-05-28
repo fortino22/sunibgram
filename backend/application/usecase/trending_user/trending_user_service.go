@@ -85,7 +85,14 @@ func (s *TrendingUserService) GetMyHistory(ctx context.Context, viewerID uint, s
 }
 
 func (s *TrendingUserService) SearchMutualUsers(ctx context.Context, viewerID uint, query string, limit int) ([]exploremodel.ExploreUserResult, error) {
-	return s.followRepo.SearchMutualFollows(ctx, viewerID, query, limit)
+	ids, err := s.followRepo.SearchMutualFollowIDs(ctx, viewerID, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	return s.followRepo.HydrateCompareUsers(ctx, ids)
 }
 
 func (s *TrendingUserService) GetUserHistory(ctx context.Context, viewerID, targetID uint, startDate, endDate *time.Time) (trendingusersvciface.MyHistoryResult, error) {
