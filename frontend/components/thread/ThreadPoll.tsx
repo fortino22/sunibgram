@@ -88,10 +88,11 @@ function optionFillColor(isChosen: boolean, canVote: boolean): string {
 function handleOptionVote(
   event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>,
   canVote: boolean,
+  isChosen: boolean,
   optionId: number,
   mutate: (optionId: number) => void
 ) {
-  if (!canVote) {
+  if (!canVote || isChosen) {
     return;
   }
 
@@ -134,9 +135,8 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
   }
 
   const isPollAuthor = isOwnThread(thread, currentUserId);
-  const hasVoted = poll.user_voted_option_id !== undefined && poll.user_voted_option_id !== null;
   const isExpired = isPollExpired(poll.ends_at, now, poll.expired);
-  const canVote = !isPollAuthor && !isExpired && !hasVoted && !voteMutation.isPending;
+  const canVote = !isPollAuthor && !isExpired && !voteMutation.isPending;
   const metadata = `${formatVoteCount(poll.total_votes)} · ${isExpired ? 'Final results' : formatTimeRemaining(poll.ends_at, now)}`;
   const pollOptionMedia = getPollOptionMedia(thread);
   const pollMedia = getPollMedia(thread);
@@ -162,11 +162,11 @@ export function ThreadPoll({ thread, compact = false, onImageClick }: ThreadPoll
               role={canVote ? 'button' : undefined}
               aria-disabled={isDisabled}
               tabIndex={isDisabled ? -1 : 0}
-              onClick={(event) => handleOptionVote(event, canVote, option.option_id, voteMutation.mutate)}
+              onClick={(event) => handleOptionVote(event, canVote, isChosen, option.option_id, voteMutation.mutate)}
               onKeyDown={canVote ? (event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
-                  handleOptionVote(event, canVote, option.option_id, voteMutation.mutate);
+                  handleOptionVote(event, canVote, isChosen, option.option_id, voteMutation.mutate);
                 }
               } : undefined}
               className="relative w-full overflow-hidden rounded-2xl border text-left transition-colors hover-dim"

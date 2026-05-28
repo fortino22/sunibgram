@@ -37,6 +37,8 @@ import (
 	threadpinuc "github.com/sunibgram/application/usecase/thread_pin"
 	threadpolluc "github.com/sunibgram/application/usecase/thread_poll"
 	threadsummaryuc "github.com/sunibgram/application/usecase/thread_summary"
+	trendreportuc "github.com/sunibgram/application/usecase/trend_report"
+	trendinguseruc "github.com/sunibgram/application/usecase/trending_user"
 	useruc "github.com/sunibgram/application/usecase/user"
 	userprofileuc "github.com/sunibgram/application/usecase/user_profile"
 	usersettingsuc "github.com/sunibgram/application/usecase/user_settings"
@@ -77,6 +79,8 @@ import (
 	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
 	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
+	trendreportsvciface "github.com/sunibgram/domain/service/trend_report"
+	trendingusersvciface "github.com/sunibgram/domain/service/trending_user"
 	usersvciface "github.com/sunibgram/domain/service/user"
 	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	usersettingssvciface "github.com/sunibgram/domain/service/user_settings"
@@ -126,6 +130,8 @@ type Services struct {
 	ChatReaction         chatreactionsvciface.IChatReactionService
 	ThreadPoll           threadpollsvciface.IThreadPollService
 	EventThreadPin       eventthreadpinsvciface.IEventThreadPinService
+	TrendingUser         trendingusersvciface.ITrendingUserService
+	TrendReport          trendreportsvciface.ITrendReportService
 }
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
@@ -180,5 +186,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		ChatReaction:         chatreactionuc.NewChatReactionService(repos.Chat, repos.ChatReaction, repos.ChatRoom),
 		ThreadPoll:           threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, ext.Storage),
 		EventThreadPin:       eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
+		TrendingUser:         trendinguseruc.NewTrendingUserService(repos.TrendingUser),
+		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport),
 	}
 }

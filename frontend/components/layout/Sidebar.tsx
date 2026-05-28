@@ -24,6 +24,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: 'home',          href: '/',              icon: 'home',     label: 'Home' },
   { id: 'explore',       href: '/explore',       icon: 'explore',  label: 'Explore' },
+  { id: 'leaderboard',   href: '/leaderboard',   icon: 'trophy',   label: 'Leaderboard' },
   { id: 'communities',   href: '/communities',   icon: 'users',    label: 'Communities'},
   { id: 'events',        href: '/events',        icon: 'calendar', label: 'Events'       },
   { id: 'messages',      href: '/messages',      icon: 'messages', label: 'Messages'     },

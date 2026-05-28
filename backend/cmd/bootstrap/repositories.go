@@ -36,6 +36,8 @@ import (
 	threadmediarepoiface "github.com/sunibgram/domain/repository/thread_media"
 	threadpinrepoiface "github.com/sunibgram/domain/repository/thread_pin"
 	threadpollrepoiface "github.com/sunibgram/domain/repository/thread_poll"
+	trendreportrepoiface "github.com/sunibgram/domain/repository/trend_report"
+	trendinguserrepoiface "github.com/sunibgram/domain/repository/trending_user"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
 	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
@@ -78,6 +80,8 @@ import (
 	threadmediarepo "github.com/sunibgram/infrastructure/repository/thread_media"
 	threadpinrepo "github.com/sunibgram/infrastructure/repository/thread_pin"
 	threadpollrepo "github.com/sunibgram/infrastructure/repository/thread_poll"
+	trendreportrepo "github.com/sunibgram/infrastructure/repository/trend_report"
+	trendinguserrepo "github.com/sunibgram/infrastructure/repository/trending_user"
 	userrepo "github.com/sunibgram/infrastructure/repository/user"
 	userfacultyrepo "github.com/sunibgram/infrastructure/repository/user_faculty"
 	userprofilerepo "github.com/sunibgram/infrastructure/repository/user_profile"
@@ -129,6 +133,8 @@ type Repositories struct {
 	Notification         notificationrepoiface.INotificationRepository
 	ThreadPoll           threadpollrepoiface.IThreadPollRepository
 	EventThreadPin       eventthreadpinrepoiface.IEventThreadPinRepository
+	TrendingUser         trendinguserrepoiface.ITrendingUserRepository
+	TrendReport          trendreportrepoiface.ITrendReportRepository
 }
 
 func NewRepositories(db *Database, c *cache.Cache) *Repositories {
@@ -177,5 +183,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		Notification:         notificationrepo.NewNotificationRepository(w, r, c),
 		ThreadPoll:           threadpollrepo.NewThreadPollRepository(w, r, c),
 		EventThreadPin:       eventthreadpinrepo.NewEventThreadPinRepository(w, r, c),
+		TrendingUser:         trendinguserrepo.NewTrendingUserRepository(r, c),
+		TrendReport:          trendreportrepo.NewTrendReportRepository(w, r),
 	}
 }
