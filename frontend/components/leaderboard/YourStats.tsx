@@ -11,16 +11,18 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
+import { useMeasuredSize } from '@/hooks/useMeasuredSize';
+import { Maximize2 } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useMyTrendingCurrent } from '@/hooks/useMyTrendingCurrent';
 import { useMyTrendingHistory } from '@/hooks/useMyTrendingHistory';
 import { SnapshotModal } from './SnapshotModal';
+import { ChartExpandModal } from './ChartExpandModal';
 
 const MONTH_NAMES = [
   'January',
@@ -266,6 +268,9 @@ export function YourStats() {
   }, []);
 
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<number | null>(null);
+  const [expandOpen, setExpandOpen] = useState(false);
+
+  const [chartRef, { w: chartW, h: chartH }] = useMeasuredSize<HTMLDivElement>();
 
   const computedRange = useMemo<{ start?: string; end?: string }>(() => {
     if (rangeState.mode === 'range' && rangeState.start && rangeState.end) {
@@ -549,6 +554,28 @@ export function YourStats() {
               </span>
             )}
           </div>
+          <button
+            type="button"
+            onClick={() => setExpandOpen(true)}
+            aria-label="Expand chart"
+            className="btn-ghost"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 12px',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              cursor: 'pointer',
+              color: 'var(--text)',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <Maximize2 size={14} strokeWidth={2} />
+            Expand
+          </button>
         </div>
 
         <div
@@ -660,9 +687,12 @@ export function YourStats() {
             No snapshots in this range.
           </div>
         ) : (
-          <div style={{ width: '100%', height: 260, minWidth: 0, position: 'relative' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
+          <div
+            ref={chartRef}
+            style={{ width: '100%', height: 260, minWidth: 0, position: 'relative' }}
+          >
+            {chartW > 0 && chartH > 0 && (
+            <LineChart width={chartW} height={chartH} data={chartData} margin={{ top: 12, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis
                   dataKey="weekLabel"
@@ -729,7 +759,7 @@ export function YourStats() {
                   }}
                 />
               </LineChart>
-            </ResponsiveContainer>
+            )}
           </div>
         )}
       </HoverWrap>
@@ -738,6 +768,13 @@ export function YourStats() {
         <SnapshotModal
           snapshotId={selectedSnapshotId}
           onClose={() => setSelectedSnapshotId(null)}
+        />
+      )}
+
+      {expandOpen && (
+        <ChartExpandModal
+          currentUserName={current?.name || current?.username || 'You'}
+          onClose={() => setExpandOpen(false)}
         />
       )}
     </div>

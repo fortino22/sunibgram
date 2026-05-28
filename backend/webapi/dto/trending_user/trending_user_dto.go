@@ -83,8 +83,21 @@ type MyTrendingHistoryResponse struct {
 	Meta MyTrendingHistoryMeta   `json:"meta"`
 }
 
+type MutualCompareUser struct {
+	UserID    uint   `json:"userId"`
+	Username  string `json:"username"`
+	Name      string `json:"name"`
+	Profile   string `json:"profile"`
+	IsPremium bool   `json:"is_premium"`
+}
+
+type MutualCompareSearchResponse struct {
+	Data []MutualCompareUser `json:"data"`
+}
+
 type MyTrendingSnapshotResponse struct {
 	SnapshotID uint                    `json:"snapshot_id"`
+	UserID     uint                    `json:"user_id"`
 	WeekStart  string                  `json:"week_start"`
 	Rank       int                     `json:"rank"`
 	Score      float64                 `json:"score"`

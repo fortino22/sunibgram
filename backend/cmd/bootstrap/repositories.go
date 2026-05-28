@@ -187,7 +187,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		ThreadPoll:           threadpollrepo.NewThreadPollRepository(w, r, c),
 		EventThreadPin:       eventthreadpinrepo.NewEventThreadPinRepository(w, r, c),
 		TrendingUser:         trendinguserrepo.NewTrendingUserRepository(r, c),
-		TrendingUserSnapshot: trendingusersnapshotrepo.NewTrendingUserSnapshotRepository(w, r),
+		TrendingUserSnapshot: trendingusersnapshotrepo.NewTrendingUserSnapshotRepository(w, r, c),
 		TrendReport:          trendreportrepo.NewTrendReportRepository(w, r),
 	}
 }

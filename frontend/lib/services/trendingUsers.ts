@@ -275,6 +275,7 @@ export async function getMyTrendingHistory(
 
 interface RawMyTrendingSnapshot {
   snapshot_id: number;
+  user_id: number;
   week_start: string;
   rank: number;
   score: number;
@@ -284,12 +285,97 @@ interface RawMyTrendingSnapshot {
 
 export interface MyTrendingSnapshot {
   snapshotId: number;
+  userId: number;
   weekStart: string;
   rank: number;
   score: number;
   snapshotAt: string;
   received: TrendingUserReceived;
   given: TrendingUserGiven;
+}
+
+export async function getUserTrendingHistory(
+  token: string,
+  userId: number,
+  startDate?: string,
+  endDate?: string,
+): Promise<MyTrendingHistoryResult> {
+  const qs = new URLSearchParams();
+  if (startDate && endDate) {
+    qs.set('start_date', startDate);
+    qs.set('end_date', endDate);
+  }
+  const path = `/api/trending-users/users/${userId}/history${qs.toString() ? `?${qs}` : ''}`;
+  const raw = await api.get<RawMyTrendingHistoryResponse>(path, token);
+  const items = (raw.data ?? []).map<MyTrendingHistoryItem>((r) => ({
+    snapshotId: r.snapshot_id,
+    weekStart: r.week_start,
+    rank: r.rank,
+    score: r.score,
+    received: {
+      likes: r.detail.received.likes,
+      comments: r.detail.received.comments,
+      bookmarks: r.detail.received.bookmarks,
+      reposts: r.detail.received.reposts,
+      threadCount: r.detail.received.thread_count,
+    },
+    given: {
+      likes: r.detail.given.likes,
+      bookmarks: r.detail.given.bookmarks,
+      comments: r.detail.given.comments,
+      posts: r.detail.given.posts,
+    },
+  }));
+  return {
+    data: items,
+    startDate: raw.meta.start_date,
+    endDate: raw.meta.end_date,
+    availableMonths: (raw.meta.available_months ?? []).map((m) => ({
+      year: m.year,
+      month: m.month,
+    })),
+  };
+}
+
+interface RawMutualCompareUser {
+  userId: number;
+  username: string;
+  name: string;
+  profile: string;
+  is_premium: boolean;
+}
+
+interface RawMutualCompareSearchResponse {
+  data: RawMutualCompareUser[];
+}
+
+export interface MutualCompareUser {
+  userId: number;
+  username: string;
+  name: string;
+  profile: string;
+  isPremium: boolean;
+}
+
+export async function searchMutualCompareUsers(
+  token: string,
+  query: string,
+  limit = 10,
+): Promise<MutualCompareUser[]> {
+  const qs = new URLSearchParams();
+  if (query) qs.set('q', query);
+  qs.set('limit', String(limit));
+  const raw = await api.get<RawMutualCompareSearchResponse>(
+    `/api/trending-users/mutuals?${qs.toString()}`,
+    token,
+  );
+  return (raw.data ?? []).map((u) => ({
+    userId: u.userId,
+    username: u.username,
+    name: u.name,
+    profile: u.profile,
+    isPremium: u.is_premium,
+  }));
 }
 
 export async function getMyTrendingSnapshot(
@@ -302,6 +388,7 @@ export async function getMyTrendingSnapshot(
   );
   return {
     snapshotId: raw.snapshot_id,
+    userId: raw.user_id,
     weekStart: raw.week_start,
     rank: raw.rank,
     score: raw.score,

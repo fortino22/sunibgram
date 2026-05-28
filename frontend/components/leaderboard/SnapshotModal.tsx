@@ -2,10 +2,20 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useMyTrendingSnapshot } from '@/hooks/useMyTrendingSnapshot';
+
+export interface SnapshotOwnerHint {
+  username: string;
+  name?: string;
+  profile?: string | null;
+  isPremium?: boolean;
+}
 
 interface SnapshotModalProps {
   snapshotId: number;
+  ownerHint?: SnapshotOwnerHint;
   onClose: () => void;
 }
 
@@ -62,7 +72,7 @@ function StatCell({ label, value }: { label: string; value: number }) {
   );
 }
 
-export function SnapshotModal({ snapshotId, onClose }: SnapshotModalProps) {
+export function SnapshotModal({ snapshotId, ownerHint, onClose }: SnapshotModalProps) {
   const { data, isLoading, isError } = useMyTrendingSnapshot(snapshotId);
 
   useEffect(() => {
@@ -81,7 +91,7 @@ export function SnapshotModal({ snapshotId, onClose }: SnapshotModalProps) {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 60,
+        zIndex: 70,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -141,6 +151,45 @@ export function SnapshotModal({ snapshotId, onClose }: SnapshotModalProps) {
         )}
         {data && !isLoading && (
           <>
+            {ownerHint && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  marginBottom: 14,
+                  padding: '8px 10px',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                }}
+              >
+                <Avatar
+                  username={ownerHint.username}
+                  avatarUrl={ownerHint.profile ?? null}
+                  size={32}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: 'var(--text)',
+                    }}
+                  >
+                    {ownerHint.name || ownerHint.username}
+                    {ownerHint.isPremium && <VerifiedBadge size={12} />}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                    @{ownerHint.username}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div style={{ marginBottom: 16 }}>
               <div
                 style={{

@@ -128,6 +128,8 @@ func AutoMigrate(db *gorm.DB) {
 	seeder.SeedDummy(db)
 	seeder.SeedThreadWithReplies(db)
 	seeder.SeedTrendingUserSnapshot(db)
+	seeder.SeedMutualFollows(db)
+	seeder.SeedTrendingActivity(db)
 }
 
 func createIndexes(db *gorm.DB) {

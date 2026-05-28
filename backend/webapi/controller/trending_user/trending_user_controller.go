@@ -112,6 +112,10 @@ func (c *TrendingUserController) GetMyHistory(ctx *fiber.Ctx) error {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
+	return ctx.Status(fiber.StatusOK).JSON(buildHistoryResponse(result))
+}
+
+func buildHistoryResponse(result trendingusersvciface.MyHistoryResult) trendinguserdto.MyTrendingHistoryResponse {
 	rows := result.Rows
 	data := make([]trendinguserdto.MyTrendingHistoryItem, len(rows))
 	for i, r := range rows {
@@ -148,14 +152,75 @@ func (c *TrendingUserController) GetMyHistory(ctx *fiber.Ctx) error {
 	if !result.EndDate.IsZero() {
 		endOut = result.EndDate.Format("2006-01-02")
 	}
-	return ctx.Status(fiber.StatusOK).JSON(trendinguserdto.MyTrendingHistoryResponse{
+	return trendinguserdto.MyTrendingHistoryResponse{
 		Data: data,
 		Meta: trendinguserdto.MyTrendingHistoryMeta{
 			StartDate:       startOut,
 			EndDate:         endOut,
 			AvailableMonths: months,
 		},
-	})
+	}
+}
+
+func (c *TrendingUserController) GetUserHistory(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	targetID, ok2 := ctrlshared.ParseIDParam(ctx, "userId", "user")
+	if !ok2 {
+		return nil
+	}
+
+	startStr := ctx.Query("start_date", "")
+	endStr := ctx.Query("end_date", "")
+
+	var startPtr, endPtr *time.Time
+	if startStr != "" && endStr != "" {
+		s, errS := time.Parse("2006-01-02", startStr)
+		if errS != nil {
+			return ctrlshared.HandleServiceError(ctx, errS)
+		}
+		e, errE := time.Parse("2006-01-02", endStr)
+		if errE != nil {
+			return ctrlshared.HandleServiceError(ctx, errE)
+		}
+		startPtr = &s
+		endPtr = &e
+	}
+
+	result, err := c.service.GetUserHistory(ctx.Context(), claims.UserID, targetID, startPtr, endPtr)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(buildHistoryResponse(result))
+}
+
+func (c *TrendingUserController) SearchMutualUsers(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	query := ctx.Query("q", "")
+	limit := ctx.QueryInt("limit", 10)
+
+	users, err := c.service.SearchMutualUsers(ctx.Context(), claims.UserID, query, limit)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+
+	data := make([]trendinguserdto.MutualCompareUser, len(users))
+	for i, u := range users {
+		data[i] = trendinguserdto.MutualCompareUser{
+			UserID:    u.UserID,
+			Username:  u.Username,
+			Name:      u.Name,
+			Profile:   ctrlshared.BuildMediaURL(u.AvatarObjectName, c.profileService.GetURL),
+			IsPremium: u.IsPremium,
+		}
+	}
+	return ctx.Status(fiber.StatusOK).JSON(trendinguserdto.MutualCompareSearchResponse{Data: data})
 }
 
 func (c *TrendingUserController) GetMySnapshot(ctx *fiber.Ctx) error {
@@ -175,6 +240,7 @@ func (c *TrendingUserController) GetMySnapshot(ctx *fiber.Ctx) error {
 
 	resp := trendinguserdto.MyTrendingSnapshotResponse{
 		SnapshotID: r.SnapshotID,
+		UserID:     r.UserID,
 		WeekStart:  r.WeekStartDate.Format("2006-01-02"),
 		Rank:       r.Rank,
 		Score:      r.Score,
