@@ -116,8 +116,8 @@ export function MentionAutocomplete({
       const r = anchorEl.getBoundingClientRect();
       const anchor = getCaretCoordinates(anchorEl, mentionStart);
       const caret = getCaretCoordinates(anchorEl, caretIndex);
-      const top = r.top + window.scrollY + caret.top - anchorEl.scrollTop + caret.height + 6;
-      const left = r.left + window.scrollX + anchor.left - anchorEl.scrollLeft;
+      const top = r.top + caret.top - anchorEl.scrollTop + caret.height + 6;
+      const left = r.left + anchor.left - anchorEl.scrollLeft;
       setPos({ top, left });
     };
     update();
@@ -147,7 +147,7 @@ export function MentionAutocomplete({
       ref={popoverRef}
       role="listbox"
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: pos.top,
         left: pos.left,
         width: 340,
@@ -157,7 +157,7 @@ export function MentionAutocomplete({
         border: '1px solid var(--border)',
         borderRadius: 14,
         boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
-        zIndex: 80,
+        zIndex: 1200,
         padding: 4,
       }}
     >
