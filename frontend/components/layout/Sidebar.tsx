@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
+import { Logo } from '@/components/ui/Logo';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { LogOut } from 'lucide-react';
@@ -159,7 +159,7 @@ export function Sidebar() {
           aria-label="Refresh Sunibgram"
           style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
         >
-          <Image src="/assets/sunibgram/logo.png" alt="Sunibgram" width={32} height={32} style={{ borderRadius: 10, flexShrink: 0 }} />
+          <Logo size={32} style={{ flexShrink: 0, color: 'var(--text-on-dark)' }} />
           <span
             className="sidebar-label"
             style={{ fontWeight: 500, fontSize: 20, color: 'var(--text-on-dark)', letterSpacing: '-0.02em' }}
