@@ -15,6 +15,7 @@ func main() {
 	bootstrap.StartEmailWorkers(ext.Email)
 
 	repos := bootstrap.NewRepositories(db, redisCache)
+	bootstrap.StartTrendingUserSnapshotScheduler(repos)
 	svcs := bootstrap.NewServices(repos, ext, redisCache)
 	ctrls := bootstrap.NewControllers(svcs, ext, redisCache)
 

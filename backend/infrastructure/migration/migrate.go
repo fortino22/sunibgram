@@ -32,11 +32,14 @@ import (
 	ordermodel "github.com/sunibgram/domain/model/order"
 	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 	reportmodel "github.com/sunibgram/domain/model/report"
+	repostmodel "github.com/sunibgram/domain/model/repost"
 	rolemodel "github.com/sunibgram/domain/model/role"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
 	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
+	trendreportmodel "github.com/sunibgram/domain/model/trend_report"
+	trendingusersnapshotmodel "github.com/sunibgram/domain/model/trending_user_snapshot"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
@@ -57,6 +60,7 @@ func AutoMigrate(db *gorm.DB) {
 		&userprofilemodel.UserProfile{},
 		&categorymodel.Category{},
 		&violationmodel.Violation{},
+		&trendreportmodel.TrendReportReason{},
 		&communitymodel.Community{},
 		&threadmodel.Thread{},
 		&reportmodel.Report{},
@@ -69,6 +73,7 @@ func AutoMigrate(db *gorm.DB) {
 		&threadpollmodel.ThreadPollOption{},
 		&threadpollmodel.ThreadPollVote{},
 		&likemodel.Like{},
+		&repostmodel.Repost{},
 		&bookmarkmodel.Bookmark{},
 		&bookmarkcollectionmodel.BookmarkCollection{},
 		&bookmarkcollectionmodel.BookmarkCollectionItem{},
@@ -95,9 +100,11 @@ func AutoMigrate(db *gorm.DB) {
 		&notificationmodel.Notification{},
 		&hashtagmodel.Hashtag{},
 		&hashtagmodel.ThreadHashtag{},
+		&trendreportmodel.TrendReport{},
 		&feedbackmodel.Feedback{},
 		&feedbackmodel.FeedbackVote{},
 		&premiumsubscriptionmodel.PremiumSubscription{},
+		&trendingusersnapshotmodel.TrendingUserSnapshot{},
 	}
 
 	for _, m := range models {
@@ -115,10 +122,14 @@ func AutoMigrate(db *gorm.DB) {
 	seedRoles(db)
 	seeder.SeedCategory(db)
 	seeder.SeedViolation(db)
+	seeder.SeedTrendReportReason(db)
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedDummy(db)
 	seeder.SeedThreadWithReplies(db)
+	seeder.SeedTrendingUserSnapshot(db)
+	seeder.SeedMutualFollows(db)
+	seeder.SeedTrendingActivity(db)
 }
 
 func createIndexes(db *gorm.DB) {
@@ -142,6 +153,9 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_reports_reported_user_id ON reports(reported_user_id)",
 		"CREATE INDEX IF NOT EXISTS idx_reports_reported_post_id ON reports(reported_post_id)",
 		"CREATE INDEX IF NOT EXISTS idx_reports_violation_id ON reports(violation_id)",
+		"CREATE INDEX IF NOT EXISTS idx_trend_reports_hashtag_id ON trend_reports(hashtag_id)",
+		"CREATE INDEX IF NOT EXISTS idx_trend_reports_reason_id ON trend_reports(reason_id)",
+		"CREATE INDEX IF NOT EXISTS idx_trend_reports_reporter_id ON trend_reports(reporter_id)",
 		"CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created ON notifications(recipient_user_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_threads_parent_id ON threads(parent_id) WHERE parent_id IS NOT NULL",
 		"CREATE INDEX IF NOT EXISTS idx_threads_original_thread_id ON threads(original_thread_id) WHERE original_thread_id IS NOT NULL",
@@ -225,6 +239,9 @@ func addForeignKeys(db *gorm.DB) {
 		{"fk_reports_reported_user", "ALTER TABLE reports ADD CONSTRAINT fk_reports_reported_user FOREIGN KEY (reported_user_id) REFERENCES users(user_id) ON DELETE SET NULL"},
 		{"fk_reports_reported_post", "ALTER TABLE reports ADD CONSTRAINT fk_reports_reported_post FOREIGN KEY (reported_post_id) REFERENCES threads(thread_id) ON DELETE SET NULL"},
 		{"fk_reports_violation", "ALTER TABLE reports ADD CONSTRAINT fk_reports_violation FOREIGN KEY (violation_id) REFERENCES violations(id) ON DELETE RESTRICT"},
+		{"fk_trend_reports_reporter", "ALTER TABLE trend_reports ADD CONSTRAINT fk_trend_reports_reporter FOREIGN KEY (reporter_id) REFERENCES users(user_id) ON DELETE CASCADE"},
+		{"fk_trend_reports_hashtag", "ALTER TABLE trend_reports ADD CONSTRAINT fk_trend_reports_hashtag FOREIGN KEY (hashtag_id) REFERENCES hashtags(id) ON DELETE CASCADE"},
+		{"fk_trend_reports_reason", "ALTER TABLE trend_reports ADD CONSTRAINT fk_trend_reports_reason FOREIGN KEY (reason_id) REFERENCES trend_report_reasons(id) ON DELETE RESTRICT"},
 	}
 	for _, fk := range fks {
 		db.Exec(`

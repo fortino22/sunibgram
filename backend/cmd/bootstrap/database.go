@@ -47,3 +47,7 @@ func StartWeeklySchedulers(db *gorm.DB) {
 func StartFeedScoreScheduler(db *gorm.DB, c *cache.Cache) {
 	scheduler.NewFeedScoreScheduler(db, c).Start(context.Background())
 }
+
+func StartTrendingUserSnapshotScheduler(repos *Repositories) {
+	scheduler.NewTrendingUserSnapshotScheduler(repos.TrendingUser, repos.TrendingUserSnapshot).Start(context.Background())
+}

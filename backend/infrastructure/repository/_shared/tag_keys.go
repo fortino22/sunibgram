@@ -270,6 +270,27 @@ func FeedbackListTag() string {
 	return "tag:feedback:list"
 }
 
+// TrendingHistoryGlobalTag covers trending:snapshot:* + trending:user-history:*
+// across all users. Invalidated by the weekly trending snapshot scheduler on
+// UpsertWeek so every cached history-page and snapshot row goes fresh.
+func TrendingHistoryGlobalTag() string {
+	return "tag:trending:history:global"
+}
+
+// TrendingUserHistoryTag covers trending:user-history:<uid>:* and
+// trending:available-months:<uid> for one user. Registered alongside
+// TrendingHistoryGlobalTag so scheduler upserts hit both surfaces.
+func TrendingUserHistoryTag(userID uint) string {
+	return fmt.Sprintf("tag:trending:history:user:%d", userID)
+}
+
+// FollowViewerTag covers cache keys that reflect one viewer's follow graph:
+// follow:mutual:<viewer>:* and trending:mutual-search:<viewer>:*. Invalidated
+// on Follow/Unfollow involving the viewer (as follower or following).
+func FollowViewerTag(userID uint) string {
+	return fmt.Sprintf("tag:follow:viewer:%d", userID)
+}
+
 // ForYouVersionKey is a per-user atomic counter used to invalidate the
 // For You source caches (and the newcount cache) without iterating the
 // individual cache keys. Readers GET the current version and bake it into

@@ -1,13 +1,54 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { Grid } from '@giphy/react-components';
-import { GiphyFetch } from '@giphy/js-fetch-api';
-import type { IGif } from '@giphy/js-types';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Search, X } from 'lucide-react';
 
-const API_KEY = process.env.NEXT_PUBLIC_GIPHY_API_KEY ?? '';
-const gf = API_KEY ? new GiphyFetch(API_KEY) : null;
+const API_KEY = process.env.NEXT_PUBLIC_KLIPY_API_KEY ?? '';
+const PER_PAGE = 24;
+const KLIPY_BASE = 'https://api.klipy.com/api/v1';
+const MEDIA_URL_RE = /^https?:\/\/[^\s"']+\.(gif|webp|mp4)(\?[^\s"']*)?(#[^\s"']*)?$/i;
+
+interface KlipyGif {
+  slug?: string;
+  title?: string;
+  // Klipy nests media under `files` keyed by format/tier; exact sub-shape varies
+  // by tier. We walk the object recursively to find a usable media URL.
+  [key: string]: unknown;
+}
+
+interface KlipyPage {
+  result: boolean;
+  data?: {
+    data?: KlipyGif[];
+    current_page?: number;
+    has_next?: boolean;
+  };
+  errors?: unknown;
+}
+
+// Recursively walks an item and returns the first string value that looks like
+// a .gif / .webp / .mp4 URL. Survives any field-name shape Klipy returns.
+function findMediaUrl(node: unknown, depth = 0): string | null {
+  if (depth > 6 || node == null) return null;
+  if (typeof node === 'string') {
+    return MEDIA_URL_RE.test(node) ? node : null;
+  }
+  if (Array.isArray(node)) {
+    for (const v of node) {
+      const r = findMediaUrl(v, depth + 1);
+      if (r) return r;
+    }
+    return null;
+  }
+  if (typeof node === 'object') {
+    for (const v of Object.values(node as Record<string, unknown>)) {
+      const r = findMediaUrl(v, depth + 1);
+      if (r) return r;
+    }
+  }
+  return null;
+}
 
 interface GifPickerProps {
   onSelect: (gifUrl: string) => void;
@@ -19,42 +60,100 @@ export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerP
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const gridContainerRef = useRef<HTMLDivElement>(null);
-  const [gridWidth, setGridWidth] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const shapeWarnedRef = useRef(false);
 
-  useEffect(() => {
-    const el = gridContainerRef.current;
-    if (!el) return;
-    // Subtract horizontal padding (6 + 6 = 12) so the grid never exceeds the scroll area.
-    const measure = () => setGridWidth(Math.max(0, el.clientWidth - 12));
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  const fetchGifs = useCallback(
-    (offset: number) => {
-      if (!gf) return Promise.reject(new Error('No API key'));
-      return activeQuery
-        ? gf.search(activeQuery, { offset, limit: 24 })
-        : gf.trending({ offset, limit: 24 });
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isError,
+    error,
+    isLoading,
+  } = useInfiniteQuery<KlipyPage>({
+    queryKey: ['klipy', activeQuery || 'trending'],
+    queryFn: async ({ pageParam }) => {
+      if (!API_KEY) throw new Error('Missing NEXT_PUBLIC_KLIPY_API_KEY');
+      const page = typeof pageParam === 'number' ? pageParam : 1;
+      const endpoint = activeQuery ? 'search' : 'trending';
+      const params = new URLSearchParams({ per_page: String(PER_PAGE), page: String(page) });
+      if (activeQuery) params.set('q', activeQuery);
+      const url = `${KLIPY_BASE}/${API_KEY}/gifs/${endpoint}?${params.toString()}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Klipy request failed: ${res.status}`);
+      const json = (await res.json()) as KlipyPage;
+      // Klipy returns 200 OK with `result: false` for rate limits, bad keys, etc.
+      // Throw so the query enters an error state and pagination stops — otherwise
+      // an "empty success" would let the IntersectionObserver spam the endpoint.
+      if (json.result === false) {
+        const msg =
+          (json.errors &&
+            typeof json.errors === 'object' &&
+            'message' in json.errors &&
+            Array.isArray((json.errors as { message: unknown }).message)
+            ? ((json.errors as { message: string[] }).message[0] ?? 'Klipy error')
+            : 'Klipy error');
+        throw new Error(msg);
+      }
+      return json;
     },
-    [activeQuery],
-  );
+    initialPageParam: 1,
+    getNextPageParam: (last) => {
+      if (!last || last.result === false) return undefined;
+      return last.data?.has_next ? (last.data?.current_page ?? 0) + 1 : undefined;
+    },
+    enabled: API_KEY.length > 0,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
-  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const tiles = useMemo(() => {
+    const items: KlipyGif[] = (data?.pages ?? []).flatMap((p) => p?.data?.data ?? []);
+    const out: { item: KlipyGif; url: string; key: string }[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const url = findMediaUrl(item);
+      if (url) out.push({ item, url, key: `${item.slug ?? 'k'}-${i}` });
+    }
+    // If the API returned items but we couldn't extract any URLs, log the first
+    // item once so the developer can adjust MEDIA_URL_RE / findMediaUrl.
+    if (items.length > 0 && out.length === 0 && !shapeWarnedRef.current) {
+      shapeWarnedRef.current = true;
+      console.warn('[GifPicker] Klipy returned items but no media URL was found. Sample:', items[0]);
+    }
+    return out;
+  }, [data]);
+
+  // Infinite-scroll trigger — gated on having at least one rendered tile, so an
+  // empty/erroring response can never trigger a fetch loop.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || tiles.length === 0 || !hasNextPage || isFetchingNextPage || isError) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isError, tiles.length]);
+
+  function handleQueryChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value;
     setQuery(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setActiveQuery(val), 350);
-  };
+  }
 
-  const handleGifClick = (gif: IGif, e: React.SyntheticEvent<HTMLElement>) => {
+  function handleGifClick(url: string, e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault();
-    onSelect(gif.images.original.url);
+    onSelect(url);
     onClose();
-  };
+  }
 
   return (
     <div
@@ -92,30 +191,69 @@ export function GifPicker({ onSelect, onClose, placement = 'above' }: GifPickerP
       {/* No API key warning */}
       {!API_KEY && (
         <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-          Set <code>NEXT_PUBLIC_GIPHY_API_KEY</code> to enable GIFs.
+          Set <code>NEXT_PUBLIC_KLIPY_API_KEY</code> to enable GIFs.
         </div>
       )}
 
       {/* GIF grid */}
-      {gf && (
-        <div ref={gridContainerRef} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: 6 }}>
-          {gridWidth > 0 && (
-            <Grid
-              key={`${activeQuery}-${gridWidth}`}
-              columns={3}
-              width={gridWidth}
-              fetchGifs={fetchGifs}
-              onGifClick={handleGifClick}
-              noLink
-              hideAttribution
-            />
+      {API_KEY && (
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: 6 }}>
+          {isError && (
+            <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+              {error instanceof Error ? error.message : 'Couldn’t load GIFs.'}
+            </div>
           )}
+
+          {!isError && tiles.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+              {tiles.map(({ item, url, key }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={(e) => handleGifClick(url, e)}
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'var(--bg-input, rgba(255,255,255,0.04))',
+                    borderRadius: 6,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    display: 'block',
+                    lineHeight: 0,
+                  }}
+                  title={item.title ?? ''}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={item.title ?? 'GIF'}
+                    loading="lazy"
+                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!isError && !isLoading && tiles.length === 0 && (
+            <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+              No GIFs found.
+            </div>
+          )}
+
+          {(isLoading || isFetchingNextPage) && (
+            <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-muted)', fontSize: 11 }}>
+              Loading…
+            </div>
+          )}
+
+          <div ref={sentinelRef} style={{ height: 1 }} />
         </div>
       )}
 
-      {/* GIPHY attribution — required by their API terms */}
+      {/* KLIPY attribution */}
       <div style={{ textAlign: 'right', padding: '3px 8px', fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-        Powered by GIPHY
+        Powered by KLIPY
       </div>
     </div>
   );

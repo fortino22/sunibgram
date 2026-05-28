@@ -56,6 +56,23 @@ func userFollowingSetKey(userID uint) string {
 	return fmt.Sprintf("user:following:set:%d", userID)
 }
 
+func mutualSearchKey(viewerID uint, query string, limit int) string {
+	return fmt.Sprintf("trending:mutual-search:%d:q:%s:limit:%d", viewerID, query, limit)
+}
+
+func mutualPairKey(a, b uint) string {
+	lo, hi := a, b
+	if lo > hi {
+		lo, hi = hi, lo
+	}
+	return fmt.Sprintf("follow:mutual:%d:%d", lo, hi)
+}
+
+const (
+	mutualSearchTTL = 5 * time.Minute
+	mutualPairTTL   = 1 * time.Hour
+)
+
 func (r *followRepository) Follow(followerID, followingID uint) error {
 	if followerID == followingID {
 		return errors.New("cannot follow yourself")
@@ -88,6 +105,10 @@ func (r *followRepository) Follow(followerID, followingID uint) error {
 	r.cache.Delete(ctx, userFollowingSetKey(followerID))
 	r.invalidateVisibilityFeedsForViewer(ctx, followerID)
 	infrarepoShared.InvalidateExploreCache(ctx, r.cache)
+	_ = r.cache.InvalidateTags(ctx,
+		infrarepoShared.FollowViewerTag(followerID),
+		infrarepoShared.FollowViewerTag(followingID),
+	)
 	return nil
 }
 
@@ -113,6 +134,10 @@ func (r *followRepository) Unfollow(followerID, followingID uint) error {
 	r.cache.Delete(ctx, userFollowingSetKey(followerID))
 	r.invalidateVisibilityFeedsForViewer(ctx, followerID)
 	infrarepoShared.InvalidateExploreCache(ctx, r.cache)
+	_ = r.cache.InvalidateTags(ctx,
+		infrarepoShared.FollowViewerTag(followerID),
+		infrarepoShared.FollowViewerTag(followingID),
+	)
 	return nil
 }
 
@@ -225,6 +250,112 @@ func (r *followRepository) SearchMentionUsers(ctx context.Context, query string)
 	}
 
 	return mentionRowsToResults(rows), nil
+}
+
+// SearchMutualFollowIDs returns only the user IDs of mutual follows matching
+// the query. The IDs are cached under FollowViewerTag(viewerID) — invalidated
+// only when the follow graph changes (Follow / Unfollow). User-mutable fields
+// (name, username, avatar, is_premium) are NOT cached here; hydrate them with
+// HydrateCompareUsers per request so profile/premium edits show fresh.
+func (r *followRepository) SearchMutualFollowIDs(ctx context.Context, viewerID uint, query string, limit int) ([]uint, error) {
+	if limit < 1 || limit > 50 {
+		limit = 10
+	}
+
+	key := mutualSearchKey(viewerID, query, limit)
+	if r.cache != nil {
+		var cached []uint
+		if err := r.cache.Get(ctx, key, &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	var ids []uint
+	db := r.readDB.WithContext(ctx).
+		Table("users").
+		Joins("JOIN user_relationships ur1 ON ur1.following_id = users.user_id AND ur1.follower_id = ?", viewerID).
+		Joins("JOIN user_relationships ur2 ON ur2.follower_id = users.user_id AND ur2.following_id = ?", viewerID).
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Where("roles.name <> ?", "admin").
+		Where("users.user_id <> ?", viewerID)
+	if query != "" {
+		pattern := explorerepo.LikePattern(query)
+		db = db.Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\'", pattern, pattern)
+	}
+	if err := db.
+		Order("users.user_name ASC").
+		Limit(limit).
+		Pluck("users.user_id", &ids).Error; err != nil {
+		return nil, err
+	}
+
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, ids, mutualSearchTTL)
+		_ = r.cache.RegisterCacheKey(ctx, infrarepoShared.FollowViewerTag(viewerID), key)
+	}
+	return ids, nil
+}
+
+// HydrateCompareUsers loads fresh name/username/avatar/premium for a small set
+// of user IDs. Not cached — always reflects the latest profile/premium edits.
+// Ordered is_premium DESC, user_name ASC for stable display.
+func (r *followRepository) HydrateCompareUsers(ctx context.Context, ids []uint) ([]exploremodel.ExploreUserResult, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var rows []explorerepo.ExploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("users").
+		Select(`
+			users.user_id,
+			users.name,
+			users.user_name AS username,
+			users.is_premium,
+			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+			TRUE AS is_following
+		`).
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Where("users.user_id IN ?", ids).
+		Order("users.is_premium DESC, users.user_name ASC").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	return mentionRowsToResults(rows), nil
+}
+
+func (r *followRepository) IsMutualFollow(ctx context.Context, viewerID, targetID uint) (bool, error) {
+	if viewerID == targetID {
+		return true, nil
+	}
+
+	key := mutualPairKey(viewerID, targetID)
+	if r.cache != nil {
+		var cached bool
+		if err := r.cache.Get(ctx, key, &cached); err == nil {
+			return cached, nil
+		}
+	}
+
+	var count int64
+	if err := r.readDB.WithContext(ctx).
+		Model(&userrelationshipmodel.UserRelationship{}).
+		Where(
+			"(follower_id = ? AND following_id = ?) OR (follower_id = ? AND following_id = ?)",
+			viewerID, targetID, targetID, viewerID,
+		).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	mutual := count == 2
+
+	if r.cache != nil {
+		_ = r.cache.Set(ctx, key, mutual, mutualPairTTL)
+		_ = r.cache.RegisterCacheKeyMany(ctx, []string{
+			infrarepoShared.FollowViewerTag(viewerID),
+			infrarepoShared.FollowViewerTag(targetID),
+		}, key)
+	}
+	return mutual, nil
 }
 
 func mentionRowsToResults(rows []explorerepo.ExploreUserRow) []exploremodel.ExploreUserResult {
