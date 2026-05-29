@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { useExploreSearch } from '@/hooks/useExplore';
+import { useAuthStore } from '@/stores/authStore';
 import {
   getRecentSearches,
   addRecentQuery,
@@ -17,6 +18,7 @@ import {
 
 export function SearchDropdown() {
   const router = useRouter();
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const [value, setValue] = useState('');
   const [open, setOpen] = useState(false);
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -36,7 +38,7 @@ export function SearchDropdown() {
   const showDropdown = showResults || showRecent;
 
   function refreshRecent() {
-    setRecent(getRecentSearches());
+    setRecent(getRecentSearches(userId));
   }
 
   function navigate(path: string) {
@@ -48,14 +50,14 @@ export function SearchDropdown() {
   function goSearch(q: string, tab?: string) {
     const v = q.trim();
     if (!v) return;
-    addRecentQuery(v);
+    addRecentQuery(userId, v);
     const params = new URLSearchParams({ q: v });
     if (tab) params.set('tab', tab);
     navigate(`/explore?${params.toString()}`);
   }
 
   function openUser(user: { userId: number; username: string; name: string; profile: string }) {
-    addRecentUser(user);
+    addRecentUser(userId, user);
     navigate(`/profile/${user.userId}`);
   }
 
@@ -172,7 +174,7 @@ export function SearchDropdown() {
                 <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Recent</span>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); clearRecentSearches(); refreshRecent(); }}
+                  onMouseDown={(e) => { e.preventDefault(); clearRecentSearches(userId); refreshRecent(); }}
                   onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
                   style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, color: 'var(--accent)', fontFamily: 'inherit', padding: 0 }}
@@ -212,7 +214,7 @@ export function SearchDropdown() {
                   <button
                     type="button"
                     aria-label="Remove"
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeRecentSearch(item); refreshRecent(); }}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeRecentSearch(userId, item); refreshRecent(); }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-soft)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     style={removeBtn}
