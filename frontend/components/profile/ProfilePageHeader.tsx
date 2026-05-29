@@ -2,13 +2,15 @@
 
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 
 interface ProfilePageHeaderProps {
   name: string;
   threadCount: number;
+  isPremium?: boolean;
 }
 
-export function ProfilePageHeader({ name, threadCount }: ProfilePageHeaderProps) {
+export function ProfilePageHeader({ name, threadCount, isPremium }: ProfilePageHeaderProps) {
   const router = useRouter();
 
   return (
@@ -53,9 +55,13 @@ export function ProfilePageHeader({ name, threadCount }: ProfilePageHeaderProps)
             color: 'var(--text)',
             letterSpacing: '-0.02em',
             lineHeight: 1.2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
           }}
         >
           {name}
+          {isPremium && <VerifiedBadge size={16} />}
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
           {threadCount} thread{threadCount !== 1 ? 's' : ''}

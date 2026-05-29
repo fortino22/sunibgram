@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LogOut } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
 import { useMyProfile } from '@/hooks/useMyProfile';
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const MORE_NAV_ITEMS: NavItem[] = [
   { id: 'bookmarks', href: '/bookmarks', icon: 'bookmark', label: 'Bookmarks' },
+  { id: 'feedback',  href: '/feedback',  icon: 'feedback', label: 'Feedback' },
   { id: 'settings',  href: '/settings',  icon: 'settings', label: 'Settings' },
 ];
 
@@ -434,8 +436,11 @@ export function Sidebar() {
         >
           <Avatar username={user?.username ?? 'Current user'} avatarUrl={avatarSrc} size={36} />
           <div className="sidebar-label" style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-on-dark)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {profile?.name ?? user?.username ?? '—'}
+            <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-on-dark)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {profile?.name ?? user?.username ?? '—'}
+              </span>
+              {profile?.is_premium && <VerifiedBadge size={14} />}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-on-dark-muted)' }}>
               {profile?.username ?? user?.username ?? ''}

@@ -206,6 +206,7 @@ func (c *ExploreController) toCommunityResponse(comm *communitymodel.Community) 
 		Visibility:   string(comm.Visibility),
 		BannerURL:    bannerURL,
 		MemberCount:  comm.MemberCount,
+		IsActive:     comm.IsWritable(),
 		CreatedAt:    dtoutils.Wrap(comm.CreatedAt),
 		UpdatedAt:    dtoutils.Wrap(comm.UpdatedAt),
 	}

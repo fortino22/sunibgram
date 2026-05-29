@@ -16,6 +16,7 @@ export interface CommunityData {
   visibility: CommunityVisibility;
   banner_url: string;
   member_count: number;
+  is_active: boolean;
   top_members: CommunityTopMemberData[];
   created_at: string;
   updated_at: string;

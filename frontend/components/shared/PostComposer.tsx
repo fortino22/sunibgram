@@ -36,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
 import { useMyJoinedEventItems } from '@/hooks/useMyJoinedEventItems';
 import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
+import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 import { toast } from 'sonner';
 import { GifPicker } from '@/components/chat/GifPicker';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -487,11 +488,19 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       void queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] });
       void queryClient.invalidateQueries({ queryKey: ['threads'] });
     },
+    onError: (err) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+      }
+    },
   });
 
   const isPending = mutation.isPending || communityMutation.isPending;
+  const communityErr = communityMutation.error;
   const isError = mutation.isError || communityMutation.isError;
-  const errorMessage = mutation.error?.message ?? communityMutation.error?.message ?? '';
+  const errorMessage = isInactiveCommunityError(communityErr)
+    ? INACTIVE_COMMUNITY_TOAST
+    : (mutation.error?.message ?? communityErr?.message ?? '');
 
   const canSubmit =
     token !== null &&

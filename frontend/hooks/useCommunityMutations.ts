@@ -25,6 +25,7 @@ import {
   type CommunityThreadParams,
 } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
+import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 
 export function useJoinCommunity(communityId: number) {
   const token = useAuthStore((s) => s.token);
@@ -82,6 +83,10 @@ export function useApproveRequest(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['community', communityId] });
     },
     onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
       toast.error(err.message || 'Failed to approve request');
     },
   });
@@ -96,6 +101,10 @@ export function useDeclineRequest(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'requests'] });
     },
     onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
       toast.error(err.message || 'Failed to decline request');
     },
   });
@@ -109,6 +118,13 @@ export function useKickMember(communityId: number) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'members'] });
       void qc.invalidateQueries({ queryKey: ['community', communityId] });
+    },
+    onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
+      toast.error(err.message || 'Failed to remove member');
     },
   });
 }
@@ -127,6 +143,10 @@ export function useUpdateMemberRole(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['communities', 'joined'] });
     },
     onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
       toast.error(err.message || 'Failed to update role');
     },
   });
@@ -169,6 +189,10 @@ export function useDeleteCommunity() {
       void qc.invalidateQueries({ queryKey: ['communities', 'discover'] });
     },
     onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
       toast.error(err.message || 'Failed to delete community');
     },
   });

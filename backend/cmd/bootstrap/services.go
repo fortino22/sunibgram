@@ -196,6 +196,6 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		ThreadPoll:           threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, ext.Storage),
 		EventThreadPin:       eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
 		TrendingUser:         trendinguseruc.NewTrendingUserService(repos.TrendingUser, repos.TrendingUserSnapshot, repos.Follow),
-		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport),
+		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport, hashtag),
 	}
 }

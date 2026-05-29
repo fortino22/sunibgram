@@ -12,6 +12,8 @@ import {
   useMyCommunitiesThreadsFeed,
   useExploreCommunitiesThreads,
 } from '@/hooks/useCommunities';
+import { useMyProfile } from '@/hooks/useMyProfile';
+import { toast } from 'sonner';
 
 type Tab = 'home' | 'explore';
 
@@ -20,6 +22,16 @@ export default function CommunitiesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [showCreate, setShowCreate] = useState(false);
+  const { data: myProfile } = useMyProfile();
+  const isPremium = myProfile?.is_premium === true;
+
+  function handleCreateClick() {
+    if (!isPremium) {
+      toast.error('Please subscribe to Premium to create a community.');
+      return;
+    }
+    setShowCreate(true);
+  }
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const drag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
@@ -128,7 +140,7 @@ export default function CommunitiesPage() {
               <Icon name="search" size={16} />
             </button>
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={handleCreateClick}
               className="btn-solid"
               style={{
                 padding: '7px 14px',

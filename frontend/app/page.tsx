@@ -10,7 +10,7 @@ import { useFollowingThreads } from '@/hooks/useFollowingThreads';
 import { useThreads } from '@/hooks/useThreads';
 import { useFacultyThreads } from '@/hooks/useFacultyThreads';
 import { useFeedNewCount } from '@/hooks/useFeedNewCount';
-import { useRefreshFeed } from '@/hooks/useRefreshFeed';
+import { useShowNewPosts } from '@/hooks/useShowNewPosts';
 import { usePinnedCommunities, useCommunityThreadsBySort } from '@/hooks/useCommunities';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import type { ThreadItem } from '@/lib/services/threads';
@@ -161,33 +161,47 @@ export default function HomePage() {
   const activeThreads = dedupeThreads(activeQuery.data?.pages.flatMap((p) => p.data) ?? []);
   const pinnedCommunities = pinnedCommunitiesQuery.data?.data ?? [];
 
-  // For You "new posts" banner — sinceId is the max loaded thread id (PK), not data[0].
+  // For You "new posts" banner.
+  // sinceId must be MONOTONIC across the session — never decrease. The /feed/refresh
+  // endpoint reshuffles the per-user seed, so the new page 1 can contain a random
+  // subset of older threads with a lower max-id. If sinceId dropped, the next
+  // new-count poll would return all threads above the lower id and the banner would
+  // re-appear immediately after the user just clicked it (infinite re-trigger).
   const forYouThreads = dedupeThreads(threadsQuery.data?.pages.flatMap((p) => p.data) ?? []);
-  const sinceId = forYouThreads.length ? Math.max(...forYouThreads.map((t) => t.id)) : 0;
+  const sessionMaxIdRef = useRef(0);
+  const currentMaxId = forYouThreads.length ? Math.max(...forYouThreads.map((t) => t.id)) : 0;
+  if (currentMaxId > sessionMaxIdRef.current) sessionMaxIdRef.current = currentMaxId;
+  const sinceId = sessionMaxIdRef.current;
+
   const newCount = useFeedNewCount(sinceId, isForYou);
-  const refreshFeed = useRefreshFeed();
+  const showNewPosts = useShowNewPosts();
 
   function handleShowNew() {
-    refreshFeed.mutate();
+    if (showNewPosts.isPending) return;
+    showNewPosts.mutate(sinceId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to the active query's pagination state via primitives so the
+  // observer only re-creates when those primitives change, not on every render.
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = activeQuery;
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && activeQuery.hasNextPage && !activeQuery.isFetchingNextPage) {
-          void activeQuery.fetchNextPage();
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
         }
       },
       { rootMargin: '300px' },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeQuery]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const allTabs: Tab[] = [
     { id: 'for-you', label: 'For You' },

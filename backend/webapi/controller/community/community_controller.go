@@ -353,6 +353,7 @@ func (c *CommunityController) buildResponse(comm *communitymodel.Community, rule
 		Visibility:   string(comm.Visibility),
 		BannerURL:    bannerURL,
 		MemberCount:  comm.MemberCount,
+		IsActive:     comm.IsWritable(),
 		TopMembers:   topMembers,
 		CreatedAt:    utils.Wrap(comm.CreatedAt),
 		UpdatedAt:    utils.Wrap(comm.UpdatedAt),

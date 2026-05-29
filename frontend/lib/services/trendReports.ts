@@ -14,4 +14,4 @@ export interface ReportTrendParams {
 }
 
 export const reportTrend = (params: ReportTrendParams, token: string) =>
-  api.post<{ message: string }>('/trend-reports', params, token);
+  api.post<{ message: string }>('/api/trend-reports', params, token);

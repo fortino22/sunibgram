@@ -35,8 +35,12 @@ func NewCommunityThreadPinService(
 }
 
 func (s *CommunityThreadPinService) Pin(ctx context.Context, communityID, actorUserID, threadID uint) error {
-	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
 		return errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
 	}
 	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
 	if err != nil || !communityuc.IsCommunityAdmin(actor.Role) {
@@ -67,8 +71,12 @@ func (s *CommunityThreadPinService) Pin(ctx context.Context, communityID, actorU
 }
 
 func (s *CommunityThreadPinService) Unpin(ctx context.Context, communityID, actorUserID, threadID uint) error {
-	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
 		return errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
 	}
 	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
 	if err != nil || !communityuc.IsCommunityAdmin(actor.Role) {

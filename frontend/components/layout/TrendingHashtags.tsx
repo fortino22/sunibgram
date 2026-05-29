@@ -64,7 +64,7 @@ export function TrendingHashtags({ title = 'Trending on campus', bare = false, l
 
   const allHashtags = trendingQuery.data ?? [];
   const hashtags = typeof limit === 'number' ? allHashtags.slice(0, limit) : allHashtags;
-  if (hashtags.length === 0) return null;
+  if (hashtags.length === 0 && !reported) return null;
 
   return (
     <section className={sectionClass} style={sectionStyle}>
@@ -130,16 +130,18 @@ export function TrendingHashtags({ title = 'Trending on campus', bare = false, l
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => router.push('/explore?tab=trending')}
-        className="w-full text-left text-[14px] transition-colors"
-        style={{ padding: '10px 16px', color: 'var(--accent)' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-      >
-        Show more
-      </button>
+      {hashtags.length > 0 && (
+        <button
+          type="button"
+          onClick={() => router.push('/explore?tab=trending')}
+          className="w-full text-left text-[14px] transition-colors"
+          style={{ padding: '10px 16px', color: 'var(--accent)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+        >
+          Show more
+        </button>
+      )}
 
       <ReportTrendModal
         open={reporting !== null}

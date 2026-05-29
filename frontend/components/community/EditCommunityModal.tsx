@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useCategories } from '@/hooks/useCommunities';
 import { useUpdateCommunity } from '@/hooks/useCommunityMutations';
+import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
 import type { CommunityData, CommunityVisibility } from '@/lib/services/communities';
 
@@ -79,8 +80,10 @@ export function EditCommunityModal({ community, onClose, onSuccess, onDelete, de
         categoryId: selectedCategoryId,
       });
       onSuccess();
-    } catch {
-      // error shown via mutation error state
+    } catch (err) {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+      }
     }
   }
 
@@ -293,7 +296,11 @@ export function EditCommunityModal({ community, onClose, onSuccess, onDelete, de
 
           {error && (
             <div style={{ fontSize: 13, color: 'var(--error, #e53e3e)' }}>
-              {error instanceof Error ? error.message : 'Something went wrong'}
+              {isInactiveCommunityError(error)
+                ? INACTIVE_COMMUNITY_TOAST
+                : error instanceof Error
+                  ? error.message
+                  : 'Something went wrong'}
             </div>
           )}
 

@@ -39,6 +39,7 @@ type IThreadRepository interface {
 	FindForYouFeed(ctx context.Context, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
 	InvalidateForYouSeed(ctx context.Context, userID uint)
 	CountNewSinceID(ctx context.Context, userID, sinceID uint) (int64, error)
+	FindNewSinceID(ctx context.Context, userID, sinceID uint, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, error)
 	FindByFacultyID(facultyID uint, requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error)
 	AttachReplyParents(threads []threadmodel.Thread, requesterID *uint) ([]threadmodel.Thread, []*threadmodel.Thread, error)
 	InvalidateUserFeedCaches(ctx context.Context, userID uint)

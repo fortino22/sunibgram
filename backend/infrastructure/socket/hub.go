@@ -132,6 +132,33 @@ func (h *Hub) EmitToUser(userID uint, event string, payload any) {
 	fibersocketio.EmitToList(connIDs, message, fibersocketio.TextMessage)
 }
 
+// BroadcastAll emits to every connected user. Used for global signals like
+// "feed:new" where every viewer should re-check their for-you count rather
+// than wait for the next 3-min poll. Hub holds in-memory conn state only; if
+// the backend ever scales horizontally, replace this with a Redis fanout.
+func (h *Hub) BroadcastAll(event string, payload any) {
+	connIDs := h.allConnIDs()
+	if len(connIDs) == 0 {
+		return
+	}
+	message, err := encode(event, payload)
+	if err != nil {
+		return
+	}
+	fibersocketio.EmitToList(connIDs, message, fibersocketio.TextMessage)
+}
+
+func (h *Hub) allConnIDs() []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	connIDs := make([]string, 0, len(h.connUsers))
+	for connID := range h.connUsers {
+		connIDs = append(connIDs, connID)
+	}
+	return connIDs
+}
+
 func (h *Hub) roomConnIDs(roomID uint) []string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()

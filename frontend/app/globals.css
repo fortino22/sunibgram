@@ -234,3 +234,25 @@ body {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 25%, transparent);
 }
+
+/* Feedback list card — declarative hover, survives re-renders */
+.feedback-card {
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.feedback-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px oklch(0% 0 0 / 0.35);
+}
+
+/* Vote pill — subtle dim on hover, accent stays when active */
+.vote-btn {
+  transition: background-color 0.12s ease, border-color 0.12s ease, filter 0.12s ease;
+}
+.vote-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.vote-btn[aria-pressed="false"]:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
