@@ -265,3 +265,40 @@ body {
   background-color: var(--bg-hover);
 }
 
+/* Accent-outlined pill (audience selector) — accent bg tint on hover */
+.pill-accent {
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.pill-accent:hover:not(:disabled) {
+  background-color: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+/* Text-only accent pill (who-can-reply) — accent tint, no border */
+.pill-accent-text {
+  transition: background-color 0.12s ease;
+}
+.pill-accent-text:hover:not(:disabled) {
+  background-color: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+/* Dropdown row — neutral bg-hover, overrides inline bg-subtle on selected row */
+.dropdown-row {
+  transition: background-color 0.12s ease;
+}
+.dropdown-row:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+/* Icon action button — knock-up + color brighten */
+.icon-knock {
+  transition: transform 0.15s ease, color 0.15s ease, background-color 0.12s ease;
+}
+.icon-knock:hover:not(:disabled) {
+  transform: translateY(-2px);
+  color: var(--accent);
+  background-color: var(--bg-hover);
+}
+.icon-knock:active:not(:disabled) {
+  transform: translateY(0);
+}
+

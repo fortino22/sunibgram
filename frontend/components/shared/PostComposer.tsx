@@ -825,6 +825,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             <div style={{ position: 'relative', display: 'inline-block', marginBottom: 8 }} ref={audienceMenuRef}>
               <button
                 type="button"
+                className="pill-accent"
                 onClick={() => setShowAudienceMenu((v) => !v)}
                 style={{
                   display: 'inline-flex',
@@ -882,6 +883,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   {/* Everyone option */}
                   <button
                     type="button"
+                    className="dropdown-row"
                     onClick={() => { handleSelectAudience(null); handleSelectEvent(null); }}
                     style={{
                       width: '100%',
@@ -917,6 +919,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         <button
                           key={c.community_id}
                           type="button"
+                          className="dropdown-row"
                           onClick={() => handleSelectAudience(c)}
                           style={{
                             width: '100%',
@@ -965,6 +968,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         <button
                           key={e.id}
                           type="button"
+                          className="dropdown-row"
                           onClick={() => handleSelectEvent({ id: e.id, title: e.title, banner: e.banner })}
                           style={{
                             width: '100%',
@@ -1491,6 +1495,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             <div style={{ position: 'relative', marginBottom: 10 }} ref={replyPermMenuRef}>
               <button
                 type="button"
+                className="pill-accent-text"
                 onClick={() => setShowReplyPermMenu((v) => !v)}
                 style={{
                   display: 'inline-flex',
@@ -1541,6 +1546,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     <button
                       key={value}
                       type="button"
+                      className="dropdown-row"
                       onClick={() => { setReplyPermission(value); setShowReplyPermMenu(false); }}
                       style={{
                         width: '100%',
@@ -1678,6 +1684,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               <button
                 type="button"
                 title="Add emoji"
+                className="icon-knock"
                 onClick={() => { setShowEmojiPicker((v) => !v); setShowGifPicker(false); }}
                 style={{
                   display: 'inline-flex',
@@ -1690,7 +1697,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   border: 'none',
                   color: showEmojiPicker ? 'var(--accent)' : 'var(--text-secondary)',
                   cursor: 'pointer',
-                  transition: 'color 0.15s',
                 }}
               >
                 <Smile size={18} />

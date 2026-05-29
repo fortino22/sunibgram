@@ -25,5 +25,6 @@ export function useSearchShareUsers(query: string) {
     },
     enabled: debounced.length > 0 && !!token,
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }

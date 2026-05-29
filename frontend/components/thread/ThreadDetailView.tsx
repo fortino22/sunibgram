@@ -15,6 +15,7 @@ import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
 import { ShareModal } from '@/components/share/ShareModal';
+import { SharePopover } from '@/components/share/SharePopover';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
@@ -56,6 +57,7 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+  const [shareAnchor, setShareAnchor] = useState<DOMRect | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const author = getThreadAuthor(root);
   const bookmarkTargetId = root.type?.toLowerCase() === 'repost' && typeof root.original_thread_id === 'number'
@@ -248,7 +250,7 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
             onRepost={() => { if (!repost.isPending) repost.mutate(); }}
             onBookmark={handleBookmark}
             onReply={() => openReply(root)}
-            onShare={() => setShareOpen(true)}
+            onShare={(e) => setShareAnchor(e.currentTarget.getBoundingClientRect())}
           />
         </div>
       </article>
@@ -284,6 +286,14 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
         />
       )}
 
+      {shareAnchor && (
+        <SharePopover
+          threadId={bookmarkTargetId}
+          anchorRect={shareAnchor}
+          onClose={() => setShareAnchor(null)}
+          onOpenChatModal={() => { setShareAnchor(null); setShareOpen(true); }}
+        />
+      )}
       {shareOpen && (
         <ShareModal threadId={bookmarkTargetId} onClose={() => setShareOpen(false)} />
       )}
