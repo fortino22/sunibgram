@@ -14,36 +14,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useUserThreads } from '@/hooks/useUserThreads';
 import { useUserReplies } from '@/hooks/useUserReplies';
 import { useFollowUser } from '@/hooks/useFollowUser';
-import { useThreadActions } from '@/hooks/useThreadActions';
 import { useAuthStore } from '@/stores/authStore';
-import type { ThreadItem } from '@/lib/services/threads';
-
-interface ConnectedCardProps {
-  thread: ThreadItem;
-  replyingTo?: string;
-  replyingToId?: number;
-}
-
-function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps) {
-  const { like, repost, bookmark } = useThreadActions(thread);
-
-  return (
-    <ProfileThreadCard
-      thread={thread}
-      replyingTo={replyingTo}
-      replyingToId={replyingToId}
-      onLike={() => {
-        if (!like.isPending) like.mutate();
-      }}
-      onRepost={() => {
-        if (!repost.isPending) repost.mutate();
-      }}
-      onBookmark={() => {
-        if (!bookmark.isPending) bookmark.mutate();
-      }}
-    />
-  );
-}
 
 export default function UserProfilePage() {
   const params = useParams<{ userId: string }>();
@@ -152,7 +123,7 @@ export default function UserProfilePage() {
         threads.length === 0
           ? <EmptyState title="No threads yet" subtitle="Posts will appear here." />
           : <>
-              {threads.map((t) => <ConnectedCard key={t.id} thread={t} />)}
+              {threads.map((t) => <ProfileThreadCard key={t.id} thread={t} />)}
               <div ref={threadsSentinelRef} style={{ height: 1 }} />
             </>
       )}
@@ -162,7 +133,7 @@ export default function UserProfilePage() {
           ? <EmptyState title="No replies yet" subtitle="Replies to others will appear here." />
           : <>
               {replies.map((t) => (
-                <ConnectedCard
+                <ProfileThreadCard
                   key={t.id}
                   thread={t}
                   replyingTo={t.parent_context?.author.username}

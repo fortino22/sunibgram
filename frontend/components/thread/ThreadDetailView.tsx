@@ -5,6 +5,7 @@ import { ArrowLeft, Repeat2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Avatar } from '@/components/shared/Avatar';
+import { ActionBar } from '@/components/shared/ActionBar';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useThreadActions } from '@/hooks/useThreadActions';
@@ -15,7 +16,7 @@ import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
-import { ThreadActions } from './ThreadActions';
+import { useComposeStore } from '@/stores/composeStore';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
@@ -47,6 +48,7 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
     onDeleteSuccess: () => router.replace('/'),
   });
   const { like, repost, bookmark } = useThreadActions(root);
+  const openReply = useComposeStore((s) => s.openReply);
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -237,17 +239,15 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
 
         {/* Actions */}
         <div style={{ marginTop: 12 }}>
-          <ThreadActions
-            comments={root.stats.comments}
-            likes={root.stats.likes}
-            reposts={root.stats.reposts}
-            bookmarks={root.stats.bookmarks}
+          <ActionBar
+            stats={root.stats}
             isLiked={root.is_liked === true}
             isReposted={root.is_reposted === true}
             isBookmarked={root.is_bookmarked === true}
             onLike={() => { if (!like.isPending) like.mutate(); }}
             onRepost={() => { if (!repost.isPending) repost.mutate(); }}
             onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+            onReply={() => openReply(root)}
           />
         </div>
       </article>

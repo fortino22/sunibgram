@@ -16,60 +16,16 @@ import { useMyThreads } from '@/hooks/useMyThreads';
 import { useMyReplies } from '@/hooks/useMyReplies';
 import { useMyLikes } from '@/hooks/useMyLikes';
 import { useProfile } from '@/hooks/useProfile';
-import { useThreadActions } from '@/hooks/useThreadActions';
 import type { ThreadItem } from '@/lib/services/threads';
-
-// ─── Connected card ───────────────────────────────────────────────────────────
-
-interface ConnectedCardProps {
-  thread: ThreadItem;
-  replyingTo?: string;
-  replyingToId?: number;
-}
-
-function ConnectedCard({ thread, replyingTo, replyingToId }: ConnectedCardProps) {
-  const { like, repost, bookmark } = useThreadActions(thread);
-
-  return (
-    <ProfileThreadCard
-      thread={thread}
-      replyingTo={replyingTo}
-      replyingToId={replyingToId}
-      onLike={() => {
-        if (!like.isPending) {
-          like.mutate();
-        }
-      }}
-      onRepost={() => {
-        if (!repost.isPending) {
-          repost.mutate();
-        }
-      }}
-      onBookmark={() => {
-        if (!bookmark.isPending) {
-          bookmark.mutate();
-        }
-      }}
-    />
-  );
-}
 
 // ─── Like card — resolves avatar via profile API since likes endpoint omits it ─
 
 function LikeCard({ thread }: { thread: ThreadItem }) {
   const { data: authorProfile } = useProfile(thread.author.id);
-  const { like, repost, bookmark } = useThreadActions(thread);
   const patchedThread: ThreadItem = authorProfile?.avatar
     ? { ...thread, author: { ...thread.author, avatar_url: authorProfile.avatar } }
     : thread;
-  return (
-    <ProfileThreadCard
-      thread={patchedThread}
-      onLike={() => { if (!like.isPending) like.mutate(); }}
-      onRepost={() => { if (!repost.isPending) repost.mutate(); }}
-      onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
-    />
-  );
+  return <ProfileThreadCard thread={patchedThread} />;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -157,7 +113,7 @@ export default function ProfilePage() {
         threads.length === 0
           ? <EmptyState title="No threads yet" subtitle="Your posts will appear here." />
           : <>
-              {threads.map((t) => <ConnectedCard key={t.id} thread={t} />)}
+              {threads.map((t) => <ProfileThreadCard key={t.id} thread={t} />)}
               <div ref={threadsSentinelRef} style={{ height: 1 }} />
             </>
       )}
@@ -167,7 +123,7 @@ export default function ProfilePage() {
           ? <EmptyState title="No replies yet" subtitle="Your replies to others will appear here." />
           : <>
               {replies.map((t) => (
-                <ConnectedCard
+                <ProfileThreadCard
                   key={t.id}
                   thread={t}
                   replyingTo={t.parent_context?.author.username}
