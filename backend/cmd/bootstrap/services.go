@@ -13,6 +13,7 @@ import (
 	chatreactionuc "github.com/sunibgram/application/usecase/chat_reaction"
 	chatroomuc "github.com/sunibgram/application/usecase/chat_room"
 	communityuc "github.com/sunibgram/application/usecase/community"
+	communityactionconfirmationuc "github.com/sunibgram/application/usecase/community_action_confirmation"
 	communitypinuc "github.com/sunibgram/application/usecase/community_pin"
 	communityrequestuc "github.com/sunibgram/application/usecase/community_request"
 	communityruleuc "github.com/sunibgram/application/usecase/community_rule"
@@ -54,6 +55,7 @@ import (
 	chatreactionsvciface "github.com/sunibgram/domain/service/chat_reaction"
 	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
 	communitysvciface "github.com/sunibgram/domain/service/community"
+	communityactionconfirmationsvciface "github.com/sunibgram/domain/service/community_action_confirmation"
 	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
 	communitypinsvciface "github.com/sunibgram/domain/service/community_pin"
 	communityrequestsvciface "github.com/sunibgram/domain/service/community_request"
@@ -112,8 +114,9 @@ type Services struct {
 	Category             categorysvciface.ICategoryService
 	Violation            violationsvciface.IViolationService
 	Report               reportsvciface.IReportService
-	Community            communitysvciface.ICommunityService
-	CommunityMember      communitymembersvciface.ICommunityMemberService
+	Community                   communitysvciface.ICommunityService
+	CommunityActionConfirmation communityactionconfirmationsvciface.ICommunityActionConfirmationService
+	CommunityMember             communitymembersvciface.ICommunityMemberService
 	CommunityRequest     communityrequestsvciface.ICommunityRequestService
 	CommunityRule        communityrulesvciface.ICommunityRuleService
 	CommunityThreadPin   communitythreadpinsvciface.ICommunityThreadPinService
@@ -144,6 +147,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, repos.BookmarkCollection)
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
+	communityActionConfirmation := communityactionconfirmationuc.NewCommunityActionConfirmationService(repos.CommunityActionConfirmation)
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
@@ -168,8 +172,9 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Category:             categoryuc.NewCategoryService(repos.Category),
 		Violation:            violationuc.NewViolationService(repos.Violation),
 		Report:               reportuc.NewReportService(repos.Report, repos.Violation, repos.User, repos.Thread, profile, repos.Cache),
-		Community:            communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage),
-		CommunityMember:      communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.Cache),
+		Community:                   communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage, communityActionConfirmation),
+		CommunityActionConfirmation: communityActionConfirmation,
+		CommunityMember:             communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.Cache, communityActionConfirmation),
 		CommunityRequest:     communityrequestuc.NewCommunityRequestService(repos.Community, repos.CommunityMember, repos.CommunityRequest, repos.Cache),
 		CommunityRule:        communityruleuc.NewCommunityRuleService(repos.Community, repos.CommunityRule),
 		CommunityThreadPin:   communitythreadpinuc.NewCommunityThreadPinService(repos.CommunityThreadPin, repos.Community, repos.CommunityMember, repos.Thread),

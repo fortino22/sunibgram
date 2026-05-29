@@ -11,6 +11,7 @@ import (
 	chatreadrepoiface "github.com/sunibgram/domain/repository/chat_read"
 	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
 	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communityactionconfirmationrepoiface "github.com/sunibgram/domain/repository/community_action_confirmation"
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	communitypinrepoiface "github.com/sunibgram/domain/repository/community_pin"
 	communityrequestrepoiface "github.com/sunibgram/domain/repository/community_request"
@@ -56,6 +57,7 @@ import (
 	chatreadrepo "github.com/sunibgram/infrastructure/repository/chat_read"
 	chatroomrepo "github.com/sunibgram/infrastructure/repository/chat_room"
 	communityrepo "github.com/sunibgram/infrastructure/repository/community"
+	communityactionconfirmationrepo "github.com/sunibgram/infrastructure/repository/community_action_confirmation"
 	communitymemberrepo "github.com/sunibgram/infrastructure/repository/community_member"
 	communitypinrepo "github.com/sunibgram/infrastructure/repository/community_pin"
 	communityrequestrepo "github.com/sunibgram/infrastructure/repository/community_request"
@@ -114,8 +116,9 @@ type Repositories struct {
 	Category             categoryrepoiface.ICategoryRepository
 	Violation            violationrepoiface.IViolationRepository
 	Report               reportrepoiface.IReportRepository
-	Community            communityrepoiface.ICommunityRepository
-	CommunityMember      communitymemberrepoiface.ICommunityMemberRepository
+	Community                   communityrepoiface.ICommunityRepository
+	CommunityActionConfirmation communityactionconfirmationrepoiface.ICommunityActionConfirmationRepository
+	CommunityMember             communitymemberrepoiface.ICommunityMemberRepository
 	CommunityRequest     communityrequestrepoiface.ICommunityRequestRepository
 	CommunityRule        communityrulerepoiface.ICommunityRuleRepository
 	CommunityThreadPin   communitythreadpinrepoiface.ICommunityThreadPinRepository
@@ -165,8 +168,9 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		Category:             categoryrepo.NewCategoryRepository(w, r, c),
 		Violation:            violationrepo.NewViolationRepository(w, r),
 		Report:               reportrepo.NewReportRepository(w, r),
-		Community:            communityrepo.NewCommunityRepository(w, r, c),
-		CommunityMember:      communitymemberrepo.NewCommunityMemberRepository(w, r, c),
+		Community:                   communityrepo.NewCommunityRepository(w, r, c),
+		CommunityActionConfirmation: communityactionconfirmationrepo.NewCommunityActionConfirmationRepository(w, r),
+		CommunityMember:             communitymemberrepo.NewCommunityMemberRepository(w, r, c),
 		CommunityRequest:     communityrequestrepo.NewCommunityRequestRepository(w, r, c),
 		CommunityRule:        communityrulerepo.NewCommunityRuleRepository(w, r),
 		CommunityThreadPin:   communitythreadpinrepo.NewCommunityThreadPinRepository(w, r),

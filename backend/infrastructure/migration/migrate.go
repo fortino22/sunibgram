@@ -15,6 +15,7 @@ import (
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	chatroommembermodel "github.com/sunibgram/domain/model/chat_room_member"
 	communitymodel "github.com/sunibgram/domain/model/community"
+	communityactionconfirmationmodel "github.com/sunibgram/domain/model/community_action_confirmation"
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 	communitypinmodel "github.com/sunibgram/domain/model/community_pin"
 	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
@@ -86,6 +87,7 @@ func AutoMigrate(db *gorm.DB) {
 		&communityrulemodel.CommunityRule{},
 		&communitythreadpinmodel.CommunityThreadPin{},
 		&communitypinmodel.UserCommunityPin{},
+		&communityactionconfirmationmodel.CommunityActionConfirmation{},
 		&eventpinmodel.UserEventPin{},
 		&eventparticipantmodel.EventParticipant{},
 		&facultymodel.Faculty{},

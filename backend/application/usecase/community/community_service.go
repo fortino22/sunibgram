@@ -29,6 +29,7 @@ import (
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
 	communitysvciface "github.com/sunibgram/domain/service/community"
+	communityactionconfirmationsvciface "github.com/sunibgram/domain/service/community_action_confirmation"
 )
 
 type CommunityService struct {
@@ -42,6 +43,7 @@ type CommunityService struct {
 	pinRepo        communitypinrepoiface.ICommunityPinRepository
 	cacheRepo      cacherepoiface.ICacheRepository
 	storageUsecase *storageuc.StorageUsecase
+	auditSvc       communityactionconfirmationsvciface.ICommunityActionConfirmationService
 }
 
 func NewCommunityService(
@@ -55,6 +57,7 @@ func NewCommunityService(
 	pinRepo communitypinrepoiface.ICommunityPinRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
 	storageUsecase *storageuc.StorageUsecase,
+	auditSvc communityactionconfirmationsvciface.ICommunityActionConfirmationService,
 ) communitysvciface.ICommunityService {
 	return &CommunityService{
 		communityRepo:  communityRepo,
@@ -67,6 +70,7 @@ func NewCommunityService(
 		pinRepo:        pinRepo,
 		cacheRepo:      cacheRepo,
 		storageUsecase: storageUsecase,
+		auditSvc:       auditSvc,
 	}
 }
 
@@ -262,6 +266,15 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	if err != nil || !IsCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
 	}
+	if community.MemberCount > 1 {
+		adminCount, err := s.memberRepo.CountAdmins(id)
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return errors.New("promote another member to admin before deleting; the community still has other members")
+		}
+	}
 	if community.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, community.BannerObjectName)
 	}
@@ -270,6 +283,9 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	}
 	if err := s.communityRepo.Delete(id); err != nil {
 		return err
+	}
+	if s.auditSvc != nil {
+		_ = s.auditSvc.RecordCommunityDeletion(ctx, id, userID, community.Name)
 	}
 	InvalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	return nil

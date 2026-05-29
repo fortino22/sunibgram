@@ -17,4 +17,6 @@ type ICommunityMemberRepository interface {
 	Delete(communityID, userID uint) error
 	UpdateMemberCount(communityID uint, delta int) error
 	UpdateRole(communityID, userID uint, role communitymembermodel.CommunityMemberRole) error
+	TransferAdmin(communityID, fromUserID, toUserID uint) error
+	CountAdmins(communityID uint) (int64, error)
 }

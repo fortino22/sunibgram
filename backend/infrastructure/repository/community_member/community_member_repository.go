@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	communitymodel "github.com/sunibgram/domain/model/community"
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
@@ -227,6 +228,56 @@ func (r *communityMemberRepository) UpdateRole(communityID, userID uint, role co
 	}
 	r.invalidateCommunityMemberRole(communityID)
 	return nil
+}
+
+func (r *communityMemberRepository) TransferAdmin(communityID, fromUserID, toUserID uint) error {
+	if fromUserID == toUserID {
+		return errors.New("cannot transfer admin to the same user")
+	}
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
+		var from, to communitymembermodel.CommunityMember
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("community_id = ? AND user_id = ?", communityID, fromUserID).
+			First(&from).Error; err != nil {
+			return errors.New("current admin membership not found")
+		}
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("community_id = ? AND user_id = ?", communityID, toUserID).
+			First(&to).Error; err != nil {
+			return errors.New("target member not found")
+		}
+		if from.Role != communitymembermodel.CommunityMemberRoleAdmin {
+			return errors.New("actor is not admin")
+		}
+		if to.Role != communitymembermodel.CommunityMemberRoleMember {
+			return errors.New("target is not a member")
+		}
+		if err := tx.Model(&communitymembermodel.CommunityMember{}).
+			Where("community_id = ? AND user_id = ?", communityID, fromUserID).
+			UpdateColumn("role", communitymembermodel.CommunityMemberRoleMember).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&communitymembermodel.CommunityMember{}).
+			Where("community_id = ? AND user_id = ?", communityID, toUserID).
+			UpdateColumn("role", communitymembermodel.CommunityMemberRoleAdmin).Error; err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	r.invalidateCommunityMemberRole(communityID)
+	return nil
+}
+
+func (r *communityMemberRepository) CountAdmins(communityID uint) (int64, error) {
+	var count int64
+	if err := r.readDB.Model(&communitymembermodel.CommunityMember{}).
+		Where("community_id = ? AND role = ?", communityID, communitymembermodel.CommunityMemberRoleAdmin).
+		Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *communityMemberRepository) UpdateMemberCount(communityID uint, delta int) error {

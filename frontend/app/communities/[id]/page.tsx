@@ -9,6 +9,7 @@ import { CommunityAboutTab } from '@/components/community/CommunityAboutTab';
 import { CommunityMembersPanel } from '@/components/community/CommunityMembersPanel';
 import { CommunityRequestCard } from '@/components/community/CommunityRequestCard';
 import { EditCommunityModal } from '@/components/community/EditCommunityModal';
+import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MediaGrid } from '@/components/shared/MediaGrid';
 import { ThreadCard } from '@/components/thread/ThreadCard';
@@ -52,6 +53,8 @@ export default function CommunityDetailPage() {
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [membershipOverride, setMembershipOverride] = useState<CommunityRole | 'none' | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(null);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const communityQuery = useCommunity(isValidId ? communityId : undefined);
   const membersQuery = useCommunityMembers(isValidId ? communityId : undefined);
@@ -130,13 +133,17 @@ export default function CommunityDetailPage() {
     }
   }
 
-  async function handleLeave() {
-    if (!window.confirm('Leave this community?')) return;
+  function handleLeave() {
+    setConfirmLeaveOpen(true);
+  }
+
+  async function confirmLeave() {
     try {
       await leaveMutation.mutateAsync();
       setMembershipOverride('none');
+      setConfirmLeaveOpen(false);
     } catch {
-      // noop
+      setConfirmLeaveOpen(false);
     }
   }
 
@@ -158,13 +165,17 @@ export default function CommunityDetailPage() {
     }
   }
 
-  async function handleDelete() {
-    if (!window.confirm(`Delete "${community.name}"? This cannot be undone.`)) return;
+  function handleDelete() {
+    setConfirmDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
     try {
       await deleteMutation.mutateAsync(communityId);
+      setConfirmDeleteOpen(false);
       router.push('/communities');
     } catch {
-      // noop
+      setConfirmDeleteOpen(false);
     }
   }
 
@@ -222,6 +233,7 @@ export default function CommunityDetailPage() {
       <CommunityHeader
         community={community}
         myRole={myRole}
+        isAdmin={isAdmin}
         isOwner={isOwnerByCreation}
         hasPendingRequest={hasPendingRequest}
         isPinned={isPinned}
@@ -230,12 +242,14 @@ export default function CommunityDetailPage() {
         leavePending={leaveMutation.isPending}
         requestPending={requestMutation.isPending}
         cancelPending={cancelMutation.isPending}
+        deletePending={deleteMutation.isPending}
         onPinToggle={handlePinToggle}
         onJoin={handleJoin}
         onLeave={handleLeave}
         onRequest={handleRequest}
         onCancelRequest={handleCancelRequest}
         onEdit={() => setShowEdit(true)}
+        onDelete={handleDelete}
         onShowMembers={() => setShowMembersPanel(true)}
       />
 
@@ -395,6 +409,27 @@ export default function CommunityDetailPage() {
         />
       )}
 
+      <ConfirmModal
+        open={confirmLeaveOpen}
+        title="Leave community?"
+        description="You can rejoin later."
+        confirmLabel="Leave"
+        destructive
+        busy={leaveMutation.isPending}
+        onConfirm={confirmLeave}
+        onClose={() => setConfirmLeaveOpen(false)}
+      />
+
+      <ConfirmModal
+        open={confirmDeleteOpen}
+        title={`Delete "${community.name}"?`}
+        description="This permanently removes the community and cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        busy={deleteMutation.isPending}
+        onConfirm={confirmDelete}
+        onClose={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   );
 }
