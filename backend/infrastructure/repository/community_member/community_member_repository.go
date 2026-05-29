@@ -174,7 +174,10 @@ func (r *communityMemberRepository) FindAdmins(communityID uint) ([]communitymem
 		return nil, err
 	}
 	if r.cache != nil {
-		_ = r.cache.Set(ctx, key, admins, cache.DefaultTTL)
+		if err := r.cache.Set(ctx, key, admins, cache.DefaultTTL); err == nil {
+			r.cache.RegisterCacheKey(ctx, infrarepoShared.CommunityMembersTag(communityID), key)
+			r.cache.RegisterCacheKey(ctx, infrarepoShared.CommunityMembersGlobalTag(), key)
+		}
 	}
 	return admins, nil
 }

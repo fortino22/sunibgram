@@ -14,11 +14,9 @@ interface EditCommunityModalProps {
   community: CommunityData;
   onClose: () => void;
   onSuccess: () => void;
-  onDelete: () => void;
-  deletePending: boolean;
 }
 
-export function EditCommunityModal({ community, onClose, onSuccess, onDelete, deletePending }: EditCommunityModalProps) {
+export function EditCommunityModal({ community, onClose, onSuccess }: EditCommunityModalProps) {
   const { data: categoriesData } = useCategories();
   const categories = categoriesData?.data ?? [];
   const { mutateAsync, isPending, error } = useUpdateCommunity(community.community_id);
@@ -303,24 +301,6 @@ export function EditCommunityModal({ community, onClose, onSuccess, onDelete, de
                   : 'Something went wrong'}
             </div>
           )}
-
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={deletePending}
-            style={{
-              width: '100%', padding: '12px', borderRadius: 999,
-              border: '1px solid var(--error, #e53e3e)', background: 'transparent',
-              color: 'var(--error, #e53e3e)', fontSize: 15, fontWeight: 700,
-              cursor: deletePending ? 'default' : 'pointer',
-              opacity: deletePending ? 0.5 : 1,
-              transition: 'background 0.12s ease',
-            }}
-            onMouseEnter={(e) => { if (!deletePending) e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
-            onMouseLeave={(e) => { if (!deletePending) e.currentTarget.style.background = 'transparent'; }}
-          >
-            {deletePending ? 'Deleting…' : 'Delete Community'}
-          </button>
 
           <button
             type="submit"

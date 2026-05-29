@@ -432,8 +432,6 @@ export default function CommunityDetailPage() {
           community={community}
           onClose={() => setShowEdit(false)}
           onSuccess={() => setShowEdit(false)}
-          onDelete={handleDelete}
-          deletePending={deleteMutation.isPending}
         />
       )}
 
