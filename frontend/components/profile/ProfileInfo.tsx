@@ -2,6 +2,7 @@
 
 import { BookOpen, Calendar, MoreHorizontal } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 
 interface ProfileUser {
   name: string;
@@ -12,6 +13,7 @@ interface ProfileUser {
   following: number;
   followers: number;
   avatarUrl?: string | null;
+  isPremium?: boolean;
 }
 
 interface ProfileInfoProps {
@@ -120,8 +122,9 @@ export function ProfileInfo({
 
       {/* User info */}
       <div style={{ marginTop: 10, paddingBottom: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1.2 }}>
+        <div style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)', letterSpacing: '-0.03em', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 6 }}>
           {user.name}
+          {user.isPremium && <VerifiedBadge size={19} />}
         </div>
         <div style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 2 }}>
           @{user.username}

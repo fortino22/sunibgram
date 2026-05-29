@@ -9,11 +9,14 @@ async function request<T>(
 
   const headers: Record<string, string> = {};
 
-  if (token) {
+ 
+  if (token !== undefined) {
+    if (typeof token !== 'string' || token.length === 0) {
+      throw new Error('Authentication token is required for this request.');
+    }
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Don't set Content-Type for FormData — browser adds boundary automatically
   if (!(fetchOptions.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
@@ -28,7 +31,6 @@ async function request<T>(
     throw new Error((error as { message?: string }).message ?? 'Request failed');
   }
 
-  // No-content responses (e.g. 204 from POST /threads/feed/refresh) have no JSON body.
   if (res.status === 204) {
     return undefined as T;
   }
@@ -64,3 +66,9 @@ export const api = {
   delete: <T>(path: string, token?: string) =>
     request<T>(path, { method: 'DELETE', token }),
 };
+
+export const isInactiveCommunityError = (err: unknown): boolean =>
+  err instanceof Error && err.message.toLowerCase().includes('community is inactive');
+
+export const INACTIVE_COMMUNITY_TOAST =
+  'Please resubscribe your premium to perform this action.';

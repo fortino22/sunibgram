@@ -6,6 +6,7 @@ import { Search, X, ArrowLeft } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { useExploreSearch } from '@/hooks/useExplore';
 import type { ExploreUser } from '@/lib/services/explore';
+import { useAuthStore } from '@/stores/authStore';
 import {
   getRecentSearches,
   addRecentQuery,
@@ -27,6 +28,7 @@ interface ExploreSearchBarProps {
 export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Search' }: ExploreSearchBarProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const userId = useAuthStore((s) => s.user?.id ?? null);
 
   const [open, setOpen] = useState(false);
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -46,13 +48,13 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
   const showDropdown = showResults || showRecent;
 
   function refreshRecent() {
-    setRecent(getRecentSearches());
+    setRecent(getRecentSearches(userId));
   }
 
   function commit(q: string) {
     const v = q.trim();
     if (!v) return;
-    addRecentQuery(v);
+    addRecentQuery(userId, v);
     refreshRecent();
     setOpen(false);
     inputRef.current?.blur();
@@ -60,7 +62,7 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
   }
 
   function openUser(user: { userId: number; username: string; name: string; profile: string }) {
-    addRecentUser(user);
+    addRecentUser(userId, user);
     refreshRecent();
     setOpen(false);
     router.push(`/profile/${user.userId}`);
@@ -230,7 +232,7 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
                 <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Recent</span>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); clearRecentSearches(); refreshRecent(); }}
+                  onMouseDown={(e) => { e.preventDefault(); clearRecentSearches(userId); refreshRecent(); }}
                   onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
                   style={{
@@ -279,7 +281,7 @@ export function ExploreSearchBar({ value, onChange, onSubmit, placeholder = 'Sea
                   <button
                     type="button"
                     aria-label="Remove"
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeRecentSearch(item); refreshRecent(); }}
+                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); removeRecentSearch(userId, item); refreshRecent(); }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-soft)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                     style={removeBtn}

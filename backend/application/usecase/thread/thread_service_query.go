@@ -40,6 +40,16 @@ func (s *ThreadService) CountNewForYouSinceID(ctx context.Context, userID, since
 	return s.threadRepo.CountNewSinceID(ctx, userID, sinceID)
 }
 
+func (s *ThreadService) GetNewForYouSinceID(ctx context.Context, userID, sinceID uint, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	return s.threadRepo.FindNewSinceID(ctx, userID, sinceID, limit)
+}
+
 func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	anchor, ancestors, children, err := s.threadRepo.FindChain(anchorID)
 	if err != nil {

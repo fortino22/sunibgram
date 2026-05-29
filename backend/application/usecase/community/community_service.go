@@ -29,6 +29,7 @@ import (
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
 	communitysvciface "github.com/sunibgram/domain/service/community"
+	communityactionconfirmationsvciface "github.com/sunibgram/domain/service/community_action_confirmation"
 )
 
 type CommunityService struct {
@@ -42,6 +43,7 @@ type CommunityService struct {
 	pinRepo        communitypinrepoiface.ICommunityPinRepository
 	cacheRepo      cacherepoiface.ICacheRepository
 	storageUsecase *storageuc.StorageUsecase
+	auditSvc       communityactionconfirmationsvciface.ICommunityActionConfirmationService
 }
 
 func NewCommunityService(
@@ -55,6 +57,7 @@ func NewCommunityService(
 	pinRepo communitypinrepoiface.ICommunityPinRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
 	storageUsecase *storageuc.StorageUsecase,
+	auditSvc communityactionconfirmationsvciface.ICommunityActionConfirmationService,
 ) communitysvciface.ICommunityService {
 	return &CommunityService{
 		communityRepo:  communityRepo,
@@ -67,10 +70,18 @@ func NewCommunityService(
 		pinRepo:        pinRepo,
 		cacheRepo:      cacheRepo,
 		storageUsecase: storageUsecase,
+		auditSvc:       auditSvc,
 	}
 }
 
 func (s *CommunityService) Create(ctx context.Context, userID uint, name, description string, rules []string, categoryID *uuid.UUID, visibility communitymodel.CommunityVisibility, banner *multipart.FileHeader) (*communitymodel.Community, []communityrulemodel.CommunityRule, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, nil, errors.New("user not found")
+	}
+	if !user.IsPremium {
+		return nil, nil, errors.New("premium subscription required to create a community")
+	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil, errors.New("name is required")
@@ -258,6 +269,9 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	if err != nil {
 		return errors.New("community not found")
 	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
+	}
 	actor, err := s.memberRepo.FindMember(id, userID)
 	if err != nil || !IsCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
@@ -270,6 +284,9 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	}
 	if err := s.communityRepo.Delete(id); err != nil {
 		return err
+	}
+	if s.auditSvc != nil {
+		_ = s.auditSvc.RecordCommunityDeletion(ctx, id, userID, community.Name)
 	}
 	InvalidateDiscoverCommunitiesCache(ctx, s.cacheRepo)
 	return nil

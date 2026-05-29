@@ -87,6 +87,7 @@ export interface FeedStats {
   reposts: number;
   bookmarks: number;
   comments: number;
+  shares: number;
 }
 
 export interface FeedCommunity {
@@ -269,6 +270,21 @@ export function getFeedNewCount(sinceId: number, token: string): Promise<FeedNew
 // Resets the caller's For You feed seed so the next GET returns a reshuffled order. Returns 204.
 export function refreshFeed(token: string): Promise<void> {
   return api.post<void>('/api/threads/feed/refresh', undefined, token);
+}
+
+// Fetches new For You threads with thread_id > sinceId, newest-first. Used by
+// the "Show N new posts" banner — frontend prepends these onto the existing
+// feed instead of triggering /feed/refresh (which reshuffles and can surface
+// older threads, immediately re-triggering the banner).
+export function getFeedSince(
+  sinceId: number,
+  token: string,
+  limit = 50,
+): Promise<ThreadListResponse> {
+  return api.get<ThreadListResponse>(
+    `/api/threads/feed/since?since_id=${sinceId}&limit=${limit}`,
+    token,
+  );
 }
 
 export function getFollowingThreads(

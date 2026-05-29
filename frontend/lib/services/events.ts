@@ -23,10 +23,26 @@ interface EventDetailResponse extends EventListItemResponse {
   pdf_urls?: string[];
 }
 
+interface EventReviewNoteResponse {
+  revision_number: number;
+  notes: string;
+  created_at: string;
+}
+
+interface MyEventItemResponse extends EventDetailResponse {
+  notes: EventReviewNoteResponse[];
+}
+
+interface MyEventsApiResponse {
+  data: MyEventItemResponse[];
+  meta: { total: number; page: number; limit: number };
+}
+
 interface EventGroupsResponse {
   trending: EventListItemResponse[];
   running: EventListItemResponse[];
   future: EventListItemResponse[];
+  past: EventListItemResponse[];
 }
 
 interface EventShareApiResponse {
@@ -55,10 +71,22 @@ export interface EventDetail extends EventItem {
   documentUrl?: string;
 }
 
+export interface EventReviewNote {
+  revisionNumber: number;
+  notes: string;
+  createdAt: string;
+}
+
+export interface MyEventItem extends EventItem {
+  status: string;
+  notes: EventReviewNote[];
+}
+
 export interface EventGroups {
   trending: EventItem[];
   running: EventItem[];
   future: EventItem[];
+  past: EventItem[];
 }
 
 export interface CreateEventInput {
@@ -150,6 +178,7 @@ export async function getEvents(token: string): Promise<EventGroups> {
     trending: (response.trending ?? []).map(mapEventItem),
     running: (response.running ?? []).map(mapEventItem),
     future: (response.future ?? []).map(mapEventItem),
+    past: (response.past ?? []).map(mapEventItem),
   };
 }
 
@@ -227,6 +256,23 @@ export async function getMyJoinedEvents(token: string): Promise<EventItem[]> {
       ? (response as { data: EventListItemResponse[] }).data
       : [];
   return items.map(mapEventItem);
+}
+
+export async function getMyEvents(token: string, status?: string, name?: string): Promise<MyEventItem[]> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (name && name.trim()) params.set('name', name.trim());
+  const qs = params.toString();
+  const response = await api.get<MyEventsApiResponse>(`/api/events/me${qs ? `?${qs}` : ''}`, token);
+  return (response.data ?? []).map((raw) => ({
+    ...mapEventItem(raw),
+    status: raw.status,
+    notes: (raw.notes ?? []).map((n) => ({
+      revisionNumber: n.revision_number,
+      notes: n.notes,
+      createdAt: n.created_at,
+    })),
+  }));
 }
 
 export function getOfficialEventPosts(

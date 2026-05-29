@@ -396,9 +396,9 @@ func applyAuthorCap(candidates []forYouCandidate) []threadmodel.Thread {
 }
 
 // CountNewSinceID counts visible feed-eligible threads created after sinceID,
-// used by the "Show N new posts" banner. Capped at 1000 (UI shows "999+").
+// used by the "Show N new posts" banner. Capped at 200 (UI shows "200+").
 //
-// Cached per (userID, sinceID, forYouVersion) with a 30 s TTL. A new post by
+// Cached per (userID, sinceID, forYouVersion) with a 15 s TTL. A new post by
 // any author the viewer can see triggers IncrForYouVersion(viewer), which
 // orphans the cached count atomically — zero staleness, no per-since_id key
 // fanout on invalidation.
@@ -411,7 +411,6 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 		return cached, nil
 	}
 	r.forYouMetrics.CacheMissNewCount.Add(1)
-	var count int64
 	requester := userID
 	query := ApplyThreadVisibility(r.db.readDB.WithContext(ctx).Model(&threadmodel.Thread{}), &requester).
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
@@ -420,14 +419,49 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 		Where("threads.type IN ?", forYouFeedTypes(true)).
 		Where("threads.community_id IS NULL OR communities.visibility = ? OR count_new_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
 	query = applyMainFeedReplyInteractionFilter(query)
-	if err := query.Limit(201).Count(&count).Error; err != nil {
+	// GORM's Count() strips Limit, which would force a full-table scan on every
+	// banner poll. Pluck honors Limit, so the DB returns at most 201 rows and we
+	// derive the count from the slice. 201-elem uint slice ≈ 1.6 KB — negligible
+	// compared to the saved scan when the matching set is huge.
+	var ids []uint
+	if err := query.Limit(201).Pluck("threads.thread_id", &ids).Error; err != nil {
 		return 0, err
 	}
+	count := int64(len(ids))
 	if count > 200 {
 		count = 200
 	}
-	_ = r.cache.Set(ctx, key, count, 30*time.Second)
+	_ = r.cache.Set(ctx, key, count, 15*time.Second)
 	return count, nil
+}
+
+// FindNewSinceID returns visible feed-eligible threads created after sinceID,
+// newest-first by thread_id, capped at `limit`. Powers the "Show N new posts"
+// banner click — frontend prepends these onto the existing feed instead of
+// triggering a full /feed/refresh reshuffle (which can surface older threads
+// with lower IDs and re-trigger the banner). Not cached: the result depends on
+// sinceID, the call is rare (one per banner click), and stale rows here would
+// surface as missing/duplicate posts that the client cannot self-correct.
+func (r *threadCached) FindNewSinceID(ctx context.Context, userID, sinceID uint, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+	requester := userID
+	var threads []threadmodel.Thread
+	query := ApplyThreadVisibility(PreloadThreadDetails(r.db.readDB.WithContext(ctx)), &requester).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Joins("LEFT JOIN community_members find_new_members ON find_new_members.community_id = threads.community_id AND find_new_members.user_id = ?", userID).
+		Where("threads.thread_id > ?", sinceID).
+		Where("threads.type IN ?", forYouFeedTypes(true)).
+		Where("threads.community_id IS NULL OR communities.visibility = ? OR find_new_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
+	query = applyMainFeedReplyInteractionFilter(query)
+	if err := query.Order("threads.thread_id DESC").Limit(limit).Find(&threads).Error; err != nil {
+		return nil, nil, err
+	}
+	return r.AttachReplyParents(threads, &requester)
 }
 
 func (r *threadCached) findForYouOwn(ctx context.Context, userID uint, version int64) ([]threadmodel.Thread, error) {

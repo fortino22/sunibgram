@@ -13,11 +13,13 @@ import (
 	chatreactionuc "github.com/sunibgram/application/usecase/chat_reaction"
 	chatroomuc "github.com/sunibgram/application/usecase/chat_room"
 	communityuc "github.com/sunibgram/application/usecase/community"
+	communityactionconfirmationuc "github.com/sunibgram/application/usecase/community_action_confirmation"
 	communitypinuc "github.com/sunibgram/application/usecase/community_pin"
 	communityrequestuc "github.com/sunibgram/application/usecase/community_request"
 	communityruleuc "github.com/sunibgram/application/usecase/community_rule"
 	communitythreadpinuc "github.com/sunibgram/application/usecase/community_thread_pin"
 	eventuc "github.com/sunibgram/application/usecase/event"
+	eventactionconfirmationuc "github.com/sunibgram/application/usecase/event_action_confirmation"
 	eventparticipantuc "github.com/sunibgram/application/usecase/event_participant"
 	eventpinuc "github.com/sunibgram/application/usecase/event_pin"
 	eventthreadpinuc "github.com/sunibgram/application/usecase/event_thread_pin"
@@ -32,6 +34,7 @@ import (
 	premiumsubscriptionuc "github.com/sunibgram/application/usecase/premium_subscription"
 	reportuc "github.com/sunibgram/application/usecase/report"
 	roleuc "github.com/sunibgram/application/usecase/role"
+	shareuc "github.com/sunibgram/application/usecase/share"
 	threaduc "github.com/sunibgram/application/usecase/thread"
 	threadmediauc "github.com/sunibgram/application/usecase/thread_media"
 	threadpinuc "github.com/sunibgram/application/usecase/thread_pin"
@@ -54,12 +57,14 @@ import (
 	chatreactionsvciface "github.com/sunibgram/domain/service/chat_reaction"
 	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
 	communitysvciface "github.com/sunibgram/domain/service/community"
+	communityactionconfirmationsvciface "github.com/sunibgram/domain/service/community_action_confirmation"
 	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
 	communitypinsvciface "github.com/sunibgram/domain/service/community_pin"
 	communityrequestsvciface "github.com/sunibgram/domain/service/community_request"
 	communityrulesvciface "github.com/sunibgram/domain/service/community_rule"
 	communitythreadpinsvciface "github.com/sunibgram/domain/service/community_thread_pin"
 	eventsvciface "github.com/sunibgram/domain/service/event"
+	eventactionconfirmationsvciface "github.com/sunibgram/domain/service/event_action_confirmation"
 	eventparticipantsvciface "github.com/sunibgram/domain/service/event_participant"
 	eventpinsvciface "github.com/sunibgram/domain/service/event_pin"
 	eventthreadpinsvciface "github.com/sunibgram/domain/service/event_thread_pin"
@@ -74,6 +79,7 @@ import (
 	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 	reportsvciface "github.com/sunibgram/domain/service/report"
 	rolesvciface "github.com/sunibgram/domain/service/role"
+	sharesvciface "github.com/sunibgram/domain/service/share"
 	threadsvciface "github.com/sunibgram/domain/service/thread"
 	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
 	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
@@ -112,14 +118,16 @@ type Services struct {
 	Category             categorysvciface.ICategoryService
 	Violation            violationsvciface.IViolationService
 	Report               reportsvciface.IReportService
-	Community            communitysvciface.ICommunityService
-	CommunityMember      communitymembersvciface.ICommunityMemberService
+	Community                   communitysvciface.ICommunityService
+	CommunityActionConfirmation communityactionconfirmationsvciface.ICommunityActionConfirmationService
+	CommunityMember             communitymembersvciface.ICommunityMemberService
 	CommunityRequest     communityrequestsvciface.ICommunityRequestService
 	CommunityRule        communityrulesvciface.ICommunityRuleService
 	CommunityThreadPin   communitythreadpinsvciface.ICommunityThreadPinService
 	CommunityPin         communitypinsvciface.ICommunityPinService
-	EventPin             eventpinsvciface.IEventPinService
-	EventParticipant     eventparticipantsvciface.IEventParticipantService
+	EventPin                eventpinsvciface.IEventPinService
+	EventParticipant        eventparticipantsvciface.IEventParticipantService
+	EventActionConfirmation eventactionconfirmationsvciface.IEventActionConfirmationService
 	Faculty              facultysvciface.IFacultyService
 	Feedback             feedbacksvciface.IFeedbackService
 	Order                ordersvciface.IOrderService
@@ -128,6 +136,7 @@ type Services struct {
 	Chat                 chatsvciface.IChatService
 	ChatMedia            chatmediasvciface.IChatMediaService
 	ChatReaction         chatreactionsvciface.IChatReactionService
+	Share                sharesvciface.IShareService
 	ThreadPoll           threadpollsvciface.IThreadPollService
 	EventThreadPin       eventthreadpinsvciface.IEventThreadPinService
 	TrendingUser         trendingusersvciface.ITrendingUserService
@@ -144,6 +153,11 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, repos.BookmarkCollection)
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
+	communityActionConfirmation := communityactionconfirmationuc.NewCommunityActionConfirmationService(repos.CommunityActionConfirmation)
+	eventActionConfirmation := eventactionconfirmationuc.NewEventActionConfirmationService(repos.EventActionConfirmation)
+	chatRoom := chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage)
+	chat := chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification)
+	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, chat, chatRoom, ext.Storage)
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
@@ -158,7 +172,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Hashtag:              hashtag,
 		ThreadSummary:        summary,
 		Thread:               thread,
-		Event:                eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread),
+		Event:                eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread, eventActionConfirmation),
 		Explore:              exploreuc.NewExploreService(repos.Explore, repos.Thread, repos.UserSettings, repos.Follow),
 		ThreadMedia:          threadmediauc.NewThreadMediaService(repos.Thread, repos.ThreadMedia, ext.Storage),
 		Like:                 like,
@@ -168,8 +182,9 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Category:             categoryuc.NewCategoryService(repos.Category),
 		Violation:            violationuc.NewViolationService(repos.Violation),
 		Report:               reportuc.NewReportService(repos.Report, repos.Violation, repos.User, repos.Thread, profile, repos.Cache),
-		Community:            communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage),
-		CommunityMember:      communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.Cache),
+		Community:                   communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage, communityActionConfirmation),
+		CommunityActionConfirmation: communityActionConfirmation,
+		CommunityMember:             communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.Cache, communityActionConfirmation),
 		CommunityRequest:     communityrequestuc.NewCommunityRequestService(repos.Community, repos.CommunityMember, repos.CommunityRequest, repos.Cache),
 		CommunityRule:        communityruleuc.NewCommunityRuleService(repos.Community, repos.CommunityRule),
 		CommunityThreadPin:   communitythreadpinuc.NewCommunityThreadPinService(repos.CommunityThreadPin, repos.Community, repos.CommunityMember, repos.Thread),
@@ -180,13 +195,14 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Feedback:             feedbackuc.NewFeedbackService(repos.Feedback),
 		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),
 		PremiumSubscription:  premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
-		ChatRoom:             chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage),
-		Chat:                 chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification),
+		ChatRoom:             chatRoom,
+		Chat:                 chat,
 		ChatMedia:            chatmediauc.NewChatMediaService(repos.Chat, repos.ChatMedia, ext.Storage),
 		ChatReaction:         chatreactionuc.NewChatReactionService(repos.Chat, repos.ChatReaction, repos.ChatRoom),
+		Share:                share,
 		ThreadPoll:           threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, ext.Storage),
 		EventThreadPin:       eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
 		TrendingUser:         trendinguseruc.NewTrendingUserService(repos.TrendingUser, repos.TrendingUserSnapshot, repos.Follow),
-		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport),
+		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport, hashtag),
 	}
 }

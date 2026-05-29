@@ -106,6 +106,8 @@ function HoverWrap({
           : hover
             ? 'var(--bg-hover)'
             : 'var(--bg-card)',
+        borderWidth: bare ? 0 : 1,
+        borderStyle: bare ? 'none' : 'solid',
         borderColor: bare ? 'transparent' : hover ? 'var(--text-tertiary)' : 'var(--border)',
         ...style,
       }}
@@ -123,7 +125,8 @@ function StatCell({ label, value }: { label: string; value: number }) {
       onMouseLeave={() => setHover(false)}
       style={{
         background: hover ? 'var(--bg-hover)' : 'var(--bg-subtle)',
-        border: '1px solid',
+        borderWidth: 1,
+        borderStyle: 'solid',
         borderColor: hover ? 'var(--text-tertiary)' : 'var(--border)',
         borderRadius: 10,
         padding: '10px 12px',
@@ -299,18 +302,15 @@ export function YourStats() {
     if (rangeState.year || rangeState.month) return;
     if (!result?.startDate) return;
     const d = new Date(result.startDate);
+    const next: RangeState = {
+      ...rangeState,
+      year: d.getUTCFullYear(),
+      month: d.getUTCMonth() + 1,
+    };
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRangeState((prev) => {
-      if (prev.mode !== 'month' || prev.year || prev.month) return prev;
-      const next: RangeState = {
-        ...prev,
-        year: d.getUTCFullYear(),
-        month: d.getUTCMonth() + 1,
-      };
-      syncUrl(next);
-      return next;
-    });
-  }, [rangeState.mode, rangeState.year, rangeState.month, result?.startDate]);
+    setRangeState(next);
+    syncUrl(next);
+  }, [rangeState, result?.startDate]);
 
   const chartData = useMemo(
     () =>
@@ -514,7 +514,6 @@ export function YourStats() {
 
       <HoverWrap
         style={{
-          border: '1px solid',
           borderRadius: 16,
           padding: 20,
         }}
@@ -789,7 +788,8 @@ function StatBlock({ children }: { children: ReactNode }) {
       onMouseLeave={() => setHover(false)}
       style={{
         background: hover ? 'var(--bg-hover)' : 'var(--bg-subtle)',
-        border: '1px solid',
+        borderWidth: 1,
+        borderStyle: 'solid',
         borderColor: hover ? 'var(--text-tertiary)' : 'var(--border)',
         borderRadius: 12,
         transition: 'background 0.15s ease, border-color 0.15s ease',

@@ -11,7 +11,7 @@ export function RightPanel() {
   const pathname = usePathname();
   const isExplorePage = pathname === '/explore';
 
-  if (pathname.startsWith('/messages')) return null;
+  if (pathname.startsWith('/messages') || pathname.startsWith('/admin') || pathname === '/events') return null;
 
   return (
     <aside className="right-panel">

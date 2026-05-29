@@ -43,6 +43,18 @@ func (c *TrendReportController) ListReasons(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": toReasonResponses(reasons)})
 }
 
+func (c *TrendReportController) Stats(ctx *fiber.Ctx) error {
+	rows, err := c.service.CountByReason(ctx.Context())
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	out := make([]trendreportdto.TrendReportReasonStatsResponse, len(rows))
+	for i, r := range rows {
+		out[i] = trendreportdto.TrendReportReasonStatsResponse{Code: r.Code, Label: r.Label, Count: r.Count}
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": out})
+}
+
 func toReasonResponses(reasons []trendreportmodel.TrendReportReason) []trendreportdto.TrendReportReasonResponse {
 	out := make([]trendreportdto.TrendReportReasonResponse, len(reasons))
 	for i, r := range reasons {

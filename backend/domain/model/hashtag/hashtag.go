@@ -15,9 +15,11 @@ type Hashtag struct {
 	ThreadCount     int64     `gorm:"not null;default:0"`
 	LikeCount       int64     `gorm:"not null;default:0"`
 	RepostCount     int64     `gorm:"not null;default:0"`
+	ShareCount      int64     `gorm:"not null;default:0"`
 	WeekThreadCount int64     `gorm:"not null;default:0"`
 	WeekLikeCount   int64     `gorm:"not null;default:0"`
 	WeekRepostCount int64     `gorm:"not null;default:0"`
+	WeekShareCount  int64     `gorm:"not null;default:0"`
 	CreatedAt       time.Time `gorm:"type:timestamptz"`
 }
 

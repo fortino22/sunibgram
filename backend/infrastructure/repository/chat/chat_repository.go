@@ -35,7 +35,7 @@ func (r *ChatRepository) Save(chat *chatmodel.Chat) error {
 			Update("updated_at", time.Now()).Error; err != nil {
 			return err
 		}
-		return tx.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).First(chat, chat.ChatID).Error
+		return tx.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).Preload("SharedThread.User", chatSenderColumns).Preload("SharedThread.Community").First(chat, chat.ChatID).Error
 	})
 }
 
@@ -49,7 +49,7 @@ func (r *ChatRepository) FindByRoomID(roomID uint, page, limit int) ([]chatmodel
 
 	var chats []chatmodel.Chat
 	offset := (page - 1) * limit
-	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).
+	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).Preload("SharedThread.User", chatSenderColumns).Preload("SharedThread.Community").
 		Where("room_id = ? AND deleted_at IS NULL", roomID).
 		Order("created_at DESC").
 		Offset(offset).Limit(limit).
@@ -59,7 +59,7 @@ func (r *ChatRepository) FindByRoomID(roomID uint, page, limit int) ([]chatmodel
 
 func (r *ChatRepository) FindByID(id uint) (*chatmodel.Chat, error) {
 	var chat chatmodel.Chat
-	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).
+	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).Preload("SharedThread.User", chatSenderColumns).Preload("SharedThread.Community").
 		Where("deleted_at IS NULL").
 		First(&chat, id).Error
 	return &chat, err
@@ -70,7 +70,7 @@ func (r *ChatRepository) FindByIDs(ids []uint) ([]chatmodel.Chat, error) {
 		return []chatmodel.Chat{}, nil
 	}
 	var chats []chatmodel.Chat
-	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).
+	err := r.readDB.Preload("Sender", chatSenderColumns).Preload("ReplyTo.Sender", chatSenderColumns).Preload("SharedThread.User", chatSenderColumns).Preload("SharedThread.Community").
 		Where("chat_id IN ? AND deleted_at IS NULL", ids).
 		Find(&chats).Error
 	return chats, err

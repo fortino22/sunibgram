@@ -16,6 +16,8 @@ export function useUpdateEvent(id: string) {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['events', 'feed'] }),
+        queryClient.invalidateQueries({ queryKey: ['events', 'me'] }),
+        queryClient.invalidateQueries({ queryKey: ['events', 'joined', 'me'] }),
         queryClient.invalidateQueries({ queryKey: ['event', id] }),
       ]);
     },

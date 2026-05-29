@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useCategories } from '@/hooks/useCommunities';
 import { useUpdateCommunity } from '@/hooks/useCommunityMutations';
+import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
 import type { CommunityData, CommunityVisibility } from '@/lib/services/communities';
 
@@ -13,11 +14,9 @@ interface EditCommunityModalProps {
   community: CommunityData;
   onClose: () => void;
   onSuccess: () => void;
-  onDelete: () => void;
-  deletePending: boolean;
 }
 
-export function EditCommunityModal({ community, onClose, onSuccess, onDelete, deletePending }: EditCommunityModalProps) {
+export function EditCommunityModal({ community, onClose, onSuccess }: EditCommunityModalProps) {
   const { data: categoriesData } = useCategories();
   const categories = categoriesData?.data ?? [];
   const { mutateAsync, isPending, error } = useUpdateCommunity(community.community_id);
@@ -79,8 +78,10 @@ export function EditCommunityModal({ community, onClose, onSuccess, onDelete, de
         categoryId: selectedCategoryId,
       });
       onSuccess();
-    } catch {
-      // error shown via mutation error state
+    } catch (err) {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+      }
     }
   }
 
@@ -293,27 +294,13 @@ export function EditCommunityModal({ community, onClose, onSuccess, onDelete, de
 
           {error && (
             <div style={{ fontSize: 13, color: 'var(--error, #e53e3e)' }}>
-              {error instanceof Error ? error.message : 'Something went wrong'}
+              {isInactiveCommunityError(error)
+                ? INACTIVE_COMMUNITY_TOAST
+                : error instanceof Error
+                  ? error.message
+                  : 'Something went wrong'}
             </div>
           )}
-
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={deletePending}
-            style={{
-              width: '100%', padding: '12px', borderRadius: 999,
-              border: '1px solid var(--error, #e53e3e)', background: 'transparent',
-              color: 'var(--error, #e53e3e)', fontSize: 15, fontWeight: 700,
-              cursor: deletePending ? 'default' : 'pointer',
-              opacity: deletePending ? 0.5 : 1,
-              transition: 'background 0.12s ease',
-            }}
-            onMouseEnter={(e) => { if (!deletePending) e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
-            onMouseLeave={(e) => { if (!deletePending) e.currentTarget.style.background = 'transparent'; }}
-          >
-            {deletePending ? 'Deleting…' : 'Delete Community'}
-          </button>
 
           <button
             type="submit"

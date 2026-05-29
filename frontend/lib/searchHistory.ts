@@ -1,7 +1,9 @@
 // Recent explore searches — device-local, no backend. SSR-safe.
 // Holds two kinds of entries: typed queries and clicked users.
+// Scoped per user so different accounts on the same browser don't share history.
 
-const STORAGE_KEY = 'sunibgram:recent-searches';
+const KEY_PREFIX = 'sunibgram:recent-searches';
+const LEGACY_KEY = 'sunibgram:recent-searches';
 const MAX_ITEMS = 8;
 
 export type RecentSearch =
@@ -11,6 +13,19 @@ export type RecentSearch =
 /** Stable identity for dedupe / removal. */
 export function recentKey(item: RecentSearch): string {
   return item.type === 'query' ? `q:${item.text.trim().toLowerCase()}` : `u:${item.userId}`;
+}
+
+function storageKey(userId: number): string {
+  return `${KEY_PREFIX}:${userId}`;
+}
+
+function dropLegacyKey(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(LEGACY_KEY);
+  } catch {
+    // ignore
+  }
 }
 
 function coerce(raw: unknown): RecentSearch | null {
@@ -37,10 +52,10 @@ function coerce(raw: unknown): RecentSearch | null {
   return null;
 }
 
-function read(): RecentSearch[] {
+function read(userId: number): RecentSearch[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(storageKey(userId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -50,41 +65,49 @@ function read(): RecentSearch[] {
   }
 }
 
-function write(items: RecentSearch[]): void {
+function write(userId: number, items: RecentSearch[]): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(items));
   } catch {
     // ignore quota / serialization errors
   }
 }
 
-/** Prepend, dedupe by identity, cap at MAX_ITEMS. */
-function add(item: RecentSearch): void {
+function add(userId: number, item: RecentSearch): void {
   const key = recentKey(item);
-  const next = [item, ...read().filter((existing) => recentKey(existing) !== key)].slice(0, MAX_ITEMS);
-  write(next);
+  const next = [item, ...read(userId).filter((existing) => recentKey(existing) !== key)].slice(0, MAX_ITEMS);
+  write(userId, next);
 }
 
-export function getRecentSearches(): RecentSearch[] {
-  return read();
+export function getRecentSearches(userId: number | null | undefined): RecentSearch[] {
+  if (!userId) return [];
+  dropLegacyKey();
+  return read(userId);
 }
 
-export function addRecentQuery(text: string): void {
+export function addRecentQuery(userId: number | null | undefined, text: string): void {
+  if (!userId) return;
   const value = text.trim();
   if (!value) return;
-  add({ type: 'query', text: value });
+  add(userId, { type: 'query', text: value });
 }
 
-export function addRecentUser(user: { userId: number; username: string; name: string; profile: string }): void {
-  add({ type: 'user', userId: user.userId, username: user.username, name: user.name, profile: user.profile });
+export function addRecentUser(
+  userId: number | null | undefined,
+  user: { userId: number; username: string; name: string; profile: string },
+): void {
+  if (!userId) return;
+  add(userId, { type: 'user', userId: user.userId, username: user.username, name: user.name, profile: user.profile });
 }
 
-export function removeRecentSearch(item: RecentSearch): void {
+export function removeRecentSearch(userId: number | null | undefined, item: RecentSearch): void {
+  if (!userId) return;
   const key = recentKey(item);
-  write(read().filter((existing) => recentKey(existing) !== key));
+  write(userId, read(userId).filter((existing) => recentKey(existing) !== key));
 }
 
-export function clearRecentSearches(): void {
-  write([]);
+export function clearRecentSearches(userId: number | null | undefined): void {
+  if (!userId) return;
+  write(userId, []);
 }

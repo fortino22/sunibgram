@@ -67,20 +67,37 @@ type ChatReactionSummary struct {
 	UserIDs []uint `json:"user_ids"`
 }
 
+type SharedThreadAuthor struct {
+	UserID    uint   `json:"user_id"`
+	Username  string `json:"username"`
+	Name      string `json:"name"`
+	IsPremium bool   `json:"is_premium"`
+}
+
+type SharedThreadEmbed struct {
+	ThreadID      uint                `json:"thread_id"`
+	Content       string              `json:"content"`
+	Author        *SharedThreadAuthor `json:"author,omitempty"`
+	CommunityName *string             `json:"community_name,omitempty"`
+	CreatedAt     *utils.FormattedTime `json:"created_at,omitempty"`
+	Deleted       bool                `json:"deleted"`
+}
+
 type ChatResponse struct {
-	ChatID    uint                  `json:"chat_id"`
-	RoomID    uint                  `json:"room_id"`
-	Sender    ChatSender            `json:"sender"`
-	ReplyTo   *ChatReplyResponse    `json:"reply_to,omitempty"`
-	Message   *string               `json:"message,omitempty"`
-	GifURL    *string               `json:"gif_url,omitempty"`
-	Media     []ChatMediaResponse   `json:"media"`
-	Reactions []ChatReactionSummary `json:"reactions"`
-	IsRead    bool                  `json:"is_read"`
-	IsEdited  bool                  `json:"is_edited"`
-	EditedAt  *utils.FormattedTime  `json:"edited_at,omitempty"`
-	DeletedAt *utils.FormattedTime  `json:"deleted_at,omitempty"`
-	CreatedAt utils.FormattedTime   `json:"created_at"`
+	ChatID       uint                  `json:"chat_id"`
+	RoomID       uint                  `json:"room_id"`
+	Sender       ChatSender            `json:"sender"`
+	ReplyTo      *ChatReplyResponse    `json:"reply_to,omitempty"`
+	Message      *string               `json:"message,omitempty"`
+	GifURL       *string               `json:"gif_url,omitempty"`
+	SharedThread *SharedThreadEmbed    `json:"shared_thread,omitempty"`
+	Media        []ChatMediaResponse   `json:"media"`
+	Reactions    []ChatReactionSummary `json:"reactions"`
+	IsRead       bool                  `json:"is_read"`
+	IsEdited     bool                  `json:"is_edited"`
+	EditedAt     *utils.FormattedTime  `json:"edited_at,omitempty"`
+	DeletedAt    *utils.FormattedTime  `json:"deleted_at,omitempty"`
+	CreatedAt    utils.FormattedTime   `json:"created_at"`
 }
 
 type CreatePrivateChatRoomRequest struct {

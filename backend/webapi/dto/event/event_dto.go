@@ -109,6 +109,7 @@ type EventGroupsResponse struct {
 	Trending []EventListResponse `json:"trending"`
 	Running  []EventListResponse `json:"running"`
 	Future   []EventListResponse `json:"future"`
+	Past     []EventListResponse `json:"past"`
 }
 
 type PaginatedEventResponse struct {

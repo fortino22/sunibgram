@@ -58,6 +58,21 @@ func (r *trendReportRepository) ListReasons(ctx context.Context) ([]trendreportm
 	return reasons, nil
 }
 
+func (r *trendReportRepository) CountByReason(ctx context.Context) ([]trendreportrepoiface.ReasonCount, error) {
+	var rows []trendreportrepoiface.ReasonCount
+	err := r.readDB.WithContext(ctx).
+		Table("trend_report_reasons AS r").
+		Select("r.code AS code, r.label AS label, COUNT(tr.id) AS count").
+		Joins("LEFT JOIN trend_reports tr ON tr.reason_id = r.id").
+		Group("r.id, r.code, r.label").
+		Order("count DESC, r.label ASC").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func (r *trendReportRepository) FindHashtagIDByName(ctx context.Context, name string) (uuid.UUID, error) {
 	var hashtag hashtagmodel.Hashtag
 	if err := r.readDB.WithContext(ctx).Select("id").Where("name = ?", name).First(&hashtag).Error; err != nil {

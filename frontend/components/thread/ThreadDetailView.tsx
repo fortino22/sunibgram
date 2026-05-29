@@ -5,6 +5,7 @@ import { ArrowLeft, Repeat2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Avatar } from '@/components/shared/Avatar';
+import { ActionBar } from '@/components/shared/ActionBar';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useThreadActions } from '@/hooks/useThreadActions';
@@ -12,10 +13,13 @@ import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
+import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
+import { ShareModal } from '@/components/share/ShareModal';
+import { SharePopover } from '@/components/share/SharePopover';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
-import { ThreadActions } from './ThreadActions';
+import { useComposeStore } from '@/stores/composeStore';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
@@ -47,11 +51,26 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
     onDeleteSuccess: () => router.replace('/'),
   });
   const { like, repost, bookmark } = useThreadActions(root);
+  const openReply = useComposeStore((s) => s.openReply);
   const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+  const [shareAnchor, setShareAnchor] = useState<DOMRect | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const author = getThreadAuthor(root);
+  const bookmarkTargetId = root.type?.toLowerCase() === 'repost' && typeof root.original_thread_id === 'number'
+    ? root.original_thread_id
+    : root.id;
+
+  function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
+    if (bookmark.isPending) return;
+    const wasBookmarked = root.is_bookmarked === true;
+    bookmark.mutate();
+    if (!wasBookmarked) setBookmarkAnchor(e.currentTarget.getBoundingClientRect());
+  }
+
   const canManage = isOwnThread(root, currentUserId);
   const canReport = currentUserId != null && currentUserId !== root.author.id;
   const repostLabel = getRepostLabel(root, currentUserId);
@@ -192,7 +211,6 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
               onCancel={() => setIsEditing(false)}
               onSave={handleSave}
               pending={updateMutation.isPending}
-              errorMessage={updateMutation.error?.message}
             />
           ) : (
             <>
@@ -221,33 +239,18 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
 
         <hr style={{ marginTop: 12, borderColor: 'var(--border)', borderTopWidth: 1 }} />
 
-        {deleteMutation.isError && (
-          <div
-            className="rounded-xl text-[13px]"
-            style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              background: 'var(--coral-soft)',
-              color: 'var(--coral)',
-            }}
-          >
-            {deleteMutation.error.message}
-          </div>
-        )}
-
         {/* Actions */}
         <div style={{ marginTop: 12 }}>
-          <ThreadActions
-            comments={root.stats.comments}
-            likes={root.stats.likes}
-            reposts={root.stats.reposts}
-            bookmarks={root.stats.bookmarks}
+          <ActionBar
+            stats={root.stats}
             isLiked={root.is_liked === true}
             isReposted={root.is_reposted === true}
             isBookmarked={root.is_bookmarked === true}
             onLike={() => { if (!like.isPending) like.mutate(); }}
             onRepost={() => { if (!repost.isPending) repost.mutate(); }}
-            onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+            onBookmark={handleBookmark}
+            onReply={() => openReply(root)}
+            onShare={(e) => setShareAnchor(e.currentTarget.getBoundingClientRect())}
           />
         </div>
       </article>
@@ -273,6 +276,26 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
             current ? { ...current, index } : current
           ))}
         />
+      )}
+
+      {bookmarkAnchor && (
+        <BookmarkCollectionPopover
+          threadId={bookmarkTargetId}
+          anchorRect={bookmarkAnchor}
+          onClose={() => setBookmarkAnchor(null)}
+        />
+      )}
+
+      {shareAnchor && (
+        <SharePopover
+          threadId={bookmarkTargetId}
+          anchorRect={shareAnchor}
+          onClose={() => setShareAnchor(null)}
+          onOpenChatModal={() => { setShareAnchor(null); setShareOpen(true); }}
+        />
+      )}
+      {shareOpen && (
+        <ShareModal threadId={bookmarkTargetId} onClose={() => setShareOpen(false)} />
       )}
 
       {reportModalOpen && (

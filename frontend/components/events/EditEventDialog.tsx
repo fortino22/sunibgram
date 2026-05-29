@@ -9,6 +9,7 @@ import { useUpdateEvent } from '@/hooks/useUpdateEvent';
 import { toast } from 'sonner';
 import { IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import type { EventDetail } from '@/lib/services/events';
+import { ImageCropModal } from '@/components/profile/ImageCropModal';
 
 const schema = z
   .object({
@@ -61,6 +62,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
 
   const [bannerPreview, setBannerPreview] = useState<string | null>(event.banner ?? null);
   const [bannerIsNew, setBannerIsNew] = useState(false);
+  const [pendingCrop, setPendingCrop] = useState<{ src: string; filename: string } | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -102,11 +104,22 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
       e.target.value = '';
       return;
     }
+    setPendingCrop({ src: URL.createObjectURL(file), filename: file.name });
+    e.target.value = '';
+  }
+
+  function handleCropComplete(file: File, preview: string) {
     if (bannerIsNew && bannerPreview) URL.revokeObjectURL(bannerPreview);
-    setBannerPreview(URL.createObjectURL(file));
+    setBannerPreview(preview);
     setBannerIsNew(true);
     form.setValue('banner', file, { shouldValidate: true });
-    e.target.value = '';
+    if (pendingCrop) URL.revokeObjectURL(pendingCrop.src);
+    setPendingCrop(null);
+  }
+
+  function handleCropClose() {
+    if (pendingCrop) URL.revokeObjectURL(pendingCrop.src);
+    setPendingCrop(null);
   }
 
   async function onSubmit(values: FormValues) {
@@ -124,6 +137,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
   }
 
   if (!open) return null;
+  if (event.status !== 'revision') return null;
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -149,6 +163,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
   const errorStyle: React.CSSProperties = { fontSize: 12, color: 'var(--coral, #e53e3e)', marginTop: 4 };
 
   return (
+    <>
     <div
       style={{
         position: 'fixed',
@@ -187,9 +202,14 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
             zIndex: 1,
           }}
         >
-          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-            Edit Event
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+              Edit Event
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+              Saving resubmits for admin review.
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
@@ -444,5 +464,16 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
         </form>
       </div>
     </div>
+    {pendingCrop && (
+      <ImageCropModal
+        imageSrc={pendingCrop.src}
+        filename={pendingCrop.filename}
+        aspect={2.31}
+        maxSizeBytes={IMAGE_MAX_BYTES.banner}
+        onComplete={handleCropComplete}
+        onClose={handleCropClose}
+      />
+    )}
+    </>
   );
 }

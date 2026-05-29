@@ -81,7 +81,7 @@ func (c *ChatController) Send(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "message or media is required"})
 	}
 
-	chat, err := c.chatService.Send(ctx.Context(), roomID, claims.UserID, message, gifURL, replyToID)
+	chat, err := c.chatService.Send(ctx.Context(), roomID, claims.UserID, message, gifURL, replyToID, nil)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -389,6 +389,8 @@ func (c *ChatController) toChatResponse(ctx context.Context, chat *chatmodel.Cha
 		}
 	}
 
+	sharedThread := buildSharedThreadEmbed(chat)
+
 	return chatdto.ChatResponse{
 		ChatID: chat.ChatID,
 		RoomID: chat.RoomID,
@@ -396,16 +398,50 @@ func (c *ChatController) toChatResponse(ctx context.Context, chat *chatmodel.Cha
 			ID:       chat.SenderID,
 			Username: chat.Sender.UserName,
 		},
-		ReplyTo:   replyTo,
-		Message:   chat.Message,
-		GifURL:    chat.GifURL,
-		Media:     c.toChatMediaResponses(ctx, media),
-		Reactions: groupReactions(reactions),
-		IsRead:    chat.IsRead,
-		IsEdited:  chat.IsEdited,
-		EditedAt:  editedAt,
-		DeletedAt: deletedAt,
-		CreatedAt: dtoutils.Wrap(chat.CreatedAt),
+		ReplyTo:      replyTo,
+		Message:      chat.Message,
+		GifURL:       chat.GifURL,
+		SharedThread: sharedThread,
+		Media:        c.toChatMediaResponses(ctx, media),
+		Reactions:    groupReactions(reactions),
+		IsRead:       chat.IsRead,
+		IsEdited:     chat.IsEdited,
+		EditedAt:     editedAt,
+		DeletedAt:    deletedAt,
+		CreatedAt:    dtoutils.Wrap(chat.CreatedAt),
+	}
+}
+
+func buildSharedThreadEmbed(chat *chatmodel.Chat) *chatdto.SharedThreadEmbed {
+	if chat.SharedThreadID == nil {
+		return nil
+	}
+	if chat.SharedThread == nil {
+		return &chatdto.SharedThreadEmbed{ThreadID: *chat.SharedThreadID, Deleted: true}
+	}
+	thread := chat.SharedThread
+	content := thread.Content
+	if len(content) > 280 {
+		content = content[:280] + "…"
+	}
+	author := &chatdto.SharedThreadAuthor{
+		UserID:    thread.User.UserID,
+		Username:  thread.User.UserName,
+		Name:      thread.User.Name,
+		IsPremium: thread.User.IsPremium,
+	}
+	var communityName *string
+	if thread.Community != nil && thread.Community.Name != "" {
+		name := thread.Community.Name
+		communityName = &name
+	}
+	createdAt := dtoutils.Wrap(thread.CreatedAt)
+	return &chatdto.SharedThreadEmbed{
+		ThreadID:      thread.ThreadID,
+		Content:       content,
+		Author:        author,
+		CommunityName: communityName,
+		CreatedAt:     &createdAt,
 	}
 }
 

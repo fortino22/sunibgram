@@ -25,6 +25,7 @@ import {
   type CommunityThreadParams,
 } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
+import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 
 export function useJoinCommunity(communityId: number) {
   const token = useAuthStore((s) => s.token);
@@ -50,6 +51,9 @@ export function useLeaveCommunity(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'members'] });
       void qc.invalidateQueries({ queryKey: ['communities', 'joined'] });
       void qc.invalidateQueries({ queryKey: ['communities', 'threads', 'feed'] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to leave community');
     },
   });
 }
@@ -79,6 +83,10 @@ export function useApproveRequest(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['community', communityId] });
     },
     onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
       toast.error(err.message || 'Failed to approve request');
     },
   });
@@ -93,6 +101,10 @@ export function useDeclineRequest(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'requests'] });
     },
     onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
       toast.error(err.message || 'Failed to decline request');
     },
   });
@@ -107,6 +119,13 @@ export function useKickMember(communityId: number) {
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'members'] });
       void qc.invalidateQueries({ queryKey: ['community', communityId] });
     },
+    onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
+      toast.error(err.message || 'Failed to remove member');
+    },
   });
 }
 
@@ -117,8 +136,18 @@ export function useUpdateMemberRole(communityId: number) {
     mutationFn: ({ userId, role }: { userId: number; role: CommunityRole }) =>
       updateCommunityMemberRole(communityId, userId, role, token!),
     onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['community', communityId] });
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'members'] });
       void qc.invalidateQueries({ queryKey: ['community', communityId, 'users'] });
+      void qc.invalidateQueries({ queryKey: ['communities', 'mine'] });
+      void qc.invalidateQueries({ queryKey: ['communities', 'joined'] });
+    },
+    onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
+      toast.error(err.message || 'Failed to update role');
     },
   });
 }
@@ -156,7 +185,15 @@ export function useDeleteCommunity() {
     mutationFn: (communityId: number) => deleteCommunity(communityId, token!),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['communities', 'mine'] });
+      void qc.invalidateQueries({ queryKey: ['communities', 'joined'] });
       void qc.invalidateQueries({ queryKey: ['communities', 'discover'] });
+    },
+    onError: (err: Error) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
+      toast.error(err.message || 'Failed to delete community');
     },
   });
 }

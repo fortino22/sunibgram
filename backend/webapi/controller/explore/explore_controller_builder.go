@@ -130,7 +130,7 @@ func (c *ExploreController) toFeedResponse(threads []threadmodel.Thread, parents
 				ReplyPermission: string(p.ReplyPermission),
 				Media:           fb.ToMediaResponses(mediaByThread[p.ThreadID]),
 				Poll:            fb.PollForParent(p),
-				Stats:           threaddto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
+				Stats:           threaddto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount, Shares: p.ShareCount},
 				CreatedAt:       dtoutils.Wrap(p.CreatedAt),
 				UpdatedAt:       dtoutils.Wrap(p.UpdatedAt),
 			}
@@ -206,6 +206,7 @@ func (c *ExploreController) toCommunityResponse(comm *communitymodel.Community) 
 		Visibility:   string(comm.Visibility),
 		BannerURL:    bannerURL,
 		MemberCount:  comm.MemberCount,
+		IsActive:     comm.IsWritable(),
 		CreatedAt:    dtoutils.Wrap(comm.CreatedAt),
 		UpdatedAt:    dtoutils.Wrap(comm.UpdatedAt),
 	}

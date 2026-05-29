@@ -214,6 +214,28 @@ func (c *ThreadController) RefreshFeed(ctx *fiber.Ctx) error {
 	return ctx.SendStatus(fiber.StatusNoContent)
 }
 
+// GetNewForYouSince returns visible feed-eligible threads created after the
+// supplied since_id, newest-first. Powers "Show N new posts" — the frontend
+// calls this on banner click and prepends the results onto the existing feed
+// instead of triggering /feed/refresh (which reshuffles the seed and can
+// surface older threads, re-triggering the banner).
+func (c *ThreadController) GetNewForYouSince(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	sinceID, _ := strconv.ParseUint(ctx.Query("since_id", "0"), 10, 64)
+	limit, _ := strconv.Atoi(ctx.Query("limit", "50"))
+	threads, parents, err := c.threadService.GetNewForYouSinceID(ctx.Context(), claims.UserID, uint(sinceID), limit)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
+		Data: c.BuildUserFeedItemsNoPin(threads, parents, &claims.UserID),
+		Meta: threaddto.FeedMeta{Total: int64(len(threads)), Page: 1, Limit: limit},
+	})
+}
+
 // GetNewFeedCount returns the count of feed-eligible threads created after
 // the supplied since_id, capped at 1000. Powers the "Show N new posts" banner.
 func (c *ThreadController) GetNewFeedCount(ctx *fiber.Ctx) error {

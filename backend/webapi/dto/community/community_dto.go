@@ -18,6 +18,7 @@ type CommunityResponse struct {
 	Visibility   string                                       `json:"visibility"`
 	BannerURL    string                                       `json:"banner_url"`
 	MemberCount  int                                          `json:"member_count"`
+	IsActive     bool                                         `json:"is_active"`
 	TopMembers   []CommunityTopMemberResponse                 `json:"top_members"`
 	CreatedAt    utils.FormattedTime                          `json:"created_at"`
 	UpdatedAt    utils.FormattedTime                          `json:"updated_at"`

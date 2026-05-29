@@ -1,6 +1,7 @@
 'use client';
 
-import { Bookmark, Heart, MessageCircle, Repeat2 } from 'lucide-react';
+import type { MouseEvent } from 'react';
+import { Bookmark, Heart, MessageCircle, Repeat2, Send } from 'lucide-react';
 import { ActionButton } from '@/components/thread/ActionButton';
 
 interface ActionBarStats {
@@ -8,6 +9,7 @@ interface ActionBarStats {
   reposts: number;
   bookmarks: number;
   comments: number;
+  shares?: number;
 }
 
 interface ActionBarProps {
@@ -17,8 +19,9 @@ interface ActionBarProps {
   isBookmarked: boolean;
   onLike?: () => void;
   onRepost?: () => void;
-  onBookmark?: () => void;
+  onBookmark?: (e: MouseEvent<HTMLButtonElement>) => void;
   onReply?: () => void;
+  onShare?: (e: MouseEvent<HTMLButtonElement>) => void;
   size?: 'sm' | 'md';
 }
 
@@ -31,6 +34,7 @@ export function ActionBar({
   onRepost,
   onBookmark,
   onReply,
+  onShare,
   size = 'md',
 }: ActionBarProps) {
   const iconSize = size === 'sm' ? 18 : 20;
@@ -80,6 +84,19 @@ export function ActionBar({
           strokeWidth={sw}
           fill={isBookmarked ? 'var(--accent)' : 'none'}
         />
+      </ActionButton>
+
+      <ActionButton
+        aria-label="Share"
+        onClick={onShare}
+        tint="var(--accent)"
+        softTint="var(--accent-soft)"
+        size={size}
+      >
+        <Send size={iconSize} strokeWidth={sw} />
+        {(stats.shares ?? 0) > 0 ? (
+          <span style={{ fontSize: 14 }}>{stats.shares}</span>
+        ) : null}
       </ActionButton>
     </div>
   );

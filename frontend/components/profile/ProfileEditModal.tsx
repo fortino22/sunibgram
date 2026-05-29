@@ -4,19 +4,11 @@ import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Camera, X, Trash2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Camera, X, Trash2, Lock } from 'lucide-react';
 import { useUpdateProfile } from '@/hooks/useUpdateProfile';
-import { useAuthStore } from '@/stores/authStore';
 import { Avatar } from '@/components/shared/Avatar';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
-import { api } from '@/lib/api';
 import type { UserProfile } from '@/lib/services/profile';
-
-interface BackendFaculty {
-  faculty_id: number;
-  faculty_name: string;
-}
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required').max(50, 'Max 50 characters'),
@@ -39,7 +31,6 @@ interface ProfileEditModalProps {
 
 export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
   const { mutate, isPending, error } = useUpdateProfile();
-  const token = useAuthStore((s) => s.token);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,16 +41,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
   const [bannerPreview, setBannerPreview] = useState<string | null>(profile.banner ?? null);
   const [clearBanner, setClearBanner] = useState(false);
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null);
-  const [selectedFacultyId, setSelectedFacultyId] = useState<string>(
-    profile.faculty_id ? String(profile.faculty_id) : ''
-  );
-
-  const { data: facultiesData } = useQuery({
-    queryKey: ['faculties'],
-    queryFn: () => api.get<{ data: BackendFaculty[] }>('/api/faculties', token ?? undefined),
-    staleTime: 5 * 60 * 1000,
-  });
-  const faculties = facultiesData?.data ?? [];
+  const facultyName = profile.faculty?.faculty_name ?? '—';
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -112,7 +94,6 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
         banner: bannerFile,
         clearAvatar,
         clearBanner,
-        facultyId: selectedFacultyId || undefined,
         birthdayDate: values.birthdayDate || undefined,
       },
       { onSuccess: () => onClose() }
@@ -220,18 +201,31 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <label htmlFor="faculty" style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Faculty</label>
-              <select
-                id="faculty"
-                value={selectedFacultyId}
-                onChange={(e) => setSelectedFacultyId(e.target.value)}
-                style={{ width: '100%', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: selectedFacultyId ? 'var(--text)' : 'var(--text-tertiary)', fontSize: 15, fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+              <label style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Faculty</label>
+              <div
+                style={{
+                  width: '100%',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  color: 'var(--text-tertiary)',
+                  fontSize: 15,
+                  fontFamily: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  cursor: 'not-allowed',
+                }}
+                title="Faculty cannot be changed"
               >
-                <option value="">Select faculty</option>
-                {faculties.map((f) => (
-                  <option key={f.faculty_id} value={String(f.faculty_id)}>{f.faculty_name}</option>
-                ))}
-              </select>
+                <span style={{ color: profile.faculty?.faculty_name ? 'var(--text)' : 'var(--text-tertiary)' }}>{facultyName}</span>
+                <Lock size={14} strokeWidth={1.8} />
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 1.4 }}>
+                Faculty cannot be changed after registration.
+              </p>
             </div>
 
             {error && <div style={{ fontSize: 13, color: 'var(--coral)', marginBottom: 12 }}>{(error as Error).message}</div>}

@@ -10,6 +10,7 @@ import { useCommunity, useCommunityUsers } from '@/hooks/useCommunities';
 import { useUpdateMemberRole } from '@/hooks/useCommunityMutations';
 import { useAuthStore } from '@/stores/authStore';
 import { EmptyState } from '@/components/shared/EmptyState';
+import { DangerConfirmModal } from '@/components/shared/DangerConfirmModal';
 import type { CommunityRole } from '@/lib/services/communities';
 
 type RoleFilter = 'all' | 'MEMBER' | 'ADMIN';
@@ -41,6 +42,7 @@ export default function CommunityMembersPage() {
   const [inputValue, setInputValue] = useState('');
   const [query, setQuery] = useState('');
   const [openMenuUserId, setOpenMenuUserId] = useState<number | null>(null);
+  const [pendingPromotion, setPendingPromotion] = useState<{ userId: number; name: string } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const communityQuery = useCommunity(isValidId ? communityId : undefined);
@@ -81,9 +83,24 @@ export default function CommunityMembersPage() {
     return options.filter((r) => r !== currentRole);
   }
 
-  function handleRoleChange(userId: number, role: CommunityRole) {
-    updateRole.mutate({ userId, role });
+  function handleRoleChange(userId: number, name: string, role: CommunityRole) {
     setOpenMenuUserId(null);
+    if (role === 'ADMIN') {
+      setPendingPromotion({ userId, name });
+      return;
+    }
+    updateRole.mutate({ userId, role });
+  }
+
+  function confirmPromotion() {
+    if (!pendingPromotion) return;
+    const { userId } = pendingPromotion;
+    updateRole.mutate(
+      { userId, role: 'ADMIN' },
+      {
+        onSettled: () => setPendingPromotion(null),
+      }
+    );
   }
 
   const isUpdating = updateRole.isPending;
@@ -308,7 +325,7 @@ export default function CommunityMembersPage() {
                           {getTargetRoles(member.role).map((role) => (
                             <button
                               key={role}
-                              onClick={() => handleRoleChange(member.user_id, role)}
+                              onClick={() => handleRoleChange(member.user_id, member.name || member.username, role)}
                               style={{
                                 display: 'block',
                                 width: '100%',
@@ -357,6 +374,19 @@ export default function CommunityMembersPage() {
           );
         })}
       </div>
+
+      <DangerConfirmModal
+        open={pendingPromotion !== null}
+        title={pendingPromotion ? `Promote ${pendingPromotion.name} to admin?` : ''}
+        description="You will be demoted to member. Each community has only one admin."
+        confirmText={pendingPromotion?.name}
+        confirmLabel="Promote to admin"
+        busy={updateRole.isPending}
+        onConfirm={confirmPromotion}
+        onClose={() => {
+          if (!updateRole.isPending) setPendingPromotion(null);
+        }}
+      />
     </div>
   );
 }

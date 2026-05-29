@@ -8,6 +8,7 @@ import (
 
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	infrarepoShared "github.com/sunibgram/infrastructure/repository/_shared"
+	hashtagrepo "github.com/sunibgram/infrastructure/repository/hashtag"
 )
 
 func (r *threadCached) Save(thread *threadmodel.Thread) error {
@@ -191,13 +192,13 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, isOfficia
 	ctx := context.Background()
 	oldEventID, hadOldEvent := infrarepoShared.EventIDForThread(r.db.readDB, threadID)
 	var stats threadmodel.Thread
-	_ = r.db.readDB.Select("like_count", "repost_count").First(&stats, threadID).Error
+	_ = r.db.readDB.Select("like_count", "repost_count", "share_count").First(&stats, threadID).Error
 	if err := r.db.writeDB.Where("thread_id = ?", threadID).Delete(&threadmodel.ThreadEvent{}).Error; err != nil {
 		return err
 	}
 	if eventID == nil || *eventID == "" {
 		if hadOldEvent {
-			infrarepoShared.PatchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount)
+			infrarepoShared.PatchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount, -stats.ShareCount)
 			infrarepoShared.RefreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
 		}
 		_ = r.cache.InvalidateTag(ctx, infrarepoShared.EventThreadsGlobalTag())
@@ -208,10 +209,10 @@ func (r *threadCached) syncThreadEvent(threadID uint, eventID *string, isOfficia
 	}
 	if !hadOldEvent || oldEventID != *eventID {
 		if hadOldEvent {
-			infrarepoShared.PatchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount)
+			infrarepoShared.PatchEventCounters(r.db.writeDB, r.cache, oldEventID, -1, -stats.LikeCount, -stats.RepostCount, -stats.ShareCount)
 			infrarepoShared.RefreshEventParticipantCount(r.db.writeDB, r.cache, oldEventID)
 		}
-		infrarepoShared.PatchEventCounters(r.db.writeDB, r.cache, *eventID, 1, stats.LikeCount, stats.RepostCount)
+		infrarepoShared.PatchEventCounters(r.db.writeDB, r.cache, *eventID, 1, stats.LikeCount, stats.RepostCount, stats.ShareCount)
 		infrarepoShared.RefreshEventParticipantCount(r.db.writeDB, r.cache, *eventID)
 	}
 	_ = r.cache.InvalidateTag(ctx, infrarepoShared.EventThreadsGlobalTag())
@@ -236,6 +237,8 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 		thread.BookmarkCount = max(thread.BookmarkCount+delta, 0)
 	case "comment_count":
 		thread.CommentCount = max(thread.CommentCount+delta, 0)
+	case "share_count":
+		thread.ShareCount = max(thread.ShareCount+delta, 0)
 	}
 	r.cache.Set(ctx, key, thread, r.ttl)
 	r.invalidateFeedCachesByThreadID(ctx, threadID)
@@ -252,6 +255,21 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 	}
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
+}
+
+func (r *threadCached) IncrementShareCount(threadID uint) error {
+	if err := r.db.writeDB.Model(&threadmodel.Thread{}).
+		Where("thread_id = ?", threadID).
+		UpdateColumn("share_count", gorm.Expr("share_count + 1")).Error; err != nil {
+		return err
+	}
+	infrarepoShared.PatchEventCounterByThreadID(r.db.writeDB, r.cache, threadID, "share_count", 1)
+	hashtagrepo.PatchHashtagCounterByThreadID(r.db.writeDB, r.cache, threadID, "share_count", 1)
+	r.patchCachedCount(threadID, "share_count", 1)
+	ctx := context.Background()
+	_ = r.cache.InvalidateTag(ctx, infrarepoShared.ThreadRootsGlobalTag())
+	infrarepoShared.InvalidateExplorePostCaches(ctx, r.cache)
+	return nil
 }
 
 func (r *threadCached) Delete(id uint) error {

@@ -84,6 +84,7 @@ type FeedStats struct {
 	Reposts   int `json:"reposts"`
 	Bookmarks int `json:"bookmarks"`
 	Comments  int `json:"comments"`
+	Shares    int `json:"shares"`
 }
 
 type FeedParentContext struct {

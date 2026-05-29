@@ -12,10 +12,15 @@ import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
+import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
+import { ShareModal } from '@/components/share/ShareModal';
+import { SharePopover } from '@/components/share/SharePopover';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
+import { useThreadActions } from '@/hooks/useThreadActions';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import type { CommunityRole } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
+import { useComposeStore } from '@/stores/composeStore';
 import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from '@/components/thread/threadUtils';
 import { ThreadBody } from '@/components/thread/ThreadBody';
 import { ImageDetailModal } from '@/components/thread/ImageDetailModal';
@@ -27,10 +32,6 @@ interface ProfileThreadCardProps {
   replyingTo?: string;
   replyingToId?: number;
   hideParentContext?: boolean;
-  onLike?: () => void;
-  onRepost?: () => void;
-  onBookmark?: () => void;
-  onReply?: () => void;
   communityRole?: CommunityRole | null;
   onPinThread?: (threadId: number) => void;
   onUnpinThread?: (threadId: number) => void;
@@ -38,16 +39,32 @@ interface ProfileThreadCardProps {
   inCommunityContext?: boolean;
 }
 
-export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParentContext = false, onLike, onRepost, onBookmark, onReply, communityRole, onPinThread, onUnpinThread, pinningThread, inCommunityContext = false }: ProfileThreadCardProps) {
+export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParentContext = false, communityRole, onPinThread, onUnpinThread, pinningThread, inCommunityContext = false }: ProfileThreadCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
+  const { like, repost, bookmark } = useThreadActions(thread);
+  const openReply = useComposeStore((s) => s.openReply);
   const [isEditing, setIsEditing] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+  const [shareAnchor, setShareAnchor] = useState<DOMRect | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const author = getThreadAuthor(thread);
+  const bookmarkTargetId = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number'
+    ? thread.original_thread_id
+    : thread.id;
+
+  function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
+    if (bookmark.isPending) return;
+    const wasBookmarked = thread.is_bookmarked === true;
+    bookmark.mutate();
+    if (!wasBookmarked) setBookmarkAnchor(e.currentTarget.getBoundingClientRect());
+  }
+
   const canManage = isOwnThread(thread, currentUserId);
   const canReport = currentUserId != null && currentUserId !== thread.author.id;
   const replyUsername = replyingTo ?? thread.parent_context?.author.username;
@@ -285,16 +302,27 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               isLiked={!!thread.is_liked}
               isReposted={!!thread.is_reposted}
               isBookmarked={!!thread.is_bookmarked}
-              onLike={onLike}
-              onRepost={onRepost}
-              onBookmark={onBookmark}
-              onReply={onReply}
+              onLike={() => { if (!like.isPending) like.mutate(); }}
+              onRepost={() => { if (!repost.isPending) repost.mutate(); }}
+              onBookmark={handleBookmark}
+              onReply={() => openReply(thread)}
+              onShare={(e) => setShareAnchor(e.currentTarget.getBoundingClientRect())}
               size="sm"
             />
           </div>
         </div>
       </div>
     </article>
+
+    {bookmarkAnchor && (
+      <div onClick={(e) => e.stopPropagation()}>
+        <BookmarkCollectionPopover
+          threadId={bookmarkTargetId}
+          anchorRect={bookmarkAnchor}
+          onClose={() => setBookmarkAnchor(null)}
+        />
+      </div>
+    )}
 
     {reportModalOpen && (
       <div onClick={(e) => e.stopPropagation()}>
@@ -310,6 +338,21 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
       onConfirm={() => void handleDeleteConfirm()}
       onCancel={() => setDeleteModalOpen(false)}
     />
+    {shareAnchor && (
+      <div onClick={(e) => e.stopPropagation()}>
+        <SharePopover
+          threadId={bookmarkTargetId}
+          anchorRect={shareAnchor}
+          onClose={() => setShareAnchor(null)}
+          onOpenChatModal={() => { setShareAnchor(null); setShareOpen(true); }}
+        />
+      </div>
+    )}
+    {shareOpen && (
+      <div onClick={(e) => e.stopPropagation()}>
+        <ShareModal threadId={bookmarkTargetId} onClose={() => setShareOpen(false)} />
+      </div>
+    )}
     </>
   );
 }

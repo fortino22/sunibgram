@@ -9,6 +9,7 @@ import { CommunityAboutTab } from '@/components/community/CommunityAboutTab';
 import { CommunityMembersPanel } from '@/components/community/CommunityMembersPanel';
 import { CommunityRequestCard } from '@/components/community/CommunityRequestCard';
 import { EditCommunityModal } from '@/components/community/EditCommunityModal';
+import { DangerConfirmModal } from '@/components/shared/DangerConfirmModal';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MediaGrid } from '@/components/shared/MediaGrid';
 import { ThreadCard } from '@/components/thread/ThreadCard';
@@ -52,10 +53,20 @@ export default function CommunityDetailPage() {
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [membershipOverride, setMembershipOverride] = useState<CommunityRole | 'none' | null>(null);
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(null);
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const communityQuery = useCommunity(isValidId ? communityId : undefined);
   const membersQuery = useCommunityMembers(isValidId ? communityId : undefined);
-  const requestsQuery = useCommunityRequests(isValidId ? communityId : undefined);
+  const isAdminForRequests =
+    currentUserId != null &&
+    (membersQuery.data?.data ?? []).some(
+      (m) => m.user_id === currentUserId && m.role === 'ADMIN',
+    );
+  const requestsQuery = useCommunityRequests(
+    isValidId ? communityId : undefined,
+    isAdminForRequests,
+  );
   const pinsQuery = usePinnedCommunities();
   const latestQuery = useCommunityThreadsLatest(isValidId && activeTab === 'latest' ? communityId : undefined);
   const topQuery = useCommunityThreadsTop(isValidId && activeTab === 'top' ? communityId : undefined);
@@ -107,8 +118,9 @@ export default function CommunityDetailPage() {
     membershipOverride === 'none' ? null :
     membershipOverride !== null ? membershipOverride :
     listRole;
-  const isAdmin = myRole === 'ADMIN' || isOwnerByCreation;
-  const effectiveCommunityRole: CommunityRole | null = isOwnerByCreation ? 'ADMIN' : myRole;
+  const isAdmin = myRole === 'ADMIN';
+  const effectiveCommunityRole: CommunityRole | null = myRole;
+  void isOwnerByCreation;
 
   const threadTabs: { id: Tab; label: string }[] = [
     { id: 'top', label: 'Top' },
@@ -130,13 +142,17 @@ export default function CommunityDetailPage() {
     }
   }
 
-  async function handleLeave() {
-    if (!window.confirm('Leave this community?')) return;
+  function handleLeave() {
+    setConfirmLeaveOpen(true);
+  }
+
+  async function confirmLeave() {
     try {
       await leaveMutation.mutateAsync();
       setMembershipOverride('none');
+      setConfirmLeaveOpen(false);
     } catch {
-      // noop
+      setConfirmLeaveOpen(false);
     }
   }
 
@@ -158,13 +174,17 @@ export default function CommunityDetailPage() {
     }
   }
 
-  async function handleDelete() {
-    if (!window.confirm(`Delete "${community.name}"? This cannot be undone.`)) return;
+  function handleDelete() {
+    setConfirmDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
     try {
       await deleteMutation.mutateAsync(communityId);
+      setConfirmDeleteOpen(false);
       router.push('/communities');
     } catch {
-      // noop
+      setConfirmDeleteOpen(false);
     }
   }
 
@@ -218,10 +238,30 @@ export default function CommunityDetailPage() {
         </button>
       </div>
 
+      {community.is_active === false && (
+        <div
+          style={{
+            padding: '12px 16px',
+            background: 'var(--coral-soft, rgba(239,68,68,0.08))',
+            color: 'var(--coral, #e53e3e)',
+            fontSize: 13,
+            lineHeight: 1.5,
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          {isOwnerByCreation
+            ? 'Your premium has expired — this community is locked. Resubscribe to manage it (edit, post, pin, approve requests, change roles, kick members, or delete).'
+            : isAdmin
+              ? 'This community is locked because the owner\'s premium has expired. All admin actions are disabled until the owner resubscribes.'
+              : 'This community is currently inactive. New posts are paused until the owner resubscribes.'}
+        </div>
+      )}
+
       {/* Community header */}
       <CommunityHeader
         community={community}
         myRole={myRole}
+        isAdmin={isAdmin}
         isOwner={isOwnerByCreation}
         hasPendingRequest={hasPendingRequest}
         isPinned={isPinned}
@@ -230,12 +270,14 @@ export default function CommunityDetailPage() {
         leavePending={leaveMutation.isPending}
         requestPending={requestMutation.isPending}
         cancelPending={cancelMutation.isPending}
+        deletePending={deleteMutation.isPending}
         onPinToggle={handlePinToggle}
         onJoin={handleJoin}
         onLeave={handleLeave}
         onRequest={handleRequest}
         onCancelRequest={handleCancelRequest}
         onEdit={() => setShowEdit(true)}
+        onDelete={handleDelete}
         onShowMembers={() => setShowMembersPanel(true)}
       />
 
@@ -390,11 +432,30 @@ export default function CommunityDetailPage() {
           community={community}
           onClose={() => setShowEdit(false)}
           onSuccess={() => setShowEdit(false)}
-          onDelete={handleDelete}
-          deletePending={deleteMutation.isPending}
         />
       )}
 
+      <DangerConfirmModal
+        open={confirmLeaveOpen}
+        title="Leave community?"
+        description={`You will lose access to posts and discussions in ${community.name}. You can rejoin later.`}
+        confirmText={community.name}
+        confirmLabel="Leave community"
+        busy={leaveMutation.isPending}
+        onConfirm={confirmLeave}
+        onClose={() => setConfirmLeaveOpen(false)}
+      />
+
+      <DangerConfirmModal
+        open={confirmDeleteOpen}
+        title={`Delete ${community.name}?`}
+        description="This permanently removes the community, its posts, and all member data. This action cannot be undone."
+        confirmText={community.name}
+        confirmLabel="Delete community"
+        busy={deleteMutation.isPending}
+        onConfirm={confirmDelete}
+        onClose={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   );
 }

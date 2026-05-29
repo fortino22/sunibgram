@@ -70,12 +70,12 @@ export function useCommunityMembers(communityId: number | undefined) {
   });
 }
 
-export function useCommunityRequests(communityId: number | undefined) {
+export function useCommunityRequests(communityId: number | undefined, enabled: boolean = true) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
     queryKey: ['community', communityId, 'requests'],
     queryFn: () => getCommunityJoinRequests(communityId!, token!, { limit: 50 }),
-    enabled: !!token && !!communityId,
+    enabled: !!token && !!communityId && enabled,
   });
 }
 

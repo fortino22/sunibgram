@@ -11,12 +11,14 @@ import (
 	chatreadrepoiface "github.com/sunibgram/domain/repository/chat_read"
 	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
 	communityrepoiface "github.com/sunibgram/domain/repository/community"
+	communityactionconfirmationrepoiface "github.com/sunibgram/domain/repository/community_action_confirmation"
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	communitypinrepoiface "github.com/sunibgram/domain/repository/community_pin"
 	communityrequestrepoiface "github.com/sunibgram/domain/repository/community_request"
 	communityrulerepoiface "github.com/sunibgram/domain/repository/community_rule"
 	communitythreadpinrepoiface "github.com/sunibgram/domain/repository/community_thread_pin"
 	eventrepoiface "github.com/sunibgram/domain/repository/event"
+	eventactionconfirmationrepoiface "github.com/sunibgram/domain/repository/event_action_confirmation"
 	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
 	eventpinrepoiface "github.com/sunibgram/domain/repository/event_pin"
 	eventreviewrepoiface "github.com/sunibgram/domain/repository/event_review"
@@ -56,12 +58,14 @@ import (
 	chatreadrepo "github.com/sunibgram/infrastructure/repository/chat_read"
 	chatroomrepo "github.com/sunibgram/infrastructure/repository/chat_room"
 	communityrepo "github.com/sunibgram/infrastructure/repository/community"
+	communityactionconfirmationrepo "github.com/sunibgram/infrastructure/repository/community_action_confirmation"
 	communitymemberrepo "github.com/sunibgram/infrastructure/repository/community_member"
 	communitypinrepo "github.com/sunibgram/infrastructure/repository/community_pin"
 	communityrequestrepo "github.com/sunibgram/infrastructure/repository/community_request"
 	communityrulerepo "github.com/sunibgram/infrastructure/repository/community_rule"
 	communitythreadpinrepo "github.com/sunibgram/infrastructure/repository/community_thread_pin"
 	eventrepo "github.com/sunibgram/infrastructure/repository/event"
+	eventactionconfirmationrepo "github.com/sunibgram/infrastructure/repository/event_action_confirmation"
 	eventparticipantrepo "github.com/sunibgram/infrastructure/repository/event_participant"
 	eventpinrepo "github.com/sunibgram/infrastructure/repository/event_pin"
 	eventreviewrepo "github.com/sunibgram/infrastructure/repository/event_review"
@@ -114,14 +118,16 @@ type Repositories struct {
 	Category             categoryrepoiface.ICategoryRepository
 	Violation            violationrepoiface.IViolationRepository
 	Report               reportrepoiface.IReportRepository
-	Community            communityrepoiface.ICommunityRepository
-	CommunityMember      communitymemberrepoiface.ICommunityMemberRepository
+	Community                   communityrepoiface.ICommunityRepository
+	CommunityActionConfirmation communityactionconfirmationrepoiface.ICommunityActionConfirmationRepository
+	CommunityMember             communitymemberrepoiface.ICommunityMemberRepository
 	CommunityRequest     communityrequestrepoiface.ICommunityRequestRepository
 	CommunityRule        communityrulerepoiface.ICommunityRuleRepository
 	CommunityThreadPin   communitythreadpinrepoiface.ICommunityThreadPinRepository
 	CommunityPin         communitypinrepoiface.ICommunityPinRepository
-	EventPin             eventpinrepoiface.IEventPinRepository
-	EventParticipant     eventparticipantrepoiface.IEventParticipantRepository
+	EventPin                eventpinrepoiface.IEventPinRepository
+	EventParticipant        eventparticipantrepoiface.IEventParticipantRepository
+	EventActionConfirmation eventactionconfirmationrepoiface.IEventActionConfirmationRepository
 	Faculty              facultyrepoiface.IFacultyRepository
 	Feedback             feedbackrepoiface.IFeedbackRepository
 	UserFaculty          userfacultyrepoiface.IUserFacultyRepository
@@ -165,14 +171,16 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		Category:             categoryrepo.NewCategoryRepository(w, r, c),
 		Violation:            violationrepo.NewViolationRepository(w, r),
 		Report:               reportrepo.NewReportRepository(w, r),
-		Community:            communityrepo.NewCommunityRepository(w, r, c),
-		CommunityMember:      communitymemberrepo.NewCommunityMemberRepository(w, r, c),
+		Community:                   communityrepo.NewCommunityRepository(w, r, c),
+		CommunityActionConfirmation: communityactionconfirmationrepo.NewCommunityActionConfirmationRepository(w, r),
+		CommunityMember:             communitymemberrepo.NewCommunityMemberRepository(w, r, c),
 		CommunityRequest:     communityrequestrepo.NewCommunityRequestRepository(w, r, c),
 		CommunityRule:        communityrulerepo.NewCommunityRuleRepository(w, r),
 		CommunityThreadPin:   communitythreadpinrepo.NewCommunityThreadPinRepository(w, r),
 		CommunityPin:         communitypinrepo.NewCommunityPinRepository(w, r, c),
-		EventPin:             eventpinrepo.NewEventPinRepository(w, r, c),
-		EventParticipant:     eventparticipantrepo.NewEventParticipantRepository(w, r, c),
+		EventPin:                eventpinrepo.NewEventPinRepository(w, r, c),
+		EventParticipant:        eventparticipantrepo.NewEventParticipantRepository(w, r, c),
+		EventActionConfirmation: eventactionconfirmationrepo.NewEventActionConfirmationRepository(w, r),
 		Faculty:              facultyrepo.NewFacultyRepository(w, r, c),
 		Feedback:             feedbackrepo.NewFeedbackRepository(w, r, c),
 		UserFaculty:          userfacultyrepo.NewUserFacultyRepository(w, r, c),

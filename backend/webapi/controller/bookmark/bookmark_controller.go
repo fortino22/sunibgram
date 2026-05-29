@@ -56,14 +56,18 @@ func (c *BookmarkController) Bookmark(ctx *fiber.Ctx) error {
 		return nil
 	}
 
-	if err := c.bookmarkService.Bookmark(claims.UserID, threadID); err != nil {
+	bookmarkID, err := c.bookmarkService.Bookmark(claims.UserID, threadID)
+	if err != nil {
 		if err.Error() == "thread not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return ctx.Status(fiber.StatusConflict).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "bookmarked successfully"})
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message":     "bookmarked successfully",
+		"bookmark_id": bookmarkID,
+	})
 }
 
 func (c *BookmarkController) Unbookmark(ctx *fiber.Ctx) error {

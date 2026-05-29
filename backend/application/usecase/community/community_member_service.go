@@ -11,6 +11,7 @@ import (
 	communityrepoiface "github.com/sunibgram/domain/repository/community"
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	communityactionconfirmationsvciface "github.com/sunibgram/domain/service/community_action_confirmation"
 	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
 )
 
@@ -19,6 +20,7 @@ type CommunityMemberService struct {
 	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
 	followRepo    followrepoiface.IFollowRepository
 	cacheRepo     cacherepoiface.ICacheRepository
+	auditSvc      communityactionconfirmationsvciface.ICommunityActionConfirmationService
 }
 
 func IsCommunityAdmin(role communitymembermodel.CommunityMemberRole) bool {
@@ -30,12 +32,14 @@ func NewCommunityMemberService(
 	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
 	followRepo followrepoiface.IFollowRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
+	auditSvc communityactionconfirmationsvciface.ICommunityActionConfirmationService,
 ) communitymembersvciface.ICommunityMemberService {
 	return &CommunityMemberService{
 		communityRepo: communityRepo,
 		memberRepo:    memberRepo,
 		followRepo:    followRepo,
 		cacheRepo:     cacheRepo,
+		auditSvc:      auditSvc,
 	}
 }
 
@@ -76,8 +80,18 @@ func (s *CommunityMemberService) Leave(ctx context.Context, communityID, userID 
 	if community.UserID == userID {
 		return errors.New("creator cannot leave the community")
 	}
-	if _, err := s.memberRepo.FindMember(communityID, userID); err != nil {
+	membership, err := s.memberRepo.FindMember(communityID, userID)
+	if err != nil {
 		return errors.New("not a member")
+	}
+	if IsCommunityAdmin(membership.Role) {
+		adminCount, err := s.memberRepo.CountAdmins(communityID)
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return errors.New("sole admin cannot leave; transfer admin or delete community")
+		}
 	}
 	if err := s.memberRepo.Delete(communityID, userID); err != nil {
 		return err
@@ -141,6 +155,9 @@ func (s *CommunityMemberService) RemoveMember(ctx context.Context, communityID, 
 	if err != nil {
 		return errors.New("community not found")
 	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
+	}
 	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
 	if err != nil || !IsCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
@@ -174,15 +191,42 @@ func (s *CommunityMemberService) UpdateRole(ctx context.Context, communityID, ac
 	if err != nil {
 		return errors.New("community not found")
 	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
+	}
 	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
 	if err != nil || !IsCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
 	}
-	if community.UserID == targetUserID {
-		return errors.New("cannot change the community creator role")
-	}
-	if _, err := s.memberRepo.FindMember(communityID, targetUserID); err != nil {
+	target, err := s.memberRepo.FindMember(communityID, targetUserID)
+	if err != nil {
 		return errors.New("member not found")
+	}
+
+	if role == communitymembermodel.CommunityMemberRoleAdmin {
+		if targetUserID == actorUserID {
+			return nil
+		}
+		if target.Role == communitymembermodel.CommunityMemberRoleAdmin {
+			return nil
+		}
+		if err := s.memberRepo.TransferAdmin(communityID, actorUserID, targetUserID); err != nil {
+			return err
+		}
+		if s.auditSvc != nil {
+			_ = s.auditSvc.RecordAdminTransfer(ctx, communityID, actorUserID, targetUserID)
+		}
+		return nil
+	}
+
+	if targetUserID == actorUserID {
+		count, err := s.memberRepo.CountAdmins(communityID)
+		if err != nil {
+			return err
+		}
+		if count <= 1 {
+			return errors.New("sole admin cannot self-demote; transfer admin or delete community")
+		}
 	}
 	return s.memberRepo.UpdateRole(communityID, targetUserID, role)
 }

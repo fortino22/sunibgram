@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Icon } from '@/components/ui/Icon';
 import { CommunityDiscoverCard } from '@/components/community/CommunityDiscoverCard';
 import { CommunityThreadCard } from '@/components/community/CommunityThreadCard';
+import { CategoryFilterRow } from '@/components/community/CategoryFilterRow';
 import { EmptyState } from '@/components/shared/EmptyState';
 import {
   useDiscoverCommunities,
@@ -23,9 +24,6 @@ export default function DiscoverCommunitiesPage() {
   const [searchTab, setSearchTab] = useState<SearchTab>('communities');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const categorySliderRef = useRef<HTMLDivElement>(null);
-  const categoryDrag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -46,31 +44,6 @@ export default function DiscoverCommunitiesPage() {
   const categories = categoriesData?.data ?? [];
   const isSearching = query.length > 0;
 
-  const onCategoryMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = categorySliderRef.current;
-    if (!el) return;
-    categoryDrag.current = { active: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft, moved: false };
-    el.style.cursor = 'grabbing';
-    el.style.userSelect = 'none';
-  };
-
-  const onCategoryMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!categoryDrag.current.active) return;
-    const el = categorySliderRef.current;
-    if (!el) return;
-    const walk = e.pageX - el.offsetLeft - categoryDrag.current.startX;
-    if (Math.abs(walk) > 4) categoryDrag.current.moved = true;
-    el.scrollLeft = categoryDrag.current.scrollLeft - walk;
-  };
-
-  const onCategoryMouseUp = () => {
-    categoryDrag.current.active = false;
-    if (categorySliderRef.current) {
-      categorySliderRef.current.style.cursor = 'grab';
-      categorySliderRef.current.style.userSelect = '';
-    }
-  };
-
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       {/* Header */}
@@ -80,7 +53,7 @@ export default function DiscoverCommunitiesPage() {
           top: 0,
           zIndex: 10,
           backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid var(--border)',
+          borderBottom: isSearching ? 'none' : '1px solid var(--border)',
           padding: '20px 14px',
           display: 'flex',
           gap: 10,
@@ -272,61 +245,13 @@ export default function DiscoverCommunitiesPage() {
           </div>
 
           {/* Category filter strip */}
-          <div
-            ref={categorySliderRef}
-            onMouseDown={onCategoryMouseDown}
-            onMouseMove={onCategoryMouseMove}
-            onMouseUp={onCategoryMouseUp}
-            onMouseLeave={onCategoryMouseUp}
-            style={{
-              display: 'flex',
-              gap: 8,
-              padding: '4px 16px 12px',
-              overflowX: 'auto',
-              cursor: 'grab',
-              scrollbarWidth: 'none',
-            }}
-          >
-            <button
-              onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(undefined); }}
-              className="hover-dim"
-              style={{
-                padding: '6px 16px',
-                borderRadius: 999,
-                border: `1px solid ${!categoryId ? 'var(--text)' : 'var(--border)'}`,
-                background: !categoryId ? 'var(--text)' : 'transparent',
-                color: !categoryId ? 'var(--bg)' : 'var(--text)',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              All
-            </button>
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(c.id); }}
-                className="hover-dim"
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: 999,
-                  border: `1px solid ${categoryId === c.id ? 'var(--text)' : 'var(--border)'}`,
-                  background: categoryId === c.id ? 'var(--text)' : 'transparent',
-                  color: categoryId === c.id ? 'var(--bg)' : 'var(--text)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
+          <CategoryFilterRow
+            categories={categories}
+            selectedId={categoryId}
+            onSelect={setCategoryId}
+            showBorderTop={false}
+          />
+
 
           {discoverQuery.isLoading && (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 14 }}>Loading...</div>

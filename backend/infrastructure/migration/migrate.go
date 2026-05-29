@@ -15,11 +15,13 @@ import (
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	chatroommembermodel "github.com/sunibgram/domain/model/chat_room_member"
 	communitymodel "github.com/sunibgram/domain/model/community"
+	communityactionconfirmationmodel "github.com/sunibgram/domain/model/community_action_confirmation"
 	communitymembermodel "github.com/sunibgram/domain/model/community_member"
 	communitypinmodel "github.com/sunibgram/domain/model/community_pin"
 	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
 	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
 	communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
+	eventactionconfirmationmodel "github.com/sunibgram/domain/model/event_action_confirmation"
 	eventparticipantmodel "github.com/sunibgram/domain/model/event_participant"
 	eventpinmodel "github.com/sunibgram/domain/model/event_pin"
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
@@ -86,8 +88,10 @@ func AutoMigrate(db *gorm.DB) {
 		&communityrulemodel.CommunityRule{},
 		&communitythreadpinmodel.CommunityThreadPin{},
 		&communitypinmodel.UserCommunityPin{},
+		&communityactionconfirmationmodel.CommunityActionConfirmation{},
 		&eventpinmodel.UserEventPin{},
 		&eventparticipantmodel.EventParticipant{},
+		&eventactionconfirmationmodel.EventActionConfirmation{},
 		&facultymodel.Faculty{},
 		&usermodel.UserFaculty{},
 		&ordermodel.Order{},
@@ -113,11 +117,13 @@ func AutoMigrate(db *gorm.DB) {
 		}
 	}
 
+	dropDeadColumns(db)
 	createIndexes(db)
 	addCheckConstraints(db)
 	addColumns(db)
 	addForeignKeys(db)
 	migrateChatEncryption(db)
+	backfillShareCounters(db)
 
 	seedRoles(db)
 	seeder.SeedCategory(db)
@@ -156,6 +162,8 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_trend_reports_hashtag_id ON trend_reports(hashtag_id)",
 		"CREATE INDEX IF NOT EXISTS idx_trend_reports_reason_id ON trend_reports(reason_id)",
 		"CREATE INDEX IF NOT EXISTS idx_trend_reports_reporter_id ON trend_reports(reporter_id)",
+		"DROP INDEX IF EXISTS uniq_trend_report_user_hashtag_reason",
+		"CREATE UNIQUE INDEX IF NOT EXISTS uniq_trend_report_user_hashtag ON trend_reports(reporter_id, hashtag_id)",
 		"CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created ON notifications(recipient_user_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_threads_parent_id ON threads(parent_id) WHERE parent_id IS NOT NULL",
 		"CREATE INDEX IF NOT EXISTS idx_threads_original_thread_id ON threads(original_thread_id) WHERE original_thread_id IS NOT NULL",
@@ -201,6 +209,45 @@ func createIndexes(db *gorm.DB) {
 
 func addColumns(db *gorm.DB) {
 	db.Exec(`ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs jsonb DEFAULT '[]'::jsonb`)
+}
+
+func backfillShareCounters(db *gorm.DB) {
+	db.Exec(`
+		UPDATE events e SET
+			share_count = COALESCE(s.total, 0),
+			week_share_count = COALESCE(s.week, 0)
+		FROM (
+			SELECT te.event_id,
+				SUM(t.share_count) AS total,
+				SUM(CASE WHEN t.created_at > NOW() - INTERVAL '7 days' THEN t.share_count ELSE 0 END) AS week
+			FROM thread_events te
+			JOIN threads t ON t.thread_id = te.thread_id
+			GROUP BY te.event_id
+		) s
+		WHERE e.id = s.event_id
+	`)
+	db.Exec(`
+		UPDATE hashtags h SET
+			share_count = COALESCE(s.total, 0),
+			week_share_count = COALESCE(s.week, 0)
+		FROM (
+			SELECT th.hashtag_id,
+				SUM(t.share_count) AS total,
+				SUM(CASE WHEN t.created_at > NOW() - INTERVAL '7 days' THEN t.share_count ELSE 0 END) AS week
+			FROM thread_hashtags th
+			JOIN threads t ON t.thread_id = th.thread_id
+			GROUP BY th.hashtag_id
+		) s
+		WHERE h.id = s.hashtag_id
+	`)
+}
+
+func dropDeadColumns(db *gorm.DB) {
+	if db.Migrator().HasColumn(&communityactionconfirmationmodel.CommunityActionConfirmation{}, "note") {
+		if err := db.Migrator().DropColumn(&communityactionconfirmationmodel.CommunityActionConfirmation{}, "note"); err != nil {
+			log.Printf("drop note column: %v", err)
+		}
+	}
 }
 
 func addCheckConstraints(db *gorm.DB) {

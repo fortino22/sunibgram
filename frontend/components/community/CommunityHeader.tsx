@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { CommunityData, CommunityRole } from '@/lib/services/communities';
 import { Avatar } from '@/components/shared/Avatar';
 
 interface CommunityHeaderProps {
   community: CommunityData;
   myRole: CommunityRole | null;
+  isAdmin: boolean;
   isOwner: boolean;
   hasPendingRequest: boolean;
   isPinned: boolean;
@@ -15,18 +17,21 @@ interface CommunityHeaderProps {
   leavePending: boolean;
   requestPending: boolean;
   cancelPending: boolean;
+  deletePending: boolean;
   onPinToggle: () => void;
   onJoin: () => void;
   onLeave: () => void;
   onRequest: () => void;
   onCancelRequest: () => void;
   onEdit: () => void;
+  onDelete: () => void;
   onShowMembers: () => void;
 }
 
 export function CommunityHeader({
   community,
   myRole,
+  isAdmin,
   isOwner,
   hasPendingRequest,
   isPinned,
@@ -35,59 +40,39 @@ export function CommunityHeader({
   leavePending,
   requestPending,
   cancelPending,
+  deletePending,
   onPinToggle,
   onJoin,
   onLeave,
   onRequest,
   onCancelRequest,
   onEdit,
+  onDelete,
   onShowMembers,
 }: CommunityHeaderProps) {
+  void isOwner;
   const [joinedHovered, setJoinedHovered] = useState(false);
   const isMember = myRole !== null;
   const isPublic = community.visibility === 'PUBLIC';
 
+  const adminIconBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+    border: '1px solid #808080',
+    borderRadius: 999,
+    width: 36,
+    height: 36,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'transparent',
+    color: 'var(--text-tertiary)',
+    cursor: 'pointer',
+    flexShrink: 0,
+    ...extra,
+  });
+
   function renderActionButton() {
-    if (isOwner) {
-      return (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={onEdit}
-            className="btn-ghost"
-            style={{
-              padding: '7px 18px',
-              borderRadius: 999,
-              border: '1px solid #808080',
-              color: 'var(--text)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Edit
-          </button>
-          <button
-            onClick={onLeave}
-            disabled={leavePending}
-            onMouseEnter={() => setJoinedHovered(true)}
-            onMouseLeave={() => setJoinedHovered(false)}
-            style={{
-              padding: '7px 18px',
-              borderRadius: 999,
-              border: `1px solid ${joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : '#808080'}`,
-              background: 'transparent',
-              color: joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : 'var(--text)',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: leavePending ? 'default' : 'pointer',
-              opacity: leavePending ? 0.6 : 1,
-              transition: 'color 0.15s, border-color 0.15s',
-            }}
-          >
-            {leavePending ? 'Leaving…' : joinedHovered ? 'Leave' : 'Joined'}
-          </button>
-        </div>
-      );
+    if (isAdmin) {
+      return null;
     }
 
     if (isMember) {
@@ -277,17 +262,10 @@ export function CommunityHeader({
               title={isPinned ? 'Unpin community' : 'Pin community'}
               className="btn-ghost"
               style={{
-                border: '1px solid #808080',
-                borderRadius: 999,
-                width: 36,
-                height: 36,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                ...adminIconBtn(),
                 color: isPinned ? 'var(--accent)' : 'var(--text-tertiary)',
                 cursor: pinPending ? 'not-allowed' : 'pointer',
                 opacity: pinPending ? 0.5 : 1,
-                flexShrink: 0,
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -295,6 +273,32 @@ export function CommunityHeader({
                 <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
               </svg>
             </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={onDelete}
+                  disabled={deletePending}
+                  title="Delete community"
+                  className="btn-ghost"
+                  style={{
+                    ...adminIconBtn(),
+                    color: 'var(--coral, #e53e3e)',
+                    cursor: deletePending ? 'not-allowed' : 'pointer',
+                    opacity: deletePending ? 0.5 : 1,
+                  }}
+                >
+                  <Trash2 size={16} />
+                </button>
+                <button
+                  onClick={onEdit}
+                  title="Edit community"
+                  className="btn-ghost"
+                  style={adminIconBtn({ color: 'var(--text)' })}
+                >
+                  <Pencil size={16} />
+                </button>
+              </>
+            )}
             {renderActionButton()}
           </div>
         </div>

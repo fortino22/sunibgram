@@ -4,22 +4,24 @@ export function EventCardSkeleton() {
       className="animate-pulse"
       style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '14px 20px',
-        borderBottom: '1px solid var(--border)',
+        flexDirection: 'column',
+        borderRadius: 16,
+        border: '1px solid var(--border)',
+        background: 'var(--bg-secondary)',
+        overflow: 'hidden',
       }}
     >
-      {/* Thumbnail */}
       <div
-        className="rounded-[10px]"
-        style={{ width: 56, height: 56, flexShrink: 0, background: 'var(--bg-subtle)' }}
+        style={{
+          width: '100%',
+          aspectRatio: '16 / 10',
+          background: 'var(--bg-subtle)',
+        }}
       />
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="mb-2.5 h-4 w-1/2 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
-        <div className="mb-1.5 h-3 w-2/3 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
-        <div className="h-3 w-1/3 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
+      <div style={{ padding: '14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="h-3 w-1/2 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
+        <div className="h-4 w-3/4 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
+        <div className="h-3 w-2/5 rounded-full" style={{ background: 'var(--bg-subtle)' }} />
       </div>
     </div>
   );
