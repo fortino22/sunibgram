@@ -10,7 +10,7 @@ import { useCommunity, useCommunityUsers } from '@/hooks/useCommunities';
 import { useUpdateMemberRole } from '@/hooks/useCommunityMutations';
 import { useAuthStore } from '@/stores/authStore';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { ConfirmModal } from '@/components/admin/ConfirmModal';
+import { DangerConfirmModal } from '@/components/shared/DangerConfirmModal';
 import type { CommunityRole } from '@/lib/services/communities';
 
 type RoleFilter = 'all' | 'MEMBER' | 'ADMIN';
@@ -375,12 +375,12 @@ export default function CommunityMembersPage() {
         })}
       </div>
 
-      <ConfirmModal
+      <DangerConfirmModal
         open={pendingPromotion !== null}
         title={pendingPromotion ? `Promote ${pendingPromotion.name} to admin?` : ''}
         description="You will be demoted to member. Each community has only one admin."
-        confirmLabel="Promote"
-        destructive
+        confirmText={pendingPromotion?.name}
+        confirmLabel="Promote to admin"
         busy={updateRole.isPending}
         onConfirm={confirmPromotion}
         onClose={() => {
