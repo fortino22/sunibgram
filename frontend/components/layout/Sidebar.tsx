@@ -31,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'notifications', href: '/notifications', icon: 'bell',     label: 'Notifications'},
   { id: 'bookmarks',     href: '/bookmarks',     icon: 'bookmark', label: 'Bookmarks' },
   { id: 'profile',       href: '/profile',       icon: 'user',     label: 'Profile' },
+  { id: 'settings',      href: '/settings',      icon: 'settings', label: 'Settings' },
 ];
 
 const ADMIN_NAV_ITEM: NavItem = { id: 'admin', href: '/admin', icon: 'shield', label: 'Admin' };

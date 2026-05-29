@@ -22,6 +22,12 @@ import {
   Calendar,
   Trophy,
   Shield,
+  Settings,
+  Lock,
+  KeyRound,
+  Sparkles,
+  UserCog,
+  ChevronRight,
   type LucideProps,
 } from 'lucide-react';
 import type { FC } from 'react';
@@ -50,6 +56,12 @@ const ICON_MAP: Record<string, FC<LucideProps>> = {
   calendar:     Calendar,
   trophy:       Trophy,
   shield:       Shield,
+  settings:     Settings,
+  lock:         Lock,
+  key:          KeyRound,
+  sparkles:     Sparkles,
+  userCog:      UserCog,
+  chevronRight: ChevronRight,
 };
 
 interface IconProps {
