@@ -7,7 +7,7 @@ import (
 )
 
 type IBookmarkService interface {
-	Bookmark(userID, threadID uint) error
+	Bookmark(userID, threadID uint) (uint, error)
 	Unbookmark(userID, threadID uint) error
 	IsBookmarked(userID, threadID uint) bool
 	AreThreadsBookmarked(userID uint, threadIDs []uint) (map[uint]bool, error)

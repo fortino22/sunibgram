@@ -54,42 +54,42 @@ func NewBookmarkService(
 	}
 }
 
-func (s *BookmarkService) Bookmark(userID, threadID uint) error {
+func (s *BookmarkService) Bookmark(userID, threadID uint) (uint, error) {
 	thread, err := s.threadRepo.FindByID(threadID)
 	if err != nil {
-		return errors.New("thread not found")
+		return 0, errors.New("thread not found")
 	}
 	if thread.Type == threadmodel.ThreadTypeRepost && thread.OriginalThreadID != nil {
 		threadID = *thread.OriginalThreadID
 		original, err := s.threadRepo.FindByID(threadID)
 		if err != nil {
-			return errors.New("thread not found")
+			return 0, errors.New("thread not found")
 		}
 		thread = original
 	}
 	if err := threaduc.CanViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
-		return err
+		return 0, err
 	}
 	if thread.CommunityID != nil {
 		community, err := s.communityRepo.FindByID(*thread.CommunityID)
 		if err != nil {
-			return errors.New("community not found")
+			return 0, errors.New("community not found")
 		}
 		if community.Visibility == communitymodel.CommunityVisibilityPrivate {
 			if _, err := s.memberRepo.FindMember(*thread.CommunityID, userID); err != nil {
-				return errors.New("you must be a member of the community to bookmark this thread")
+				return 0, errors.New("you must be a member of the community to bookmark this thread")
 			}
 		}
 	}
 	exists, err := s.bookmarkRepo.Exists(userID, threadID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if exists {
-		return nil
+		return threadID, nil
 	}
 	if err := s.bookmarkRepo.Save(&bookmarkmodel.Bookmark{UserID: userID, ThreadID: threadID}); err != nil {
-		return err
+		return 0, err
 	}
 	s.threadRepo.InvalidateThread(threadID)
 	if wrapperIDs, err := s.threadRepo.RepostWrapperIDsByOriginal(threadID); err == nil {
@@ -98,7 +98,7 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) error {
 		}
 	}
 	helper.SendInteractionNotification(s.notification, "bookmark", "bookmarked your thread", userID, thread.UserID, threadID)
-	return nil
+	return threadID, nil
 }
 
 func (s *BookmarkService) Unbookmark(userID, threadID uint) error {
