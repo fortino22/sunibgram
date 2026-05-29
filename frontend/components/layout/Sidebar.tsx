@@ -134,7 +134,7 @@ export function Sidebar() {
   const [postHovered, setPostHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const avatarSrc = profile?.avatar ?? null;
-  const isCollapsed = pathname.startsWith('/messages') || pathname.startsWith('/admin');
+  const isCollapsed = pathname.startsWith('/messages') || pathname.startsWith('/admin') || pathname === '/events';
   const navItems = user?.roleName === 'admin' ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
   const openCompose = useComposeStore((s) => s.openCompose);
   const unreadNotifications = useNotificationStore((s) => s.unreadCount);

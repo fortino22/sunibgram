@@ -130,11 +130,14 @@ func (c *EventController) GetByID(ctx *fiber.Ctx) error {
 	if _, ok := ctrlshared.RequireAuth(ctx); !ok {
 		return nil
 	}
-	event, err := c.eventService.GetByID(ctx.Params("id"))
+	event, reviews, err := c.eventService.GetByIDWithReviews(ctx.Params("id"))
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "event not found"})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toResponse(ctx.Context(), event))
+	return ctx.Status(fiber.StatusOK).JSON(eventdto.EventWithReviewHistoryResponse{
+		EventResponse: c.toResponse(ctx.Context(), event),
+		Notes:         c.toEventReviewNoteResponses(reviews),
+	})
 }
 
 func (c *EventController) Update(ctx *fiber.Ctx) error {

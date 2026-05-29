@@ -23,6 +23,21 @@ interface EventDetailResponse extends EventListItemResponse {
   pdf_urls?: string[];
 }
 
+interface EventReviewNoteResponse {
+  revision_number: number;
+  notes: string;
+  created_at: string;
+}
+
+interface MyEventItemResponse extends EventDetailResponse {
+  notes: EventReviewNoteResponse[];
+}
+
+interface MyEventsApiResponse {
+  data: MyEventItemResponse[];
+  meta: { total: number; page: number; limit: number };
+}
+
 interface EventGroupsResponse {
   trending: EventListItemResponse[];
   running: EventListItemResponse[];
@@ -53,6 +68,17 @@ export interface EventItem {
 export interface EventDetail extends EventItem {
   status: string;
   documentUrl?: string;
+}
+
+export interface EventReviewNote {
+  revisionNumber: number;
+  notes: string;
+  createdAt: string;
+}
+
+export interface MyEventItem extends EventItem {
+  status: string;
+  notes: EventReviewNote[];
 }
 
 export interface EventGroups {
@@ -227,6 +253,20 @@ export async function getMyJoinedEvents(token: string): Promise<EventItem[]> {
       ? (response as { data: EventListItemResponse[] }).data
       : [];
   return items.map(mapEventItem);
+}
+
+export async function getMyEvents(token: string, status?: string): Promise<MyEventItem[]> {
+  const qs = status ? `?status=${status}` : '';
+  const response = await api.get<MyEventsApiResponse>(`/api/events/me${qs}`, token);
+  return (response.data ?? []).map((raw) => ({
+    ...mapEventItem(raw),
+    status: raw.status,
+    notes: (raw.notes ?? []).map((n) => ({
+      revisionNumber: n.revision_number,
+      notes: n.notes,
+      createdAt: n.created_at,
+    })),
+  }));
 }
 
 export function getOfficialEventPosts(

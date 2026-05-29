@@ -12,6 +12,7 @@ import (
 type IEventService interface {
 	Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*threadmodel.Event, error)
 	GetByID(id string) (*threadmodel.Event, error)
+	GetByIDWithReviews(id string) (*threadmodel.Event, []eventreviewmodel.EventReview, error)
 	GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error)
 	GetTopRunningOrFuture(limit int) ([]threadmodel.Event, error)
 	GetPending(limit int) ([]threadmodel.Event, error)

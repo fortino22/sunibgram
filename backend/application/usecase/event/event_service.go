@@ -146,6 +146,18 @@ func (s *EventService) GetByID(id string) (*threadmodel.Event, error) {
 	return event, nil
 }
 
+func (s *EventService) GetByIDWithReviews(id string) (*threadmodel.Event, []eventreviewmodel.EventReview, error) {
+	event, err := s.GetByID(id)
+	if err != nil {
+		return nil, nil, err
+	}
+	reviews, err := s.eventReviewRepo.FindByEventIDs([]string{event.ID})
+	if err != nil {
+		return nil, nil, err
+	}
+	return event, reviews[event.ID], nil
+}
+
 func (s *EventService) GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 10)
 	return s.eventRepo.FindGroupedApproved(limit)
