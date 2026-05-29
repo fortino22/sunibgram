@@ -267,13 +267,7 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 		return errors.New("forbidden")
 	}
 	if community.MemberCount > 1 {
-		adminCount, err := s.memberRepo.CountAdmins(id)
-		if err != nil {
-			return err
-		}
-		if adminCount <= 1 {
-			return errors.New("promote another member to admin before deleting; the community still has other members")
-		}
+		return errors.New("transfer admin to another member before deleting; community still has other members")
 	}
 	if community.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, community.BannerObjectName)

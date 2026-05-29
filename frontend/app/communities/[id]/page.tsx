@@ -9,7 +9,7 @@ import { CommunityAboutTab } from '@/components/community/CommunityAboutTab';
 import { CommunityMembersPanel } from '@/components/community/CommunityMembersPanel';
 import { CommunityRequestCard } from '@/components/community/CommunityRequestCard';
 import { EditCommunityModal } from '@/components/community/EditCommunityModal';
-import { ConfirmModal } from '@/components/admin/ConfirmModal';
+import { DangerConfirmModal } from '@/components/shared/DangerConfirmModal';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MediaGrid } from '@/components/shared/MediaGrid';
 import { ThreadCard } from '@/components/thread/ThreadCard';
@@ -110,8 +110,9 @@ export default function CommunityDetailPage() {
     membershipOverride === 'none' ? null :
     membershipOverride !== null ? membershipOverride :
     listRole;
-  const isAdmin = myRole === 'ADMIN' || isOwnerByCreation;
-  const effectiveCommunityRole: CommunityRole | null = isOwnerByCreation ? 'ADMIN' : myRole;
+  const isAdmin = myRole === 'ADMIN';
+  const effectiveCommunityRole: CommunityRole | null = myRole;
+  void isOwnerByCreation;
 
   const threadTabs: { id: Tab; label: string }[] = [
     { id: 'top', label: 'Top' },
@@ -409,23 +410,23 @@ export default function CommunityDetailPage() {
         />
       )}
 
-      <ConfirmModal
+      <DangerConfirmModal
         open={confirmLeaveOpen}
         title="Leave community?"
-        description="You can rejoin later."
-        confirmLabel="Leave"
-        destructive
+        description={`You will lose access to posts and discussions in ${community.name}. You can rejoin later.`}
+        confirmText={community.name}
+        confirmLabel="Leave community"
         busy={leaveMutation.isPending}
         onConfirm={confirmLeave}
         onClose={() => setConfirmLeaveOpen(false)}
       />
 
-      <ConfirmModal
+      <DangerConfirmModal
         open={confirmDeleteOpen}
-        title={`Delete "${community.name}"?`}
-        description="This permanently removes the community and cannot be undone."
-        confirmLabel="Delete"
-        destructive
+        title={`Delete ${community.name}?`}
+        description="This permanently removes the community, its posts, and all member data. This action cannot be undone."
+        confirmText={community.name}
+        confirmLabel="Delete community"
         busy={deleteMutation.isPending}
         onConfirm={confirmDelete}
         onClose={() => setConfirmDeleteOpen(false)}
