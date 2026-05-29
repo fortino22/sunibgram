@@ -14,6 +14,7 @@ import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
+import { ShareModal } from '@/components/share/ShareModal';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
@@ -55,6 +56,7 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const author = getThreadAuthor(root);
   const bookmarkTargetId = root.type?.toLowerCase() === 'repost' && typeof root.original_thread_id === 'number'
     ? root.original_thread_id
@@ -207,7 +209,6 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
               onCancel={() => setIsEditing(false)}
               onSave={handleSave}
               pending={updateMutation.isPending}
-              errorMessage={updateMutation.error?.message}
             />
           ) : (
             <>
@@ -236,20 +237,6 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
 
         <hr style={{ marginTop: 12, borderColor: 'var(--border)', borderTopWidth: 1 }} />
 
-        {deleteMutation.isError && (
-          <div
-            className="rounded-xl text-[13px]"
-            style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              background: 'var(--coral-soft)',
-              color: 'var(--coral)',
-            }}
-          >
-            {deleteMutation.error.message}
-          </div>
-        )}
-
         {/* Actions */}
         <div style={{ marginTop: 12 }}>
           <ActionBar
@@ -261,6 +248,7 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
             onRepost={() => { if (!repost.isPending) repost.mutate(); }}
             onBookmark={handleBookmark}
             onReply={() => openReply(root)}
+            onShare={() => setShareOpen(true)}
           />
         </div>
       </article>
@@ -294,6 +282,10 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
           anchorRect={bookmarkAnchor}
           onClose={() => setBookmarkAnchor(null)}
         />
+      )}
+
+      {shareOpen && (
+        <ShareModal threadId={bookmarkTargetId} onClose={() => setShareOpen(false)} />
       )}
 
       {reportModalOpen && (

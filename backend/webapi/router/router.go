@@ -32,6 +32,7 @@ import (
 	reportctrl "github.com/sunibgram/webapi/controller/report"
 	repostctrl "github.com/sunibgram/webapi/controller/repost"
 	rolectrl "github.com/sunibgram/webapi/controller/role"
+	sharectrl "github.com/sunibgram/webapi/controller/share"
 	threadctrl "github.com/sunibgram/webapi/controller/thread"
 	threadpinctrl "github.com/sunibgram/webapi/controller/thread_pin"
 	threadpollctrl "github.com/sunibgram/webapi/controller/thread_poll"
@@ -62,6 +63,7 @@ import (
 	orderroute "github.com/sunibgram/webapi/router/order"
 	premiumsubscriptionroute "github.com/sunibgram/webapi/router/premium_subscription"
 	reportroute "github.com/sunibgram/webapi/router/report"
+	shareroute "github.com/sunibgram/webapi/router/share"
 	threadroute "github.com/sunibgram/webapi/router/thread"
 	threadpollroute "github.com/sunibgram/webapi/router/thread_poll"
 	trendreportroute "github.com/sunibgram/webapi/router/trend_report"
@@ -114,6 +116,7 @@ func Register(
 	devSubscriptionCtrl *premiumsubscriptionctrl.DevSubscriptionController,
 	chatRoomCtrl *chatroomctrl.ChatRoomController,
 	chatCtrl *chatctrl.ChatController,
+	shareCtrl *sharectrl.ShareController,
 	notificationCtrl *notificationctrl.NotificationController,
 	threadPollCtrl *threadpollctrl.ThreadPollController,
 	trendingUserCtrl *trendinguserctrl.TrendingUserController,
@@ -145,6 +148,7 @@ func Register(
 	premiumsubscriptionroute.RegisterPremiumSubscriptionRoutes(api, premiumSubscriptionCtrl, auth)
 	devroute.RegisterDevRoutes(api, devSubscriptionCtrl, auth)
 	chatroute.RegisterChatRoutes(api, chatRoomCtrl, chatCtrl, auth)
+	shareroute.RegisterShareRoutes(api, shareCtrl, auth)
 	notificationroute.RegisterNotificationRoutes(api, notificationCtrl, auth)
 	threadpollroute.RegisterThreadPollRoutes(api, threadPollCtrl, auth)
 	trendinguserroute.RegisterTrendingUserRoutes(api, trendingUserCtrl, auth)

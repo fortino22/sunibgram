@@ -87,6 +87,7 @@ export interface FeedStats {
   reposts: number;
   bookmarks: number;
   comments: number;
+  shares: number;
 }
 
 export interface FeedCommunity {

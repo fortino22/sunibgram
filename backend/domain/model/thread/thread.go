@@ -48,6 +48,7 @@ type Thread struct {
 	RepostCount      int                       `gorm:"not null;default:0"`
 	BookmarkCount    int                       `gorm:"not null;default:0"`
 	CommentCount     int                       `gorm:"not null;default:0"`
+	ShareCount       int                       `gorm:"not null;default:0"`
 	FeedScore        float64                   `gorm:"column:feed_score;default:0"`
 	CreatedAt        time.Time                 `gorm:"index:idx_thread_user_type,priority:3,sort:desc;index:idx_thread_feed,priority:3,sort:desc"`
 	UpdatedAt        time.Time

@@ -13,6 +13,7 @@ import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
+import { ShareModal } from '@/components/share/ShareModal';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
@@ -49,6 +50,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const author = getThreadAuthor(thread);
   const bookmarkTargetId = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number'
     ? thread.original_thread_id
@@ -302,6 +304,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               onRepost={() => { if (!repost.isPending) repost.mutate(); }}
               onBookmark={handleBookmark}
               onReply={() => openReply(thread)}
+              onShare={() => setShareOpen(true)}
               size="sm"
             />
           </div>
@@ -333,6 +336,11 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
       onConfirm={() => void handleDeleteConfirm()}
       onCancel={() => setDeleteModalOpen(false)}
     />
+    {shareOpen && (
+      <div onClick={(e) => e.stopPropagation()}>
+        <ShareModal threadId={bookmarkTargetId} onClose={() => setShareOpen(false)} />
+      </div>
+    )}
     </>
   );
 }

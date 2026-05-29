@@ -10,6 +10,8 @@ import {
   type ThreadResponse,
 } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
+import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
+import { toast } from 'sonner';
 
 interface UseThreadManagementOptions {
   onDeleteSuccess?: () => void;
@@ -63,6 +65,13 @@ export function useThreadManagement(
         queryClient.invalidateQueries({ queryKey: ['thread-root'] }),
         queryClient.invalidateQueries({ queryKey: ['thread-replies'] }),
       ]);
+    },
+    onError: (err) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
+      toast.error(err.message || 'Failed to update thread.');
     },
   });
 
@@ -124,6 +133,13 @@ export function useThreadManagement(
         queryClient.invalidateQueries({ queryKey: ['thread-replies'] }),
         queryClient.invalidateQueries({ queryKey: ['event'], refetchType: 'none' }),
       ]);
+    },
+    onError: (err) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
+      toast.error(err.message || 'Failed to delete thread.');
     },
   });
 

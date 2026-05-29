@@ -7,6 +7,7 @@ import (
 	"time"
 
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	usermodel "github.com/sunibgram/domain/model/user"
 )
 
@@ -30,9 +31,11 @@ type Chat struct {
 	Sender    usermodel.User         `gorm:"foreignKey:SenderID;references:UserID;constraint:OnUpdate:NO ACTION,OnDelete:NO ACTION"`
 	ReplyToID *uint                  `gorm:"index"`
 	ReplyTo   *Chat                  `gorm:"foreignKey:ReplyToID;references:ChatID"`
-	Message   *string                `gorm:"type:text"`
-	GifURL    *string                `gorm:"type:text"`
-	IsRead    bool                   `gorm:"not null;default:false"`
+	Message        *string             `gorm:"type:text"`
+	GifURL         *string             `gorm:"type:text"`
+	SharedThreadID *uint               `gorm:"index"`
+	SharedThread   *threadmodel.Thread `gorm:"foreignKey:SharedThreadID;references:ThreadID;constraint:OnUpdate:NO ACTION,OnDelete:SET NULL"`
+	IsRead         bool                `gorm:"not null;default:false"`
 	IsEdited  bool                   `gorm:"not null;default:false"`
 	EditedAt  *time.Time
 	DeletedAt *time.Time `gorm:"index;index:idx_chat_room_deleted_created,priority:2;index:idx_chat_room_deleted,priority:2"`

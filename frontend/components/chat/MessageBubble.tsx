@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Check, CheckCheck, X, ChevronLeft, ChevronRight, Images, Play, Pause, Pencil, Trash2, MoreHorizontal, Reply, Smile } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import { Avatar } from '@/components/shared/Avatar';
+import { SharedThreadEmbed } from '@/components/chat/SharedThreadEmbed';
 import type { ChatMessage, ChatReactionSummary } from '@/lib/services/chat';
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '👎'];
@@ -894,6 +895,13 @@ export function MessageBubble({
                     </span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Shared thread embed */}
+            {message.shared_thread && !isDeleted && (
+              <div style={{ marginBottom: message.message || message.gif_url || audioMedia.length > 0 || videoMedia.length > 0 ? 4 : 0 }}>
+                <SharedThreadEmbed embed={message.shared_thread} isOwn={isOwn} />
               </div>
             )}
 

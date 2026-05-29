@@ -44,4 +44,5 @@ type IThreadRepository interface {
 	AttachReplyParents(threads []threadmodel.Thread, requesterID *uint) ([]threadmodel.Thread, []*threadmodel.Thread, error)
 	InvalidateUserFeedCaches(ctx context.Context, userID uint)
 	FindRepliesContent(parentID uint, limit int) ([]string, error)
+	IncrementShareCount(threadID uint) error
 }

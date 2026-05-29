@@ -354,7 +354,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             avatar_url: profile?.avatar ?? null,
             faculty: undefined,
           },
-          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
+          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0, shares: 0 },
           media: [],
           is_liked: false,
           is_bookmarked: false,
@@ -411,7 +411,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             avatar_url: profile?.avatar ?? null,
             faculty: undefined,
           },
-          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
+          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0, shares: 0 },
           media: [],
           is_liked: false,
           is_bookmarked: false,
@@ -491,16 +491,15 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     onError: (err) => {
       if (isInactiveCommunityError(err)) {
         toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
       }
+      toast.error(err.message || 'Failed to post.');
     },
   });
 
   const isPending = mutation.isPending || communityMutation.isPending;
-  const communityErr = communityMutation.error;
-  const isError = mutation.isError || communityMutation.isError;
-  const errorMessage = isInactiveCommunityError(communityErr)
-    ? INACTIVE_COMMUNITY_TOAST
-    : (mutation.error?.message ?? communityErr?.message ?? '');
+  const isError = mutation.isError && !communityMutation.isError;
+  const errorMessage = mutation.error?.message ?? '';
 
   const canSubmit =
     token !== null &&

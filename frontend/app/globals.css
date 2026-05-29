@@ -195,6 +195,15 @@ body {
   filter: brightness(0.85);
 }
 
+/* Hide scrollbar but keep overflow scrollable (for arrow-driven sliders). */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Text / count / link buttons — underline on hover */
 .hover-underline:hover {
   text-decoration: underline;

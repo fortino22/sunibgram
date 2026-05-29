@@ -9,9 +9,11 @@ import (
 
 	"gorm.io/gorm"
 
+	exploremodel "github.com/sunibgram/domain/model/explore"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
+	explorerepo "github.com/sunibgram/infrastructure/repository/explore"
 	infrarepoShared "github.com/sunibgram/infrastructure/repository/_shared"
 	notificationrepo "github.com/sunibgram/infrastructure/repository/notification"
 )
@@ -264,6 +266,42 @@ func (r *UserRepository) FindAllPaginated(page, limit int) ([]usermodel.User, in
 
 	err := r.readDB.Preload("Role").Offset(offset).Limit(limit).Find(&users).Error
 	return users, total, err
+}
+
+func (r *UserRepository) SearchForShare(ctx context.Context, query string, excludeUserID uint) ([]exploremodel.ExploreUserResult, error) {
+	pattern := explorerepo.LikePattern(query)
+	var rows []explorerepo.ExploreUserRow
+	if err := r.readDB.WithContext(ctx).
+		Table("users").
+		Select(`
+			users.user_id,
+			users.name,
+			users.user_name AS username,
+			users.is_premium,
+			COALESCE(user_profiles.avatar_object_name, '') AS avatar_object_name,
+			FALSE AS is_following
+		`).
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
+		Where("roles.name <> ?", "admin").
+		Where("users.user_id <> ?", excludeUserID).
+		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\'", pattern, pattern).
+		Order("users.is_premium DESC, users.created_at DESC").
+		Limit(10).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	results := make([]exploremodel.ExploreUserResult, len(rows))
+	for i, row := range rows {
+		results[i] = exploremodel.ExploreUserResult{
+			UserID:           row.UserID,
+			Name:             row.Name,
+			Username:         row.Username,
+			IsPremium:        row.IsPremium,
+			AvatarObjectName: row.AvatarObjectName,
+		}
+	}
+	return results, nil
 }
 
 func (r *UserRepository) invalidateUser(userID uint) {

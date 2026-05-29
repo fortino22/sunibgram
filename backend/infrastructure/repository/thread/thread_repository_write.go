@@ -236,6 +236,8 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 		thread.BookmarkCount = max(thread.BookmarkCount+delta, 0)
 	case "comment_count":
 		thread.CommentCount = max(thread.CommentCount+delta, 0)
+	case "share_count":
+		thread.ShareCount = max(thread.ShareCount+delta, 0)
 	}
 	r.cache.Set(ctx, key, thread, r.ttl)
 	r.invalidateFeedCachesByThreadID(ctx, threadID)
@@ -252,6 +254,19 @@ func (r *threadCached) patchCachedCount(threadID uint, column string, delta int)
 	}
 	r.invalidateFollowingFeedCache(ctx)
 	r.invalidateTrendingFeed(ctx)
+}
+
+func (r *threadCached) IncrementShareCount(threadID uint) error {
+	if err := r.db.writeDB.Model(&threadmodel.Thread{}).
+		Where("thread_id = ?", threadID).
+		UpdateColumn("share_count", gorm.Expr("share_count + 1")).Error; err != nil {
+		return err
+	}
+	r.patchCachedCount(threadID, "share_count", 1)
+	ctx := context.Background()
+	_ = r.cache.InvalidateTag(ctx, infrarepoShared.ThreadRootsGlobalTag())
+	infrarepoShared.InvalidateExplorePostCaches(ctx, r.cache)
+	return nil
 }
 
 func (r *threadCached) Delete(id uint) error {

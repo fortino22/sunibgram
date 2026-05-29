@@ -25,6 +25,22 @@ export interface ChatReplyInfo {
   gif_url?: string | null;
 }
 
+export interface SharedThreadAuthor {
+  user_id: number;
+  username: string;
+  name: string;
+  is_premium: boolean;
+}
+
+export interface SharedThreadEmbed {
+  thread_id: number;
+  content: string;
+  author?: SharedThreadAuthor | null;
+  community_name?: string | null;
+  created_at?: string | null;
+  deleted: boolean;
+}
+
 export interface ChatMessage {
   chat_id: number;
   room_id: number;
@@ -32,6 +48,7 @@ export interface ChatMessage {
   reply_to?: ChatReplyInfo | null;
   message: string | null;
   gif_url?: string | null;
+  shared_thread?: SharedThreadEmbed | null;
   media: ChatMedia[];
   reactions?: ChatReactionSummary[];
   is_read: boolean;
