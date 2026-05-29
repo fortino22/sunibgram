@@ -14,7 +14,11 @@ export function useDeleteEvent() {
       return deleteEvent(id, token);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['events', 'feed'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['events', 'feed'] }),
+        queryClient.invalidateQueries({ queryKey: ['events', 'me'] }),
+        queryClient.invalidateQueries({ queryKey: ['events', 'joined', 'me'] }),
+      ]);
     },
   });
 }

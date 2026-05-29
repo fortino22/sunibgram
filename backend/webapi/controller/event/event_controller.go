@@ -69,7 +69,7 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 		return nil
 	}
 	_, limit := ctrlshared.ParsePagination(ctx)
-	trending, running, future, err := c.eventService.GetAll(limit)
+	trending, running, future, past, err := c.eventService.GetAll(limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
@@ -77,6 +77,7 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 		Trending: c.toListResponses(trending),
 		Running:  c.toListResponses(running),
 		Future:   c.toListResponses(future),
+		Past:     c.toListResponses(past),
 	})
 }
 
@@ -116,7 +117,7 @@ func (c *EventController) GetMyEvents(ctx *fiber.Ctx) error {
 		return nil
 	}
 	page, limit := ctrlshared.ParsePagination(ctx)
-	events, reviews, total, err := c.eventService.GetMyEvents(claims.UserID, ctx.Query("status"), page, limit)
+	events, reviews, total, err := c.eventService.GetMyEvents(claims.UserID, ctx.Query("status"), ctx.Query("name"), page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}

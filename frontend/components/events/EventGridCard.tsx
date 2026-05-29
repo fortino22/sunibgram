@@ -127,8 +127,8 @@ export function EventGridCard({ event, live = false, badge }: Props) {
         >
           {isOfficial ? 'Official' : 'Unofficial'}
         </span>
-        {/* Top-right live OR status badge */}
-        {live ? (
+        {/* Top-right live indicator only (status badge moved to body) */}
+        {live && (
           <span
             style={{
               position: 'absolute',
@@ -160,31 +160,31 @@ export function EventGridCard({ event, live = false, badge }: Props) {
             />
             Live
           </span>
-        ) : badge && tone ? (
-          <span
-            style={{
-              position: 'absolute',
-              top: 10,
-              right: 10,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: tone.fg,
-              background: tone.bg,
-              border: `1px solid ${tone.border}`,
-              backdropFilter: 'blur(6px)',
-              padding: '4px 8px',
-              borderRadius: 999,
-            }}
-          >
-            {badge.label}
-          </span>
-        ) : null}
+        )}
       </div>
 
       {/* Body */}
       <div style={{ padding: '14px 14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Status badge row (top of body, right-aligned) */}
+        {badge && tone && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: tone.fg,
+                background: tone.bg,
+                border: `1px solid ${tone.border}`,
+                padding: '4px 9px',
+                borderRadius: 999,
+              }}
+            >
+              {badge.label}
+            </span>
+          </div>
+        )}
         {dateLabel && (
           <div
             style={{

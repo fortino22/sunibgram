@@ -28,6 +28,7 @@ type cachedEvents struct {
 	Trending []threadmodel.Event
 	Running  []threadmodel.Event
 	Future   []threadmodel.Event
+	Past     []threadmodel.Event
 }
 
 type cachedEventThreads struct {
@@ -142,13 +143,13 @@ func (r *eventRepository) FindGrouped(limit int) ([]threadmodel.Event, []threadm
 	return result.Trending, result.Running, result.Future, nil
 }
 
-func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
+func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	ctx := context.Background()
 	key := eventApprovedListKey(limit)
 	var result cachedEvents
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
-			return result.Trending, result.Running, result.Future, nil
+			return result.Trending, result.Running, result.Future, result.Past, nil
 		}
 	}
 
@@ -158,7 +159,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
 		Limit(limit).
 		Find(&trending).Error; err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	now := time.Now().UTC()
@@ -169,7 +170,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 		Order("start_time ASC").
 		Limit(limit).
 		Find(&running).Error; err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	var future []threadmodel.Event
@@ -179,16 +180,26 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 		Order("start_time ASC").
 		Limit(limit).
 		Find(&future).Error; err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	result = cachedEvents{Trending: trending, Running: running, Future: future}
+	var past []threadmodel.Event
+	if err := r.readDB.
+		Where("status = ?", "approved").
+		Where("end_time < ?", now).
+		Order("end_time DESC").
+		Limit(limit).
+		Find(&past).Error; err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	result = cachedEvents{Trending: trending, Running: running, Future: future, Past: past}
 	if r.cache != nil {
 		if err := r.cache.Set(ctx, key, result, r.ttl); err == nil {
 			r.cache.RegisterCacheKey(ctx, infrarepoShared.EventListsTag(), key)
 		}
 	}
-	return result.Trending, result.Running, result.Future, nil
+	return result.Trending, result.Running, result.Future, result.Past, nil
 }
 
 func (r *eventRepository) FindTopRunningOrFuture(limit int) ([]threadmodel.Event, error) {
@@ -286,10 +297,13 @@ func (r *eventRepository) FindAdmin(status, name string, page, limit int) ([]thr
 	return events, total, nil
 }
 
-func (r *eventRepository) FindByUserID(userID uint, status string, page, limit int) ([]threadmodel.Event, int64, error) {
+func (r *eventRepository) FindByUserID(userID uint, status, name string, page, limit int) ([]threadmodel.Event, int64, error) {
 	q := r.readDB.Model(&threadmodel.Event{}).Where("user_id = ?", userID)
 	if status != "" {
 		q = q.Where("status = ?", status)
+	}
+	if name != "" {
+		q = q.Where("LOWER(title) LIKE ?", "%"+strings.ToLower(name)+"%")
 	}
 
 	var total int64

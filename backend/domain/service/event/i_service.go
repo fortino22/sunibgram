@@ -13,11 +13,11 @@ type IEventService interface {
 	Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*threadmodel.Event, error)
 	GetByID(id string) (*threadmodel.Event, error)
 	GetByIDWithReviews(id string) (*threadmodel.Event, []eventreviewmodel.EventReview, error)
-	GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error)
+	GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error)
 	GetTopRunningOrFuture(limit int) ([]threadmodel.Event, error)
 	GetPending(limit int) ([]threadmodel.Event, error)
 	GetAdminEvents(status, name string, page, limit int) ([]threadmodel.Event, map[string][]eventreviewmodel.EventReview, int64, error)
-	GetMyEvents(userID uint, status string, page, limit int) ([]threadmodel.Event, map[string][]eventreviewmodel.EventReview, int64, error)
+	GetMyEvents(userID uint, status, name string, page, limit int) ([]threadmodel.Event, map[string][]eventreviewmodel.EventReview, int64, error)
 	Update(ctx context.Context, id, title, description, location, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool, attachments []*multipart.FileHeader) (*threadmodel.Event, error)
 	ApproveEvent(id, adminID string) error
 	DeclineEvent(id, adminID, reason string) error

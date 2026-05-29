@@ -158,7 +158,7 @@ func (s *EventService) GetByIDWithReviews(id string) (*threadmodel.Event, []even
 	return event, reviews[event.ID], nil
 }
 
-func (s *EventService) GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
+func (s *EventService) GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 10)
 	return s.eventRepo.FindGroupedApproved(limit)
 }
@@ -192,13 +192,14 @@ func (s *EventService) GetAdminEvents(status, name string, page, limit int) ([]t
 	return events, reviews, total, nil
 }
 
-func (s *EventService) GetMyEvents(userID uint, status string, page, limit int) ([]threadmodel.Event, map[string][]eventreviewmodel.EventReview, int64, error) {
+func (s *EventService) GetMyEvents(userID uint, status, name string, page, limit int) ([]threadmodel.Event, map[string][]eventreviewmodel.EventReview, int64, error) {
 	status = strings.TrimSpace(status)
 	if err := validateEventStatusFilter(status); err != nil {
 		return nil, nil, 0, err
 	}
+	name = strings.TrimSpace(name)
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	events, total, err := s.eventRepo.FindByUserID(userID, status, page, limit)
+	events, total, err := s.eventRepo.FindByUserID(userID, status, name, page, limit)
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -238,11 +239,8 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 		return nil, errors.New("event not found")
 	}
 	eventType = strings.TrimSpace(eventType)
-	if event.Status == "pending" || event.Status == "declined" {
-		return nil, errors.New("event cannot be updated while pending or declined; only events with revision status can be updated")
-	}
-	if event.Status == "approved" && (len(attachments) > 0 || (eventType != "" && eventType != event.Type)) {
-		return nil, errors.New("cannot update event_type or attachments on an approved event")
+	if event.Status != "revision" {
+		return nil, errors.New("event can only be edited when status is revision")
 	}
 	if eventType != "" {
 		if err := threadmodel.ValidateEventType(eventType); err != nil {

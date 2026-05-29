@@ -42,6 +42,7 @@ interface EventGroupsResponse {
   trending: EventListItemResponse[];
   running: EventListItemResponse[];
   future: EventListItemResponse[];
+  past: EventListItemResponse[];
 }
 
 interface EventShareApiResponse {
@@ -85,6 +86,7 @@ export interface EventGroups {
   trending: EventItem[];
   running: EventItem[];
   future: EventItem[];
+  past: EventItem[];
 }
 
 export interface CreateEventInput {
@@ -176,6 +178,7 @@ export async function getEvents(token: string): Promise<EventGroups> {
     trending: (response.trending ?? []).map(mapEventItem),
     running: (response.running ?? []).map(mapEventItem),
     future: (response.future ?? []).map(mapEventItem),
+    past: (response.past ?? []).map(mapEventItem),
   };
 }
 
@@ -255,9 +258,12 @@ export async function getMyJoinedEvents(token: string): Promise<EventItem[]> {
   return items.map(mapEventItem);
 }
 
-export async function getMyEvents(token: string, status?: string): Promise<MyEventItem[]> {
-  const qs = status ? `?status=${status}` : '';
-  const response = await api.get<MyEventsApiResponse>(`/api/events/me${qs}`, token);
+export async function getMyEvents(token: string, status?: string, name?: string): Promise<MyEventItem[]> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (name && name.trim()) params.set('name', name.trim());
+  const qs = params.toString();
+  const response = await api.get<MyEventsApiResponse>(`/api/events/me${qs ? `?${qs}` : ''}`, token);
   return (response.data ?? []).map((raw) => ({
     ...mapEventItem(raw),
     status: raw.status,

@@ -124,6 +124,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
   }
 
   if (!open) return null;
+  if (event.status !== 'revision') return null;
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -187,9 +188,14 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
             zIndex: 1,
           }}
         >
-          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-            Edit Event
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+              Edit Event
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+              Saving resubmits for admin review.
+            </span>
+          </div>
           <button
             type="button"
             onClick={() => onOpenChange(false)}

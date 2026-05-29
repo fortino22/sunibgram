@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { CreateEventDialog } from '@/components/events/CreateEventDialog';
 import { EventCardSkeleton } from '@/components/events/EventCardSkeleton';
 import { EventGridCard } from '@/components/events/EventGridCard';
+import { MyEventCardActions } from '@/components/events/MyEventCardActions';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useEventsFeed } from '@/hooks/useEventsFeed';
 import { useMyEvents } from '@/hooks/useMyEvents';
@@ -14,7 +15,8 @@ import type { EventItem, MyEventItem } from '@/lib/services/events';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-type Tab = 'trending' | 'running' | 'future';
+type Tab = 'trending' | 'running' | 'future' | 'past';
+type StatusTab = 'all' | 'approved' | 'pending' | 'declined' | 'revision';
 type Scope = 'all' | 'joined' | 'mine';
 type ViewMode = 'grid' | 'list';
 type DatePreset = 'any' | 'today' | 'week' | 'month' | 'quarter' | 'custom';
@@ -23,6 +25,15 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'trending', label: 'Trending' },
   { key: 'running',  label: 'Running' },
   { key: 'future',   label: 'Future' },
+  { key: 'past',     label: 'Past' },
+];
+
+const STATUS_TABS: { key: StatusTab; label: string }[] = [
+  { key: 'all',      label: 'All' },
+  { key: 'approved', label: 'Approved' },
+  { key: 'pending',  label: 'Pending' },
+  { key: 'revision', label: 'Revision' },
+  { key: 'declined', label: 'Declined' },
 ];
 
 const SCOPE_OPTIONS: { key: Scope; label: string }[] = [
@@ -40,7 +51,41 @@ const DATE_PRESETS: { key: DatePreset; label: string }[] = [
   { key: 'custom',  label: 'Custom range…' },
 ];
 
-const VIEW_STORAGE_KEY = 'events:viewMode';
+const STATE_STORAGE_KEY = 'events:panelState:v1';
+
+interface PersistedState {
+  tab: Tab;
+  statusTab: StatusTab;
+  scope: Scope;
+  view: ViewMode;
+  datePreset: DatePreset;
+  customRange: { from: string; to: string };
+  searchOpen: boolean;
+  searchQuery: string;
+}
+
+const DEFAULT_STATE: PersistedState = {
+  tab: 'trending',
+  statusTab: 'all',
+  scope: 'all',
+  view: 'grid',
+  datePreset: 'any',
+  customRange: { from: '', to: '' },
+  searchOpen: false,
+  searchQuery: '',
+};
+
+function loadState(): PersistedState {
+  if (typeof window === 'undefined') return DEFAULT_STATE;
+  try {
+    const raw = window.localStorage.getItem(STATE_STORAGE_KEY);
+    if (!raw) return DEFAULT_STATE;
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
+    return { ...DEFAULT_STATE, ...parsed, customRange: { ...DEFAULT_STATE.customRange, ...(parsed.customRange ?? {}) } };
+  } catch {
+    return DEFAULT_STATE;
+  }
+}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -106,6 +151,21 @@ function statusBadge(status: string): { label: string; tone: 'success' | 'warnin
     revision: { label: 'Revision', tone: 'info' },
   };
   return m[status] ?? { label: status, tone: 'default' };
+}
+
+type TimeState = 'running' | 'future' | 'past';
+
+function timeStateOf(event: EventItem, now: Date): TimeState {
+  const s = parseDate(event.startTime); const en = parseDate(event.endTime);
+  if (s && en && s <= now && en >= now) return 'running';
+  if (en && en < now) return 'past';
+  return 'future';
+}
+
+function timeStateBadge(state: TimeState): { label: string; tone: 'success' | 'warning' | 'danger' | 'info' | 'default' } {
+  if (state === 'running') return { label: 'Running', tone: 'success' };
+  if (state === 'past')    return { label: 'Past',    tone: 'default' };
+  return { label: 'Future', tone: 'info' };
 }
 
 function formatRange(startIso: string | null, endIso: string | null): string {
@@ -350,34 +410,45 @@ function EventListRow({ event, live = false, badge }: ListRowProps) {
 interface PanelProps { active: boolean }
 
 export function EventsFeedPanel({ active }: PanelProps) {
+  const initial = useMemo(() => loadState(), []);
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>('trending');
-  const [scope, setScope] = useState<Scope>('all');
+  const [tab, setTab] = useState<Tab>(initial.tab);
+  const [statusTab, setStatusTab] = useState<StatusTab>(initial.statusTab);
+  const [scope, setScope] = useState<Scope>(initial.scope);
   const [scopeOpen, setScopeOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [view, setView] = useState<ViewMode>(() => {
-    if (typeof window === 'undefined') return 'grid';
-    try {
-      const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
-      if (stored === 'grid' || stored === 'list') return stored;
-    } catch {}
-    return 'grid';
-  });
-  const [datePreset, setDatePreset] = useState<DatePreset>('any');
+  const [searchOpen, setSearchOpen] = useState(initial.searchOpen);
+  const [searchQuery, setSearchQuery] = useState(initial.searchQuery);
+  const [view, setView] = useState<ViewMode>(initial.view);
+  const [datePreset, setDatePreset] = useState<DatePreset>(initial.datePreset);
   const [dateOpen, setDateOpen] = useState(false);
-  const [customRange, setCustomRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
+  const [customRange, setCustomRange] = useState<{ from: string; to: string }>(initial.customRange);
 
   const scopeRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
 
   const query = useEventsFeed(active);
   const joinedQuery = useMyJoinedEventItems();
-  const myEventsQuery = useMyEvents();
+
+  // Backend-filtered: status + name. Search-jump probe uses unfiltered status.
+  const searchActiveRaw = searchQuery.trim().length > 0;
+  const myEventsQuery = useMyEvents({
+    status: statusTab === 'all' ? undefined : statusTab,
+    name: searchQuery,
+    enabled: scope === 'mine',
+  });
+  const myProbeQuery = useMyEvents({
+    name: searchQuery,
+    enabled: scope === 'mine' && searchActiveRaw,
+  });
 
   useEffect(() => {
-    try { window.localStorage.setItem(VIEW_STORAGE_KEY, view); } catch {}
-  }, [view]);
+    try {
+      window.localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify({
+        tab, statusTab, scope, view, datePreset, customRange, searchOpen, searchQuery,
+      } satisfies PersistedState));
+    } catch {}
+  }, [tab, statusTab, scope, view, datePreset, customRange, searchOpen, searchQuery]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -394,35 +465,83 @@ export function EventsFeedPanel({ active }: PanelProps) {
   const passDate = (e: EventItem) => inDateRange(e, range);
   const passSearch = (e: EventItem) => matchesSearch(e, searchQuery);
 
-  // Time-state predicates (mainly for joined / mine since query.data is bucketed already)
-  const isRunningNow = (e: EventItem) => {
-    const s = parseDate(e.startTime); const en = parseDate(e.endTime);
-    return !!(s && en && s <= now && en >= now);
-  };
-  const isFuture = (e: EventItem) => {
-    const s = parseDate(e.startTime);
-    return !!(s && s > now);
+  const tabOfTime = (e: EventItem): Tab => {
+    const st = timeStateOf(e, now);
+    return st;
   };
 
-  const baseAll: EventItem[] = useMemo(() => {
+  // Search auto-jump: derive effective tab that reroutes to first bucket with hits.
+  const searchActive = searchActiveRaw;
+
+  const effectiveTab: Tab = useMemo(() => {
+    if (!searchActive || scope === 'mine') return tab;
+    const buckets: { key: Tab; list: EventItem[] }[] = scope === 'joined'
+      ? (() => {
+          const joined = joinedQuery.data ?? [];
+          return [
+            { key: 'trending', list: joined },
+            { key: 'running',  list: joined.filter((e) => tabOfTime(e) === 'running') },
+            { key: 'future',   list: joined.filter((e) => tabOfTime(e) === 'future') },
+            { key: 'past',     list: joined.filter((e) => tabOfTime(e) === 'past') },
+          ];
+        })()
+      : (() => {
+          const d = query.data;
+          if (!d) return [];
+          return [
+            { key: 'trending', list: d.trending },
+            { key: 'running',  list: d.running },
+            { key: 'future',   list: d.future },
+            { key: 'past',     list: d.past },
+          ];
+        })();
+    const hitsHere = (buckets.find((b) => b.key === tab)?.list ?? []).filter(passDate).filter(passSearch);
+    if (hitsHere.length > 0) return tab;
+    for (const b of buckets) {
+      const hit = b.list.filter(passDate).filter(passSearch);
+      if (hit.length > 0) return b.key;
+    }
+    return tab;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchActive, searchQuery, scope, tab, query.data, joinedQuery.data, datePreset, customRange]);
+
+  // For mine: probe (no status filter) tells us which status buckets have hits.
+  const effectiveStatusTab: StatusTab = useMemo(() => {
+    if (!searchActive || scope !== 'mine') return statusTab;
+    // Server already filtered by name; if current status query has rows, stay.
+    if ((myEventsQuery.data ?? []).filter(passDate).length > 0) return statusTab;
+    const probe = myProbeQuery.data ?? [];
+    if (probe.length === 0) return statusTab;
+    const order: StatusTab[] = ['all', 'approved', 'pending', 'revision', 'declined'];
+    for (const s of order) {
+      const hit = probe.filter((e) => (s === 'all' ? true : e.status === s)).filter(passDate);
+      if (hit.length > 0) return s;
+    }
+    return statusTab;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchActive, searchQuery, scope, statusTab, myEventsQuery.data, myProbeQuery.data, datePreset, customRange]);
+
+  const baseAllEffective: EventItem[] = useMemo(() => {
     const d = query.data;
     if (!d) return [];
-    if (tab === 'trending') return d.trending;
-    if (tab === 'running')  return d.running;
+    if (effectiveTab === 'trending') return d.trending;
+    if (effectiveTab === 'running')  return d.running;
+    if (effectiveTab === 'past')     return d.past;
     return d.future;
-  }, [query.data, tab]);
+  }, [query.data, effectiveTab]);
 
-  const allList = baseAll.filter(passDate).filter(passSearch);
+  const allList = baseAllEffective.filter(passDate).filter(passSearch);
 
   const joinedList = (joinedQuery.data ?? [])
-    .filter((e) => (tab === 'trending' ? true : tab === 'running' ? isRunningNow(e) : isFuture(e)))
+    .filter((e) => (effectiveTab === 'trending' ? true : tabOfTime(e) === effectiveTab))
     .filter(passDate)
     .filter(passSearch);
 
-  const myList: MyEventItem[] = (myEventsQuery.data ?? [])
-    .filter((e) => (tab === 'trending' ? true : tab === 'running' ? isRunningNow(e) : isFuture(e)))
-    .filter(passDate)
-    .filter(passSearch);
+  const myList: MyEventItem[] = (
+    effectiveStatusTab === statusTab
+      ? (myEventsQuery.data ?? [])
+      : (myProbeQuery.data ?? []).filter((e) => effectiveStatusTab === 'all' ? true : e.status === effectiveStatusTab)
+  ).filter(passDate);
 
   const currentScopeLabel = SCOPE_OPTIONS.find((o) => o.key === scope)?.label ?? 'All Events';
   const currentDateLabel = (() => {
@@ -445,7 +564,7 @@ export function EventsFeedPanel({ active }: PanelProps) {
     (scope === 'mine'   && myEventsQuery.error?.message) ||
     null;
 
-  const liveFlag = tab === 'running';
+  const liveFlag = effectiveTab === 'running';
 
   // ── Render helpers ─────────────────────────────────────────────────────
 
@@ -453,13 +572,13 @@ export function EventsFeedPanel({ active }: PanelProps) {
     if (view === 'grid') {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-          {list.map((e) => <EventGridCard key={e.id} event={e} live={liveFlag} />)}
+          {list.map((e) => <EventGridCard key={e.id} event={e} live={liveFlag} badge={timeStateBadge(timeStateOf(e, now))} />)}
         </div>
       );
     }
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {list.map((e) => <EventListRow key={e.id} event={e} live={liveFlag} />)}
+        {list.map((e) => <EventListRow key={e.id} event={e} live={liveFlag} badge={timeStateBadge(timeStateOf(e, now))} />)}
       </div>
     );
   };
@@ -469,8 +588,9 @@ export function EventsFeedPanel({ active }: PanelProps) {
       return (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
           {list.map((e) => (
-            <div key={e.id} style={{ display: 'flex', flexDirection: 'column' }}>
+            <div key={e.id} style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
               <EventGridCard event={e} badge={statusBadge(e.status)} />
+              <MyEventCardActions event={e} />
               <RevisionNotesDisclosure event={e} />
             </div>
           ))}
@@ -480,8 +600,9 @@ export function EventsFeedPanel({ active }: PanelProps) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {list.map((e) => (
-          <div key={e.id}>
+          <div key={e.id} style={{ position: 'relative' }}>
             <EventListRow event={e} badge={statusBadge(e.status)} />
+            <MyEventCardActions event={e} />
             <RevisionNotesDisclosure event={e} />
           </div>
         ))}
@@ -610,29 +731,51 @@ export function EventsFeedPanel({ active }: PanelProps) {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           gap: 12, padding: '0 32px 16px', flexWrap: 'wrap',
         }}>
-          {/* Tabs */}
-          <div style={{ display: 'flex', gap: 6, background: 'var(--bg-secondary)', padding: 4, borderRadius: 999, border: '1px solid var(--border)' }}>
-            {TABS.map(({ key, label }) => {
-              const isActive = tab === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setTab(key)}
-                  style={{
-                    padding: '8px 20px', borderRadius: 999, border: 'none',
-                    background: isActive ? 'var(--text)' : 'transparent',
-                    color: isActive ? 'var(--bg)' : 'var(--text-secondary)',
-                    fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
-                    cursor: 'pointer', transition: 'background 0.18s, color 0.18s',
-                  }}
-                  onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text)'; }}
-                  onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          {/* Tabs — time-based for all/joined, status-based for mine */}
+          <div style={{ display: 'flex', gap: 6, background: 'var(--bg-secondary)', padding: 4, borderRadius: 999, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+            {scope === 'mine'
+              ? STATUS_TABS.map(({ key, label }) => {
+                  const isActive = effectiveStatusTab === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setStatusTab(key)}
+                      style={{
+                        padding: '8px 18px', borderRadius: 999, border: 'none',
+                        background: isActive ? 'var(--text)' : 'transparent',
+                        color: isActive ? 'var(--bg)' : 'var(--text-secondary)',
+                        fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
+                        cursor: 'pointer', transition: 'background 0.18s, color 0.18s',
+                      }}
+                      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text)'; }}
+                      onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })
+              : TABS.map(({ key, label }) => {
+                  const isActive = effectiveTab === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setTab(key)}
+                      style={{
+                        padding: '8px 20px', borderRadius: 999, border: 'none',
+                        background: isActive ? 'var(--text)' : 'transparent',
+                        color: isActive ? 'var(--bg)' : 'var(--text-secondary)',
+                        fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
+                        cursor: 'pointer', transition: 'background 0.18s, color 0.18s',
+                      }}
+                      onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text)'; }}
+                      onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
           </div>
 
           {/* Right cluster: date + scope + view toggle */}
@@ -855,20 +998,30 @@ export function EventsFeedPanel({ active }: PanelProps) {
         ) : scope === 'mine' ? (
           myList.length === 0 ? (
             <div style={{ padding: '60px 20px' }}>
-              <EmptyState title="No events here" subtitle={`No ${tab} events submitted by you yet.`} />
+              <EmptyState title="No events here" subtitle={effectiveStatusTab === 'all' ? 'You have not submitted any events yet.' : `No ${effectiveStatusTab} events submitted by you yet.`} />
             </div>
           ) : renderMine(myList)
         ) : scope === 'joined' ? (
           joinedList.length === 0 ? (
             <div style={{ padding: '60px 20px' }}>
-              <EmptyState title="No joined events" subtitle={`Join an event to see ${tab} ones here.`} />
+              <EmptyState title="No joined events" subtitle={`Join an event to see ${effectiveTab} ones here.`} />
             </div>
           ) : renderEvents(joinedList)
         ) : allList.length === 0 ? (
           <div style={{ padding: '60px 20px' }}>
             <EmptyState
-              title={tab === 'trending' ? 'No trending events' : tab === 'running' ? 'No events running now' : 'No future events'}
-              subtitle={tab === 'trending' ? 'Check back soon for popular events.' : tab === 'running' ? 'Nothing live right now.' : 'Create one to get started.'}
+              title={
+                effectiveTab === 'trending' ? 'No trending events'
+                : effectiveTab === 'running' ? 'No events running now'
+                : effectiveTab === 'past' ? 'No past events'
+                : 'No future events'
+              }
+              subtitle={
+                effectiveTab === 'trending' ? 'Check back soon for popular events.'
+                : effectiveTab === 'running' ? 'Nothing live right now.'
+                : effectiveTab === 'past' ? 'Past events will appear here once they end.'
+                : 'Create one to get started.'
+              }
             />
           </div>
         ) : renderEvents(allList)}
