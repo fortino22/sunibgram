@@ -10,7 +10,14 @@ import { PostComposer } from '@/components/shared/PostComposer';
 import { useThreadChain } from '@/hooks/useThread';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { useComposeStore } from '@/stores/composeStore';
+import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
 import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
+
+function effectiveBookmarkId(t: ThreadItem): number {
+  return t.type?.toLowerCase() === 'repost' && typeof t.original_thread_id === 'number'
+    ? t.original_thread_id
+    : t.id;
+}
 
 /* ------------------------------------------------------------------ */
 /* Minimal reply card used only inside this modal (avoids circular dep) */
@@ -20,6 +27,14 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
   const { like, repost, bookmark } = useThreadActions(thread);
   const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
+  const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+
+  function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
+    if (bookmark.isPending) return;
+    const wasBookmarked = thread.is_bookmarked === true;
+    bookmark.mutate();
+    if (!wasBookmarked) setBookmarkAnchor(e.currentTarget.getBoundingClientRect());
+  }
 
   return (
     <div
@@ -79,13 +94,22 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
               isBookmarked={!!thread.is_bookmarked}
               onLike={() => { if (!like.isPending) like.mutate(); }}
               onRepost={() => { if (!repost.isPending) repost.mutate(); }}
-              onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+              onBookmark={handleBookmark}
               onReply={() => openReply(thread)}
               size="sm"
             />
           </div>
         </div>
       </div>
+      {bookmarkAnchor && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <BookmarkCollectionPopover
+            threadId={effectiveBookmarkId(thread)}
+            anchorRect={bookmarkAnchor}
+            onClose={() => setBookmarkAnchor(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -103,11 +127,19 @@ export interface ImageDetailModalProps {
 
 export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavigate }: ImageDetailModalProps) {
   const [showPanel, setShowPanel] = useState(false);
+  const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
 
   const { replies, isLoading: repliesLoading } = useThreadChain(thread.id);
   const { like, repost, bookmark } = useThreadActions(thread);
   const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
+
+  function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
+    if (bookmark.isPending) return;
+    const wasBookmarked = thread.is_bookmarked === true;
+    bookmark.mutate();
+    if (!wasBookmarked) setBookmarkAnchor(e.currentTarget.getBoundingClientRect());
+  }
 
   const current = media[currentIndex];
   const hasPrev = currentIndex > 0;
@@ -268,7 +300,7 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
                 isBookmarked={!!thread.is_bookmarked}
                 onLike={() => { if (!like.isPending) like.mutate(); }}
                 onRepost={() => { if (!repost.isPending) repost.mutate(); }}
-                onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+                onBookmark={handleBookmark}
                 onReply={() => openReply(thread)}
               />
             </div>
@@ -291,6 +323,14 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
 
           </div>
         </div>
+      )}
+
+      {bookmarkAnchor && (
+        <BookmarkCollectionPopover
+          threadId={effectiveBookmarkId(thread)}
+          anchorRect={bookmarkAnchor}
+          onClose={() => setBookmarkAnchor(null)}
+        />
       )}
     </div>
   );
