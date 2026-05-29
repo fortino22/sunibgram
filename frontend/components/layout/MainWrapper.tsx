@@ -11,6 +11,7 @@ import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { useAuthStore } from '@/stores/authStore';
 
 const AUTH_PATHS = ['/login', '/signup', '/forgot-password'];
+const NO_RIGHT_PANEL_PATHS = ['/settings', '/messages'];
 
 function NotificationSocketMount() {
   const token = useAuthStore((s) => s.token);
@@ -25,6 +26,7 @@ interface MainWrapperProps {
 export function MainWrapper({ children }: MainWrapperProps) {
   const pathname = usePathname();
   const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
+  const hideRightPanel = NO_RIGHT_PANEL_PATHS.some((p) => pathname.startsWith(p));
 
   if (isAuthPath) {
     return <>{children}</>;
@@ -64,7 +66,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
           >
             {children}
           </main>
-          <RightPanel />
+          {!hideRightPanel && <RightPanel />}
         </div>
       </div>
     </AuthGuard>

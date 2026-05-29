@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { useCreateEvent } from '@/hooks/useCreateEvent';
 import { toast } from 'sonner';
 import { IMAGE_MAX_BYTES } from '@/lib/compressImage';
+import { ImageCropModal } from '@/components/profile/ImageCropModal';
 
 const schema = z
   .object({
@@ -61,6 +62,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [pendingCrop, setPendingCrop] = useState<{ src: string; filename: string } | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -102,10 +104,21 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
       e.target.value = '';
       return;
     }
-    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
-    setBannerPreview(URL.createObjectURL(file));
-    form.setValue('banner', file, { shouldValidate: true });
+    setPendingCrop({ src: URL.createObjectURL(file), filename: file.name });
     e.target.value = '';
+  }
+
+  function handleCropComplete(file: File, preview: string) {
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    setBannerPreview(preview);
+    form.setValue('banner', file, { shouldValidate: true });
+    if (pendingCrop) URL.revokeObjectURL(pendingCrop.src);
+    setPendingCrop(null);
+  }
+
+  function handleCropClose() {
+    if (pendingCrop) URL.revokeObjectURL(pendingCrop.src);
+    setPendingCrop(null);
   }
 
   async function onSubmit(values: FormValues) {
@@ -149,6 +162,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
   const errorStyle: React.CSSProperties = { fontSize: 12, color: 'var(--coral, #e53e3e)', marginTop: 4 };
 
   return (
+    <>
     <div
       style={{
         position: 'fixed',
@@ -470,5 +484,16 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
         </form>
       </div>
     </div>
+    {pendingCrop && (
+      <ImageCropModal
+        imageSrc={pendingCrop.src}
+        filename={pendingCrop.filename}
+        aspect={2.31}
+        maxSizeBytes={IMAGE_MAX_BYTES.banner}
+        onComplete={handleCropComplete}
+        onClose={handleCropClose}
+      />
+    )}
+    </>
   );
 }
