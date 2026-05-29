@@ -109,22 +109,7 @@ export default function AdminUsersPage() {
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)' }}>{detail.name}</span>
-                  {detail.is_premium && (
-                    <span
-                      style={{
-                        padding: '3px 10px',
-                        borderRadius: 9999,
-                        background: 'var(--accent-soft)',
-                        color: 'var(--accent)',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: '0.04em',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      Premium
-                    </span>
-                  )}
+                  {detail.is_premium && <span className="admin-pill-outline">Premium</span>}
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 2 }}>@{detail.username}</div>
                 {detail.bio && (

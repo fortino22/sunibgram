@@ -17,18 +17,9 @@ interface StatCardProps {
   value: string | number;
   hint?: string;
   icon?: LucideIcon;
-  accent?: 'accent' | 'amber' | 'coral' | 'green';
 }
 
-const ACCENT_TOKENS: Record<NonNullable<StatCardProps['accent']>, { bg: string; fg: string }> = {
-  accent: { bg: 'var(--accent-soft)', fg: 'var(--accent)' },
-  amber:  { bg: 'var(--amber-soft)',  fg: 'var(--amber)'  },
-  coral:  { bg: 'var(--coral-soft)',  fg: 'var(--coral)'  },
-  green:  { bg: 'var(--green-soft)',  fg: 'var(--green)'  },
-};
-
-function StatCard({ label, value, hint, icon: Icon, accent = 'accent' }: StatCardProps) {
-  const tone = ACCENT_TOKENS[accent];
+function StatCard({ label, value, hint, icon: Icon }: StatCardProps) {
   return (
     <div
       className="admin-stat-card"
@@ -55,8 +46,9 @@ function StatCard({ label, value, hint, icon: Icon, accent = 'accent' }: StatCar
               width: 30,
               height: 30,
               borderRadius: 9,
-              background: tone.bg,
-              color: tone.fg,
+              background: 'var(--bg-subtle)',
+              color: 'var(--text-secondary)',
+              border: '1px solid var(--border)',
             }}
           >
             <Icon size={16} strokeWidth={2.2} />
@@ -130,10 +122,10 @@ export default function AdminOverviewPage() {
       }
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatCard label="Users" value={usersQ.data?.meta?.total ?? '—'} icon={UsersIcon} accent="accent" />
-        <StatCard label="Pending Events" value={pendingEventsQ.data?.meta?.total ?? '—'} icon={CalendarDays} accent="amber" />
-        <StatCard label="Total Reports" value={reportsQ.data?.length ?? '—'} icon={Flag} accent="coral" />
-        <StatCard label="Orders" value={ordersQ.data?.meta?.total ?? '—'} icon={Receipt} accent="green" />
+        <StatCard label="Users" value={usersQ.data?.meta?.total ?? '—'} icon={UsersIcon} />
+        <StatCard label="Pending Events" value={pendingEventsQ.data?.meta?.total ?? '—'} icon={CalendarDays} />
+        <StatCard label="Total Reports" value={reportsQ.data?.length ?? '—'} icon={Flag} />
+        <StatCard label="Orders" value={ordersQ.data?.meta?.total ?? '—'} icon={Receipt} />
       </div>
 
       <div style={{ marginTop: 24, padding: 18, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>

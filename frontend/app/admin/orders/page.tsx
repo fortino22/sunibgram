@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
+import { Pager } from '@/components/admin/Pager';
 import { listOrders } from '@/lib/services/admin/orders';
 import type { Order } from '@/lib/services/admin/types';
 
@@ -43,13 +44,7 @@ export default function AdminOrdersPage() {
       ) : (
         <>
           <DataTable<Order> columns={columns} rows={q.data?.data ?? []} rowKey={(o) => o.id} empty="No orders" />
-          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : ''}</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="btn-ghost" style={{ padding: '6px 14px', borderRadius: 9999, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>Prev</button>
-              <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="btn-ghost" style={{ padding: '6px 14px', borderRadius: 9999, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.4 : 1 }}>Next</button>
-            </div>
-          </div>
+          <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}
     </AdminPage>

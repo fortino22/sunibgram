@@ -1,7 +1,15 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 interface ConfirmModalProps {
   open: boolean;
@@ -28,9 +36,12 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
             {destructive && (
               <span
                 aria-hidden
@@ -38,25 +49,23 @@ export function ConfirmModal({
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
                   borderRadius: 12,
-                  background: 'var(--coral-soft)',
-                  color: 'var(--coral)',
+                  background: 'var(--bg-subtle)',
+                  color: 'var(--text)',
                   flexShrink: 0,
+                  border: '1px solid var(--border)',
                 }}
               >
                 <AlertTriangle size={20} strokeWidth={2.2} />
               </span>
             )}
-            <div style={{ minWidth: 0 }}>
-              <DialogTitle>{title}</DialogTitle>
-              {description && (
-                <DialogDescription style={{ marginTop: 6 }}>{description}</DialogDescription>
-              )}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              {description && <DialogDescription style={{ marginTop: 0 }}>{description}</DialogDescription>}
             </div>
           </div>
-        </DialogHeader>
+        </DialogBody>
         <DialogFooter>
           <button
             type="button"
@@ -70,8 +79,11 @@ export function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={`admin-btn ${destructive ? 'admin-btn-danger' : 'admin-btn-primary'}`}
+            className="admin-btn admin-btn-primary"
           >
+            {destructive && !busy && (
+              <AlertTriangle size={14} strokeWidth={2.4} style={{ color: 'var(--coral)' }} />
+            )}
             {busy ? 'Working…' : confirmLabel}
           </button>
         </DialogFooter>

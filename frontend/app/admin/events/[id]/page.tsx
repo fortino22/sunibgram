@@ -4,7 +4,7 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Check } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { StatusBadge } from '@/components/admin/StatusBadge';
@@ -112,21 +112,42 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-          <ActionCard title="Approve" color="var(--green)">
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-              Mark this event as approved. It will appear on the public events page.
-            </p>
-            <button
-              type="button"
-              onClick={() => approveMut.mutate()}
-              disabled={approveMut.isPending || e.status === 'approved'}
-              className="admin-btn admin-btn-success"
-            >
-              {approveMut.isPending ? 'Working…' : 'Approve Event'}
-            </button>
+          <ActionCard title="Approve" color="var(--text)">
+            {e.status === 'approved' ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  background: 'var(--green-soft)',
+                  color: 'var(--green)',
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                <Check size={16} strokeWidth={2.4} />
+                Event already approved
+              </div>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                  Mark this event as approved. It will appear on the public events page.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => approveMut.mutate()}
+                  disabled={approveMut.isPending}
+                  className="admin-btn admin-btn-success"
+                >
+                  {approveMut.isPending ? 'Working…' : 'Approve Event'}
+                </button>
+              </>
+            )}
           </ActionCard>
 
-          <ActionCard title="Request Revision" color="var(--accent)">
+          <ActionCard title="Request Revision" color="var(--text)">
             <textarea
               value={revisionNote}
               onChange={(ev) => setRevisionNote(ev.target.value)}
@@ -144,7 +165,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
             </button>
           </ActionCard>
 
-          <ActionCard title="Decline" color="var(--coral)">
+          <ActionCard title="Decline" color="var(--text)">
             <textarea
               value={declineReason}
               onChange={(ev) => setDeclineReason(ev.target.value)}
@@ -156,7 +177,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
               type="button"
               onClick={() => declineMut.mutate()}
               disabled={declineMut.isPending || !declineReason.trim()}
-              className="admin-btn admin-btn-danger"
+              className="admin-btn admin-btn-outline-danger"
             >
               {declineMut.isPending ? 'Declining…' : 'Decline Event'}
             </button>

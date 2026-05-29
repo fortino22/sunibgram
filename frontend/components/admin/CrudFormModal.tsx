@@ -1,7 +1,14 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface CrudFormModalProps {
   open: boolean;
@@ -26,22 +33,25 @@ export function CrudFormModal({
 }: CrudFormModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description && (
-            <p style={{ marginTop: 4, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              {description}
-            </p>
-          )}
-        </DialogHeader>
+      <DialogContent>
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (!busy) onSubmit();
           }}
+          style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>{children}</div>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            {description && (
+              <p style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {description}
+              </p>
+            )}
+          </DialogHeader>
+          <DialogBody>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>{children}</div>
+          </DialogBody>
           <DialogFooter>
             <button
               type="button"
@@ -83,14 +93,14 @@ export function Field({ label, value, onChange, placeholder, required, textarea,
     required,
   };
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.01em' }}>
         {label}
         {required && <span style={{ color: 'var(--coral)', marginLeft: 4 }}>*</span>}
       </span>
       {textarea
         ? <textarea {...common} className="admin-textarea" />
-        : <input type="text" {...common} className="admin-input" />}
+        : <input type="text" {...common} className="admin-input" style={{ minHeight: 44 }} />}
       {hint && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{hint}</span>}
     </label>
   );

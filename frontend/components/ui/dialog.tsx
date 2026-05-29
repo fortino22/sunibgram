@@ -59,6 +59,13 @@ export function DialogContent({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onOpenChange]);
 
+  React.useEffect(() => {
+    if (!open) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [open]);
+
   if (!open) {
     return null;
   }
@@ -69,46 +76,60 @@ export function DialogContent({
         aria-label="Close dialog"
         className="absolute inset-0 admin-modal-backdrop"
         onClick={() => onOpenChange(false)}
-        style={{ background: 'rgba(2, 6, 23, 0.66)', backdropFilter: 'blur(2px)' }}
+        style={{ background: 'rgba(2, 6, 23, 0.7)', backdropFilter: 'blur(6px)' }}
         type="button"
       />
       <div
+        role="dialog"
+        aria-modal="true"
         className={cn(
-          'admin-modal-panel relative z-10 w-full max-w-2xl rounded-3xl border p-6 shadow-2xl',
-          className
+          'admin-modal-panel relative z-10 w-full flex flex-col',
+          className,
         )}
         style={{
           background: 'var(--bg-card)',
-          borderColor: 'var(--border)',
+          border: '1px solid var(--border-strong)',
+          borderRadius: 20,
+          boxShadow: '0 12px 48px rgba(0, 0, 0, 0.55)',
+          maxWidth: 480,
+          maxHeight: '90vh',
+          overflow: 'hidden',
         }}
       >
-        <button
-          type="button"
-          aria-label="Close dialog"
-          className="absolute right-4 top-4 rounded-full p-2 transition-colors"
-          onClick={() => onOpenChange(false)}
-          style={{ color: 'var(--text-tertiary)' }}
-        >
-          <X size={18} />
-        </button>
         {children}
       </div>
     </div>
   );
 }
 
-export function DialogHeader({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('mb-5 space-y-2', className)} {...props} />;
+interface DialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  showClose?: boolean;
+}
+
+export function DialogHeader({ className, showClose = true, children, ...props }: DialogHeaderProps) {
+  const { onOpenChange } = useDialogContext();
+  return (
+    <div className={cn('admin-modal-header', className)} {...props}>
+      <div className="admin-modal-header-text">{children}</div>
+      {showClose && (
+        <button
+          type="button"
+          aria-label="Close dialog"
+          onClick={() => onOpenChange(false)}
+          className="admin-modal-close"
+        >
+          <X size={18} />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function DialogTitle({
   className,
   ...props
 }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('text-xl font-semibold tracking-tight', className)} {...props} />;
+  return <h2 className={cn('text-lg font-semibold tracking-tight', className)} {...props} />;
 }
 
 export function DialogDescription({
@@ -117,16 +138,23 @@ export function DialogDescription({
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn('text-sm leading-6', className)}
+      className={cn('mt-1 text-sm leading-6', className)}
       style={{ color: 'var(--text-secondary)' }}
       {...props}
     />
   );
 }
 
+export function DialogBody({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('admin-modal-body hide-scrollbar', className)} {...props} />;
+}
+
 export function DialogFooter({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('mt-6 flex items-center justify-end gap-3', className)} {...props} />;
+  return <div className={cn('admin-modal-footer', className)} {...props} />;
 }

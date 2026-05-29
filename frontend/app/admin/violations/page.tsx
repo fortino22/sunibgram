@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -8,6 +8,7 @@ import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { CrudFormModal, Field } from '@/components/admin/CrudFormModal';
+import { Pager } from '@/components/admin/Pager';
 import {
   listViolations,
   createViolation,
@@ -24,6 +25,8 @@ export default function AdminViolationsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const q = useQuery({
     queryKey: ['admin', 'violations'],
@@ -45,6 +48,14 @@ export default function AdminViolationsPage() {
     mutationFn: () => deleteViolation(token!, deleteId!),
     onSuccess: () => { invalidate(); setDeleteId(null); },
   });
+
+  const rows = useMemo(() => q.data ?? [], [q.data]);
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageRows = useMemo(
+    () => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [rows, page],
+  );
 
   const columns: Column<Violation>[] = [
     { key: 'name', header: 'Name', render: (r) => <span style={{ fontWeight: 600 }}>{r.name}</span> },
@@ -87,7 +98,10 @@ export default function AdminViolationsPage() {
       {q.isLoading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
       ) : (
-        <DataTable<Violation> columns={columns} rows={q.data ?? []} rowKey={(r) => r.id} />
+        <>
+          <DataTable<Violation> columns={columns} rows={pageRows} rowKey={(r) => r.id} />
+          <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
+        </>
       )}
 
       <CrudFormModal

@@ -1,26 +1,38 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface DetailModalProps {
   open: boolean;
   onClose: () => void;
+  title?: string;
   hero?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
-  maxWidth?: string;
 }
 
-export function DetailModal({ open, onClose, hero, children, footer, maxWidth = 'max-w-xl' }: DetailModalProps) {
+export function DetailModal({ open, onClose, title = 'Detail', hero, children, footer }: DetailModalProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className={maxWidth}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-          {hero}
-          <div className="admin-detail-grid">{children}</div>
-          {footer && <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>{footer}</div>}
-        </div>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {hero}
+            <div className="admin-detail-grid">{children}</div>
+          </div>
+        </DialogBody>
+        {footer && <DialogFooter>{footer}</DialogFooter>}
       </DialogContent>
     </Dialog>
   );

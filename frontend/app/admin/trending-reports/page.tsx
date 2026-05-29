@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
+import { Pager } from '@/components/admin/Pager';
 import { getTrendStats, listTrendReasons } from '@/lib/services/admin/trendReports';
 import type { TrendReason, TrendReasonStats } from '@/lib/services/admin/types';
 
@@ -28,6 +30,13 @@ export default function AdminTrendingReportsPage() {
 
   const data = statsQ.data ?? [];
   const reasons = reasonsQ.data ?? [];
+  const PAGE_SIZE = 10;
+  const [statsPage, setStatsPage] = useState(1);
+  const [reasonsPage, setReasonsPage] = useState(1);
+  const statsTotalPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
+  const reasonsTotalPages = Math.max(1, Math.ceil(reasons.length / PAGE_SIZE));
+  const statsPageRows = data.slice((statsPage - 1) * PAGE_SIZE, statsPage * PAGE_SIZE);
+  const reasonsPageRows = reasons.slice((reasonsPage - 1) * PAGE_SIZE, reasonsPage * PAGE_SIZE);
 
   const statsColumns: Column<TrendReasonStats>[] = [
     { key: 'label', header: 'Reason', render: (r) => <span style={{ fontWeight: 600 }}>{r.label}</span> },
@@ -83,14 +92,16 @@ export default function AdminTrendingReportsPage() {
 
       <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 10, color: 'var(--text)' }}>Stats per Reason</h3>
       <div style={{ marginBottom: 24 }}>
-        <DataTable<TrendReasonStats> columns={statsColumns} rows={data} rowKey={(r) => r.code} empty="No trend report stats" />
+        <DataTable<TrendReasonStats> columns={statsColumns} rows={statsPageRows} rowKey={(r) => r.code} empty="No trend report stats" />
+        <Pager page={statsPage} totalPages={statsTotalPages} total={data.length} onChange={setStatsPage} />
       </div>
 
       <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 10, color: 'var(--text)' }}>Reason Registry (read-only)</h3>
       <p style={{ fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 10 }}>
         These reasons are seeded in the backend and not editable from the UI.
       </p>
-      <DataTable<TrendReason> columns={reasonColumns} rows={reasons} rowKey={(r) => r.code} empty="No reasons registered" />
+      <DataTable<TrendReason> columns={reasonColumns} rows={reasonsPageRows} rowKey={(r) => r.code} empty="No reasons registered" />
+      <Pager page={reasonsPage} totalPages={reasonsTotalPages} total={reasons.length} onChange={setReasonsPage} />
     </AdminPage>
   );
 }

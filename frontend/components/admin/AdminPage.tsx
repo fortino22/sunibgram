@@ -29,8 +29,9 @@ export function AdminPage({ title, description, icon: Icon, actions, children }:
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                background: 'var(--accent-soft)',
-                color: 'var(--accent)',
+                background: 'var(--bg-subtle)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
                 flexShrink: 0,
               }}
             >

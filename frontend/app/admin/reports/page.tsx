@@ -9,6 +9,7 @@ import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
+import { Pager } from '@/components/admin/Pager';
 import { listReports, updateReportStatus, deleteReport } from '@/lib/services/admin/reports';
 import type { Report } from '@/lib/services/admin/types';
 
@@ -20,6 +21,8 @@ export default function AdminReportsPage() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const q = useQuery({
     queryKey: ['admin', 'reports'],
@@ -54,6 +57,9 @@ export default function AdminReportsPage() {
   }, [reports]);
 
   const filtered = statusFilter ? reports.filter((r) => r.status === statusFilter) : reports;
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const columns: Column<Report>[] = [
     {
@@ -123,7 +129,7 @@ export default function AdminReportsPage() {
       actions={
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
           className="admin-select admin-select-pill"
         >
           <option value="">All statuses</option>
@@ -186,7 +192,10 @@ export default function AdminReportsPage() {
       ) : q.isError ? (
         <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : (
-        <DataTable<Report> columns={columns} rows={filtered} rowKey={(r) => r.id} />
+        <>
+          <DataTable<Report> columns={columns} rows={pageRows} rowKey={(r) => r.id} />
+          <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
+        </>
       )}
 
       <ConfirmModal

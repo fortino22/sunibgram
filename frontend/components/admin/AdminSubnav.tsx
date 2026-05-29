@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Flag,
   GraduationCap,
   LayoutDashboard,
@@ -124,8 +126,22 @@ export function AdminSubnav() {
         borderBottom: '1px solid var(--border)',
       }}
     >
-      <div className="admin-subnav-edge-fade-left" aria-hidden />
-      <div className="admin-subnav-edge-fade-right" aria-hidden />
+      <button
+        type="button"
+        aria-label="Scroll tabs left"
+        onClick={() => navRef.current?.scrollBy({ left: -240, behavior: 'smooth' })}
+        className="admin-subnav-arrow admin-subnav-arrow-left"
+      >
+        <ChevronLeft size={16} strokeWidth={2.2} />
+      </button>
+      <button
+        type="button"
+        aria-label="Scroll tabs right"
+        onClick={() => navRef.current?.scrollBy({ left: 240, behavior: 'smooth' })}
+        className="admin-subnav-arrow admin-subnav-arrow-right"
+      >
+        <ChevronRight size={16} strokeWidth={2.2} />
+      </button>
       <nav
         ref={navRef}
         className="hide-scrollbar"
