@@ -21,6 +21,7 @@ import (
 	communityrequestmodel "github.com/sunibgram/domain/model/community_request"
 	communityrulemodel "github.com/sunibgram/domain/model/community_rule"
 	communitythreadpinmodel "github.com/sunibgram/domain/model/community_thread_pin"
+	eventactionconfirmationmodel "github.com/sunibgram/domain/model/event_action_confirmation"
 	eventparticipantmodel "github.com/sunibgram/domain/model/event_participant"
 	eventpinmodel "github.com/sunibgram/domain/model/event_pin"
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
@@ -90,6 +91,7 @@ func AutoMigrate(db *gorm.DB) {
 		&communityactionconfirmationmodel.CommunityActionConfirmation{},
 		&eventpinmodel.UserEventPin{},
 		&eventparticipantmodel.EventParticipant{},
+		&eventactionconfirmationmodel.EventActionConfirmation{},
 		&facultymodel.Faculty{},
 		&usermodel.UserFaculty{},
 		&ordermodel.Order{},
@@ -115,6 +117,7 @@ func AutoMigrate(db *gorm.DB) {
 		}
 	}
 
+	dropDeadColumns(db)
 	createIndexes(db)
 	addCheckConstraints(db)
 	addColumns(db)
@@ -203,6 +206,14 @@ func createIndexes(db *gorm.DB) {
 
 func addColumns(db *gorm.DB) {
 	db.Exec(`ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs jsonb DEFAULT '[]'::jsonb`)
+}
+
+func dropDeadColumns(db *gorm.DB) {
+	if db.Migrator().HasColumn(&communityactionconfirmationmodel.CommunityActionConfirmation{}, "note") {
+		if err := db.Migrator().DropColumn(&communityactionconfirmationmodel.CommunityActionConfirmation{}, "note"); err != nil {
+			log.Printf("drop note column: %v", err)
+		}
+	}
 }
 
 func addCheckConstraints(db *gorm.DB) {

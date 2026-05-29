@@ -3,7 +3,7 @@
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EditEventDialog } from '@/components/events/EditEventDialog';
-import { DeletePostModal } from '@/components/shared/DeletePostModal';
+import { DangerConfirmModal } from '@/components/shared/DangerConfirmModal';
 import { useDeleteEvent } from '@/hooks/useDeleteEvent';
 import type { EventDetail, MyEventItem } from '@/lib/services/events';
 
@@ -156,13 +156,15 @@ export function MyEventCardActions({ event }: Props) {
         <EditEventDialog open={editOpen} onOpenChange={setEditOpen} event={editEventForDialog} />
       )}
 
-      <DeletePostModal
+      <DangerConfirmModal
         open={deleteOpen}
-        isPending={deleteMutation.isPending}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteOpen(false)}
         title="Delete event?"
         description="This can't be undone and the event will be removed for all participants."
+        confirmText={event.title}
+        confirmLabel="Delete event"
+        busy={deleteMutation.isPending}
+        onConfirm={handleDelete}
+        onClose={() => { if (!deleteMutation.isPending) setDeleteOpen(false); }}
       />
     </>
   );

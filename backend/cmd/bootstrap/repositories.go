@@ -18,6 +18,7 @@ import (
 	communityrulerepoiface "github.com/sunibgram/domain/repository/community_rule"
 	communitythreadpinrepoiface "github.com/sunibgram/domain/repository/community_thread_pin"
 	eventrepoiface "github.com/sunibgram/domain/repository/event"
+	eventactionconfirmationrepoiface "github.com/sunibgram/domain/repository/event_action_confirmation"
 	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
 	eventpinrepoiface "github.com/sunibgram/domain/repository/event_pin"
 	eventreviewrepoiface "github.com/sunibgram/domain/repository/event_review"
@@ -64,6 +65,7 @@ import (
 	communityrulerepo "github.com/sunibgram/infrastructure/repository/community_rule"
 	communitythreadpinrepo "github.com/sunibgram/infrastructure/repository/community_thread_pin"
 	eventrepo "github.com/sunibgram/infrastructure/repository/event"
+	eventactionconfirmationrepo "github.com/sunibgram/infrastructure/repository/event_action_confirmation"
 	eventparticipantrepo "github.com/sunibgram/infrastructure/repository/event_participant"
 	eventpinrepo "github.com/sunibgram/infrastructure/repository/event_pin"
 	eventreviewrepo "github.com/sunibgram/infrastructure/repository/event_review"
@@ -123,8 +125,9 @@ type Repositories struct {
 	CommunityRule        communityrulerepoiface.ICommunityRuleRepository
 	CommunityThreadPin   communitythreadpinrepoiface.ICommunityThreadPinRepository
 	CommunityPin         communitypinrepoiface.ICommunityPinRepository
-	EventPin             eventpinrepoiface.IEventPinRepository
-	EventParticipant     eventparticipantrepoiface.IEventParticipantRepository
+	EventPin                eventpinrepoiface.IEventPinRepository
+	EventParticipant        eventparticipantrepoiface.IEventParticipantRepository
+	EventActionConfirmation eventactionconfirmationrepoiface.IEventActionConfirmationRepository
 	Faculty              facultyrepoiface.IFacultyRepository
 	Feedback             feedbackrepoiface.IFeedbackRepository
 	UserFaculty          userfacultyrepoiface.IUserFacultyRepository
@@ -175,8 +178,9 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		CommunityRule:        communityrulerepo.NewCommunityRuleRepository(w, r),
 		CommunityThreadPin:   communitythreadpinrepo.NewCommunityThreadPinRepository(w, r),
 		CommunityPin:         communitypinrepo.NewCommunityPinRepository(w, r, c),
-		EventPin:             eventpinrepo.NewEventPinRepository(w, r, c),
-		EventParticipant:     eventparticipantrepo.NewEventParticipantRepository(w, r, c),
+		EventPin:                eventpinrepo.NewEventPinRepository(w, r, c),
+		EventParticipant:        eventparticipantrepo.NewEventParticipantRepository(w, r, c),
+		EventActionConfirmation: eventactionconfirmationrepo.NewEventActionConfirmationRepository(w, r),
 		Faculty:              facultyrepo.NewFacultyRepository(w, r, c),
 		Feedback:             feedbackrepo.NewFeedbackRepository(w, r, c),
 		UserFaculty:          userfacultyrepo.NewUserFacultyRepository(w, r, c),

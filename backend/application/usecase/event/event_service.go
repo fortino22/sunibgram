@@ -23,6 +23,7 @@ import (
 	eventpinrepoiface "github.com/sunibgram/domain/repository/event_pin"
 	eventreviewrepoiface "github.com/sunibgram/domain/repository/event_review"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	eventactionconfirmationsvciface "github.com/sunibgram/domain/service/event_action_confirmation"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	eventsvciface "github.com/sunibgram/domain/service/event"
@@ -37,6 +38,7 @@ type EventService struct {
 	settingsRepo    usersettingsrepoiface.IUserSettingsRepository
 	followRepo      followrepoiface.IFollowRepository
 	threadRepo      threadrepoiface.IThreadRepository
+	auditSvc        eventactionconfirmationsvciface.IEventActionConfirmationService
 }
 
 func NewEventService(
@@ -48,6 +50,7 @@ func NewEventService(
 	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
 	followRepo followrepoiface.IFollowRepository,
 	threadRepo threadrepoiface.IThreadRepository,
+	auditSvc eventactionconfirmationsvciface.IEventActionConfirmationService,
 ) eventsvciface.IEventService {
 	return &EventService{
 		eventRepo:       eventRepo,
@@ -58,6 +61,7 @@ func NewEventService(
 		settingsRepo:    settingsRepo,
 		followRepo:      followRepo,
 		threadRepo:      threadRepo,
+		auditSvc:        auditSvc,
 	}
 }
 
@@ -304,7 +308,13 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 		_ = s.storageUsecase.Delete(ctx, event.AttachmentObjectName)
 	}
 	s.invalidateUserScopedCaches(id)
-	return s.eventRepo.Delete(id)
+	if err := s.eventRepo.Delete(id); err != nil {
+		return err
+	}
+	if s.auditSvc != nil {
+		_ = s.auditSvc.RecordEventDeletion(ctx, id, event.UserID, event.Title)
+	}
+	return nil
 }
 
 func (s *EventService) ApproveEvent(id, adminID string) error {

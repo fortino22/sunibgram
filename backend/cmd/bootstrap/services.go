@@ -19,6 +19,7 @@ import (
 	communityruleuc "github.com/sunibgram/application/usecase/community_rule"
 	communitythreadpinuc "github.com/sunibgram/application/usecase/community_thread_pin"
 	eventuc "github.com/sunibgram/application/usecase/event"
+	eventactionconfirmationuc "github.com/sunibgram/application/usecase/event_action_confirmation"
 	eventparticipantuc "github.com/sunibgram/application/usecase/event_participant"
 	eventpinuc "github.com/sunibgram/application/usecase/event_pin"
 	eventthreadpinuc "github.com/sunibgram/application/usecase/event_thread_pin"
@@ -62,6 +63,7 @@ import (
 	communityrulesvciface "github.com/sunibgram/domain/service/community_rule"
 	communitythreadpinsvciface "github.com/sunibgram/domain/service/community_thread_pin"
 	eventsvciface "github.com/sunibgram/domain/service/event"
+	eventactionconfirmationsvciface "github.com/sunibgram/domain/service/event_action_confirmation"
 	eventparticipantsvciface "github.com/sunibgram/domain/service/event_participant"
 	eventpinsvciface "github.com/sunibgram/domain/service/event_pin"
 	eventthreadpinsvciface "github.com/sunibgram/domain/service/event_thread_pin"
@@ -121,8 +123,9 @@ type Services struct {
 	CommunityRule        communityrulesvciface.ICommunityRuleService
 	CommunityThreadPin   communitythreadpinsvciface.ICommunityThreadPinService
 	CommunityPin         communitypinsvciface.ICommunityPinService
-	EventPin             eventpinsvciface.IEventPinService
-	EventParticipant     eventparticipantsvciface.IEventParticipantService
+	EventPin                eventpinsvciface.IEventPinService
+	EventParticipant        eventparticipantsvciface.IEventParticipantService
+	EventActionConfirmation eventactionconfirmationsvciface.IEventActionConfirmationService
 	Faculty              facultysvciface.IFacultyService
 	Feedback             feedbacksvciface.IFeedbackService
 	Order                ordersvciface.IOrderService
@@ -148,6 +151,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, repos.BookmarkCollection)
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
 	communityActionConfirmation := communityactionconfirmationuc.NewCommunityActionConfirmationService(repos.CommunityActionConfirmation)
+	eventActionConfirmation := eventactionconfirmationuc.NewEventActionConfirmationService(repos.EventActionConfirmation)
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
@@ -162,7 +166,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Hashtag:              hashtag,
 		ThreadSummary:        summary,
 		Thread:               thread,
-		Event:                eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread),
+		Event:                eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread, eventActionConfirmation),
 		Explore:              exploreuc.NewExploreService(repos.Explore, repos.Thread, repos.UserSettings, repos.Follow),
 		ThreadMedia:          threadmediauc.NewThreadMediaService(repos.Thread, repos.ThreadMedia, ext.Storage),
 		Like:                 like,
