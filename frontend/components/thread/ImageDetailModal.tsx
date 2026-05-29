@@ -9,6 +9,7 @@ import { ActionBar } from '@/components/shared/ActionBar';
 import { PostComposer } from '@/components/shared/PostComposer';
 import { useThreadChain } from '@/hooks/useThread';
 import { useThreadActions } from '@/hooks/useThreadActions';
+import { useComposeStore } from '@/stores/composeStore';
 import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
 
 /* ------------------------------------------------------------------ */
@@ -17,6 +18,7 @@ import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
 function ModalReply({ thread }: { thread: ThreadItem }) {
   const router = useRouter();
   const { like, repost, bookmark } = useThreadActions(thread);
+  const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
 
   return (
@@ -78,6 +80,7 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
               onLike={() => { if (!like.isPending) like.mutate(); }}
               onRepost={() => { if (!repost.isPending) repost.mutate(); }}
               onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+              onReply={() => openReply(thread)}
               size="sm"
             />
           </div>
@@ -103,6 +106,7 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
 
   const { replies, isLoading: repliesLoading } = useThreadChain(thread.id);
   const { like, repost, bookmark } = useThreadActions(thread);
+  const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
 
   const current = media[currentIndex];
@@ -265,6 +269,7 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
                 onLike={() => { if (!like.isPending) like.mutate(); }}
                 onRepost={() => { if (!repost.isPending) repost.mutate(); }}
                 onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+                onReply={() => openReply(thread)}
               />
             </div>
 
