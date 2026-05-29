@@ -123,10 +123,16 @@ func (r *hashtagRepository) UnlinkHashtagsFromThread(ctx context.Context, thread
 	})
 }
 
-func (r *hashtagRepository) GetTrending(ctx context.Context, limit int) ([]hashtagmodel.TrendingHashtag, error) {
+func (r *hashtagRepository) GetTrending(ctx context.Context, limit int, excludeReporterID uint) ([]hashtagmodel.TrendingHashtag, error) {
 	var rows []hashtagmodel.Hashtag
-	if err := r.readDB.WithContext(ctx).
-		Where("week_thread_count > 0 OR week_like_count > 0 OR week_repost_count > 0").
+	q := r.readDB.WithContext(ctx).
+		Where("week_thread_count > 0 OR week_like_count > 0 OR week_repost_count > 0")
+	if excludeReporterID != 0 {
+		q = q.Where("id NOT IN (?)",
+			r.readDB.Table("trend_reports").Select("hashtag_id").Where("reporter_id = ?", excludeReporterID),
+		)
+	}
+	if err := q.
 		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, thread_count DESC, name ASC").
 		Limit(limit).Find(&rows).Error; err != nil {
 		return nil, err

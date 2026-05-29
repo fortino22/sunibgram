@@ -26,13 +26,13 @@ func NewHashtagService(hashtagRepo hashtagrepoiface.IHashtagRepository, c *cache
 	return &HashtagService{hashtagRepo: hashtagRepo, cache: c}
 }
 
-func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]hashtagmodel.TrendingHashtag, error) {
+func (s *HashtagService) GetTrending(ctx context.Context, limit int, viewerID uint) ([]hashtagmodel.TrendingHashtag, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, trendingHashtagLimit)
 	if limit > trendingHashtagLimit {
 		limit = trendingHashtagLimit
 	}
 
-	key := fmt.Sprintf("trending_hashtags:%d", limit)
+	key := fmt.Sprintf("trending_hashtags:%d:u%d", limit, viewerID)
 	var cached []hashtagmodel.TrendingHashtag
 	if s.cache != nil {
 		if err := s.cache.Get(ctx, key, &cached); err == nil {
@@ -40,7 +40,7 @@ func (s *HashtagService) GetTrending(ctx context.Context, limit int) ([]hashtagm
 		}
 	}
 
-	hashtags, err := s.hashtagRepo.GetTrending(ctx, limit)
+	hashtags, err := s.hashtagRepo.GetTrending(ctx, limit, viewerID)
 	if err != nil {
 		return nil, err
 	}

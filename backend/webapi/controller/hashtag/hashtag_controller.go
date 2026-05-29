@@ -5,6 +5,7 @@ import (
 
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
+	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 	hashtagdto "github.com/sunibgram/webapi/dto/hashtag"
 )
@@ -25,7 +26,11 @@ func NewHashtagController(hashtagService hashtagsvciface.IHashtagService) *Hasht
 }
 
 func (c *HashtagController) GetTrending(ctx *fiber.Ctx) error {
-	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), trendingHashtagLimit)
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), trendingHashtagLimit, claims.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
@@ -33,7 +38,11 @@ func (c *HashtagController) GetTrending(ctx *fiber.Ctx) error {
 }
 
 func (c *HashtagController) GetTopTrending(ctx *fiber.Ctx) error {
-	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), topTrendingHashtagLimit)
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	hashtags, err := c.hashtagService.GetTrending(ctx.Context(), topTrendingHashtagLimit, claims.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}

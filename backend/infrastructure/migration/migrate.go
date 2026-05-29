@@ -161,6 +161,8 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_trend_reports_hashtag_id ON trend_reports(hashtag_id)",
 		"CREATE INDEX IF NOT EXISTS idx_trend_reports_reason_id ON trend_reports(reason_id)",
 		"CREATE INDEX IF NOT EXISTS idx_trend_reports_reporter_id ON trend_reports(reporter_id)",
+		"DROP INDEX IF EXISTS uniq_trend_report_user_hashtag_reason",
+		"CREATE UNIQUE INDEX IF NOT EXISTS uniq_trend_report_user_hashtag ON trend_reports(reporter_id, hashtag_id)",
 		"CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created ON notifications(recipient_user_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_threads_parent_id ON threads(parent_id) WHERE parent_id IS NOT NULL",
 		"CREATE INDEX IF NOT EXISTS idx_threads_original_thread_id ON threads(original_thread_id) WHERE original_thread_id IS NOT NULL",
