@@ -1,5 +1,6 @@
 'use client';
 
+import type { MouseEvent } from 'react';
 import { Bookmark, Heart, MessageCircle, Repeat2 } from 'lucide-react';
 import { ActionButton } from '@/components/thread/ActionButton';
 
@@ -17,7 +18,7 @@ interface ActionBarProps {
   isBookmarked: boolean;
   onLike?: () => void;
   onRepost?: () => void;
-  onBookmark?: () => void;
+  onBookmark?: (e: MouseEvent<HTMLButtonElement>) => void;
   onReply?: () => void;
   size?: 'sm' | 'md';
 }

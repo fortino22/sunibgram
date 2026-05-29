@@ -13,6 +13,7 @@ import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
+import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
@@ -53,7 +54,19 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
   const author = getThreadAuthor(root);
+  const bookmarkTargetId = root.type?.toLowerCase() === 'repost' && typeof root.original_thread_id === 'number'
+    ? root.original_thread_id
+    : root.id;
+
+  function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
+    if (bookmark.isPending) return;
+    const wasBookmarked = root.is_bookmarked === true;
+    bookmark.mutate();
+    if (!wasBookmarked) setBookmarkAnchor(e.currentTarget.getBoundingClientRect());
+  }
+
   const canManage = isOwnThread(root, currentUserId);
   const canReport = currentUserId != null && currentUserId !== root.author.id;
   const repostLabel = getRepostLabel(root, currentUserId);
@@ -246,7 +259,7 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
             isBookmarked={root.is_bookmarked === true}
             onLike={() => { if (!like.isPending) like.mutate(); }}
             onRepost={() => { if (!repost.isPending) repost.mutate(); }}
-            onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+            onBookmark={handleBookmark}
             onReply={() => openReply(root)}
           />
         </div>
@@ -272,6 +285,14 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
           onNavigate={(index) => setLightboxState((current) => (
             current ? { ...current, index } : current
           ))}
+        />
+      )}
+
+      {bookmarkAnchor && (
+        <BookmarkCollectionPopover
+          threadId={bookmarkTargetId}
+          anchorRect={bookmarkAnchor}
+          onClose={() => setBookmarkAnchor(null)}
         />
       )}
 
