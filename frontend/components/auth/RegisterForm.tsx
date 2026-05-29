@@ -209,6 +209,9 @@ export function RegisterForm({
                   <option key={f.faculty_id} value={String(f.faculty_id)}>{f.faculty_name}</option>
                 ))}
               </select>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 1.4 }}>
+                Please choose the correct faculty of your study in Binus University. This <span style={{ color: 'var(--coral)', fontWeight: 500 }}>cannot be changed</span> later.
+              </p>
             </FormField>
 
             <FormField label="Bio (optional)" error={errors.bio?.message}>

@@ -6,7 +6,6 @@ import { CreatePostBox } from '@/components/shared/CreatePostBox';
 import { ThreadCard } from '@/components/thread/ThreadCard';
 import { ThreadCardSkeleton } from '@/components/thread/skeletons/ThreadCardSkeleton';
 import { NewPostsBanner } from '@/components/thread/NewPostsBanner';
-import { Icon } from '@/components/ui/Icon';
 import { useFollowingThreads } from '@/hooks/useFollowingThreads';
 import { useThreads } from '@/hooks/useThreads';
 import { useFacultyThreads } from '@/hooks/useFacultyThreads';
@@ -100,21 +99,6 @@ function EmptyFeed({ emptyKey }: { emptyKey: string }) {
         gap: 12,
       }}
     >
-      <div
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          background: 'var(--bg-subtle)',
-          border: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 4,
-        }}
-      >
-        <Icon name="reply" size={22} color="var(--border)" strokeWidth={1.2} />
-      </div>
       <div style={{ fontWeight: 600, fontSize: 18, color: 'var(--text)', letterSpacing: '-0.02em' }}>
         {msg.title}
       </div>
