@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ShieldAlert } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
@@ -56,14 +57,12 @@ export default function AdminViolationsPage() {
           <button
             type="button"
             onClick={() => { setEditing(r); setName(r.name); setDescription(r.description); }}
-            className="btn-ghost"
-            style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 9999, background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 13 }}
+            className="admin-btn admin-btn-outline admin-btn-sm"
           >Edit</button>
           <button
             type="button"
             onClick={() => setDeleteId(r.id)}
-            className="btn-ghost"
-            style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 9999, background: 'transparent', color: 'var(--coral)', cursor: 'pointer', fontSize: 13 }}
+            className="admin-btn admin-btn-outline-danger admin-btn-sm"
           >Delete</button>
         </div>
       ),
@@ -72,14 +71,14 @@ export default function AdminViolationsPage() {
 
   return (
     <AdminPage
+      icon={ShieldAlert}
       title="Report Types"
       description="Manage the violation types users can choose when filing a report."
       actions={
         <button
           type="button"
           onClick={() => { setCreating(true); setName(''); setDescription(''); }}
-          className="btn-solid"
-          style={{ padding: '8px 16px', borderRadius: 9999, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+          className="admin-btn admin-btn-primary"
         >
           + New Type
         </button>

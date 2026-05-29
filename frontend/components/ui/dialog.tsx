@@ -67,14 +67,14 @@ export function DialogContent({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         aria-label="Close dialog"
-        className="absolute inset-0"
+        className="absolute inset-0 admin-modal-backdrop"
         onClick={() => onOpenChange(false)}
-        style={{ background: 'rgba(2, 6, 23, 0.66)' }}
+        style={{ background: 'rgba(2, 6, 23, 0.66)', backdropFilter: 'blur(2px)' }}
         type="button"
       />
       <div
         className={cn(
-          'relative z-10 w-full max-w-2xl rounded-3xl border p-6 shadow-2xl',
+          'admin-modal-panel relative z-10 w-full max-w-2xl rounded-3xl border p-6 shadow-2xl',
           className
         )}
         style={{

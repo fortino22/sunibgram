@@ -32,6 +32,8 @@ func PatchEventCounter(db *gorm.DB, c *cache.Cache, eventID, column string, delt
 		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", delta)
 	case "repost_count":
 		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
+	case "share_count":
+		updates["week_share_count"] = gorm.Expr("GREATEST(week_share_count + ?, 0)", delta)
 	}
 	db.Model(&threadmodel.Event{}).
 		Where("id = ?", eventID).
@@ -39,11 +41,11 @@ func PatchEventCounter(db *gorm.DB, c *cache.Cache, eventID, column string, delt
 	InvalidateEventCounterCaches(c, eventID)
 }
 
-func PatchEventCounters(db *gorm.DB, c *cache.Cache, eventID string, threadDelta, likeDelta, repostDelta int) {
-	if eventID == "" || (threadDelta == 0 && likeDelta == 0 && repostDelta == 0) {
+func PatchEventCounters(db *gorm.DB, c *cache.Cache, eventID string, threadDelta, likeDelta, repostDelta, shareDelta int) {
+	if eventID == "" || (threadDelta == 0 && likeDelta == 0 && repostDelta == 0 && shareDelta == 0) {
 		return
 	}
-	updates := make(map[string]any, 6)
+	updates := make(map[string]any, 8)
 	if threadDelta != 0 {
 		updates["thread_count"] = gorm.Expr("GREATEST(thread_count + ?, 0)", threadDelta)
 		updates["week_thread_count"] = gorm.Expr("GREATEST(week_thread_count + ?, 0)", threadDelta)
@@ -55,6 +57,10 @@ func PatchEventCounters(db *gorm.DB, c *cache.Cache, eventID string, threadDelta
 	if repostDelta != 0 {
 		updates["repost_count"] = gorm.Expr("GREATEST(repost_count + ?, 0)", repostDelta)
 		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", repostDelta)
+	}
+	if shareDelta != 0 {
+		updates["share_count"] = gorm.Expr("GREATEST(share_count + ?, 0)", shareDelta)
+		updates["week_share_count"] = gorm.Expr("GREATEST(week_share_count + ?, 0)", shareDelta)
 	}
 	db.Model(&threadmodel.Event{}).
 		Where("id = ?", eventID).

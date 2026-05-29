@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Receipt } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
@@ -34,7 +35,7 @@ export default function AdminOrdersPage() {
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return (
-    <AdminPage title="Orders" description="All premium subscription payments.">
+    <AdminPage icon={Receipt} title="Orders" description="All premium subscription payments.">
       {q.isLoading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
       ) : q.isError ? (

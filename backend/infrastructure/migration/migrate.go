@@ -123,6 +123,7 @@ func AutoMigrate(db *gorm.DB) {
 	addColumns(db)
 	addForeignKeys(db)
 	migrateChatEncryption(db)
+	backfillShareCounters(db)
 
 	seedRoles(db)
 	seeder.SeedCategory(db)
@@ -208,6 +209,37 @@ func createIndexes(db *gorm.DB) {
 
 func addColumns(db *gorm.DB) {
 	db.Exec(`ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs jsonb DEFAULT '[]'::jsonb`)
+}
+
+func backfillShareCounters(db *gorm.DB) {
+	db.Exec(`
+		UPDATE events e SET
+			share_count = COALESCE(s.total, 0),
+			week_share_count = COALESCE(s.week, 0)
+		FROM (
+			SELECT te.event_id,
+				SUM(t.share_count) AS total,
+				SUM(CASE WHEN t.created_at > NOW() - INTERVAL '7 days' THEN t.share_count ELSE 0 END) AS week
+			FROM thread_events te
+			JOIN threads t ON t.thread_id = te.thread_id
+			GROUP BY te.event_id
+		) s
+		WHERE e.id = s.event_id
+	`)
+	db.Exec(`
+		UPDATE hashtags h SET
+			share_count = COALESCE(s.total, 0),
+			week_share_count = COALESCE(s.week, 0)
+		FROM (
+			SELECT th.hashtag_id,
+				SUM(t.share_count) AS total,
+				SUM(CASE WHEN t.created_at > NOW() - INTERVAL '7 days' THEN t.share_count ELSE 0 END) AS week
+			FROM thread_hashtags th
+			JOIN threads t ON t.thread_id = th.thread_id
+			GROUP BY th.hashtag_id
+		) s
+		WHERE h.id = s.hashtag_id
+	`)
 }
 
 func dropDeadColumns(db *gorm.DB) {

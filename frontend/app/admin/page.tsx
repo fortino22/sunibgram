@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { CalendarDays, Flag, LayoutDashboard, Receipt, Users as UsersIcon, type LucideIcon } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
@@ -15,24 +16,65 @@ interface StatCardProps {
   label: string;
   value: string | number;
   hint?: string;
+  icon?: LucideIcon;
+  accent?: 'accent' | 'amber' | 'coral' | 'green';
 }
 
-function StatCard({ label, value, hint }: StatCardProps) {
+const ACCENT_TOKENS: Record<NonNullable<StatCardProps['accent']>, { bg: string; fg: string }> = {
+  accent: { bg: 'var(--accent-soft)', fg: 'var(--accent)' },
+  amber:  { bg: 'var(--amber-soft)',  fg: 'var(--amber)'  },
+  coral:  { bg: 'var(--coral-soft)',  fg: 'var(--coral)'  },
+  green:  { bg: 'var(--green-soft)',  fg: 'var(--green)'  },
+};
+
+function StatCard({ label, value, hint, icon: Icon, accent = 'accent' }: StatCardProps) {
+  const tone = ACCENT_TOKENS[accent];
   return (
     <div
+      className="admin-stat-card"
       style={{
         flex: 1,
-        minWidth: 160,
+        minWidth: 180,
         padding: 18,
         borderRadius: 16,
         border: '1px solid var(--border)',
         background: 'var(--bg-card)',
       }}
     >
-      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {label}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          {label}
+        </div>
+        {Icon && (
+          <span
+            aria-hidden
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 30,
+              height: 30,
+              borderRadius: 9,
+              background: tone.bg,
+              color: tone.fg,
+            }}
+          >
+            <Icon size={16} strokeWidth={2.2} />
+          </span>
+        )}
       </div>
-      <div style={{ marginTop: 6, fontSize: 26, fontWeight: 700, color: 'var(--text)' }}>{value}</div>
+      <div
+        style={{
+          marginTop: 8,
+          fontSize: 28,
+          fontWeight: 700,
+          color: 'var(--text)',
+          letterSpacing: '-0.02em',
+          transition: 'color 200ms ease',
+        }}
+      >
+        {value}
+      </div>
       {hint && <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-secondary)' }}>{hint}</div>}
     </div>
   );
@@ -74,32 +116,24 @@ export default function AdminOverviewPage() {
 
   return (
     <AdminPage
+      icon={LayoutDashboard}
       title="Admin Dashboard"
       description="Operational overview and platform controls."
       actions={
         <button
           type="button"
           onClick={() => setConfirmOpen(true)}
-          className="btn-solid"
-          style={{
-            padding: '10px 18px',
-            borderRadius: 9999,
-            background: 'var(--coral)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          className="admin-btn admin-btn-danger"
         >
           Clear App Cache
         </button>
       }
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-        <StatCard label="Users" value={usersQ.data?.meta?.total ?? '—'} />
-        <StatCard label="Pending Events" value={pendingEventsQ.data?.meta?.total ?? '—'} />
-        <StatCard label="Total Reports" value={reportsQ.data?.length ?? '—'} />
-        <StatCard label="Orders" value={ordersQ.data?.meta?.total ?? '—'} />
+        <StatCard label="Users" value={usersQ.data?.meta?.total ?? '—'} icon={UsersIcon} accent="accent" />
+        <StatCard label="Pending Events" value={pendingEventsQ.data?.meta?.total ?? '—'} icon={CalendarDays} accent="amber" />
+        <StatCard label="Total Reports" value={reportsQ.data?.length ?? '—'} icon={Flag} accent="coral" />
+        <StatCard label="Orders" value={ordersQ.data?.meta?.total ?? '—'} icon={Receipt} accent="green" />
       </div>
 
       <div style={{ marginTop: 24, padding: 18, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>

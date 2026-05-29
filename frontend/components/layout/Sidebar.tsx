@@ -417,6 +417,7 @@ export function Sidebar() {
         <button
           title={isCollapsed ? (profile?.name ?? user?.username ?? 'Account') : undefined}
           onClick={() => setMenuOpen((v) => !v)}
+          className={`sidebar-account-btn${menuOpen ? ' is-open' : ''}`}
           style={{
             width: '100%',
             padding: '14px 12px',
@@ -446,9 +447,9 @@ export function Sidebar() {
               {profile?.username ?? user?.username ?? ''}
             </div>
           </div>
-          <div className="sidebar-label">
-            <Icon name="more" size={16} color="var(--text-on-dark-muted)" />
-          </div>
+          <span className="sidebar-label sidebar-more-hit">
+            <Icon name="more" size={16} />
+          </span>
         </button>
       </div>
     </nav>

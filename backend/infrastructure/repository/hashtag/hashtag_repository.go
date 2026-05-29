@@ -126,14 +126,14 @@ func (r *hashtagRepository) UnlinkHashtagsFromThread(ctx context.Context, thread
 func (r *hashtagRepository) GetTrending(ctx context.Context, limit int, excludeReporterID uint) ([]hashtagmodel.TrendingHashtag, error) {
 	var rows []hashtagmodel.Hashtag
 	q := r.readDB.WithContext(ctx).
-		Where("week_thread_count > 0 OR week_like_count > 0 OR week_repost_count > 0")
+		Where("week_thread_count > 0 OR week_like_count > 0 OR week_repost_count > 0 OR week_share_count > 0")
 	if excludeReporterID != 0 {
 		q = q.Where("id NOT IN (?)",
 			r.readDB.Table("trend_reports").Select("hashtag_id").Where("reporter_id = ?", excludeReporterID),
 		)
 	}
 	if err := q.
-		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, thread_count DESC, name ASC").
+		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2 + week_share_count * 3) DESC, thread_count DESC, name ASC").
 		Limit(limit).Find(&rows).Error; err != nil {
 		return nil, err
 	}
@@ -193,7 +193,9 @@ func (r *hashtagRepository) PatchHashtagCounterByThreadID(ctx context.Context, t
 		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", delta)
 	case "repost_count":
 		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
-	case "week_thread_count", "week_like_count", "week_repost_count":
+	case "share_count":
+		updates["week_share_count"] = gorm.Expr("GREATEST(week_share_count + ?, 0)", delta)
+	case "week_thread_count", "week_like_count", "week_repost_count", "week_share_count":
 	default:
 		return nil
 	}
@@ -253,6 +255,8 @@ func patchHashtagCounters(db *gorm.DB, c *cache.Cache, hashtagIDs []uuid.UUID, c
 		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", delta)
 	case "repost_count":
 		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
+	case "share_count":
+		updates["week_share_count"] = gorm.Expr("GREATEST(week_share_count + ?, 0)", delta)
 	default:
 		return
 	}

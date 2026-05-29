@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { TrendingUp } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
@@ -41,6 +42,7 @@ export default function AdminTrendingReportsPage() {
 
   return (
     <AdminPage
+      icon={TrendingUp}
       title="Trending Reports"
       description="Reports filed against trending hashtags, grouped by reason."
     >

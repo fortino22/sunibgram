@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Tags } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
@@ -55,14 +56,12 @@ export default function AdminCategoriesPage() {
           <button
             type="button"
             onClick={() => { setEditing(r); setName(r.name); }}
-            className="btn-ghost"
-            style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 9999, background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 13 }}
+            className="admin-btn admin-btn-outline admin-btn-sm"
           >Edit</button>
           <button
             type="button"
             onClick={() => setDeleteId(r.id)}
-            className="btn-ghost"
-            style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 9999, background: 'transparent', color: 'var(--coral)', cursor: 'pointer', fontSize: 13 }}
+            className="admin-btn admin-btn-outline-danger admin-btn-sm"
           >Delete</button>
         </div>
       ),
@@ -71,14 +70,14 @@ export default function AdminCategoriesPage() {
 
   return (
     <AdminPage
+      icon={Tags}
       title="Categories"
       description="Manage community categories."
       actions={
         <button
           type="button"
           onClick={() => { setCreating(true); setName(''); }}
-          className="btn-solid"
-          style={{ padding: '8px 16px', borderRadius: 9999, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+          className="admin-btn admin-btn-primary"
         >
           + New Category
         </button>

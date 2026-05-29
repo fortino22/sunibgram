@@ -17,11 +17,15 @@ const COLORS: Record<string, { bg: string; fg: string }> = {
   expired:   { bg: 'var(--bg-subtle)',   fg: 'var(--text-tertiary)' },
 };
 
+const ACTIONABLE = new Set(['pending', 'open', 'revision']);
+
 export function StatusBadge({ status }: StatusBadgeProps) {
   const key = status.toLowerCase();
   const c = COLORS[key] ?? { bg: 'var(--bg-subtle)', fg: 'var(--text-secondary)' };
+  const pulse = ACTIONABLE.has(key);
   return (
     <span
+      className={pulse ? 'status-pulse' : undefined}
       style={{
         display: 'inline-block',
         padding: '3px 10px',

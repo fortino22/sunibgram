@@ -4,6 +4,7 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { CalendarDays } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { StatusBadge } from '@/components/admin/StatusBadge';
@@ -66,13 +67,14 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <AdminPage
+      icon={CalendarDays}
       title={e.title}
       description={`${e.type.toUpperCase()} event by user #${e.user_id} • status: ${e.status}`}
       actions={
         <Link
           href="/admin/events"
-          className="btn-ghost"
-          style={{ padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 9999, color: 'var(--text)', textDecoration: 'none', fontSize: 13 }}
+          className="admin-btn admin-btn-outline admin-btn-sm"
+          style={{ textDecoration: 'none' }}
         >
           ← Back
         </Link>
@@ -118,8 +120,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
               type="button"
               onClick={() => approveMut.mutate()}
               disabled={approveMut.isPending || e.status === 'approved'}
-              className="btn-solid"
-              style={{ padding: '8px 16px', borderRadius: 9999, background: 'var(--green)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: e.status === 'approved' ? 0.5 : 1 }}
+              className="admin-btn admin-btn-success"
             >
               {approveMut.isPending ? 'Working…' : 'Approve Event'}
             </button>
@@ -130,14 +131,14 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
               value={revisionNote}
               onChange={(ev) => setRevisionNote(ev.target.value)}
               placeholder="Tell the organizer what to revise…"
-              style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, marginBottom: 10, fontFamily: 'inherit', resize: 'vertical' }}
+              className="admin-textarea"
+              style={{ minHeight: 90, marginBottom: 10 }}
             />
             <button
               type="button"
               onClick={() => revisionMut.mutate()}
               disabled={revisionMut.isPending || !revisionNote.trim()}
-              className="btn-solid"
-              style={{ padding: '8px 16px', borderRadius: 9999, background: 'var(--accent)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: !revisionNote.trim() ? 0.5 : 1 }}
+              className="admin-btn admin-btn-primary"
             >
               {revisionMut.isPending ? 'Sending…' : 'Send Revision Request'}
             </button>
@@ -148,14 +149,14 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
               value={declineReason}
               onChange={(ev) => setDeclineReason(ev.target.value)}
               placeholder="Reason for declining…"
-              style={{ width: '100%', minHeight: 80, padding: 10, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, marginBottom: 10, fontFamily: 'inherit', resize: 'vertical' }}
+              className="admin-textarea"
+              style={{ minHeight: 90, marginBottom: 10 }}
             />
             <button
               type="button"
               onClick={() => declineMut.mutate()}
               disabled={declineMut.isPending || !declineReason.trim()}
-              className="btn-solid"
-              style={{ padding: '8px 16px', borderRadius: 9999, background: 'var(--coral)', color: '#fff', border: 'none', fontWeight: 600, cursor: 'pointer', opacity: !declineReason.trim() ? 0.5 : 1 }}
+              className="admin-btn admin-btn-danger"
             >
               {declineMut.isPending ? 'Declining…' : 'Decline Event'}
             </button>
@@ -198,8 +199,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="btn-ghost"
-            style={{ padding: '8px 16px', borderRadius: 9999, border: '1px solid var(--coral)', background: 'transparent', color: 'var(--coral)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}
+            className="admin-btn admin-btn-outline-danger"
           >
             Delete Event
           </button>

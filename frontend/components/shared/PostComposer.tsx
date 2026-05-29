@@ -868,12 +868,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     top: 'calc(100% + 6px)',
                     left: 0,
                     minWidth: 240,
+                    maxHeight: 360,
+                    overflowY: 'auto',
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border)',
                     borderRadius: 16,
                     boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
                     zIndex: 60,
-                    overflow: 'hidden',
                   }}
                 >
                   <div style={{ padding: '14px 16px 8px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
@@ -1641,6 +1642,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               <label
                 htmlFor={inputId}
                 title="Add image or video"
+                className="icon-knock"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1661,6 +1663,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               <button
                 type="button"
                 title="Add GIF"
+                className="icon-knock"
                 onClick={() => { setShowGifPicker((v) => !v); setShowEmojiPicker(false); }}
                 style={{
                   display: 'inline-flex',
@@ -1674,7 +1677,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   color: showGifPicker ? 'var(--accent)' : 'var(--text-secondary)',
                   cursor: gifFetching ? 'not-allowed' : 'pointer',
                   opacity: gifFetching ? 0.6 : 1,
-                  transition: 'color 0.15s',
                 }}
               >
                 {gifFetching ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Film size={18} />}
@@ -1706,6 +1708,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                 <button
                   type="button"
                   title={selectedCommunity || selectedEvent ? 'Polls are only available for posts to Everyone' : pollEnabled ? 'Poll added' : 'Add poll'}
+                  className="icon-knock"
                   onClick={handleAddPoll}
                   disabled={pollEnabled || selectedCommunity !== null || selectedEvent !== null}
                   style={{
@@ -1720,7 +1723,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     color: pollEnabled ? 'var(--accent)' : 'var(--text-secondary)',
                     cursor: pollEnabled || selectedCommunity !== null || selectedEvent !== null ? 'not-allowed' : 'pointer',
                     opacity: pollEnabled || selectedCommunity !== null || selectedEvent !== null ? 0.55 : 1,
-                    transition: 'color 0.15s',
                   }}
                 >
                   <BarChart3 size={18} />

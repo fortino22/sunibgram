@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 interface CrudFormModalProps {
   open: boolean;
   title: string;
+  description?: string;
   submitLabel?: string;
   busy?: boolean;
   onClose: () => void;
@@ -16,6 +17,7 @@ interface CrudFormModalProps {
 export function CrudFormModal({
   open,
   title,
+  description,
   submitLabel = 'Save',
   busy,
   onClose,
@@ -27,6 +29,11 @@ export function CrudFormModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          {description && (
+            <p style={{ marginTop: 4, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              {description}
+            </p>
+          )}
         </DialogHeader>
         <form
           onSubmit={(e) => {
@@ -34,40 +41,20 @@ export function CrudFormModal({
             if (!busy) onSubmit();
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {children}
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>{children}</div>
           <DialogFooter>
             <button
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="btn-ghost"
-              style={{
-                padding: '8px 16px',
-                borderRadius: 9999,
-                background: 'transparent',
-                border: '1px solid var(--border)',
-                color: 'var(--text)',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
+              className="admin-btn admin-btn-outline"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="btn-solid"
-              style={{
-                padding: '8px 18px',
-                borderRadius: 9999,
-                background: 'var(--accent)',
-                border: 'none',
-                color: '#fff',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className="admin-btn admin-btn-primary"
             >
               {busy ? 'Saving…' : submitLabel}
             </button>
@@ -85,32 +72,26 @@ interface FieldProps {
   placeholder?: string;
   required?: boolean;
   textarea?: boolean;
+  hint?: string;
 }
 
-export function Field({ label, value, onChange, placeholder, required, textarea }: FieldProps) {
+export function Field({ label, value, onChange, placeholder, required, textarea, hint }: FieldProps) {
   const common = {
     value,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange(e.target.value),
     placeholder,
     required,
-    style: {
-      width: '100%',
-      padding: '10px 14px',
-      borderRadius: 12,
-      border: '1px solid var(--border)',
-      background: 'var(--bg-card)',
-      color: 'var(--text)',
-      fontSize: 14,
-      fontFamily: 'inherit',
-      outline: 'none',
-      resize: textarea ? ('vertical' as const) : undefined,
-      minHeight: textarea ? 90 : undefined,
-    },
   };
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
-      {textarea ? <textarea {...common} /> : <input type="text" {...common} />}
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.01em' }}>
+        {label}
+        {required && <span style={{ color: 'var(--coral)', marginLeft: 4 }}>*</span>}
+      </span>
+      {textarea
+        ? <textarea {...common} className="admin-textarea" />
+        : <input type="text" {...common} className="admin-input" />}
+      {hint && <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{hint}</span>}
     </label>
   );
 }
