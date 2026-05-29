@@ -12,6 +12,7 @@ import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
+import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
@@ -47,7 +48,19 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
   const author = getThreadAuthor(thread);
+  const bookmarkTargetId = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number'
+    ? thread.original_thread_id
+    : thread.id;
+
+  function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
+    if (bookmark.isPending) return;
+    const wasBookmarked = thread.is_bookmarked === true;
+    bookmark.mutate();
+    if (!wasBookmarked) setBookmarkAnchor(e.currentTarget.getBoundingClientRect());
+  }
+
   const canManage = isOwnThread(thread, currentUserId);
   const canReport = currentUserId != null && currentUserId !== thread.author.id;
   const replyUsername = replyingTo ?? thread.parent_context?.author.username;
@@ -287,7 +300,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               isBookmarked={!!thread.is_bookmarked}
               onLike={() => { if (!like.isPending) like.mutate(); }}
               onRepost={() => { if (!repost.isPending) repost.mutate(); }}
-              onBookmark={() => { if (!bookmark.isPending) bookmark.mutate(); }}
+              onBookmark={handleBookmark}
               onReply={() => openReply(thread)}
               size="sm"
             />
@@ -295,6 +308,16 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
         </div>
       </div>
     </article>
+
+    {bookmarkAnchor && (
+      <div onClick={(e) => e.stopPropagation()}>
+        <BookmarkCollectionPopover
+          threadId={bookmarkTargetId}
+          anchorRect={bookmarkAnchor}
+          onClose={() => setBookmarkAnchor(null)}
+        />
+      </div>
+    )}
 
     {reportModalOpen && (
       <div onClick={(e) => e.stopPropagation()}>
