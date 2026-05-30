@@ -23,16 +23,11 @@ const schema = z
     banner: z.custom<File | undefined>((v) => v instanceof File, {
       message: 'Banner image is required.',
     }),
-    document: z.custom<File | undefined>((v) => v === undefined || v instanceof File),
+    document: z.custom<File | undefined>((v) => v instanceof File, {
+      message: 'Document is required (.doc or .docx).',
+    }),
   })
   .superRefine((v, ctx) => {
-    if (v.type === 'official' && v.document === undefined) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Supporting document is required for official events.',
-        path: ['document'],
-      });
-    }
     if (v.start_date && v.start_time && v.end_date && v.end_time) {
       const start = new Date(`${v.start_date}T${v.start_time}`);
       const end = new Date(`${v.end_date}T${v.end_time}`);
@@ -308,11 +303,6 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
                 </button>
               ))}
             </div>
-            {type === 'official' && (
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
-                Official events require an approval document from the university.
-              </p>
-            )}
           </div>
 
           {/* Title */}
@@ -413,44 +403,42 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          {/* Supporting document — official only */}
-          {type === 'official' && (
-            <div>
-              <label style={labelStyle}>Supporting document (PDF) *</label>
-              <input
-                ref={docInputRef}
-                type="file"
-                accept="application/pdf"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  form.setValue('document', file, { shouldValidate: true });
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => docInputRef.current?.click()}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  border: '1px dashed var(--border)',
-                  background: 'var(--bg-subtle)',
-                  color: docFile ? 'var(--text)' : 'var(--text-tertiary)',
-                  fontSize: 13,
-                  fontWeight: docFile ? 600 : 400,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {docFile ? `✓ ${docFile.name}` : 'Upload approval document'}
-              </button>
-              {form.formState.errors.document && (
-                <p style={errorStyle}>{form.formState.errors.document.message}</p>
-              )}
-            </div>
-          )}
+          {/* Docs */}
+          <div>
+            <label style={labelStyle}>Docs * <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(.doc / .docx)</span></label>
+            <input
+              ref={docInputRef}
+              type="file"
+              accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                form.setValue('document', file, { shouldValidate: true });
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => docInputRef.current?.click()}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px dashed var(--border)',
+                background: 'var(--bg-subtle)',
+                color: docFile ? 'var(--text)' : 'var(--text-tertiary)',
+                fontSize: 13,
+                fontWeight: docFile ? 600 : 400,
+                cursor: 'pointer',
+                textAlign: 'center',
+                boxSizing: 'border-box',
+              }}
+            >
+              {docFile ? docFile.name : 'Upload .doc / .docx document'}
+            </button>
+            {form.formState.errors.document && (
+              <p style={errorStyle}>{form.formState.errors.document.message}</p>
+            )}
+          </div>
 
           {mutation.isError && (
             <div style={{ fontSize: 13, color: 'var(--coral, #e53e3e)' }}>

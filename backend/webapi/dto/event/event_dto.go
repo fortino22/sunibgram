@@ -76,7 +76,7 @@ type EventResponse struct {
 	EndTime       EventTime           `json:"end_time"`
 	BannerURL     string              `json:"banner_url,omitempty"`
 	AttachmentURL string              `json:"attachment_url,omitempty"`
-	PDFURLs       []string            `json:"pdf_urls,omitempty"`
+	DocURLs       []string            `json:"doc_urls,omitempty"`
 	CreatedAt     utils.FormattedTime `json:"created_at"`
 	UpdatedAt     utils.FormattedTime `json:"updated_at"`
 }

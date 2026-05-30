@@ -1,24 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { CalendarDays } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
 import { Pager } from '@/components/admin/Pager';
-import { listAdminEvents, approveEvent } from '@/lib/services/admin/events';
+import { StatusBadge } from '@/components/admin/StatusBadge';
+import { listAdminEvents } from '@/lib/services/admin/events';
 import type { AdminEvent } from '@/lib/services/admin/types';
 
 const STATUS_OPTIONS = ['', 'pending', 'approved', 'declined', 'revision'];
-const ROW_STATUS_OPTIONS = ['pending', 'approved', 'declined', 'revision'];
 
 export default function AdminEventsPage() {
   const token = useAuthStore((s) => s.token);
-  const qc = useQueryClient();
-  const router = useRouter();
   const [status, setStatus] = useState<string>('pending');
   const [name, setName] = useState<string>('');
   const [page, setPage] = useState(1);
@@ -28,20 +25,6 @@ export default function AdminEventsPage() {
     queryFn: () => listAdminEvents(token!, { status: status || undefined, name: name || undefined, page, limit: 20 }),
     enabled: !!token,
   });
-
-  const approveMut = useMutation({
-    mutationFn: (id: string) => approveEvent(token!, id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'events'] }),
-  });
-
-  const handleStatusChange = (id: string, current: string, next: string) => {
-    if (next === current) return;
-    if (next === 'approved') {
-      approveMut.mutate(id);
-      return;
-    }
-    router.push(`/admin/events/${id}`);
-  };
 
   const columns: Column<AdminEvent>[] = [
     {
@@ -77,23 +60,12 @@ export default function AdminEventsPage() {
         </span>
       ),
     },
-    { key: 'start',  header: 'Start',  render: (e) => new Date(e.start_time).toLocaleString() },
-    { key: 'end',    header: 'End',    render: (e) => new Date(e.end_time).toLocaleString() },
+    { key: 'start', header: 'Start', render: (e) => new Date(e.start_time).toLocaleString() },
+    { key: 'end',   header: 'End',   render: (e) => new Date(e.end_time).toLocaleString() },
     {
       key: 'status',
       header: 'Status',
-      render: (e) => (
-        <select
-          value={e.status}
-          onChange={(ev) => handleStatusChange(e.id, e.status, ev.target.value)}
-          className="admin-select admin-select-sm"
-          aria-label={`Change status for ${e.title}`}
-        >
-          {ROW_STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-      ),
+      render: (e) => <StatusBadge status={e.status} />,
     },
     {
       key: 'actions',
@@ -118,7 +90,7 @@ export default function AdminEventsPage() {
     <AdminPage
       icon={CalendarDays}
       title="Events"
-      description="Approve official events, request revisions, or decline submissions."
+      description="Review event submissions and manage approvals."
       actions={
         <div style={{ display: 'flex', gap: 8 }}>
           <input

@@ -208,7 +208,7 @@ func createIndexes(db *gorm.DB) {
 }
 
 func addColumns(db *gorm.DB) {
-	db.Exec(`ALTER TABLE events ADD COLUMN IF NOT EXISTS pdfs jsonb DEFAULT '[]'::jsonb`)
+	db.Exec(`ALTER TABLE events ADD COLUMN IF NOT EXISTS docs jsonb DEFAULT '[]'::jsonb`)
 }
 
 func backfillShareCounters(db *gorm.DB) {

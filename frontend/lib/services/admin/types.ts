@@ -92,7 +92,7 @@ export interface AdminEvent {
   end_time: string;
   banner_url?: string | null;
   attachment_url?: string | null;
-  pdf_urls?: string[];
+  doc_urls?: string[];
   created_at?: string;
   updated_at?: string;
   notes?: AdminEventReview[];
