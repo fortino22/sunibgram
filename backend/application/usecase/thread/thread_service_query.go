@@ -156,7 +156,7 @@ func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query 
 	if query == "" {
 		return []exploremodel.ExploreUserResult{}, nil
 	}
-	return s.followRepo.SearchMentionUsers(ctx, query)
+	return s.followRepo.SearchMentionUsers(ctx, userID, query)
 }
 
 func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []threadmodel.Thread, parents []*threadmodel.Thread) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {

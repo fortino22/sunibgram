@@ -13,7 +13,7 @@ type IFollowRepository interface {
 	Unfollow(followerID, followingID uint) error
 	Exists(followerID, followingID uint) (bool, error)
 	GetFollowingSet(ctx context.Context, followerID uint, targetIDs []uint) (map[uint]bool, error)
-	SearchMentionUsers(ctx context.Context, query string) ([]exploremodel.ExploreUserResult, error)
+	SearchMentionUsers(ctx context.Context, requesterID uint, query string) ([]exploremodel.ExploreUserResult, error)
 	SearchMutualFollowIDs(ctx context.Context, viewerID uint, query string, limit int) ([]uint, error)
 	HydrateCompareUsers(ctx context.Context, ids []uint) ([]exploremodel.ExploreUserResult, error)
 	IsMutualFollow(ctx context.Context, viewerID, targetID uint) (bool, error)

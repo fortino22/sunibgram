@@ -44,9 +44,17 @@ func (r *notificationRepository) Delete(id uint) error {
 
 func (r *notificationRepository) GetNotificationsByRecipientUserID(ctx context.Context, recipientUserID string, limit, offset int) ([]notificationmodel.Notification, error) {
 	var notifications []notificationmodel.Notification
+	// Drop notifications whose actor is in a mutual block relationship with the
+	// recipient (mutual hide). Inline subquery — the notification repo must not
+	// depend on the thread repo. recipientUserID is bound as a param; Postgres
+	// coerces the text id against the bigint columns.
 	err := r.readDB.WithContext(ctx).
 		Select("id", "type", "message", "sender_user_id", "reference_id", "created_at").
 		Where("recipient_user_id = ?", recipientUserID).
+		Where(`sender_user_id NOT IN (
+			SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+			UNION
+			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, recipientUserID, recipientUserID).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).

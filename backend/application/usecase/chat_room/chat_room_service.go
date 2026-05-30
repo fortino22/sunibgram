@@ -13,17 +13,19 @@ import (
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
 )
 
 type ChatRoomService struct {
 	roomRepo       chatroomrepoiface.IChatRoomRepository
 	userRepo       userrepoiface.IUserRepository
+	blockRepo      userblockrepoiface.IUserBlockRepository
 	storageUsecase *storageuc.StorageUsecase
 }
 
-func NewChatRoomService(roomRepo chatroomrepoiface.IChatRoomRepository, userRepo userrepoiface.IUserRepository, storageUsecase *storageuc.StorageUsecase) chatroomsvciface.IChatRoomService {
-	return &ChatRoomService{roomRepo: roomRepo, userRepo: userRepo, storageUsecase: storageUsecase}
+func NewChatRoomService(roomRepo chatroomrepoiface.IChatRoomRepository, userRepo userrepoiface.IUserRepository, blockRepo userblockrepoiface.IUserBlockRepository, storageUsecase *storageuc.StorageUsecase) chatroomsvciface.IChatRoomService {
+	return &ChatRoomService{roomRepo: roomRepo, userRepo: userRepo, blockRepo: blockRepo, storageUsecase: storageUsecase}
 }
 
 func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, targetUserID uint) (*chatroommodel.ChatRoom, error) {
@@ -32,6 +34,16 @@ func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, target
 	}
 	if _, err := s.userRepo.FindByID(targetUserID); err != nil {
 		return nil, errors.New("target user not found")
+	}
+	// Cannot open a DM with someone in a mutual block relationship.
+	if s.blockRepo != nil {
+		blocked, err := s.blockRepo.IsBlocked(initiatorID, targetUserID)
+		if err != nil {
+			return nil, err
+		}
+		if blocked {
+			return nil, errors.New("blocked")
+		}
 	}
 	if room, err := s.roomRepo.FindPrivateRoom(initiatorID, targetUserID); err == nil {
 		if _, err := s.roomKey(room); err != nil {
@@ -287,6 +299,26 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 		if err != nil {
 			return nil, 0, err
 		}
+	}
+
+	// Hide private rooms whose other member is in a mutual block relationship
+	// with the viewer (mutual hide). Group rooms are unaffected.
+	if s.blockRepo != nil {
+		filtered := make([]chatroommodel.ChatRoom, 0, len(rooms))
+		newAllIDs := make([]uint, 0, len(rooms))
+		for _, r := range rooms {
+			if r.Type == chatroommodel.ChatRoomTypePrivate {
+				if info, ok := memberMap[r.RoomID]; ok {
+					if blocked, bErr := s.blockRepo.IsBlocked(userID, info.UserID); bErr == nil && blocked {
+						continue
+					}
+				}
+			}
+			filtered = append(filtered, r)
+			newAllIDs = append(newAllIDs, r.RoomID)
+		}
+		rooms = filtered
+		allIDs = newAllIDs
 	}
 
 	muteMap, _ := s.roomRepo.GetMuteStatuses(userID, allIDs)

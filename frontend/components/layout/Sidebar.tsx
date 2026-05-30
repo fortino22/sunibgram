@@ -365,7 +365,11 @@ export function Sidebar() {
               transition: 'background 0.15s ease',
             }}
           >
-            <span className="sidebar-label">Post</span>
+            {isCollapsed ? (
+              <Icon name="compose" size={22} color="var(--bg)" strokeWidth={2} />
+            ) : (
+              <span className="sidebar-label">Post</span>
+            )}
           </button>
         </div>
       </div>

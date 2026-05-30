@@ -16,6 +16,7 @@ import (
 	"github.com/sunibgram/infrastructure/cache"
 	infrarepoShared "github.com/sunibgram/infrastructure/repository/_shared"
 	explorerepo "github.com/sunibgram/infrastructure/repository/explore"
+	threadrepo "github.com/sunibgram/infrastructure/repository/thread"
 )
 
 type followRepository struct {
@@ -226,10 +227,10 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 	return result, nil
 }
 
-func (r *followRepository) SearchMentionUsers(ctx context.Context, query string) ([]exploremodel.ExploreUserResult, error) {
+func (r *followRepository) SearchMentionUsers(ctx context.Context, requesterID uint, query string) ([]exploremodel.ExploreUserResult, error) {
 	pattern := explorerepo.LikePattern(query)
 	var rows []explorerepo.ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("users").
 		Select(`
 			users.user_id,
@@ -242,7 +243,12 @@ func (r *followRepository) SearchMentionUsers(ctx context.Context, query string)
 		Joins("JOIN roles ON roles.role_id = users.role_id").
 		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
 		Where("roles.name <> ?", "admin").
-		Where("users.user_name ILIKE ? ESCAPE '\\'", pattern).
+		Where("users.user_name ILIKE ? ESCAPE '\\'", pattern)
+	// Exclude users in a mutual block relationship with the requester.
+	if requesterID != 0 {
+		db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)
+	}
+	if err := db.
 		Order("users.is_premium DESC, users.created_at DESC").
 		Limit(10).
 		Scan(&rows).Error; err != nil {

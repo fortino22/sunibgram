@@ -149,7 +149,7 @@ type Services struct {
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
 	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub)
-	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.Cache, notification)
+	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.UserBlock, repos.Cache, notification)
 	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
 	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
@@ -159,7 +159,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
 	communityActionConfirmation := communityactionconfirmationuc.NewCommunityActionConfirmationService(repos.CommunityActionConfirmation)
 	eventActionConfirmation := eventactionconfirmationuc.NewEventActionConfirmationService(repos.EventActionConfirmation)
-	chatRoom := chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage)
+	chatRoom := chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, repos.UserBlock, ext.Storage)
 	chat := chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification)
 	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, repos.UserBlock, chat, chatRoom, ext.Storage)
 

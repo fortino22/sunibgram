@@ -209,7 +209,7 @@ func (r *exploreRepository) FindFacultySuggestions(ctx context.Context, requeste
 	}
 
 	var rows []ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("user_faculties AS me").
 		Select(suggestionSelectColumns).
 		Joins("JOIN user_faculties AS peer ON peer.faculty_id = me.faculty_id AND peer.user_id <> me.user_id").
@@ -219,7 +219,9 @@ func (r *exploreRepository) FindFacultySuggestions(ctx context.Context, requeste
 		Joins("LEFT JOIN user_relationships AS existing ON existing.follower_id = ? AND existing.following_id = peer.user_id", requesterID).
 		Where("me.user_id = ?", requesterID).
 		Where("existing.following_id IS NULL").
-		Where("roles.name <> ?", "admin").
+		Where("roles.name <> ?", "admin")
+	db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)
+	if err := db.
 		Group(suggestionGroupColumns).
 		Order("users.is_premium DESC, users.created_at DESC").
 		Offset(offset).
@@ -245,7 +247,7 @@ func (r *exploreRepository) FindMutualSuggestions(ctx context.Context, requester
 	}
 
 	var rows []ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("user_relationships AS followed").
 		Select(suggestionSelectColumns).
 		Joins("JOIN user_relationships AS suggested ON suggested.follower_id = followed.following_id").
@@ -256,7 +258,9 @@ func (r *exploreRepository) FindMutualSuggestions(ctx context.Context, requester
 		Where("followed.follower_id = ?", requesterID).
 		Where("suggested.following_id <> ?", requesterID).
 		Where("existing.following_id IS NULL").
-		Where("roles.name <> ?", "admin").
+		Where("roles.name <> ?", "admin")
+	db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)
+	if err := db.
 		Group(suggestionGroupColumns).
 		Order("COUNT(DISTINCT followed.following_id) DESC, users.is_premium DESC, users.created_at DESC").
 		Offset(offset).
@@ -281,7 +285,7 @@ func (r *exploreRepository) FindRandomSuggestions(ctx context.Context, requester
 	}
 
 	var rows []ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("users").
 		Select(suggestionSelectColumns).
 		Joins("JOIN roles ON roles.role_id = users.role_id").
@@ -289,7 +293,9 @@ func (r *exploreRepository) FindRandomSuggestions(ctx context.Context, requester
 		Joins("LEFT JOIN user_relationships AS existing ON existing.follower_id = ? AND existing.following_id = users.user_id", requesterID).
 		Where("users.user_id <> ?", requesterID).
 		Where("existing.following_id IS NULL").
-		Where("roles.name <> ?", "admin").
+		Where("roles.name <> ?", "admin")
+	db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)
+	if err := db.
 		Order("RANDOM()").
 		Offset(offset).
 		Limit(limit).

@@ -31,6 +31,7 @@ import {
   Megaphone,
   Palette,
   Check,
+  SquarePen,
   type LucideProps,
 } from 'lucide-react';
 import type { FC } from 'react';
@@ -68,6 +69,7 @@ const ICON_MAP: Record<string, FC<LucideProps>> = {
   feedback:     Megaphone,
   palette:      Palette,
   check:        Check,
+  compose:      SquarePen,
 };
 
 interface IconProps {
