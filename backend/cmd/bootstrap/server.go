@@ -42,7 +42,12 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 		ContentTypeNosniff:    "nosniff",
 		XFrameOptions:         "DENY",
 	}))
-	app.Use(compress.New(compress.Config{Level: compress.LevelBestSpeed}))
+	app.Use(compress.New(compress.Config{
+		Level: compress.LevelBestSpeed,
+		// Never compress the summary stream — gzip buffering would defeat the
+		// incremental flush and make the response arrive in one blob.
+		Next: func(c *fiber.Ctx) bool { return strings.HasSuffix(c.Path(), "/summary/stream") },
+	}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     corsAllowOrigins(),
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",

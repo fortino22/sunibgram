@@ -23,9 +23,7 @@ const schema = z
     banner: z.custom<File | undefined>((v) => v instanceof File, {
       message: 'Banner image is required.',
     }),
-    document: z.custom<File | undefined>((v) => v instanceof File, {
-      message: 'Document is required (.doc or .docx).',
-    }),
+    document: z.custom<File | undefined>((v) => v === undefined || v instanceof File).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.start_date && v.start_time && v.end_date && v.end_time) {
@@ -38,6 +36,13 @@ const schema = z
           path: ['end_time'],
         });
       }
+    }
+    if (v.type === 'official' && !(v.document instanceof File)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Document is required (.doc or .docx).',
+        path: ['document'],
+      });
     }
   });
 
@@ -286,7 +291,10 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
                 <button
                   key={t}
                   type="button"
-                  onClick={() => form.setValue('type', t)}
+                  onClick={() => {
+                    form.setValue('type', t);
+                    if (t === 'unofficial') form.setValue('document', undefined, { shouldValidate: true });
+                  }}
                   style={{
                     flex: 1,
                     padding: '8px',
@@ -403,7 +411,8 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          {/* Docs */}
+          {/* Docs — official events only */}
+          {type === 'official' && (
           <div>
             <label style={labelStyle}>Docs * <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(.doc / .docx)</span></label>
             <input
@@ -439,6 +448,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               <p style={errorStyle}>{form.formState.errors.document.message}</p>
             )}
           </div>
+          )}
 
           {mutation.isError && (
             <div style={{ fontSize: 13, color: 'var(--coral, #e53e3e)' }}>

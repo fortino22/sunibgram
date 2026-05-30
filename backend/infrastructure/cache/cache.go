@@ -356,6 +356,27 @@ func (c *Cache) IncrWithWindow(ctx context.Context, key string, window time.Dura
 	return count, remaining, nil
 }
 
+// IncrByWithWindow atomically INCRBYs the key by n and ensures it expires
+// after the given window (sets EXPIRE on first hit). Returns post-increment
+// count + remaining TTL. Used for token-quota accounting.
+func (c *Cache) IncrByWithWindow(ctx context.Context, key string, n int64, window time.Duration) (int64, time.Duration, error) {
+	pipe := c.client.Pipeline()
+	incr := pipe.IncrBy(ctx, key, n)
+	ttl := pipe.TTL(ctx, key)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return 0, 0, err
+	}
+	count := incr.Val()
+	remaining := ttl.Val()
+	if remaining < 0 {
+		if err := c.client.Expire(ctx, key, window).Err(); err != nil {
+			return count, window, err
+		}
+		remaining = window
+	}
+	return count, remaining, nil
+}
+
 // CounterTTL reads a counter set by IncrWithWindow without mutating it.
 // Returns (0, 0, nil) when the key is absent. Use for "am I over the limit?"
 // checks that must not consume a slot.

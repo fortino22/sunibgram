@@ -41,6 +41,7 @@ func RegisterThreadRoutes(
 	threadsAuth.Get("/user/:userID", threadCtrl.GetMyPosts)
 	threadsAuth.Get("/user/:userID/replies", threadCtrl.GetMyReplies)
 	threadsAuth.Get("/:id/summary", summaryCtrl.GetSummary)
+	threadsAuth.Get("/:id/summary/stream", summaryCtrl.StreamSummary)
 	threadsAuth.Get("/:id", threadCtrl.GetByID)
 	threadsAuth.Get("/:id/chain", threadCtrl.GetChain)
 	threadsAuth.Put("/:id", threadCtrl.Update)
