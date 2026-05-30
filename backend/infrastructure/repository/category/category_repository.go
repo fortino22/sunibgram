@@ -58,9 +58,11 @@ func (r *categoryRepository) FindAll() ([]categorymodel.Category, error) {
 	}
 	if r.cache != nil {
 		_ = r.cache.Set(ctx, categoryAllKey(), categories, categoryTTL)
+		entries := make(map[string]any, len(categories))
 		for _, category := range categories {
-			_ = r.cache.Set(ctx, categoryIDKey(category.ID), category, categoryTTL)
+			entries[categoryIDKey(category.ID)] = category
 		}
+		_ = r.cache.MSet(ctx, entries, categoryTTL)
 	}
 	return categories, nil
 }

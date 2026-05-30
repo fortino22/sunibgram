@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightPanel } from './RightPanel';
+import { FloatingFoxButton } from './FloatingFoxButton';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { NewPostModal } from '@/components/shared/NewPostModal';
 import { ReplyModal } from '@/components/shared/ReplyModal';
@@ -69,6 +70,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
           {!hideRightPanel && <RightPanel />}
         </div>
       </div>
+      <FloatingFoxButton />
     </AuthGuard>
   );
 }

@@ -9,26 +9,10 @@ import {
   type ThreadListResponse, type ThreadItem,
 } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
+import { isRecord, isThreadListResponse, isInfiniteThreadListData } from '@/lib/threadCache';
 
 function isThreadItem(value: unknown): value is ThreadItem {
   return isRecord(value) && typeof value.id === 'number' && isRecord(value.stats);
-}
-
-function isThreadListResponse(value: unknown): value is ThreadListResponse {
-  return (
-    isRecord(value) &&
-    Array.isArray(value.data) &&
-    isRecord(value.meta) &&
-    typeof value.meta.total === 'number'
-  );
-}
-
-function isInfiniteThreadListData(value: unknown): value is InfiniteData<ThreadListResponse> {
-  return isRecord(value) && Array.isArray(value.pages) && (value.pages as unknown[]).every(isThreadListResponse);
 }
 
 function effectiveThreadID(t: ThreadItem): number {

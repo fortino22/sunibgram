@@ -248,10 +248,12 @@ func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]t
 
 func (r *threadCached) storeChainFeedIDs(ctx context.Context, key string, threads []threadmodel.Thread) {
 	entry := feedIDsCache{IDs: make([]uint, len(threads))}
+	entries := make(map[string]any, len(threads))
 	for i, t := range threads {
 		entry.IDs[i] = t.ThreadID
-		_ = r.cache.Set(ctx, ParentThreadKey(t.ThreadID), t, r.ttl)
+		entries[ParentThreadKey(t.ThreadID)] = t
 	}
+	_ = r.cache.MSet(ctx, entries, r.ttl)
 	if err := r.cache.Set(ctx, key, entry, ThreadFeedTTL); err == nil {
 		for _, id := range entry.IDs {
 			r.trackFeedCacheKey(ctx, id, key)

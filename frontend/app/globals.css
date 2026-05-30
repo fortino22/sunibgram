@@ -254,6 +254,110 @@ body {
   background-color: var(--bg-hover);
 }
 
+/* Light theme: a dark solid button (background: var(--text)) barely changes
+   under brightness(<1), so lift it instead for a visible hover. */
+[data-theme="white"] .btn-solid:hover:not(:disabled) {
+  filter: brightness(1.9);
+}
+[data-theme="white"] .btn-solid:active:not(:disabled) {
+  filter: brightness(1.65);
+}
+/* Stronger, more contrasted tint for ghost/cancel buttons in light theme. */
+[data-theme="white"] .btn-ghost:hover:not(:disabled) {
+  background-color: var(--sidebar-active);
+}
+
+/* Decorative fox brand icon beside the thread 3-dots menu.
+   fox.png is black line-art, so we tint it per theme via CSS filter. */
+.thread-fox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  width: 56px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  flex-shrink: 0;
+  overflow: hidden;        /* clip the source whitespace margins -> fox fills */
+  transition: background 0.15s ease;
+}
+.thread-fox img {
+  width: 27px;             /* zoom past the blank margins in the 2400x1309 source */
+  height: auto;            /* keep aspect, never squish */
+  display: block;
+  object-fit: contain;
+  /* dark default: black art -> light grey */
+  filter: invert(1) opacity(0.75);
+  transition: filter 0.15s ease;
+}
+[data-theme="white"] .thread-fox img {
+  /* light theme: keep black art, dim to grey */
+  filter: opacity(0.6);
+}
+.thread-fox:hover {
+  /* smaller centered highlight (~36px) instead of the full 56px circle */
+  background: radial-gradient(circle, var(--x-blue-soft) 0 64%, transparent 65%);
+}
+.thread-fox:hover img,
+[data-theme="white"] .thread-fox:hover img {
+  /* tint black art -> brand blue (#1d9bf0) */
+  filter: invert(48%) sepia(89%) saturate(1300%) hue-rotate(176deg) brightness(95%) contrast(91%);
+}
+
+/* Floating fox orb, pinned bottom-right (X Grok-style). UI only for now. */
+.floating-fox {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  width: 60px;
+  border-radius: 18px;     /* X-style rounded square (squircle), not a circle */
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: var(--bg-card);
+  /* dark mode: white glowing border */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.45), 0 0 2px rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+[data-theme="white"] .floating-fox {
+  /* light theme: black glowing border */
+  border-color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.55);
+}
+.floating-fox img {
+  width: 50px;             /* zoom past the blank margins in the 2400x1309 source */
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: invert(1) opacity(0.9);     /* dark theme: black art -> near-white */
+  transition: filter 0.15s ease;
+}
+[data-theme="white"] .floating-fox img {
+  filter: opacity(0.85);
+}
+.floating-fox:hover {
+  background: var(--bg-hover);
+  transform: scale(1.05);
+  /* dark mode: stronger white glow */
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.7), 0 0 4px rgba(255, 255, 255, 0.85);
+}
+[data-theme="white"] .floating-fox:hover {
+  /* light theme: stronger black glow */
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6), 0 0 4px rgba(0, 0, 0, 0.75);
+}
+.floating-fox:hover img {
+  filter: invert(1) opacity(1);
+}
+[data-theme="white"] .floating-fox:hover img {
+  filter: opacity(1);
+}
+
 /* Subtle icon / image / overlay buttons */
 .hover-dim {
   transition: filter 0.12s ease;

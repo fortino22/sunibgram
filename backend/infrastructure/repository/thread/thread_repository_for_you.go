@@ -627,14 +627,16 @@ func (r *threadCached) findForYouGlobal(ctx context.Context) ([]threadmodel.Thre
 		// Populate both the ZSET (for next-time fast path) and the per-thread
 		// caches that hydrateGlobalTrending depends on.
 		zMembers := make([]cache.ZSetMember, 0, len(threads))
+		entries := make(map[string]any, len(threads))
 		for i := range threads {
 			t := threads[i]
-			_ = r.cache.Set(ctx, ThreadKey(t.ThreadID), t, r.ttl)
+			entries[ThreadKey(t.ThreadID)] = t
 			zMembers = append(zMembers, cache.ZSetMember{
 				Member: strconv.FormatUint(uint64(t.ThreadID), 10),
 				Score:  t.FeedScore,
 			})
 		}
+		_ = r.cache.MSet(ctx, entries, r.ttl)
 		_ = r.cache.ZAddReplace(ctx, forYouSourceGlobalKey, zMembers, forYouTrendingTTL)
 		return threads, nil
 	})
