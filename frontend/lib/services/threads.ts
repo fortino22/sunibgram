@@ -322,6 +322,46 @@ export function getThread(id: number | string, token: string): Promise<ThreadRes
   return api.get<ThreadResponse>(`/api/threads/${id}`, token);
 }
 
+export interface ThreadSummaryResponse {
+  summary?: string;
+  status?: string;
+}
+
+export function getThreadSummary(id: number | string, token: string): Promise<ThreadSummaryResponse> {
+  return api.get<ThreadSummaryResponse>(`/api/threads/${id}/summary`, token);
+}
+
+/**
+ * Streams the thread summary as plain text. Calls onChunk with each decoded
+ * piece as it arrives so the UI can render the text live (typewriter effect).
+ * Uses fetch (not EventSource) so the Bearer token can be sent.
+ */
+export async function streamThreadSummary(
+  id: number | string,
+  token: string,
+  options: { onChunk: (text: string) => void; signal?: AbortSignal },
+): Promise<void> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
+  const res = await fetch(`${baseUrl}/api/threads/${id}/summary/stream`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
+    signal: options.signal,
+  });
+
+  if (!res.ok || res.body === null) {
+    throw new Error('Failed to stream summary');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const text = decoder.decode(value, { stream: true });
+    if (text) options.onChunk(text);
+  }
+}
+
 export function getThreadFeed(id: number | string, token: string): Promise<FeedItemResponse> {
   return api.get<FeedItemResponse>(`/api/threads/${id}`, token);
 }

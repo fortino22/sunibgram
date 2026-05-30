@@ -179,7 +179,7 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               </Link>
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }} onClick={(e) => e.stopPropagation()}>
-                <ThreadFoxButton />
+                <ThreadFoxButton thread={thread} />
                 {(canManage || canReport) && (
                   <ThreadOptionsMenu
                     onEdit={canManage ? () => setIsEditing(true) : undefined}

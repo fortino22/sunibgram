@@ -239,7 +239,7 @@ export function ThreadDetailView({ root, ancestors = [], belowChain = [], replie
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-            <ThreadFoxButton />
+            <ThreadFoxButton thread={root} />
             {(canManage || canReport) && (
               <ThreadOptionsMenu
                 onEdit={canManage ? () => setIsEditing(true) : undefined}
@@ -318,6 +318,7 @@ export function ThreadDetailView({ root, ancestors = [], belowChain = [], replie
               key={item.id}
               thread={item}
               hideConnector={i === belowChain.length - 1}
+              withDivider
             />
           ))}
         </section>

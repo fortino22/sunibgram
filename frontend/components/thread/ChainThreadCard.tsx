@@ -30,6 +30,9 @@ interface ChainThreadCardProps {
   /** Skip the vertical connector line below this card (use on the last card
    *  in a self-reply chain that has nothing after it). */
   hideConnector?: boolean;
+  /** Draw a bottom divider like normal reply cards (used for belowChain items
+   *  so the reply page reads uniformly). */
+  withDivider?: boolean;
 }
 
 // Layout constants — the absolute-positioned connector line lands on the
@@ -43,7 +46,7 @@ const AVATAR_GAP_BELOW = 4;
 const LINE_WIDTH = 2;
 const LINE_BLEED = 16;
 
-export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCardProps) {
+export function ChainThreadCard({ thread, hideConnector = false, withDivider = false }: ChainThreadCardProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
@@ -95,6 +98,7 @@ export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCa
         onMouseLeave={() => setHovered(false)}
         style={{
           position: 'relative',
+          borderBottom: withDivider ? '1px solid var(--border)' : undefined,
           background: hovered ? 'var(--bg-hover)' : 'var(--bg-card)',
           cursor: 'pointer',
           transition: 'background 0.12s ease',
@@ -153,7 +157,7 @@ export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCa
               </Link>
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }} onClick={(e) => e.stopPropagation()}>
-                <ThreadFoxButton />
+                <ThreadFoxButton thread={thread} />
                 {(canManage || canReport) && (
                   <ThreadOptionsMenu
                     onEdit={canManage ? () => setIsEditing(true) : undefined}
