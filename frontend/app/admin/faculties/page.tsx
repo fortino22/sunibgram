@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { GraduationCap } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { CrudFormModal, Field } from '@/components/admin/CrudFormModal';
+import { Pager } from '@/components/admin/Pager';
 import {
   listFacultiesPaginated,
   createFaculty,
@@ -57,14 +59,12 @@ export default function AdminFacultiesPage() {
           <button
             type="button"
             onClick={() => { setEditing(r); setName(r.faculty_name); }}
-            className="btn-ghost"
-            style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 9999, background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 13 }}
+            className="admin-btn admin-btn-outline admin-btn-sm"
           >Edit</button>
           <button
             type="button"
             onClick={() => setDeleteId(r.faculty_id)}
-            className="btn-ghost"
-            style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 9999, background: 'transparent', color: 'var(--coral)', cursor: 'pointer', fontSize: 13 }}
+            className="admin-btn admin-btn-outline-danger admin-btn-sm"
           >Delete</button>
         </div>
       ),
@@ -77,22 +77,14 @@ export default function AdminFacultiesPage() {
 
   return (
     <AdminPage
+      icon={GraduationCap}
       title="Faculties"
       description="Manage the list of faculties students can belong to."
       actions={
         <button
           type="button"
           onClick={() => { setCreating(true); setName(''); }}
-          className="btn-solid"
-          style={{
-            padding: '8px 16px',
-            borderRadius: 9999,
-            background: 'var(--accent)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          className="admin-btn admin-btn-primary"
         >
           + New Faculty
         </button>
@@ -103,7 +95,7 @@ export default function AdminFacultiesPage() {
       ) : (
         <>
           <DataTable<Faculty> columns={columns} rows={q.data?.data ?? []} rowKey={(r) => r.faculty_id} />
-          <Pager page={page} totalPages={totalPages} onChange={setPage} />
+          <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}
 
@@ -141,26 +133,3 @@ export default function AdminFacultiesPage() {
   );
 }
 
-function Pager({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
-  return (
-    <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Page {page} of {totalPages}</span>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          type="button"
-          disabled={page <= 1}
-          onClick={() => onChange(Math.max(1, page - 1))}
-          className="btn-ghost"
-          style={{ padding: '6px 14px', borderRadius: 9999, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}
-        >Prev</button>
-        <button
-          type="button"
-          disabled={page >= totalPages}
-          onClick={() => onChange(page + 1)}
-          className="btn-ghost"
-          style={{ padding: '6px 14px', borderRadius: 9999, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.4 : 1 }}
-        >Next</button>
-      </div>
-    </div>
-  );
-}

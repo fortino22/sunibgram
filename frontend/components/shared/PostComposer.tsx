@@ -36,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
 import { useMyJoinedEventItems } from '@/hooks/useMyJoinedEventItems';
 import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
+import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 import { toast } from 'sonner';
 import { GifPicker } from '@/components/chat/GifPicker';
 import type { EmojiClickData } from 'emoji-picker-react';
@@ -353,7 +354,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             avatar_url: profile?.avatar ?? null,
             faculty: undefined,
           },
-          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
+          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0, shares: 0 },
           media: [],
           is_liked: false,
           is_bookmarked: false,
@@ -410,7 +411,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             avatar_url: profile?.avatar ?? null,
             faculty: undefined,
           },
-          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0 },
+          stats: { likes: 0, reposts: 0, bookmarks: 0, comments: 0, shares: 0 },
           media: [],
           is_liked: false,
           is_bookmarked: false,
@@ -487,11 +488,18 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       void queryClient.invalidateQueries({ queryKey: ['threads', 'feed'] });
       void queryClient.invalidateQueries({ queryKey: ['threads'] });
     },
+    onError: (err) => {
+      if (isInactiveCommunityError(err)) {
+        toast.error(INACTIVE_COMMUNITY_TOAST);
+        return;
+      }
+      toast.error(err.message || 'Failed to post.');
+    },
   });
 
   const isPending = mutation.isPending || communityMutation.isPending;
-  const isError = mutation.isError || communityMutation.isError;
-  const errorMessage = mutation.error?.message ?? communityMutation.error?.message ?? '';
+  const isError = mutation.isError && !communityMutation.isError;
+  const errorMessage = mutation.error?.message ?? '';
 
   const canSubmit =
     token !== null &&
@@ -817,6 +825,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             <div style={{ position: 'relative', display: 'inline-block', marginBottom: 8 }} ref={audienceMenuRef}>
               <button
                 type="button"
+                className="pill-accent"
                 onClick={() => setShowAudienceMenu((v) => !v)}
                 style={{
                   display: 'inline-flex',
@@ -859,12 +868,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     top: 'calc(100% + 6px)',
                     left: 0,
                     minWidth: 240,
+                    maxHeight: 360,
+                    overflowY: 'auto',
                     background: 'var(--bg-card)',
                     border: '1px solid var(--border)',
                     borderRadius: 16,
                     boxShadow: '0 4px 24px rgba(0,0,0,0.22)',
                     zIndex: 60,
-                    overflow: 'hidden',
                   }}
                 >
                   <div style={{ padding: '14px 16px 8px', fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
@@ -874,6 +884,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   {/* Everyone option */}
                   <button
                     type="button"
+                    className="dropdown-row"
                     onClick={() => { handleSelectAudience(null); handleSelectEvent(null); }}
                     style={{
                       width: '100%',
@@ -909,6 +920,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         <button
                           key={c.community_id}
                           type="button"
+                          className="dropdown-row"
                           onClick={() => handleSelectAudience(c)}
                           style={{
                             width: '100%',
@@ -957,6 +969,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                         <button
                           key={e.id}
                           type="button"
+                          className="dropdown-row"
                           onClick={() => handleSelectEvent({ id: e.id, title: e.title, banner: e.banner })}
                           style={{
                             width: '100%',
@@ -1483,6 +1496,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             <div style={{ position: 'relative', marginBottom: 10 }} ref={replyPermMenuRef}>
               <button
                 type="button"
+                className="pill-accent-text"
                 onClick={() => setShowReplyPermMenu((v) => !v)}
                 style={{
                   display: 'inline-flex',
@@ -1533,6 +1547,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     <button
                       key={value}
                       type="button"
+                      className="dropdown-row"
                       onClick={() => { setReplyPermission(value); setShowReplyPermMenu(false); }}
                       style={{
                         width: '100%',
@@ -1627,6 +1642,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               <label
                 htmlFor={inputId}
                 title="Add image or video"
+                className="icon-knock"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1647,6 +1663,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               <button
                 type="button"
                 title="Add GIF"
+                className="icon-knock"
                 onClick={() => { setShowGifPicker((v) => !v); setShowEmojiPicker(false); }}
                 style={{
                   display: 'inline-flex',
@@ -1660,7 +1677,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   color: showGifPicker ? 'var(--accent)' : 'var(--text-secondary)',
                   cursor: gifFetching ? 'not-allowed' : 'pointer',
                   opacity: gifFetching ? 0.6 : 1,
-                  transition: 'color 0.15s',
                 }}
               >
                 {gifFetching ? <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Film size={18} />}
@@ -1670,6 +1686,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               <button
                 type="button"
                 title="Add emoji"
+                className="icon-knock"
                 onClick={() => { setShowEmojiPicker((v) => !v); setShowGifPicker(false); }}
                 style={{
                   display: 'inline-flex',
@@ -1682,7 +1699,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   border: 'none',
                   color: showEmojiPicker ? 'var(--accent)' : 'var(--text-secondary)',
                   cursor: 'pointer',
-                  transition: 'color 0.15s',
                 }}
               >
                 <Smile size={18} />
@@ -1692,6 +1708,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                 <button
                   type="button"
                   title={selectedCommunity || selectedEvent ? 'Polls are only available for posts to Everyone' : pollEnabled ? 'Poll added' : 'Add poll'}
+                  className="icon-knock"
                   onClick={handleAddPoll}
                   disabled={pollEnabled || selectedCommunity !== null || selectedEvent !== null}
                   style={{
@@ -1706,7 +1723,6 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                     color: pollEnabled ? 'var(--accent)' : 'var(--text-secondary)',
                     cursor: pollEnabled || selectedCommunity !== null || selectedEvent !== null ? 'not-allowed' : 'pointer',
                     opacity: pollEnabled || selectedCommunity !== null || selectedEvent !== null ? 0.55 : 1,
-                    transition: 'color 0.15s',
                   }}
                 >
                   <BarChart3 size={18} />

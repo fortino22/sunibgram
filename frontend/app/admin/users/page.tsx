@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Users } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
+import { DetailModal, DetailRow } from '@/components/admin/DetailModal';
+import { Pager } from '@/components/admin/Pager';
 import { Avatar } from '@/components/shared/Avatar';
 import { listUsers, getUser } from '@/lib/services/admin/users';
 import type { AdminUser } from '@/lib/services/admin/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function AdminUsersPage() {
   const token = useAuthStore((s) => s.token);
@@ -58,16 +60,7 @@ export default function AdminUsersPage() {
         <button
           type="button"
           onClick={() => setSelectedId(u.user_id)}
-          className="btn-ghost"
-          style={{
-            padding: '6px 12px',
-            border: '1px solid var(--border)',
-            borderRadius: 9999,
-            background: 'transparent',
-            color: 'var(--text)',
-            cursor: 'pointer',
-            fontSize: 13,
-          }}
+          className="admin-btn admin-btn-outline admin-btn-sm"
         >
           View
         </button>
@@ -78,9 +71,11 @@ export default function AdminUsersPage() {
   const total = q.data?.meta?.total ?? 0;
   const limit = q.data?.meta?.limit ?? 20;
   const totalPages = Math.max(1, Math.ceil(total / limit));
+  const detail = detailQ.data;
 
   return (
     <AdminPage
+      icon={Users}
       title="Users"
       description="All registered users in Sunibgram."
       actions={
@@ -88,16 +83,8 @@ export default function AdminUsersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search name / username / email"
-          style={{
-            padding: '8px 14px',
-            borderRadius: 9999,
-            border: '1px solid var(--border)',
-            background: 'var(--bg-card)',
-            color: 'var(--text)',
-            fontSize: 13,
-            minWidth: 280,
-            outline: 'none',
-          }}
+          className="admin-input admin-input-pill"
+          style={{ minWidth: 280 }}
         />
       }
     >
@@ -108,86 +95,48 @@ export default function AdminUsersPage() {
       ) : (
         <>
           <DataTable<AdminUser> columns={columns} rows={filtered} rowKey={(u) => u.user_id} />
-          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : ''}
-            </span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="btn-ghost"
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 9999,
-                  border: '1px solid var(--border)',
-                  background: 'transparent',
-                  color: 'var(--text)',
-                  cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                  opacity: page <= 1 ? 0.4 : 1,
-                }}
-              >
-                Prev
-              </button>
-              <button
-                type="button"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="btn-ghost"
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: 9999,
-                  border: '1px solid var(--border)',
-                  background: 'transparent',
-                  color: 'var(--text)',
-                  cursor: page >= totalPages ? 'not-allowed' : 'pointer',
-                  opacity: page >= totalPages ? 0.4 : 1,
-                }}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}
 
-      <Dialog open={selectedId !== null} onOpenChange={(v) => { if (!v) setSelectedId(null); }}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>User Detail</DialogTitle>
-          </DialogHeader>
-          {detailQ.isLoading && <div>Loading…</div>}
-          {detailQ.data && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-                <Avatar username={detailQ.data.username} avatarUrl={detailQ.data.avatar_url ?? null} size={64} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 18 }}>{detailQ.data.name}</div>
-                  <div style={{ color: 'var(--text-tertiary)' }}>@{detailQ.data.username}</div>
+      <DetailModal
+        open={selectedId !== null}
+        onClose={() => setSelectedId(null)}
+        hero={
+          detail && (
+            <div className="admin-detail-hero">
+              <Avatar username={detail.username} avatarUrl={detail.avatar_url ?? null} size={72} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: 20, color: 'var(--text)' }}>{detail.name}</span>
+                  {detail.is_premium && <span className="admin-pill-outline">Premium</span>}
                 </div>
+                <div style={{ fontSize: 14, color: 'var(--text-tertiary)', marginTop: 2 }}>@{detail.username}</div>
+                {detail.bio && (
+                  <p style={{ marginTop: 8, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{detail.bio}</p>
+                )}
               </div>
-              <Detail label="Email"     value={detailQ.data.email} />
-              <Detail label="Role"      value={detailQ.data.role_name} />
-              <Detail label="Faculty"   value={detailQ.data.faculty?.faculty_name ?? '—'} />
-              <Detail label="Premium"   value={detailQ.data.is_premium ? 'Yes' : 'No'} />
-              <Detail label="Followers" value={String(detailQ.data.follower_count ?? 0)} />
-              <Detail label="Following" value={String(detailQ.data.following_count ?? 0)} />
-              <Detail label="Joined"    value={detailQ.data.created_at ?? '—'} />
-              {detailQ.data.bio && <Detail label="Bio" value={detailQ.data.bio} />}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          )
+        }
+      >
+        {detailQ.isLoading && !detail && (
+          <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        )}
+        {detail && (
+          <>
+            <DetailRow label="Email">{detail.email}</DetailRow>
+            <DetailRow label="Role">{detail.role_name}</DetailRow>
+            <DetailRow label="Faculty">{detail.faculty?.faculty_name ?? '—'}</DetailRow>
+            <DetailRow label="Premium">{detail.is_premium ? 'Yes' : 'No'}</DetailRow>
+            <DetailRow label="Followers">{(detail.follower_count ?? 0).toLocaleString()}</DetailRow>
+            <DetailRow label="Following">{(detail.following_count ?? 0).toLocaleString()}</DetailRow>
+            <DetailRow label="Joined">
+              {detail.created_at ? new Date(detail.created_at).toLocaleString() : '—'}
+            </DetailRow>
+          </>
+        )}
+      </DetailModal>
     </AdminPage>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', padding: '8px 0' }}>
-      <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{label}</span>
-      <span style={{ color: 'var(--text)', fontSize: 14, fontWeight: 500, maxWidth: '60%', textAlign: 'right' }}>{value}</span>
-    </div>
   );
 }

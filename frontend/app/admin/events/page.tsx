@@ -1,19 +1,24 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { CalendarDays } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
-import { StatusBadge } from '@/components/admin/StatusBadge';
-import { listAdminEvents } from '@/lib/services/admin/events';
+import { Pager } from '@/components/admin/Pager';
+import { listAdminEvents, approveEvent } from '@/lib/services/admin/events';
 import type { AdminEvent } from '@/lib/services/admin/types';
 
 const STATUS_OPTIONS = ['', 'pending', 'approved', 'declined', 'revision'];
+const ROW_STATUS_OPTIONS = ['pending', 'approved', 'declined', 'revision'];
 
 export default function AdminEventsPage() {
   const token = useAuthStore((s) => s.token);
+  const qc = useQueryClient();
+  const router = useRouter();
   const [status, setStatus] = useState<string>('pending');
   const [name, setName] = useState<string>('');
   const [page, setPage] = useState(1);
@@ -23,6 +28,20 @@ export default function AdminEventsPage() {
     queryFn: () => listAdminEvents(token!, { status: status || undefined, name: name || undefined, page, limit: 20 }),
     enabled: !!token,
   });
+
+  const approveMut = useMutation({
+    mutationFn: (id: string) => approveEvent(token!, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'events'] }),
+  });
+
+  const handleStatusChange = (id: string, current: string, next: string) => {
+    if (next === current) return;
+    if (next === 'approved') {
+      approveMut.mutate(id);
+      return;
+    }
+    router.push(`/admin/events/${id}`);
+  };
 
   const columns: Column<AdminEvent>[] = [
     {
@@ -46,10 +65,11 @@ export default function AdminEventsPage() {
             display: 'inline-block',
             padding: '2px 10px',
             borderRadius: 9999,
-            background: e.type === 'official' ? 'var(--accent-soft)' : 'var(--bg-subtle)',
-            color: e.type === 'official' ? 'var(--accent)' : 'var(--text-secondary)',
+            background: e.type === 'official' ? 'var(--bg-subtle)' : 'transparent',
+            color: 'var(--text)',
+            border: '1px solid var(--border)',
             fontSize: 12,
-            fontWeight: 600,
+            fontWeight: e.type === 'official' ? 700 : 500,
             textTransform: 'capitalize',
           }}
         >
@@ -59,15 +79,30 @@ export default function AdminEventsPage() {
     },
     { key: 'start',  header: 'Start',  render: (e) => new Date(e.start_time).toLocaleString() },
     { key: 'end',    header: 'End',    render: (e) => new Date(e.end_time).toLocaleString() },
-    { key: 'status', header: 'Status', render: (e) => <StatusBadge status={e.status} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (e) => (
+        <select
+          value={e.status}
+          onChange={(ev) => handleStatusChange(e.id, e.status, ev.target.value)}
+          className="admin-select admin-select-sm"
+          aria-label={`Change status for ${e.title}`}
+        >
+          {ROW_STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      ),
+    },
     {
       key: 'actions',
       header: '',
       render: (e) => (
         <Link
           href={`/admin/events/${e.id}`}
-          className="btn-ghost"
-          style={{ padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 9999, background: 'transparent', color: 'var(--text)', fontSize: 13, textDecoration: 'none' }}
+          className="admin-btn admin-btn-outline admin-btn-sm"
+          style={{ textDecoration: 'none' }}
         >
           Review
         </Link>
@@ -81,6 +116,7 @@ export default function AdminEventsPage() {
 
   return (
     <AdminPage
+      icon={CalendarDays}
       title="Events"
       description="Approve official events, request revisions, or decline submissions."
       actions={
@@ -89,12 +125,13 @@ export default function AdminEventsPage() {
             value={name}
             onChange={(e) => { setName(e.target.value); setPage(1); }}
             placeholder="Search by title"
-            style={{ padding: '8px 14px', borderRadius: 9999, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text)', fontSize: 13, minWidth: 220 }}
+            className="admin-input admin-input-pill"
+            style={{ minWidth: 220 }}
           />
           <select
             value={status}
             onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            style={{ padding: '8px 14px', borderRadius: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 13 }}
+            className="admin-select admin-select-pill"
           >
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s ? s : 'All'}</option>
@@ -110,15 +147,7 @@ export default function AdminEventsPage() {
       ) : (
         <>
           <DataTable<AdminEvent> columns={columns} rows={q.data?.data ?? []} rowKey={(e) => e.id} empty="No events match" />
-          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>
-              {total > 0 ? `Page ${page} of ${totalPages} (${total} total)` : ''}
-            </span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="btn-ghost" style={{ padding: '6px 14px', borderRadius: 9999, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: page <= 1 ? 'not-allowed' : 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>Prev</button>
-              <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="btn-ghost" style={{ padding: '6px 14px', borderRadius: 9999, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: page >= totalPages ? 'not-allowed' : 'pointer', opacity: page >= totalPages ? 0.4 : 1 }}>Next</button>
-            </div>
-          </div>
+          <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}
     </AdminPage>

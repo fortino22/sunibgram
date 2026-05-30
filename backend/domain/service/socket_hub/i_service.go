@@ -8,4 +8,5 @@ type IHub interface {
 	IsInRoom(roomID uint, connID string) bool
 	Broadcast(roomID uint, event string, payload any)
 	EmitToUser(userID uint, event string, payload any)
+	BroadcastAll(event string, payload any)
 }

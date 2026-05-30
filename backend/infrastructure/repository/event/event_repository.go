@@ -109,7 +109,7 @@ func (r *eventRepository) FindGrouped(limit int) ([]threadmodel.Event, []threadm
 
 	var trending []threadmodel.Event
 	if err := r.readDB.
-		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
+		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2 + week_share_count * 3) DESC, start_time ASC").
 		Limit(limit).
 		Find(&trending).Error; err != nil {
 		return nil, nil, nil, err
@@ -156,7 +156,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 	var trending []threadmodel.Event
 	if err := r.readDB.
 		Where("status = ?", "approved").
-		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC").
+		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2 + week_share_count * 3) DESC, start_time ASC").
 		Limit(limit).
 		Find(&trending).Error; err != nil {
 		return nil, nil, nil, nil, err
@@ -212,7 +212,7 @@ func (r *eventRepository) FindTopRunningOrFuture(limit int) ([]threadmodel.Event
 		}
 	}
 
-	const trendingOrder = "(week_thread_count * 3 + week_like_count + week_repost_count * 2) DESC, start_time ASC"
+	const trendingOrder = "(week_thread_count * 3 + week_like_count + week_repost_count * 2 + week_share_count * 3) DESC, start_time ASC"
 	now := time.Now().UTC()
 
 	var running []threadmodel.Event
@@ -520,7 +520,9 @@ func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threa
 		updates["week_like_count"] = gorm.Expr("GREATEST(week_like_count + ?, 0)", delta)
 	case "repost_count":
 		updates["week_repost_count"] = gorm.Expr("GREATEST(week_repost_count + ?, 0)", delta)
-	case "week_thread_count", "week_like_count", "week_repost_count":
+	case "share_count":
+		updates["week_share_count"] = gorm.Expr("GREATEST(week_share_count + ?, 0)", delta)
+	case "week_thread_count", "week_like_count", "week_repost_count", "week_share_count":
 	default:
 		return nil
 	}

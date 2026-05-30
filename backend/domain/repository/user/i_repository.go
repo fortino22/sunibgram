@@ -1,6 +1,9 @@
 package userrepoiface
 
 import (
+	"context"
+
+	exploremodel "github.com/sunibgram/domain/model/explore"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 )
@@ -19,4 +22,5 @@ type IUserRepository interface {
 	UpdateInfo(userID uint, name, username string) error
 	UpdatePremium(userID uint, premium bool) error
 	UpdatePremiumByIDs(userIDs []uint, premium bool) error
+	SearchForShare(ctx context.Context, query string, excludeUserID uint) ([]exploremodel.ExploreUserResult, error)
 }

@@ -32,6 +32,7 @@ import (
 	reportctrl "github.com/sunibgram/webapi/controller/report"
 	repostctrl "github.com/sunibgram/webapi/controller/repost"
 	rolectrl "github.com/sunibgram/webapi/controller/role"
+	sharectrl "github.com/sunibgram/webapi/controller/share"
 	threadctrl "github.com/sunibgram/webapi/controller/thread"
 	threadpinctrl "github.com/sunibgram/webapi/controller/thread_pin"
 	threadpollctrl "github.com/sunibgram/webapi/controller/thread_poll"
@@ -87,6 +88,7 @@ type Controllers struct {
 	DevSubscription     *premiumsubscriptionctrl.DevSubscriptionController
 	ChatRoom            *chatroomctrl.ChatRoomController
 	Chat                *chatctrl.ChatController
+	Share               *sharectrl.ShareController
 	Notification        *notificationctrl.NotificationController
 	ThreadPoll          *threadpollctrl.ThreadPollController
 	TrendingUser        *trendinguserctrl.TrendingUserController
@@ -135,6 +137,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		DevSubscription:     premiumsubscriptionctrl.NewDevSubscriptionController(svcs.PremiumSubscription),
 		ChatRoom:            chatroomctrl.NewChatRoomController(svcs.ChatRoom, ext.SocketHub),
 		Chat:                chatctrl.NewChatController(svcs.Chat, svcs.ChatMedia, svcs.ChatReaction, ext.SocketHub),
+		Share:               sharectrl.NewShareController(svcs.Share, ext.Storage),
 		Notification:        notificationctrl.NewNotificationController(svcs.Notification),
 		ThreadPoll:          threadpollctrl.NewThreadPollController(svcs.ThreadPoll),
 		TrendingUser:        trendinguserctrl.NewTrendingUserController(svcs.TrendingUser, svcs.UserProfile),

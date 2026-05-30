@@ -155,6 +155,9 @@ func (s *CommunityMemberService) RemoveMember(ctx context.Context, communityID, 
 	if err != nil {
 		return errors.New("community not found")
 	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
+	}
 	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
 	if err != nil || !IsCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
@@ -184,8 +187,12 @@ func (s *CommunityMemberService) UpdateRole(ctx context.Context, communityID, ac
 	if role != communitymembermodel.CommunityMemberRoleMember && role != communitymembermodel.CommunityMemberRoleAdmin {
 		return errors.New("invalid role")
 	}
-	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
 		return errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
 	}
 	actor, err := s.memberRepo.FindMember(communityID, actorUserID)
 	if err != nil || !IsCommunityAdmin(actor.Role) {

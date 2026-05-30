@@ -104,6 +104,23 @@ body {
   background-color: var(--sidebar-hover);
 }
 
+.sidebar-more-hit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  color: var(--text-on-dark-muted);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-account-btn:hover .sidebar-more-hit,
+.sidebar-account-btn.is-open .sidebar-more-hit {
+  background-color: var(--x-blue-soft);
+  color: var(--x-blue);
+}
+
 .right-panel {
   width: 348px;
   flex-shrink: 0;
@@ -195,6 +212,15 @@ body {
   filter: brightness(0.85);
 }
 
+/* Hide scrollbar but keep overflow scrollable (for arrow-driven sliders). */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Text / count / link buttons — underline on hover */
 .hover-underline:hover {
   text-decoration: underline;
@@ -234,3 +260,515 @@ body {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 25%, transparent);
 }
+
+/* Feedback list card — declarative hover, survives re-renders */
+.feedback-card {
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.feedback-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px oklch(0% 0 0 / 0.35);
+}
+
+/* Vote pill — subtle dim on hover, accent stays when active */
+.vote-btn {
+  transition: background-color 0.12s ease, border-color 0.12s ease, filter 0.12s ease;
+}
+.vote-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+.vote-btn[aria-pressed="false"]:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+}
+
+/* Accent-outlined pill (audience selector) — accent bg tint on hover */
+.pill-accent {
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.pill-accent:hover:not(:disabled) {
+  background-color: color-mix(in oklab, var(--accent) 22%, transparent) !important;
+}
+
+/* Text-only accent pill (who-can-reply) — accent tint, no border */
+.pill-accent-text {
+  transition: background-color 0.12s ease;
+}
+.pill-accent-text:hover:not(:disabled) {
+  background-color: color-mix(in oklab, var(--accent) 22%, transparent) !important;
+}
+
+/* Dropdown row — neutral bg-hover, overrides inline bg-subtle on selected row */
+.dropdown-row {
+  transition: background-color 0.12s ease;
+}
+.dropdown-row:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+/* Icon action button — knock-up + color brighten */
+.icon-knock {
+  transition: transform 0.15s ease, color 0.15s ease, background-color 0.12s ease;
+}
+.icon-knock:hover:not(:disabled) {
+  transform: translateY(-2px);
+  color: var(--accent) !important;
+  background-color: var(--bg-hover) !important;
+}
+.icon-knock:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* === Admin polish === */
+
+@keyframes page-header-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+
+.admin-page-header {
+  animation: page-header-in 260ms ease-out;
+}
+
+.admin-row {
+  transition: background-color 0.12s ease;
+}
+.admin-row:hover {
+  background-color: var(--bg-hover);
+}
+.admin-row-clickable {
+  cursor: pointer;
+}
+.admin-row-clickable:hover {
+  background-color: var(--bg-hover);
+}
+
+.admin-subnav-link {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.12s ease, transform 0.12s ease, background-color 0.12s ease;
+}
+.admin-subnav-link:hover {
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.admin-subnav-link[data-active="true"] {
+  color: var(--text);
+  font-weight: 600;
+}
+.admin-subnav-link[data-active="false"]:hover {
+  background-color: var(--bg-hover);
+}
+
+.admin-subnav-pill {
+  position: absolute;
+  top: 50%;
+  height: 36px;
+  border-radius: 9999px;
+  background: var(--sidebar-active);
+  transform: translateY(-50%);
+  transition: left 220ms cubic-bezier(0.4, 0, 0.2, 1),
+              width 220ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 160ms ease;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.admin-subnav-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 4px 8px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.admin-subnav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, background-color 0.12s ease, transform 0.12s ease;
+}
+.admin-subnav-arrow:hover {
+  background: var(--bg-hover);
+}
+.admin-subnav-arrow-left {
+  left: 8px;
+  box-shadow: 8px 0 14px -4px var(--bg);
+}
+.admin-subnav-arrow-right {
+  right: 8px;
+  box-shadow: -8px 0 14px -4px var(--bg);
+}
+[data-overflow-left="true"] > .admin-subnav-arrow-left,
+[data-overflow-right="true"] > .admin-subnav-arrow-right {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.admin-stat-card {
+  transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+.admin-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  background-color: var(--bg-hover);
+}
+
+.status-pulse {
+  animation: pulse-soft 1.8s ease-in-out infinite;
+}
+
+/* === Admin form controls === */
+
+.admin-input,
+.admin-select,
+.admin-textarea {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+}
+.admin-textarea {
+  min-height: 96px;
+  padding: 10px 14px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.admin-input::placeholder,
+.admin-textarea::placeholder {
+  color: var(--text-tertiary);
+}
+.admin-input:hover,
+.admin-select:hover,
+.admin-textarea:hover {
+  border-color: var(--border-strong);
+}
+.admin-input:focus,
+.admin-select:focus,
+.admin-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--bg);
+}
+
+.admin-input-pill {
+  border-radius: 9999px;
+  padding: 8px 16px;
+}
+.admin-select-pill {
+  border-radius: 9999px;
+  padding: 8px 16px 8px 14px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%),
+                    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+}
+.admin-select-sm {
+  padding: 5px 28px 5px 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
+}
+
+/* === Admin buttons === */
+
+.admin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.08s ease, filter 0.12s ease;
+  white-space: nowrap;
+}
+.admin-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.admin-btn:not(:disabled):active {
+  transform: translateY(0.5px);
+}
+
+.admin-btn-primary,
+.admin-btn-success {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+.admin-btn-primary:not(:disabled):hover,
+.admin-btn-success:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+.admin-btn-primary:not(:disabled):active,
+.admin-btn-success:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.admin-btn-danger {
+  background: var(--coral);
+  color: #fff;
+  border-color: var(--coral);
+}
+.admin-btn-danger:not(:disabled):hover { filter: brightness(1.1); }
+
+.admin-btn-outline {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.admin-btn-outline:not(:disabled):hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+.admin-btn-outline-danger {
+  background: transparent;
+  color: var(--coral);
+  border-color: var(--coral);
+}
+.admin-btn-outline-danger:not(:disabled):hover {
+  background: var(--coral-soft);
+}
+
+.admin-btn-sm {
+  padding: 5px 12px;
+  font-size: 12.5px;
+}
+
+/* === Admin detail card === */
+
+.admin-detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 22px;
+  border-radius: 16px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+.admin-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  overflow: hidden;
+}
+.admin-detail-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+  transition: background-color 0.12s ease;
+}
+.admin-detail-row:last-child { border-bottom: none; }
+.admin-detail-row:hover { background: var(--bg-hover); }
+.admin-detail-label {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding-top: 2px;
+}
+.admin-detail-value {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 500;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+/* === Modal panel entrance === */
+
+.admin-modal-backdrop {
+  animation: modal-backdrop-in 0.16s ease;
+}
+.admin-modal-panel {
+  animation: modal-panel-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* === Modal sections (consumers of Dialog primitive) === */
+
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.admin-modal-header-text {
+  min-width: 0;
+  flex: 1;
+}
+.admin-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+  flex-shrink: 0;
+}
+.admin-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.admin-modal-body {
+  padding: 20px 22px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.admin-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+/* === Numbered pager === */
+
+.admin-pager {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-pager-meta {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.admin-pager-pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.admin-pager-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.admin-pager-btn:not(:disabled):hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+.admin-pager-btn:not(:disabled):active {
+  transform: scale(0.96);
+}
+.admin-pager-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.admin-pager-btn-active,
+.admin-pager-btn-active:not(:disabled):hover {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+  font-weight: 700;
+}
+.admin-pager-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px;
+  border-radius: 9999px;
+}
+.admin-pager-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 36px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  user-select: none;
+}
+
+/* === Outlined neutral pill (Premium, event type, etc.) === */
+
+.admin-pill-outline {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+

@@ -42,7 +42,7 @@ func NewChatService(
 	}
 }
 
-func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string, gifURL *string, replyToID *uint) (*chatmodel.Chat, error) {
+func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string, gifURL *string, replyToID *uint, sharedThreadID *uint) (*chatmodel.Chat, error) {
 	if !s.roomRepo.IsMember(roomID, senderID) {
 		return nil, errors.New("forbidden")
 	}
@@ -79,7 +79,7 @@ func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *
 		}
 		message = &encrypted
 	}
-	chat := &chatmodel.Chat{RoomID: roomID, SenderID: senderID, Message: message, GifURL: gifURL, ReplyToID: replyToID}
+	chat := &chatmodel.Chat{RoomID: roomID, SenderID: senderID, Message: message, GifURL: gifURL, ReplyToID: replyToID, SharedThreadID: sharedThreadID}
 	if err := s.chatRepo.Save(chat); err != nil {
 		return nil, err
 	}

@@ -172,7 +172,8 @@ func SeedTrendingActivity(db *gorm.DB) {
 			like_count::float +
 			3.0 * comment_count::float +
 			5.0 * repost_count::float +
-			4.0 * bookmark_count::float
+			4.0 * bookmark_count::float +
+			2.0 * share_count::float
 		) / (
 			1.0 + POWER(EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0, 1.5)
 		)

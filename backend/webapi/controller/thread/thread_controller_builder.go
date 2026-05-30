@@ -110,7 +110,7 @@ func (c *ThreadController) buildUserFeedItemsWithBuilder(threads []threadmodel.T
 				ReplyPermission: string(p.ReplyPermission),
 				Media:           fb.ToMediaResponses(mediaByThread[p.ThreadID]),
 				Poll:            fb.PollForParent(p),
-				Stats:           threaddto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount},
+				Stats:           threaddto.FeedStats{Likes: p.LikeCount, Reposts: p.RepostCount, Bookmarks: p.BookmarkCount, Comments: p.CommentCount, Shares: p.ShareCount},
 				CreatedAt:       dtoutils.Wrap(p.CreatedAt),
 				UpdatedAt:       dtoutils.Wrap(p.UpdatedAt),
 			}

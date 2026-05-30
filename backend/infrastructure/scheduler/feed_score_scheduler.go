@@ -53,7 +53,7 @@ func (s *FeedScoreScheduler) run() {
 		SET feed_score = new_score
 		FROM (
 			SELECT thread_id,
-				(like_count::float + 3.0 * comment_count::float + 5.0 * repost_count::float + 4.0 * bookmark_count::float) AS new_score
+				(like_count::float + 3.0 * comment_count::float + 5.0 * repost_count::float + 4.0 * bookmark_count::float + 2.0 * share_count::float) AS new_score
 			FROM threads
 			WHERE created_at > NOW() - INTERVAL '7 days'
 		) computed
@@ -90,7 +90,7 @@ func (s *FeedScoreScheduler) run() {
 		Where("threads.type IN ?", []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply)}).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(user_settings.is_private, false) = ?", false).
-		Where("threads.parent_id IS NULL OR (threads.like_count + threads.repost_count + threads.comment_count) > 0").
+		Where("threads.parent_id IS NULL OR (threads.like_count + threads.repost_count + threads.comment_count + threads.share_count) > 0").
 		Select("threads.thread_id, threads.feed_score").
 		Order("threads.feed_score DESC").
 		Limit(100).

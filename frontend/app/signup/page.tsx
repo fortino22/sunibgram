@@ -158,9 +158,14 @@ export default function SignupPage() {
             {stepTitles[step].heading}
           </h1>
           {step === 3 ? (
-            <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
-              We sent a 6-digit code to <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{formData?.email}</span>
-            </p>
+            <>
+              <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+                We sent a 6-digit code to <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{formData?.email}</span>
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 6 }}>
+                Don&apos;t see it? Please check your <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>spam</span> or junk folder.
+              </p>
+            </>
           ) : (
             <p style={{ fontSize: 14, color: 'var(--text-tertiary)' }}>{stepTitles[step].sub}</p>
           )}

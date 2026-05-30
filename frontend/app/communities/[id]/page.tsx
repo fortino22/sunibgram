@@ -58,7 +58,15 @@ export default function CommunityDetailPage() {
 
   const communityQuery = useCommunity(isValidId ? communityId : undefined);
   const membersQuery = useCommunityMembers(isValidId ? communityId : undefined);
-  const requestsQuery = useCommunityRequests(isValidId ? communityId : undefined);
+  const isAdminForRequests =
+    currentUserId != null &&
+    (membersQuery.data?.data ?? []).some(
+      (m) => m.user_id === currentUserId && m.role === 'ADMIN',
+    );
+  const requestsQuery = useCommunityRequests(
+    isValidId ? communityId : undefined,
+    isAdminForRequests,
+  );
   const pinsQuery = usePinnedCommunities();
   const latestQuery = useCommunityThreadsLatest(isValidId && activeTab === 'latest' ? communityId : undefined);
   const topQuery = useCommunityThreadsTop(isValidId && activeTab === 'top' ? communityId : undefined);
@@ -229,6 +237,25 @@ export default function CommunityDetailPage() {
           <Search size={20} />
         </button>
       </div>
+
+      {community.is_active === false && (
+        <div
+          style={{
+            padding: '12px 16px',
+            background: 'var(--coral-soft, rgba(239,68,68,0.08))',
+            color: 'var(--coral, #e53e3e)',
+            fontSize: 13,
+            lineHeight: 1.5,
+            borderBottom: '1px solid var(--border)',
+          }}
+        >
+          {isOwnerByCreation
+            ? 'Your premium has expired — this community is locked. Resubscribe to manage it (edit, post, pin, approve requests, change roles, kick members, or delete).'
+            : isAdmin
+              ? 'This community is locked because the owner\'s premium has expired. All admin actions are disabled until the owner resubscribes.'
+              : 'This community is currently inactive. New posts are paused until the owner resubscribes.'}
+        </div>
+      )}
 
       {/* Community header */}
       <CommunityHeader
@@ -405,8 +432,6 @@ export default function CommunityDetailPage() {
           community={community}
           onClose={() => setShowEdit(false)}
           onSuccess={() => setShowEdit(false)}
-          onDelete={handleDelete}
-          deletePending={deleteMutation.isPending}
         />
       )}
 

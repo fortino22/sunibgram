@@ -86,7 +86,7 @@ export default function ProfilePage() {
 
   return (
     <div>
-      <ProfilePageHeader name={profile.name ?? profile.username} threadCount={threads.length} />
+      <ProfilePageHeader name={profile.name ?? profile.username} threadCount={threads.length} isPremium={profile.is_premium} />
       <ProfileBanner bannerUrl={profile.banner ?? null} />
       <ProfileInfo
         user={{
@@ -98,6 +98,7 @@ export default function ProfilePage() {
           following: profile.following_count ?? 0,
           followers: profile.followers_count ?? 0,
           avatarUrl: profile.avatar ?? null,
+          isPremium: profile.is_premium,
         }}
         isOwn
         isFollowing={false}

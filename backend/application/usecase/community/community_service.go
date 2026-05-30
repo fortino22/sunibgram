@@ -75,6 +75,13 @@ func NewCommunityService(
 }
 
 func (s *CommunityService) Create(ctx context.Context, userID uint, name, description string, rules []string, categoryID *uuid.UUID, visibility communitymodel.CommunityVisibility, banner *multipart.FileHeader) (*communitymodel.Community, []communityrulemodel.CommunityRule, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, nil, errors.New("user not found")
+	}
+	if !user.IsPremium {
+		return nil, nil, errors.New("premium subscription required to create a community")
+	}
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, nil, errors.New("name is required")
@@ -262,12 +269,12 @@ func (s *CommunityService) Delete(ctx context.Context, id, userID uint) error {
 	if err != nil {
 		return errors.New("community not found")
 	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
+	}
 	actor, err := s.memberRepo.FindMember(id, userID)
 	if err != nil || !IsCommunityAdmin(actor.Role) {
 		return errors.New("forbidden")
-	}
-	if community.MemberCount > 1 {
-		return errors.New("transfer admin to another member before deleting; community still has other members")
 	}
 	if community.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, community.BannerObjectName)

@@ -11,6 +11,8 @@ import { useThreadChain } from '@/hooks/useThread';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { useComposeStore } from '@/stores/composeStore';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
+import { ShareModal } from '@/components/share/ShareModal';
+import { SharePopover } from '@/components/share/SharePopover';
 import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
 
 function effectiveBookmarkId(t: ThreadItem): number {
@@ -28,6 +30,8 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
   const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
   const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+  const [shareAnchor, setShareAnchor] = useState<DOMRect | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
     if (bookmark.isPending) return;
@@ -96,6 +100,7 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
               onRepost={() => { if (!repost.isPending) repost.mutate(); }}
               onBookmark={handleBookmark}
               onReply={() => openReply(thread)}
+              onShare={(e) => setShareAnchor(e.currentTarget.getBoundingClientRect())}
               size="sm"
             />
           </div>
@@ -108,6 +113,21 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
             anchorRect={bookmarkAnchor}
             onClose={() => setBookmarkAnchor(null)}
           />
+        </div>
+      )}
+      {shareAnchor && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <SharePopover
+            threadId={effectiveBookmarkId(thread)}
+            anchorRect={shareAnchor}
+            onClose={() => setShareAnchor(null)}
+            onOpenChatModal={() => { setShareAnchor(null); setShareOpen(true); }}
+          />
+        </div>
+      )}
+      {shareOpen && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <ShareModal threadId={effectiveBookmarkId(thread)} onClose={() => setShareOpen(false)} />
         </div>
       )}
     </div>
@@ -133,6 +153,8 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
   const { like, repost, bookmark } = useThreadActions(thread);
   const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
+  const [shareAnchor, setShareAnchor] = useState<DOMRect | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
     if (bookmark.isPending) return;
@@ -302,6 +324,7 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
                 onRepost={() => { if (!repost.isPending) repost.mutate(); }}
                 onBookmark={handleBookmark}
                 onReply={() => openReply(thread)}
+                onShare={(e) => setShareAnchor(e.currentTarget.getBoundingClientRect())}
               />
             </div>
 
@@ -331,6 +354,17 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
           anchorRect={bookmarkAnchor}
           onClose={() => setBookmarkAnchor(null)}
         />
+      )}
+      {shareAnchor && (
+        <SharePopover
+          threadId={effectiveBookmarkId(thread)}
+          anchorRect={shareAnchor}
+          onClose={() => setShareAnchor(null)}
+          onOpenChatModal={() => { setShareAnchor(null); setShareOpen(true); }}
+        />
+      )}
+      {shareOpen && (
+        <ShareModal threadId={effectiveBookmarkId(thread)} onClose={() => setShareOpen(false)} />
       )}
     </div>
   );

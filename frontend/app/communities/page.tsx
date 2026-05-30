@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { CommunityThreadCard } from '@/components/community/CommunityThreadCard';
 import { CreateCommunityModal } from '@/components/community/CreateCommunityModal';
+import { CategoryFilterRow } from '@/components/community/CategoryFilterRow';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Icon } from '@/components/ui/Icon';
 import {
@@ -12,6 +13,8 @@ import {
   useMyCommunitiesThreadsFeed,
   useExploreCommunitiesThreads,
 } from '@/hooks/useCommunities';
+import { useMyProfile } from '@/hooks/useMyProfile';
+import { toast } from 'sonner';
 
 type Tab = 'home' | 'explore';
 
@@ -20,11 +23,19 @@ export default function CommunitiesPage() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [categoryId, setCategoryId] = useState<string | undefined>(undefined);
   const [showCreate, setShowCreate] = useState(false);
+  const { data: myProfile } = useMyProfile();
+  const isPremium = myProfile?.is_premium === true;
+
+  function handleCreateClick() {
+    if (!isPremium) {
+      toast.error('Please subscribe to Premium to create a community.');
+      return;
+    }
+    setShowCreate(true);
+  }
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const drag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
-  const categorySliderRef = useRef<HTMLDivElement>(null);
-  const categoryDrag = useRef({ active: false, startX: 0, scrollLeft: 0, moved: false });
 
   const onSliderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = sliderRef.current;
@@ -51,31 +62,6 @@ export default function CommunitiesPage() {
     }
   };
 
-  const onCategoryMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = categorySliderRef.current;
-    if (!el) return;
-    categoryDrag.current = { active: true, startX: e.pageX - el.offsetLeft, scrollLeft: el.scrollLeft, moved: false };
-    el.style.cursor = 'grabbing';
-    el.style.userSelect = 'none';
-  };
-
-  const onCategoryMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!categoryDrag.current.active) return;
-    const el = categorySliderRef.current;
-    if (!el) return;
-    const walk = e.pageX - el.offsetLeft - categoryDrag.current.startX;
-    if (Math.abs(walk) > 4) categoryDrag.current.moved = true;
-    el.scrollLeft = categoryDrag.current.scrollLeft - walk;
-  };
-
-  const onCategoryMouseUp = () => {
-    categoryDrag.current.active = false;
-    if (categorySliderRef.current) {
-      categorySliderRef.current.style.cursor = 'grab';
-      categorySliderRef.current.style.userSelect = '';
-    }
-  };
-
   const joinedQuery = useJoinedCommunities();
   const homeFeedQuery = useMyCommunitiesThreadsFeed();
   const exploreFeedQuery = useExploreCommunitiesThreads(categoryId);
@@ -95,7 +81,7 @@ export default function CommunitiesPage() {
           zIndex: 10,
           background: 'oklch(10.5% 0.005 260 / 0.92)',
           backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid var(--border)',
+          borderBottom: activeTab === 'explore' ? 'none' : '1px solid var(--border)',
         }}
       >
         <div
@@ -128,7 +114,7 @@ export default function CommunitiesPage() {
               <Icon name="search" size={16} />
             </button>
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={handleCreateClick}
               className="btn-solid"
               style={{
                 padding: '7px 14px',
@@ -246,63 +232,11 @@ export default function CommunitiesPage() {
 
         {/* Category chips — explore tab */}
         {activeTab === 'explore' && (
-          <div
-            ref={categorySliderRef}
-            onMouseDown={onCategoryMouseDown}
-            onMouseMove={onCategoryMouseMove}
-            onMouseUp={onCategoryMouseUp}
-            onMouseLeave={onCategoryMouseUp}
-            style={{
-              display: 'flex',
-              gap: 8,
-              padding: '12px 20px',
-              overflowX: 'auto',
-              borderTop: '1px solid var(--border)',
-              cursor: 'grab',
-              scrollbarWidth: 'thin',
-              scrollbarColor: 'var(--border) transparent',
-            }}
-          >
-            <button
-              onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(undefined); }}
-              className="hover-dim"
-              style={{
-                padding: '5px 14px',
-                borderRadius: 999,
-                border: `1px solid ${!categoryId ? 'var(--text)' : 'var(--border)'}`,
-                background: !categoryId ? 'var(--text)' : 'transparent',
-                color: !categoryId ? 'var(--bg)' : 'var(--text)',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              All
-            </button>
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => { if (categoryDrag.current.moved) return; setCategoryId(c.id); }}
-                className="hover-dim"
-                style={{
-                  padding: '5px 14px',
-                  borderRadius: 999,
-                  border: `1px solid ${categoryId === c.id ? 'var(--text)' : 'var(--border)'}`,
-                  background: categoryId === c.id ? 'var(--text)' : 'transparent',
-                  color: categoryId === c.id ? 'var(--bg)' : 'var(--text)',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  flexShrink: 0,
-                }}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
+          <CategoryFilterRow
+            categories={categories}
+            selectedId={categoryId}
+            onSelect={setCategoryId}
+          />
         )}
       </div>
 

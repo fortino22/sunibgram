@@ -35,5 +35,5 @@ type Community struct {
 }
 
 func (c *Community) IsWritable() bool {
-	return c.IsActive
+	return c.User.IsPremium
 }

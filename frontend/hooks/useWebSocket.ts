@@ -236,8 +236,15 @@ export function useWebSocket({
     return () => {
       intentionallyClosedRef.current = true;
       clearReconnectTimer();
-      if (socketRef.current !== null) {
-        socketRef.current.close(1000, 'Component unmounted');
+      const socket = socketRef.current;
+      if (socket !== null) {
+        if (socket.readyState === WebSocket.CONNECTING) {
+          socket.addEventListener('open', () => {
+            socket.close(1000, 'Component unmounted');
+          });
+        } else if (socket.readyState === WebSocket.OPEN) {
+          socket.close(1000, 'Component unmounted');
+        }
         socketRef.current = null;
       }
     };

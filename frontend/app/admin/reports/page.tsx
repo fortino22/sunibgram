@@ -3,11 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Flag } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
+import { Pager } from '@/components/admin/Pager';
 import { listReports, updateReportStatus, deleteReport } from '@/lib/services/admin/reports';
 import type { Report } from '@/lib/services/admin/types';
 
@@ -19,6 +21,8 @@ export default function AdminReportsPage() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const q = useQuery({
     queryKey: ['admin', 'reports'],
@@ -53,6 +57,9 @@ export default function AdminReportsPage() {
   }, [reports]);
 
   const filtered = statusFilter ? reports.filter((r) => r.status === statusFilter) : reports;
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const columns: Column<Report>[] = [
     {
@@ -91,14 +98,7 @@ export default function AdminReportsPage() {
         <select
           value={r.status}
           onChange={(e) => statusMut.mutate({ id: r.id, status: e.target.value })}
-          style={{
-            padding: '4px 8px',
-            borderRadius: 8,
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            color: 'var(--text)',
-            fontSize: 13,
-          }}
+          className="admin-select admin-select-sm"
         >
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s}</option>
@@ -113,16 +113,7 @@ export default function AdminReportsPage() {
         <button
           type="button"
           onClick={() => setDeleteId(r.id)}
-          className="btn-ghost"
-          style={{
-            padding: '6px 12px',
-            border: '1px solid var(--border)',
-            borderRadius: 9999,
-            background: 'transparent',
-            color: 'var(--coral)',
-            cursor: 'pointer',
-            fontSize: 13,
-          }}
+          className="admin-btn admin-btn-outline-danger admin-btn-sm"
         >
           Delete
         </button>
@@ -132,20 +123,14 @@ export default function AdminReportsPage() {
 
   return (
     <AdminPage
+      icon={Flag}
       title="Reports"
       description="Triage and resolve user reports. Chart breaks down by report type."
       actions={
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{
-            padding: '8px 14px',
-            borderRadius: 9999,
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            color: 'var(--text)',
-            fontSize: 13,
-          }}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+          className="admin-select admin-select-pill"
         >
           <option value="">All statuses</option>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -207,7 +192,10 @@ export default function AdminReportsPage() {
       ) : q.isError ? (
         <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : (
-        <DataTable<Report> columns={columns} rows={filtered} rowKey={(r) => r.id} />
+        <>
+          <DataTable<Report> columns={columns} rows={pageRows} rowKey={(r) => r.id} />
+          <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
+        </>
       )}
 
       <ConfirmModal

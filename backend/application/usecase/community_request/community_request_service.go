@@ -81,8 +81,12 @@ func (s *CommunityRequestService) Cancel(ctx context.Context, communityID, userI
 }
 
 func (s *CommunityRequestService) Approve(ctx context.Context, communityID, adminUserID, targetUserID uint) error {
-	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
 		return errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
 	}
 	adminMember, err := s.memberRepo.FindMember(communityID, adminUserID)
 	if err != nil || !communityuc.IsCommunityAdmin(adminMember.Role) {
@@ -114,8 +118,12 @@ func (s *CommunityRequestService) Approve(ctx context.Context, communityID, admi
 }
 
 func (s *CommunityRequestService) Decline(ctx context.Context, communityID, adminUserID, targetUserID uint) error {
-	if _, err := s.communityRepo.FindByID(communityID); err != nil {
+	community, err := s.communityRepo.FindByID(communityID)
+	if err != nil {
 		return errors.New("community not found")
+	}
+	if !community.IsWritable() {
+		return errors.New("community is inactive")
 	}
 	adminMember, err := s.memberRepo.FindMember(communityID, adminUserID)
 	if err != nil || !communityuc.IsCommunityAdmin(adminMember.Role) {

@@ -16,9 +16,10 @@ export function useFeedNewCount(sinceId: number, active: boolean): number {
       if (!token) throw new Error('Authentication token is required to fetch the feed count.');
       return getFeedNewCount(sinceId, token);
     },
-    enabled: active && token !== null && sinceId > 0,
+    enabled: active && Boolean(token) && sinceId > 0,
     refetchInterval: POLL_INTERVAL_MS,
     refetchIntervalInBackground: false,
+    retry: false,
   });
   return query.data?.count ?? 0;
 }

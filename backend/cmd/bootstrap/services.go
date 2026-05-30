@@ -34,6 +34,7 @@ import (
 	premiumsubscriptionuc "github.com/sunibgram/application/usecase/premium_subscription"
 	reportuc "github.com/sunibgram/application/usecase/report"
 	roleuc "github.com/sunibgram/application/usecase/role"
+	shareuc "github.com/sunibgram/application/usecase/share"
 	threaduc "github.com/sunibgram/application/usecase/thread"
 	threadmediauc "github.com/sunibgram/application/usecase/thread_media"
 	threadpinuc "github.com/sunibgram/application/usecase/thread_pin"
@@ -78,6 +79,7 @@ import (
 	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 	reportsvciface "github.com/sunibgram/domain/service/report"
 	rolesvciface "github.com/sunibgram/domain/service/role"
+	sharesvciface "github.com/sunibgram/domain/service/share"
 	threadsvciface "github.com/sunibgram/domain/service/thread"
 	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
 	threadpinsvciface "github.com/sunibgram/domain/service/thread_pin"
@@ -134,6 +136,7 @@ type Services struct {
 	Chat                 chatsvciface.IChatService
 	ChatMedia            chatmediasvciface.IChatMediaService
 	ChatReaction         chatreactionsvciface.IChatReactionService
+	Share                sharesvciface.IShareService
 	ThreadPoll           threadpollsvciface.IThreadPollService
 	EventThreadPin       eventthreadpinsvciface.IEventThreadPinService
 	TrendingUser         trendingusersvciface.ITrendingUserService
@@ -152,6 +155,9 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
 	communityActionConfirmation := communityactionconfirmationuc.NewCommunityActionConfirmationService(repos.CommunityActionConfirmation)
 	eventActionConfirmation := eventactionconfirmationuc.NewEventActionConfirmationService(repos.EventActionConfirmation)
+	chatRoom := chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage)
+	chat := chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification)
+	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, chat, chatRoom, ext.Storage)
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
@@ -189,13 +195,14 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Feedback:             feedbackuc.NewFeedbackService(repos.Feedback),
 		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),
 		PremiumSubscription:  premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
-		ChatRoom:             chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage),
-		Chat:                 chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification),
+		ChatRoom:             chatRoom,
+		Chat:                 chat,
 		ChatMedia:            chatmediauc.NewChatMediaService(repos.Chat, repos.ChatMedia, ext.Storage),
 		ChatReaction:         chatreactionuc.NewChatReactionService(repos.Chat, repos.ChatReaction, repos.ChatRoom),
+		Share:                share,
 		ThreadPoll:           threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, ext.Storage),
 		EventThreadPin:       eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
 		TrendingUser:         trendinguseruc.NewTrendingUserService(repos.TrendingUser, repos.TrendingUserSnapshot, repos.Follow),
-		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport),
+		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport, hashtag),
 	}
 }

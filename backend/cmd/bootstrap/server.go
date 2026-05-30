@@ -113,6 +113,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.DevSubscription,
 		ctrls.ChatRoom,
 		ctrls.Chat,
+		ctrls.Share,
 		ctrls.Notification,
 		ctrls.ThreadPoll,
 		ctrls.TrendingUser,

@@ -7,6 +7,6 @@ import (
 )
 
 type IHashtagService interface {
-	GetTrending(ctx context.Context, limit int) ([]hashtagmodel.TrendingHashtag, error)
+	GetTrending(ctx context.Context, limit int, viewerID uint) ([]hashtagmodel.TrendingHashtag, error)
 	InvalidateTrendingCache(ctx context.Context)
 }
