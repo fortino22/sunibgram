@@ -2,6 +2,7 @@ package usersettingsrepo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -67,17 +68,24 @@ func (r *UserSettingsRepository) GetPrivacyMapByUserIDs(ctx context.Context, use
 	}
 
 	missingIDs := make([]uint, 0, len(userIDs))
-	for _, userID := range userIDs {
-		if r.cache == nil {
+	if r.cache == nil {
+		missingIDs = userIDs
+	} else {
+		keys := make([]string, len(userIDs))
+		for i, userID := range userIDs {
+			keys[i] = userPrivacyKey(userID)
+		}
+		hits, _ := r.cache.MGet(ctx, keys)
+		for _, userID := range userIDs {
+			if raw, ok := hits[userPrivacyKey(userID)]; ok {
+				var cached bool
+				if json.Unmarshal(raw, &cached) == nil {
+					result[userID] = cached
+					continue
+				}
+			}
 			missingIDs = append(missingIDs, userID)
-			continue
 		}
-		var cached bool
-		if err := r.cache.Get(ctx, userPrivacyKey(userID), &cached); err == nil {
-			result[userID] = cached
-			continue
-		}
-		missingIDs = append(missingIDs, userID)
 	}
 	if len(missingIDs) == 0 {
 		return result, nil
@@ -95,9 +103,11 @@ func (r *UserSettingsRepository) GetPrivacyMapByUserIDs(ctx context.Context, use
 		result[setting.UserID] = setting.IsPrivate
 	}
 	if r.cache != nil {
+		entries := make(map[string]any, len(missingIDs))
 		for _, userID := range missingIDs {
-			r.cache.Set(ctx, userPrivacyKey(userID), result[userID], r.ttl)
+			entries[userPrivacyKey(userID)] = result[userID]
 		}
+		_ = r.cache.MSet(ctx, entries, r.ttl)
 	}
 	return result, nil
 }

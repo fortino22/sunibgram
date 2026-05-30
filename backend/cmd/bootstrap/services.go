@@ -151,7 +151,7 @@ type Services struct {
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.NotificationUserMute, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
-	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub)
+	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub, repos.NotificationUserMute)
 	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.UserBlock, repos.Cache, notification)
 	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
 	notificationUserMute := notificationusermuteuc.NewNotificationUserMuteService(repos.NotificationUserMute, repos.User)
