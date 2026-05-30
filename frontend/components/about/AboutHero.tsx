@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { AboutHeroBackground } from '@/components/about/AboutHeroBackground';
 
 export function AboutHero() {
   return (
-    <section className="about-hero-mesh" id="what">
-      <div aria-hidden className="about-hero-grid" />
+    <section className="relative overflow-hidden" id="what">
+      <AboutHeroBackground />
       <div
-        className="about-container-narrow relative flex flex-col items-center text-center"
+        className="about-container-narrow relative z-10 flex flex-col items-center text-center"
         style={{ paddingTop: '120px', paddingBottom: '120px' }}
       >
         <h1
@@ -20,17 +21,17 @@ export function AboutHero() {
         >
           The social network just for{' '}
           <span className="about-inline-chip">
-            <span className="about-inline-chip-avatar" />
-            <span
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/assets/binus-logo.svg"
+              alt="Binus University"
               style={{
-                color: 'var(--text)',
-                fontSize: '1.05rem',
-                fontWeight: 600,
+                height: '1.4em',
+                width: 'auto',
+                objectFit: 'contain',
+                display: 'block',
               }}
-            >
-              @binus.ac.id
-            </span>
-            <span className="about-inline-chip-badge">VERIFIED</span>
+            />
           </span>
         </h1>
 

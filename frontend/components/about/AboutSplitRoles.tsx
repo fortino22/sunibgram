@@ -161,7 +161,6 @@ export function AboutSplitRoles() {
                       }}
                     >
                       <span
-                        className="mono"
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',

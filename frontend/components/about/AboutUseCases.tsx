@@ -188,7 +188,6 @@ export function AboutUseCases() {
               </div>
               <Link
                 href="/signup"
-                className="mono"
                 style={{
                   fontSize: '0.75rem',
                   textTransform: 'uppercase',
