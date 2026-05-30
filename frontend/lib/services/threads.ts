@@ -332,6 +332,17 @@ export function getThreadSummary(id: number | string, token: string): Promise<Th
 }
 
 /**
+ * Thrown when the user has exhausted their daily summary token budget (HTTP
+ * 429). Carries the server's human-readable message for display.
+ */
+export class SummaryLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SummaryLimitError';
+  }
+}
+
+/**
  * Streams the thread summary as plain text. Calls onChunk with each decoded
  * piece as it arrives so the UI can render the text live (typewriter effect).
  * Uses fetch (not EventSource) so the Bearer token can be sent.
@@ -347,6 +358,15 @@ export async function streamThreadSummary(
     headers: { Authorization: `Bearer ${token}` },
     signal: options.signal,
   });
+
+  if (res.status === 429) {
+    const fallback = "You've reached your daily summary limit. It resets tomorrow.";
+    const message = await res
+      .json()
+      .then((body: { message?: string }) => body.message ?? fallback)
+      .catch(() => fallback);
+    throw new SummaryLimitError(message);
+  }
 
   if (!res.ok || res.body === null) {
     throw new Error('Failed to stream summary');

@@ -21,9 +21,18 @@ import (
 const (
 	threadSummaryTTL          time.Duration = 7 * 24 * time.Hour
 	threadSummaryReplyTrigger               = 20
+
+	// summaryDailyTokenBudget caps how many summary tokens a single user can
+	// burn per calendar day. The quota key embeds the date, so it resets daily.
+	summaryDailyTokenBudget int64         = 10000
+	summaryQuotaTTL         time.Duration = 26 * time.Hour // GC margin past midnight
 )
 
 var ErrThreadSummaryNotReady = errors.New("thread summary is being generated")
+
+// ErrDailyLimitReached is returned when a user has exhausted their daily
+// summary token budget.
+var ErrDailyLimitReached = errors.New("daily summary limit reached")
 
 type ThreadSummaryService struct {
 	threadRepo   threadrepoiface.IThreadRepository
@@ -173,12 +182,33 @@ func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uin
 	}
 
 	var buf strings.Builder
-	if err := s.openaiClient.StreamGenerate(ctx, prompt, &buf); err != nil {
+	if _, err := s.openaiClient.StreamGenerate(ctx, prompt, &buf); err != nil {
 		return "", err
 	}
 
 	summary := strings.TrimSpace(buf.String())
 	return summary, nil
+}
+
+// CachedSummary returns the cached summary for a thread if one exists and is
+// non-empty. Lets the controller serve cached summaries without charging the
+// user's token quota (no LLM call is made).
+func (s *ThreadSummaryService) CachedSummary(ctx context.Context, threadID uint) (string, bool) {
+	var cached string
+	if err := s.cacheRepo.Get(ctx, threadSummaryKey(threadID), &cached); err == nil && strings.TrimSpace(cached) != "" {
+		return cached, true
+	}
+	return "", false
+}
+
+// QuotaExceeded reports whether the user has already burned their daily summary
+// token budget. Read-only — does not consume any quota.
+func (s *ThreadSummaryService) QuotaExceeded(ctx context.Context, userID uint) (bool, error) {
+	used, err := s.cacheRepo.GetCounter(ctx, summaryQuotaKey(userID))
+	if err != nil {
+		return false, err
+	}
+	return used >= summaryDailyTokenBudget, nil
 }
 
 // accumWriter tees streamed deltas to the client writer while accumulating the
@@ -203,7 +233,7 @@ func (a *accumWriter) Flush() {
 // StreamSummarize streams the summary to w as it is generated (live typing in
 // the UI). Cached results are written once; fresh results stream from the LLM
 // and are cached on completion.
-func (s *ThreadSummaryService) StreamSummarize(ctx context.Context, threadID uint, w io.Writer) error {
+func (s *ThreadSummaryService) StreamSummarize(ctx context.Context, threadID, userID uint, w io.Writer) error {
 	key := threadSummaryKey(threadID)
 
 	var cached string
@@ -222,8 +252,17 @@ func (s *ThreadSummaryService) StreamSummarize(ctx context.Context, threadID uin
 	}
 
 	tee := &accumWriter{w: w}
-	if err := s.openaiClient.StreamGenerate(ctx, prompt, tee); err != nil {
+	tokens, err := s.openaiClient.StreamGenerate(ctx, prompt, tee)
+	if err != nil {
 		return err
+	}
+
+	// Charge the generated tokens against the user's daily budget. Cached reads
+	// above are free; only a fresh LLM call costs quota.
+	if tokens > 0 {
+		if _, err := s.cacheRepo.IncrByWithWindow(ctx, summaryQuotaKey(userID), int64(tokens), summaryQuotaTTL); err != nil {
+			log.Printf("thread summary quota charge failed for user %d: %v", userID, err)
+		}
 	}
 
 	summary := strings.TrimSpace(tee.buf.String())
@@ -256,6 +295,12 @@ func threadSummaryKey(threadID uint) string {
 
 func threadSummaryReplyCountKey(threadID uint) string {
 	return fmt.Sprintf("thread:summary:replycount:%d", threadID)
+}
+
+// summaryQuotaKey embeds the calendar date so the per-user token counter
+// resets at the start of each day. TTL only handles cleanup.
+func summaryQuotaKey(userID uint) string {
+	return fmt.Sprintf("summary:quota:%d:%s", userID, time.Now().Format("2006-01-02"))
 }
 
 var _ io.Writer = (*strings.Builder)(nil)

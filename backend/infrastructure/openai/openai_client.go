@@ -27,18 +27,32 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) StreamGenerate(ctx context.Context, prompt string, w io.Writer) error {
+// StreamGenerate streams the model output to w and returns the total tokens
+// consumed (prompt + completion, incl. reasoning) for quota accounting.
+// reasoning_effort is set to "minimal" because gpt-5 reasoning models would
+// otherwise spend the completion-token budget on hidden reasoning, leaving
+// almost nothing for the visible summary. include_usage makes the final chunk
+// carry the token usage (that chunk has empty Choices).
+func (c *Client) StreamGenerate(ctx context.Context, prompt string, w io.Writer) (int, error) {
 	stream := c.client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 		Model: c.model,
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(prompt),
 		},
-		MaxCompletionTokens: openai.Int(1200),
+		MaxCompletionTokens: openai.Int(2000),
+		ReasoningEffort:     shared.ReasoningEffort("minimal"),
+		StreamOptions: openai.ChatCompletionStreamOptionsParam{
+			IncludeUsage: openai.Bool(true),
+		},
 	})
 	defer stream.Close()
 
+	var totalTokens int
 	for stream.Next() {
 		chunk := stream.Current()
+		if chunk.Usage.TotalTokens > 0 {
+			totalTokens = int(chunk.Usage.TotalTokens)
+		}
 		if len(chunk.Choices) == 0 {
 			continue
 		}
@@ -47,11 +61,11 @@ func (c *Client) StreamGenerate(ctx context.Context, prompt string, w io.Writer)
 			continue
 		}
 		if _, err := fmt.Fprint(w, delta); err != nil {
-			return err
+			return totalTokens, err
 		}
 		if f, ok := w.(interface{ Flush() }); ok {
 			f.Flush()
 		}
 	}
-	return stream.Err()
+	return totalTokens, stream.Err()
 }

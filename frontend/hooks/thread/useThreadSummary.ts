@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { streamThreadSummary } from '@/lib/services/threads';
+import { streamThreadSummary, SummaryLimitError } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
 
-export type SummaryStatus = 'streaming' | 'done' | 'error';
+export type SummaryStatus = 'streaming' | 'done' | 'error' | 'limit';
 
 export interface ThreadSummaryResult {
   text: string;
   status: SummaryStatus;
+  /** Friendly message when status === 'limit'. */
+  message?: string;
 }
 
 const REVEAL_STEP = 3; // chars revealed per tick
@@ -24,6 +26,7 @@ export function useThreadSummaryStream(id: number | string): ThreadSummaryResult
   const token = useAuthStore((state) => state.token);
   const [displayed, setDisplayed] = useState('');
   const [status, setStatus] = useState<SummaryStatus>(token === null ? 'error' : 'streaming');
+  const [message, setMessage] = useState<string | undefined>(undefined);
 
   const targetRef = useRef('');
   const streamDoneRef = useRef(false);
@@ -41,6 +44,11 @@ export function useThreadSummaryStream(id: number | string): ThreadSummaryResult
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
         if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (err instanceof SummaryLimitError) {
+          setMessage(err.message);
+          setStatus('limit');
+          return;
+        }
         setStatus('error');
       });
 
@@ -63,5 +71,5 @@ export function useThreadSummaryStream(id: number | string): ThreadSummaryResult
     return () => clearInterval(timer);
   }, [id, token]);
 
-  return { text: displayed, status };
+  return { text: displayed, status, message };
 }

@@ -48,7 +48,7 @@ interface SummaryCardProps {
 }
 
 function SummaryCard({ thread, onClose }: SummaryCardProps) {
-  const { text, status } = useThreadSummaryStream(thread.id);
+  const { text, status, message } = useThreadSummaryStream(thread.id);
   const [closing, setClosing] = useState(false);
   const author = thread.author;
   const showSpinner = status === 'streaming' && text.length === 0;
@@ -170,7 +170,11 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
                 padding: 12,
               }}
             >
-              {status === 'error' ? (
+              {status === 'limit' ? (
+                <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                  {message ?? "You've reached your daily summary limit. It resets tomorrow."}
+                </p>
+              ) : status === 'error' ? (
                 <p style={{ fontSize: 14, color: 'var(--coral)', margin: 0 }}>
                   Couldn&apos;t generate a summary right now. Close and try again.
                 </p>

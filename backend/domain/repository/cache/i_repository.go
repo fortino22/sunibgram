@@ -23,6 +23,14 @@ type ICacheRepository interface {
 	// Incr atomically INCRs the key with no expiry. Returns post-increment count.
 	Incr(ctx context.Context, key string) (int64, error)
 
+	// IncrByWithWindow atomically INCRBYs the key by n and ensures it expires
+	// after the given window. Returns post-increment count. For quota tallies.
+	IncrByWithWindow(ctx context.Context, key string, n int64, window time.Duration) (int64, error)
+
+	// GetCounter reads a numeric counter without mutating it; returns 0 when
+	// the key is absent. Use for read-only "am I over the limit?" checks.
+	GetCounter(ctx context.Context, key string) (int64, error)
+
 	// Reverse-index tag invalidation (phase 2). RegisterCacheKey associates a
 	// cache key with one or more tags on Set. InvalidateTag(s) drops every
 	// member key of a tag in O(set size) — no SCAN required. Tag names follow
