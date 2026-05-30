@@ -18,6 +18,10 @@ func (s *ThreadService) GetByID(id uint) (*threadmodel.Thread, error) {
 	return s.threadRepo.FindByID(id)
 }
 
+func (s *ThreadService) GetByIDs(ids []uint) ([]threadmodel.Thread, error) {
+	return s.threadRepo.FindByIDs(ids)
+}
+
 func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, total, err := s.threadRepo.FindRoots(requesterID, page, limit)

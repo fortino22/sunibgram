@@ -16,6 +16,7 @@ type IThreadService interface {
 	CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*threadmodel.Thread, error)
 	UpdateReplyPermission(ctx context.Context, threadID, userID uint, replyPermission string) error
 	GetByID(id uint) (*threadmodel.Thread, error)
+	GetByIDs(ids []uint) ([]threadmodel.Thread, error)
 	GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error)
 	GetChain(ctx context.Context, rootID, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error)
 	Update(ctx context.Context, id, userID uint, content string) (*threadmodel.Thread, error)
