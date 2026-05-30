@@ -12,9 +12,16 @@ import { useThreadSummaryStream } from '@/hooks/thread/useThreadSummary';
 import { useSummaryStore } from '@/stores/summaryStore';
 import type { ThreadItem } from '@/lib/services/threads';
 
+function toBullets(text: string): string[] {
+  const lines = text
+    .split('\n')
+    .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
+    .filter((l) => l.length > 0);
+  return lines.length > 0 ? lines : [''];
+}
+
 const CARD_WIDTH = 360;
 
-// Pinned bottom-right, just above the floating fox orb (right:22 bottom:22, 60px).
 function cardPosition(): CSSProperties {
   const vw = typeof window === 'undefined' ? 1280 : window.innerWidth;
   return {
@@ -183,12 +190,19 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
                   <span style={{ fontSize: 14 }}>Summarizing…</span>
                 </div>
               ) : (
-                <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap', margin: 0 }}>
-                  {text}
-                  {status === 'streaming' && (
-                    <span style={{ animation: 'pulse 1s ease-in-out infinite', fontWeight: 700 }}>▍</span>
-                  )}
-                </p>
+                <ul style={{ margin: 0, paddingLeft: 20, listStyleType: 'disc', listStylePosition: 'outside' }}>
+                  {toBullets(text).map((line, i, arr) => (
+                    <li
+                      key={i}
+                      style={{ display: 'list-item', fontSize: 14, lineHeight: 1.5, color: 'var(--text)', marginBottom: i === arr.length - 1 ? 0 : 7 }}
+                    >
+                      {line}
+                      {status === 'streaming' && i === arr.length - 1 && (
+                        <span style={{ animation: 'pulse 1s ease-in-out infinite', fontWeight: 700 }}>▍</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </section>
