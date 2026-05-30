@@ -151,7 +151,15 @@ func (r *InteractionRepo) FindByUserID(userID uint, page, limit int) ([]threadmo
 	}
 
 	var threads []threadmodel.Thread
-	if err := r.preload(r.ReadDB).Where("threads.thread_id IN ?", ids).Find(&threads).Error; err != nil {
+	// Exclude blocked-author threads from the owner's own liked/bookmarked list
+	// (mutual hide). Inline subquery — importing the thread repo here would cycle.
+	if err := r.preload(r.ReadDB).
+		Where("threads.thread_id IN ?", ids).
+		Where(`threads.user_id NOT IN (
+			SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+			UNION
+			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, userID, userID).
+		Find(&threads).Error; err != nil {
 		return nil, nil, total, err
 	}
 

@@ -109,7 +109,7 @@ export function ImageCropModal({ imageSrc, filename, aspect, maxSizeBytes = IMAG
             <span style={{ fontSize: 16, color: 'var(--text-tertiary)', lineHeight: 1, userSelect: 'none' }}>+</span>
           </div>
           {sizeError && (
-            <p style={{ margin: 0, fontSize: 12, color: '#f87171', textAlign: 'center' }}>{sizeError}</p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--coral)', textAlign: 'center' }}>{sizeError}</p>
           )}
         </div>
       </div>

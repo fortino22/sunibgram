@@ -520,6 +520,7 @@ func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUI
 			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 				communitymodel.CommunityVisibilityPublic, userID).
 			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
+		base = ApplyBlockFilter(base, userID)
 		if categoryID != nil {
 			base = base.Where("communities.category_id = ?", categoryID)
 		}
@@ -572,6 +573,7 @@ func (r *threadCached) FindAllCommunityThreads(userID uint, categoryID *uuid.UUI
 		Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 			communitymodel.CommunityVisibilityPublic, userID).
 		Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
+	query = ApplyBlockFilter(query, userID)
 	if categoryID != nil {
 		query = query.Where("communities.category_id = ?", categoryID)
 	}
@@ -631,6 +633,7 @@ func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string,
 			Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 				communitymodel.CommunityVisibilityPublic, userID).
 			Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
+		base = ApplyBlockFilter(base, userID)
 		if err := base.Count(&total).Error; err != nil {
 			return 0, err
 		}
@@ -669,7 +672,7 @@ func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string,
 	}
 
 	offset := (page - 1) * limit
-	if err := PreloadThreadDetails(r.db.readDB).
+	dataQuery := PreloadThreadDetails(r.db.readDB).
 		Joins("LEFT JOIN threads original ON original.thread_id = threads.original_thread_id").
 		Joins("JOIN communities ON communities.community_id = COALESCE(threads.community_id, original.community_id)").
 		Joins("LEFT JOIN user_settings us ON us.user_id = threads.user_id").
@@ -680,7 +683,9 @@ func (r *threadCached) findAllCommunityThreadsByQuery(userID uint, query string,
 		Where("(communities.name ILIKE ? OR COALESCE(NULLIF(threads.content, ''), original.content) ILIKE ?)", queryLike, queryLike).
 		Where("communities.visibility = ? OR communities.community_id IN (SELECT community_id FROM community_members WHERE user_id = ?)",
 			communitymodel.CommunityVisibilityPublic, userID).
-		Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID).
+		Where("threads.user_id = ? OR COALESCE(us.is_private, false) = false OR ur.following_id IS NOT NULL", userID)
+	dataQuery = ApplyBlockFilter(dataQuery, userID)
+	if err := dataQuery.
 		Order(orderClause).
 		Offset(offset).Limit(limit).
 		Find(&threads).Error; err != nil {

@@ -16,6 +16,8 @@ type FullProfile struct {
 	Profile     *userprofilemodel.UserProfile
 	UserFaculty *usermodel.UserFaculty
 	IsFollowing bool
+	IsBlocked   bool
+	IsBlockedBy bool
 }
 
 type UpsertProfileInput struct {

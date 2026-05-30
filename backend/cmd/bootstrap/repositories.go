@@ -27,6 +27,7 @@ import (
 	facultyrepoiface "github.com/sunibgram/domain/repository/faculty"
 	feedbackrepoiface "github.com/sunibgram/domain/repository/feedback"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
 	likerepoiface "github.com/sunibgram/domain/repository/like"
 	notificationrepoiface "github.com/sunibgram/domain/repository/notification"
@@ -74,6 +75,7 @@ import (
 	facultyrepo "github.com/sunibgram/infrastructure/repository/faculty"
 	feedbackrepo "github.com/sunibgram/infrastructure/repository/feedback"
 	followrepo "github.com/sunibgram/infrastructure/repository/follow"
+	userblockrepo "github.com/sunibgram/infrastructure/repository/user_block"
 	hashtagrepo "github.com/sunibgram/infrastructure/repository/hashtag"
 	likerepo "github.com/sunibgram/infrastructure/repository/like"
 	notificationrepo "github.com/sunibgram/infrastructure/repository/notification"
@@ -104,6 +106,7 @@ type Repositories struct {
 	UserProfile          userprofilerepoiface.IUserProfileRepository
 	Verification         verificationrepoiface.IVerificationRepository
 	Follow               followrepoiface.IFollowRepository
+	UserBlock            userblockrepoiface.IUserBlockRepository
 	Thread               threadrepoiface.IThreadRepository
 	ThreadPatchCount     func(uint, string, int)
 	Event                eventrepoiface.IEventRepository
@@ -157,6 +160,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		UserProfile:          userprofilerepo.NewUserProfileRepository(w, r, c),
 		Verification:         verificationrepo.NewVerificationRepository(w, r),
 		Follow:               followrepo.NewFollowRepository(w, r, c),
+		UserBlock:            userblockrepo.NewUserBlockRepository(w, r, c),
 		Thread:               threadRepo,
 		ThreadPatchCount:     patchCount,
 		Event:                eventrepo.NewEventRepository(w, r, c),

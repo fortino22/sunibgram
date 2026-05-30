@@ -70,6 +70,16 @@ func (s *ThreadService) createThread(ctx context.Context, userID uint, content s
 		}
 		parent = foundParent
 		if parent.UserID != userID {
+			// Block check: can't reply to a thread by someone in a mutual block.
+			if s.blockRepo != nil {
+				blocked, err := s.blockRepo.IsBlocked(userID, parent.UserID)
+				if err != nil {
+					return nil, err
+				}
+				if blocked {
+					return nil, errors.New("blocked")
+				}
+			}
 			isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, parent.UserID)
 			if err != nil {
 				return nil, err

@@ -304,7 +304,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
               style={{
                 padding: '7px 18px',
                 borderRadius: 999,
-                border: `1px solid ${joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : '#808080'}`,
+                border: `1px solid ${joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : 'var(--border)'}`,
                 background: 'transparent',
                 color: joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : 'var(--text)',
                 fontSize: 14,

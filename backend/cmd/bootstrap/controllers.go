@@ -40,6 +40,7 @@ import (
 	trendreportctrl "github.com/sunibgram/webapi/controller/trend_report"
 	trendinguserctrl "github.com/sunibgram/webapi/controller/trending_user"
 	userctrl "github.com/sunibgram/webapi/controller/user"
+	userblockctrl "github.com/sunibgram/webapi/controller/user_block"
 	userprofilectrl "github.com/sunibgram/webapi/controller/user_profile"
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
 	verificationctrl "github.com/sunibgram/webapi/controller/verification"
@@ -58,6 +59,7 @@ type Controllers struct {
 	Email               *emailctrl.EmailController
 	Verification        *verificationctrl.VerificationController
 	Follow              *followctrl.FollowController
+	UserBlock           *userblockctrl.UserBlockController
 	Thread              *threadctrl.ThreadController
 	Event               *eventctrl.EventController
 	EventThreadPin      *eventthreadpinctrl.EventThreadPinController
@@ -107,6 +109,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		Email:               emailctrl.NewEmailController(ext.Email),
 		Verification:        verificationctrl.NewVerificationController(svcs.Verification, c),
 		Follow:              followctrl.NewFollowController(svcs.Follow, svcs.UserProfile),
+		UserBlock:           userblockctrl.NewUserBlockController(svcs.UserBlock),
 		Thread:              threadctrl.NewThreadController(svcs.Thread, svcs.ThreadMedia, svcs.CommunityMember, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll),
 		Event:               eventctrl.NewEventController(svcs.Event, svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.EventThreadPin),
 		EventThreadPin:      eventthreadpinctrl.NewEventThreadPinController(svcs.EventThreadPin),

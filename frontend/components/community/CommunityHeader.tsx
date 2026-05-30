@@ -191,8 +191,8 @@ export function CommunityHeader({
               alignItems: 'center',
               fontSize: 13,
               fontWeight: 600,
-              color: '#ffffff',
-              border: '1.5px solid #ffffff',
+              color: 'var(--text)',
+              border: '1.5px solid var(--border)',
               borderRadius: 999,
               padding: '2px 12px',
             }}>

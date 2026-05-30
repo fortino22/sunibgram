@@ -43,6 +43,7 @@ import (
 	trendreportuc "github.com/sunibgram/application/usecase/trend_report"
 	trendinguseruc "github.com/sunibgram/application/usecase/trending_user"
 	useruc "github.com/sunibgram/application/usecase/user"
+	userblockuc "github.com/sunibgram/application/usecase/user_block"
 	userprofileuc "github.com/sunibgram/application/usecase/user_profile"
 	usersettingsuc "github.com/sunibgram/application/usecase/user_settings"
 	verificationuc "github.com/sunibgram/application/usecase/verification"
@@ -72,6 +73,7 @@ import (
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
 	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
 	followsvciface "github.com/sunibgram/domain/service/follow"
+	userblocksvciface "github.com/sunibgram/domain/service/user_block"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -105,6 +107,7 @@ type Services struct {
 	Verification         verificationsvciface.IVerificationService
 	Notification         notificationsvciface.INotificationService
 	Follow               followsvciface.IFollowService
+	UserBlock            userblocksvciface.IUserBlockService
 	Hashtag              hashtagsvciface.IHashtagService
 	ThreadSummary        threadsummarysvciface.IThreadSummaryService
 	Thread               threadsvciface.IThreadService
@@ -144,12 +147,13 @@ type Services struct {
 }
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
-	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
+	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
 	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub)
 	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.Cache, notification)
+	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
 	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
-	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, summary, repos.User)
+	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, summary, repos.User)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, repos.BookmarkCollection)
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
@@ -157,7 +161,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	eventActionConfirmation := eventactionconfirmationuc.NewEventActionConfirmationService(repos.EventActionConfirmation)
 	chatRoom := chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage)
 	chat := chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification)
-	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, chat, chatRoom, ext.Storage)
+	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, repos.UserBlock, chat, chatRoom, ext.Storage)
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
@@ -169,6 +173,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Verification:         verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email, c),
 		Notification:         notification,
 		Follow:               follow,
+		UserBlock:            userBlock,
 		Hashtag:              hashtag,
 		ThreadSummary:        summary,
 		Thread:               thread,

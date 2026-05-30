@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import {
   PrimaryButton,
   SettingsPanel,
@@ -70,7 +71,7 @@ export default function SubscriptionSettingsPage() {
                       color: 'var(--text-secondary)',
                     }}
                   >
-                    <Check size={16} color="var(--accent)" />
+                    <VerifiedBadge size={16} />
                     {perk}
                   </li>
                 ))}
@@ -120,21 +121,25 @@ function StatusCard({
         gap: 14,
       }}
     >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          background: isPremium ? 'var(--accent)' : 'var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: isPremium ? '#fff' : 'var(--text-tertiary)',
-          flexShrink: 0,
-        }}
-      >
-        <Check size={20} strokeWidth={2.5} />
-      </div>
+      {isPremium ? (
+        <VerifiedBadge size={44} />
+      ) : (
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            background: 'var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-tertiary)',
+            flexShrink: 0,
+          }}
+        >
+          <Check size={20} strokeWidth={2.5} />
+        </div>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
           {isPremium ? (isTrial ? 'Premium (Trial)' : 'Premium') : 'Not subscribed'}
