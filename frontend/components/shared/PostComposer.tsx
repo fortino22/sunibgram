@@ -462,6 +462,12 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
           queryClient.invalidateQueries({ queryKey: ['thread-root', parentId] }),
           queryClient.invalidateQueries({ queryKey: ['thread-replies', parentId] }),
           queryClient.invalidateQueries({ queryKey: ['thread', parentId] }),
+          // Also refresh any currently-open chain view: a reply to a
+          // descendant of the current anchor (e.g. a reply-of-reply in the
+          // self-thread below) needs the chain query keyed by the *anchor's*
+          // id to refetch — not just the direct parent's.
+          queryClient.invalidateQueries({ queryKey: ['thread-replies'] }),
+          queryClient.invalidateQueries({ queryKey: ['thread-root'] }),
         ]);
       } else {
         await Promise.all([

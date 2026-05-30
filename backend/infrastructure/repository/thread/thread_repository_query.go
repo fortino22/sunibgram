@@ -102,16 +102,61 @@ func (r *threadCached) FindChain(anchorID uint) (threadmodel.Thread, []threadmod
 		return threadmodel.Thread{}, nil, nil, err
 	}
 
-	var children []threadmodel.Thread
-	if err := preloadThreadParentDetails(r.db.readDB).
-		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
-		Where("threads.parent_id = ?", anchorID).
-		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
-		Order("threads.created_at ASC").
-		Find(&children).Error; err != nil {
+	children, err := r.findChainChildren(anchorID, anchor.UserID)
+	if err != nil {
 		return threadmodel.Thread{}, nil, nil, err
 	}
 	return anchor, ancestors, children, nil
+}
+
+// findChainChildren returns the anchor's direct children PLUS the owner
+// self-thread continuation — i.e. descendants reached by following parent_id
+// links where every step (parent in the chain AND the child) is authored by
+// the anchor's owner. This surfaces X-style self-reply chains in one call.
+func (r *threadCached) findChainChildren(anchorID, anchorUserID uint) ([]threadmodel.Thread, error) {
+	var childIDs []uint
+	const cteSQL = `
+		WITH RECURSIVE owner_descendants AS (
+			SELECT thread_id, parent_id, user_id, 0 AS depth, created_at
+			FROM threads
+			WHERE parent_id = ?
+			UNION ALL
+			SELECT t.thread_id, t.parent_id, t.user_id, od.depth + 1, t.created_at
+			FROM threads t
+			JOIN owner_descendants od ON t.parent_id = od.thread_id
+			WHERE od.user_id = ?
+			  AND t.user_id = ?
+			  AND od.depth < 100
+		)
+		SELECT thread_id FROM owner_descendants ORDER BY depth, created_at
+	`
+	if err := r.db.readDB.Raw(cteSQL, anchorID, anchorUserID, anchorUserID).Scan(&childIDs).Error; err != nil {
+		return nil, err
+	}
+	if len(childIDs) == 0 {
+		return nil, nil
+	}
+
+	var rows []threadmodel.Thread
+	if err := preloadThreadParentDetails(r.db.readDB).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Where("threads.thread_id IN ?", childIDs).
+		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	byID := make(map[uint]threadmodel.Thread, len(rows))
+	for _, t := range rows {
+		byID[t.ThreadID] = t
+	}
+	ordered := make([]threadmodel.Thread, 0, len(childIDs))
+	for _, id := range childIDs {
+		if t, ok := byID[id]; ok {
+			ordered = append(ordered, t)
+		}
+	}
+	return ordered, nil
 }
 
 func (r *threadCached) findAncestors(anchor threadmodel.Thread) ([]threadmodel.Thread, error) {

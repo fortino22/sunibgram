@@ -34,6 +34,7 @@ export default function ThreadPage() {
     <ThreadDetailView
       root={chain.root}
       ancestors={chain.ancestors}
+      belowChain={chain.belowChain}
       replies={chain.replies}
       hasNextPage={chain.hasNextPage}
       fetchNextPage={chain.fetchNextPage}

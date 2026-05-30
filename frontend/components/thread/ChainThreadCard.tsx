@@ -8,6 +8,8 @@ import { ActionBar } from '@/components/shared/ActionBar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
+import { ShareModal } from '@/components/share/ShareModal';
+import { SharePopover } from '@/components/share/SharePopover';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { useComposeStore } from '@/stores/composeStore';
 import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
@@ -18,6 +20,9 @@ import type { ThreadItem, ThreadMediaResponse } from '@/lib/services/threads';
 
 interface ChainThreadCardProps {
   thread: ThreadItem;
+  /** Skip the vertical connector line below this card (use on the last card
+   *  in a self-reply chain that has nothing after it). */
+  hideConnector?: boolean;
 }
 
 // Layout constants — the absolute-positioned connector line lands on the
@@ -31,7 +36,7 @@ const AVATAR_GAP_BELOW = 4;
 const LINE_WIDTH = 2;
 const LINE_BLEED = 16;
 
-export function ChainThreadCard({ thread }: ChainThreadCardProps) {
+export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCardProps) {
   const router = useRouter();
   const { like, repost, bookmark } = useThreadActions(thread);
   const openReply = useComposeStore((s) => s.openReply);
@@ -39,6 +44,8 @@ export function ChainThreadCard({ thread }: ChainThreadCardProps) {
   const [hovered, setHovered] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
   const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
+  const [shareAnchor, setShareAnchor] = useState<DOMRect | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const bookmarkTargetId = thread.type?.toLowerCase() === 'repost' && typeof thread.original_thread_id === 'number'
     ? thread.original_thread_id
@@ -67,19 +74,21 @@ export function ChainThreadCard({ thread }: ChainThreadCardProps) {
         {/* Connector line from below this avatar to the next item's avatar.
             zIndex:1 needed so the bleed past the bottom edge paints over the
             next card's background (which would otherwise hide the line). */}
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            top: ARTICLE_PADDING_Y + AVATAR_SIZE + AVATAR_GAP_BELOW,
-            bottom: -LINE_BLEED,
-            left: ARTICLE_PADDING_X + AVATAR_SIZE / 2 - LINE_WIDTH / 2,
-            width: LINE_WIDTH,
-            background: 'var(--border)',
-            pointerEvents: 'none',
-            zIndex: 1,
-          }}
-        />
+        {!hideConnector && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: ARTICLE_PADDING_Y + AVATAR_SIZE + AVATAR_GAP_BELOW,
+              bottom: -LINE_BLEED,
+              left: ARTICLE_PADDING_X + AVATAR_SIZE / 2 - LINE_WIDTH / 2,
+              width: LINE_WIDTH,
+              background: 'var(--border)',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+        )}
 
         <div style={{ display: 'flex', gap: 12, padding: `${ARTICLE_PADDING_Y}px ${ARTICLE_PADDING_X}px` }}>
           <div style={{ flexShrink: 0 }}>
@@ -116,6 +125,25 @@ export function ChainThreadCard({ thread }: ChainThreadCardProps) {
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
             </div>
 
+            {thread.author.faculty && (
+              <div style={{ marginBottom: 4 }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: 'var(--accent-soft)',
+                    color: 'var(--accent)',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {thread.author.faculty.faculty_name}
+                </span>
+              </div>
+            )}
+
             <ThreadBody
               content={thread.content}
               media={thread.media}
@@ -138,6 +166,7 @@ export function ChainThreadCard({ thread }: ChainThreadCardProps) {
                 onRepost={() => { if (!repost.isPending) repost.mutate(); }}
                 onBookmark={handleBookmark}
                 onReply={() => openReply(thread)}
+                onShare={(e) => setShareAnchor(e.currentTarget.getBoundingClientRect())}
                 size="sm"
               />
             </div>
@@ -166,6 +195,22 @@ export function ChainThreadCard({ thread }: ChainThreadCardProps) {
             anchorRect={bookmarkAnchor}
             onClose={() => setBookmarkAnchor(null)}
           />
+        </div>
+      )}
+
+      {shareAnchor && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <SharePopover
+            threadId={bookmarkTargetId}
+            anchorRect={shareAnchor}
+            onClose={() => setShareAnchor(null)}
+            onOpenChatModal={() => { setShareAnchor(null); setShareOpen(true); }}
+          />
+        </div>
+      )}
+      {shareOpen && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <ShareModal threadId={bookmarkTargetId} onClose={() => setShareOpen(false)} />
         </div>
       )}
     </>

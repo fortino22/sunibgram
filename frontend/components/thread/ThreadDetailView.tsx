@@ -40,13 +40,14 @@ function formatThreadDate(dateStr: string): string {
 interface ThreadDetailViewProps {
   root: ThreadItem;
   ancestors?: ThreadItem[];
+  belowChain?: ThreadItem[];
   replies: ThreadItem[];
   hasNextPage?: boolean;
   fetchNextPage?: () => void;
   isFetchingNextPage?: boolean;
 }
 
-export function ThreadDetailView({ root, ancestors = [], replies, hasNextPage, fetchNextPage, isFetchingNextPage }: ThreadDetailViewProps) {
+export function ThreadDetailView({ root, ancestors = [], belowChain = [], replies, hasNextPage, fetchNextPage, isFetchingNextPage }: ThreadDetailViewProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(root.id, {
@@ -91,20 +92,6 @@ export function ThreadDetailView({ root, ancestors = [], replies, hasNextPage, f
     return () => cancelAnimationFrame(rafId);
   }, [root.id, ancestors.length]);
 
-  // Make the anchor a scroll-snap target so when the user scrolls back to
-  // it (e.g. after reading ancestors), it lands cleanly below the sticky
-  // header instead of getting tucked behind it. `proximity` means the snap
-  // only kicks in when scroll position is already close to the anchor — it
-  // doesn't fight the user while reading replies or ancestors. Scoped to
-  // the document element only while a chain is mounted so other pages are
-  // unaffected.
-  useEffect(() => {
-    if (ancestors.length === 0) return;
-    const html = document.documentElement;
-    const prev = html.style.scrollSnapType;
-    html.style.scrollSnapType = 'y proximity';
-    return () => { html.style.scrollSnapType = prev; };
-  }, [ancestors.length]);
 
   useEffect(() => {
     const sentinel = repliesSentinelRef.current;
@@ -184,7 +171,6 @@ export function ThreadDetailView({ root, ancestors = [], replies, hasNextPage, f
           background: 'var(--bg-card)',
           padding: '16px 20px',
           scrollMarginTop: 60,
-          scrollSnapAlign: ancestors.length > 0 ? 'start' : undefined,
         }}
       >
         {repostLabel && (
@@ -230,6 +216,24 @@ export function ThreadDetailView({ root, ancestors = [], replies, hasNextPage, f
             >
               @{author.username}
             </Link>
+            {author.faculty && (
+              <div style={{ marginTop: 2 }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: 'var(--accent-soft)',
+                    color: 'var(--accent)',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {author.faculty.faculty_name}
+                </span>
+              </div>
+            )}
           </div>
           {(canManage || canReport) && (
             <ThreadOptionsMenu
@@ -300,6 +304,18 @@ export function ThreadDetailView({ root, ancestors = [], replies, hasNextPage, f
         placeholder={`Post your reply to @${root.author.username}`}
         parentId={root.id}
       />
+
+      {belowChain.length > 0 && (
+        <section>
+          {belowChain.map((item, i) => (
+            <ChainThreadCard
+              key={item.id}
+              thread={item}
+              hideConnector={i === belowChain.length - 1}
+            />
+          ))}
+        </section>
+      )}
 
       <ReplyTree threads={replies} />
       <div ref={repliesSentinelRef} style={{ height: 1 }} />
