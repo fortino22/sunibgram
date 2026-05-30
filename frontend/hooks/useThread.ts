@@ -38,6 +38,7 @@ export function useThread(id: number | string) {
 
 export interface ThreadChainResult {
   root: ThreadItem | undefined;
+  ancestors: ThreadItem[];
   replies: ThreadItem[];
   rootThreadId: number | null | undefined;
   hasNextPage: boolean;
@@ -102,6 +103,25 @@ export function useThreadChain(id: number | string): ThreadChainResult {
     p.data.filter((item) => item.parent_id === effectiveId)
   ) ?? [];
 
+  // Walk back from the anchor's parent through page-1 items to build the
+  // ancestor chain in display order (root → … → immediate parent).
+  // Backend returns [ancestors…, anchor, children…] in page 1, so all
+  // ancestors are reachable for any reasonable chain depth.
+  const ancestors: ThreadItem[] = [];
+  if (root?.parent_id != null) {
+    const byId = new Map<number, ThreadItem>();
+    for (const item of repliesQuery.data?.pages[0]?.data ?? []) {
+      byId.set(item.id, item);
+    }
+    const seen = new Set<number>();
+    let cur = byId.get(root.parent_id);
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      ancestors.unshift(cur);
+      cur = cur.parent_id != null ? byId.get(cur.parent_id) : undefined;
+    }
+  }
+
   const rootThreadId =
     thread?.parent_id !== null && thread?.parent_id !== undefined
       ? (thread.root_id ?? thread.parent_id)
@@ -109,6 +129,7 @@ export function useThreadChain(id: number | string): ThreadChainResult {
 
   return {
     root,
+    ancestors,
     replies,
     rootThreadId: rootThreadId === root?.id ? null : rootThreadId,
     hasNextPage: repliesQuery.hasNextPage ?? false,

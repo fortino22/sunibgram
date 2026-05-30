@@ -21,6 +21,7 @@ import { useComposeStore } from '@/stores/composeStore';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
+import { ChainThreadCard } from './ChainThreadCard';
 import { ThreadCardSkeleton } from './skeletons/ThreadCardSkeleton';
 import { ImageDetailModal } from './ImageDetailModal';
 import { ThreadPoll } from './ThreadPoll';
@@ -36,13 +37,14 @@ function formatThreadDate(dateStr: string): string {
 
 interface ThreadDetailViewProps {
   root: ThreadItem;
+  ancestors?: ThreadItem[];
   replies: ThreadItem[];
   hasNextPage?: boolean;
   fetchNextPage?: () => void;
   isFetchingNextPage?: boolean;
 }
 
-export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, isFetchingNextPage }: ThreadDetailViewProps) {
+export function ThreadDetailView({ root, ancestors = [], replies, hasNextPage, fetchNextPage, isFetchingNextPage }: ThreadDetailViewProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(root.id, {
@@ -71,6 +73,34 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
   const canReport = currentUserId != null && currentUserId !== root.author.id;
   const repostLabel = getRepostLabel(root, currentUserId);
   const repliesSentinelRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLElement>(null);
+
+  // When ancestors are present, land the user on the focused thread so the
+  // parent chain sits above (scrollable up). Deferred via rAF so we run
+  // *after* Next.js's layout-router scroll-to-top effect (parent effects
+  // fire after child effects), which would otherwise undo our scroll.
+  useEffect(() => {
+    if (ancestors.length === 0) return;
+    const rafId = requestAnimationFrame(() => {
+      anchorRef.current?.scrollIntoView({ block: 'start' });
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [root.id, ancestors.length]);
+
+  // Make the anchor a scroll-snap target so when the user scrolls back to
+  // it (e.g. after reading ancestors), it lands cleanly below the sticky
+  // header instead of getting tucked behind it. `proximity` means the snap
+  // only kicks in when scroll position is already close to the anchor — it
+  // doesn't fight the user while reading replies or ancestors. Scoped to
+  // the document element only while a chain is mounted so other pages are
+  // unaffected.
+  useEffect(() => {
+    if (ancestors.length === 0) return;
+    const html = document.documentElement;
+    const prev = html.style.scrollSnapType;
+    html.style.scrollSnapType = 'y proximity';
+    return () => { html.style.scrollSnapType = prev; };
+  }, [ancestors.length]);
 
   useEffect(() => {
     const sentinel = repliesSentinelRef.current;
@@ -134,12 +164,23 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
         <div className="text-xl font-bold" style={{ color: 'var(--text)' }}>Post</div>
       </header>
 
+      {ancestors.length > 0 && (
+        <section>
+          {ancestors.map((ancestor) => (
+            <ChainThreadCard key={ancestor.id} thread={ancestor} />
+          ))}
+        </section>
+      )}
+
       <article
+        ref={anchorRef}
         className="border-b"
         style={{
           borderColor: 'var(--border)',
           background: 'var(--bg-card)',
           padding: '16px 20px',
+          scrollMarginTop: 60,
+          scrollSnapAlign: ancestors.length > 0 ? 'start' : undefined,
         }}
       >
         {repostLabel && (
@@ -275,6 +316,12 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
       {isFetchingNextPage && (
         <div>{Array.from({ length: 2 }, (_, i) => <ThreadCardSkeleton key={i} />)}</div>
       )}
+
+      {/* Reserve viewport-tall space below so the anchor can actually scroll
+          to the top of the viewport when ancestors are present. Without this
+          the document isn't tall enough and scrollIntoView is a no-op. */}
+      {ancestors.length > 0 && <div aria-hidden style={{ minHeight: '100vh' }} />}
+
 
       {lightboxState !== null && (
         <ImageDetailModal
