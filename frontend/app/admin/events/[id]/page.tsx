@@ -4,11 +4,12 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Check } from 'lucide-react';
+import { CalendarDays, Check, MapPin } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { StatusBadge } from '@/components/admin/StatusBadge';
-import { PdfViewer } from '@/components/admin/PdfViewer';
+import { EventDocViewer } from '@/components/admin/DocViewer';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import {
   getEvent,
@@ -40,19 +41,23 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
 
   const approveMut = useMutation({
     mutationFn: () => approveEvent(token!, id),
-    onSuccess: invalidate,
+    onSuccess: () => { invalidate(); toast.success('Event approved'); },
+    onError: (err: Error) => toast.error(err.message),
   });
   const declineMut = useMutation({
     mutationFn: () => declineEvent(token!, id, declineReason),
-    onSuccess: () => { invalidate(); setDeclineReason(''); },
+    onSuccess: () => { invalidate(); setDeclineReason(''); toast.success('Event declined'); },
+    onError: (err: Error) => toast.error(err.message),
   });
   const revisionMut = useMutation({
     mutationFn: () => requestRevision(token!, id, revisionNote),
-    onSuccess: () => { invalidate(); setRevisionNote(''); },
+    onSuccess: () => { invalidate(); setRevisionNote(''); toast.success('Revision request sent'); },
+    onError: (err: Error) => toast.error(err.message),
   });
   const deleteMut = useMutation({
     mutationFn: () => deleteEvent(token!, id),
-    onSuccess: () => { router.replace('/admin/events'); },
+    onSuccess: () => { toast.success('Event deleted'); router.replace('/admin/events'); },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   if (q.isLoading) {
@@ -63,13 +68,14 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
   }
 
   const e = q.data;
-  const pdfUrls = e.pdf_urls ?? (e.attachment_url ? [e.attachment_url] : []);
+  const docUrls = e.doc_urls ?? (e.attachment_url ? [e.attachment_url] : []);
+  const isPending = e.status === 'pending';
 
   return (
     <AdminPage
       icon={CalendarDays}
       title={e.title}
-      description={`${e.type.toUpperCase()} event by user #${e.user_id} • status: ${e.status}`}
+      description={`${e.type.toUpperCase()} · submitted by user #${e.user_id}`}
       actions={
         <Link
           href="/admin/events"
@@ -84,10 +90,13 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <StatusBadge status={e.status} />
           <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            {new Date(e.start_time).toLocaleString()} → {new Date(e.end_time).toLocaleString()}
+            {new Date(e.start_time).toLocaleString()} – {new Date(e.end_time).toLocaleString()}
           </span>
           {e.location && (
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>📍 {e.location}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <MapPin size={13} />
+              {e.location}
+            </span>
           )}
         </div>
 
@@ -108,11 +117,11 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
 
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>Documents</h3>
-          <PdfViewer urls={pdfUrls} />
+          <EventDocViewer urls={docUrls} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-          <ActionCard title="Approve" color="var(--text)">
+          <ActionCard title="Approve">
             {e.status === 'approved' ? (
               <div
                 style={{
@@ -128,8 +137,12 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
                 }}
               >
                 <Check size={16} strokeWidth={2.4} />
-                Event already approved
+                Event approved
               </div>
+            ) : !isPending ? (
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
+                Only pending events can be approved.
+              </p>
             ) : (
               <>
                 <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
@@ -147,7 +160,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
             )}
           </ActionCard>
 
-          <ActionCard title="Request Revision" color="var(--text)">
+          <ActionCard title="Request Revision">
             <textarea
               value={revisionNote}
               onChange={(ev) => setRevisionNote(ev.target.value)}
@@ -165,32 +178,44 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
             </button>
           </ActionCard>
 
-          <ActionCard title="Decline" color="var(--text)">
-            <textarea
-              value={declineReason}
-              onChange={(ev) => setDeclineReason(ev.target.value)}
-              placeholder="Reason for declining…"
-              className="admin-textarea"
-              style={{ minHeight: 90, marginBottom: 10 }}
-            />
-            <button
-              type="button"
-              onClick={() => declineMut.mutate()}
-              disabled={declineMut.isPending || !declineReason.trim()}
-              className="admin-btn admin-btn-outline-danger"
-            >
-              {declineMut.isPending ? 'Declining…' : 'Decline Event'}
-            </button>
+          <ActionCard title="Decline">
+            {e.status === 'declined' ? (
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
+                This event has been declined.
+              </p>
+            ) : !isPending ? (
+              <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: 0 }}>
+                Only pending events can be declined.
+              </p>
+            ) : (
+              <>
+                <textarea
+                  value={declineReason}
+                  onChange={(ev) => setDeclineReason(ev.target.value)}
+                  placeholder="Reason for declining…"
+                  className="admin-textarea"
+                  style={{ minHeight: 90, marginBottom: 10 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => declineMut.mutate()}
+                  disabled={declineMut.isPending || !declineReason.trim()}
+                  className="admin-btn admin-btn-outline-danger"
+                >
+                  {declineMut.isPending ? 'Declining…' : 'Decline Event'}
+                </button>
+              </>
+            )}
           </ActionCard>
         </div>
 
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>
-            Revision History
+            Review History
           </h3>
           {(!e.notes || e.notes.length === 0) ? (
             <div style={{ padding: 20, color: 'var(--text-tertiary)', textAlign: 'center', border: '1px dashed var(--border)', borderRadius: 12, fontSize: 14 }}>
-              No revisions or comments yet.
+              No review history.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -201,13 +226,13 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontWeight: 600, fontSize: 13 }}>
-                      Revision #{n.revision_number}{n.admin_name ? ` · by ${n.admin_name}` : ''}
+                      Review #{n.revision_number}{n.admin_name ? ` · ${n.admin_name}` : ''}
                     </span>
                     <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                       {new Date(n.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p style={{ fontSize: 14, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                  <p style={{ fontSize: 14, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.6, margin: 0 }}>
                     {n.notes}
                   </p>
                 </div>
@@ -241,10 +266,10 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
   );
 }
 
-function ActionCard({ title, color, children }: { title: string; color: string; children: React.ReactNode }) {
+function ActionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ padding: 18, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-      <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, color }}>{title}</h4>
+      <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, color: 'var(--text)' }}>{title}</h4>
       {children}
     </div>
   );

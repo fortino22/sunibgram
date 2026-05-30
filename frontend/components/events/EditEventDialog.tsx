@@ -312,11 +312,6 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
                 </button>
               ))}
             </div>
-            {type === 'official' && (
-              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
-                Official events require an approval document from the university.
-              </p>
-            )}
           </div>
 
           {/* Title */}
@@ -393,44 +388,42 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
             </div>
           </div>
 
-          {/* Supporting document — official only */}
-          {type === 'official' && (
-            <div>
-              <label style={labelStyle}>Supporting document (PDF)</label>
-              <input
-                ref={docInputRef}
-                type="file"
-                accept="application/pdf"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  form.setValue('document', file, { shouldValidate: true });
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => docInputRef.current?.click()}
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  border: '1px dashed var(--border)',
-                  background: 'var(--bg-subtle)',
-                  color: docFile ? 'var(--text)' : 'var(--text-tertiary)',
-                  fontSize: 13,
-                  fontWeight: docFile ? 600 : 400,
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {docFile ? `✓ ${docFile.name}` : event.documentUrl ? 'Replace approval document' : 'Upload approval document'}
-              </button>
-              {form.formState.errors.document && (
-                <p style={errorStyle}>{form.formState.errors.document.message}</p>
-              )}
-            </div>
-          )}
+          {/* Docs */}
+          <div>
+            <label style={labelStyle}>Docs <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(.doc / .docx)</span></label>
+            <input
+              ref={docInputRef}
+              type="file"
+              accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                form.setValue('document', file, { shouldValidate: true });
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => docInputRef.current?.click()}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: '1px dashed var(--border)',
+                background: 'var(--bg-subtle)',
+                color: docFile ? 'var(--text)' : 'var(--text-tertiary)',
+                fontSize: 13,
+                fontWeight: docFile ? 600 : 400,
+                cursor: 'pointer',
+                textAlign: 'center',
+                boxSizing: 'border-box',
+              }}
+            >
+              {docFile ? docFile.name : event.documentUrl ? 'Replace document (.doc / .docx)' : 'Upload document (.doc / .docx)'}
+            </button>
+            {form.formState.errors.document && (
+              <p style={errorStyle}>{form.formState.errors.document.message}</p>
+            )}
+          </div>
 
           {mutation.isError && (
             <div style={{ fontSize: 13, color: 'var(--coral, #e53e3e)' }}>

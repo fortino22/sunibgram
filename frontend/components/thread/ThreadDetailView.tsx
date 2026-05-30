@@ -23,6 +23,7 @@ import { useComposeStore } from '@/stores/composeStore';
 import { ThreadBody } from './ThreadBody';
 import { ThreadComposer } from './ThreadComposer';
 import { ReplyTree } from './ReplyTree';
+import { ChainThreadCard } from './ChainThreadCard';
 import { ThreadCardSkeleton } from './skeletons/ThreadCardSkeleton';
 import { ImageDetailModal } from './ImageDetailModal';
 import { ThreadPoll } from './ThreadPoll';
@@ -38,13 +39,15 @@ function formatThreadDate(dateStr: string): string {
 
 interface ThreadDetailViewProps {
   root: ThreadItem;
+  ancestors?: ThreadItem[];
+  belowChain?: ThreadItem[];
   replies: ThreadItem[];
   hasNextPage?: boolean;
   fetchNextPage?: () => void;
   isFetchingNextPage?: boolean;
 }
 
-export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, isFetchingNextPage }: ThreadDetailViewProps) {
+export function ThreadDetailView({ root, ancestors = [], belowChain = [], replies, hasNextPage, fetchNextPage, isFetchingNextPage }: ThreadDetailViewProps) {
   const router = useRouter();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { updateMutation, deleteMutation } = useThreadManagement(root.id, {
@@ -75,6 +78,20 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
   const canReport = currentUserId != null && currentUserId !== root.author.id;
   const repostLabel = getRepostLabel(root, currentUserId);
   const repliesSentinelRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLElement>(null);
+
+  // When ancestors are present, land the user on the focused thread so the
+  // parent chain sits above (scrollable up). Deferred via rAF so we run
+  // *after* Next.js's layout-router scroll-to-top effect (parent effects
+  // fire after child effects), which would otherwise undo our scroll.
+  useEffect(() => {
+    if (ancestors.length === 0) return;
+    const rafId = requestAnimationFrame(() => {
+      anchorRef.current?.scrollIntoView({ block: 'start' });
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [root.id, ancestors.length]);
+
 
   useEffect(() => {
     const sentinel = repliesSentinelRef.current;
@@ -138,12 +155,22 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
         <div className="text-xl font-bold" style={{ color: 'var(--text)' }}>Post</div>
       </header>
 
+      {ancestors.length > 0 && (
+        <section>
+          {ancestors.map((ancestor) => (
+            <ChainThreadCard key={ancestor.id} thread={ancestor} />
+          ))}
+        </section>
+      )}
+
       <article
+        ref={anchorRef}
         className="border-b"
         style={{
           borderColor: 'var(--border)',
           background: 'var(--bg-card)',
           padding: '16px 20px',
+          scrollMarginTop: 60,
         }}
       >
         {repostLabel && (
@@ -189,6 +216,24 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
             >
               @{author.username}
             </Link>
+            {author.faculty && (
+              <div style={{ marginTop: 2 }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: 'var(--accent-soft)',
+                    color: 'var(--accent)',
+                    letterSpacing: '0.01em',
+                  }}
+                >
+                  {author.faculty.faculty_name}
+                </span>
+              </div>
+            )}
           </div>
           {(canManage || canReport) && (
             <ThreadOptionsMenu
@@ -260,11 +305,29 @@ export function ThreadDetailView({ root, replies, hasNextPage, fetchNextPage, is
         parentId={root.id}
       />
 
+      {belowChain.length > 0 && (
+        <section>
+          {belowChain.map((item, i) => (
+            <ChainThreadCard
+              key={item.id}
+              thread={item}
+              hideConnector={i === belowChain.length - 1}
+            />
+          ))}
+        </section>
+      )}
+
       <ReplyTree threads={replies} />
       <div ref={repliesSentinelRef} style={{ height: 1 }} />
       {isFetchingNextPage && (
         <div>{Array.from({ length: 2 }, (_, i) => <ThreadCardSkeleton key={i} />)}</div>
       )}
+
+      {/* Reserve viewport-tall space below so the anchor can actually scroll
+          to the top of the viewport when ancestors are present. Without this
+          the document isn't tall enough and scrollIntoView is a no-op. */}
+      {ancestors.length > 0 && <div aria-hidden style={{ minHeight: '100vh' }} />}
+
 
       {lightboxState !== null && (
         <ImageDetailModal

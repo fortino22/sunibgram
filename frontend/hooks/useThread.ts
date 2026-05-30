@@ -38,6 +38,8 @@ export function useThread(id: number | string) {
 
 export interface ThreadChainResult {
   root: ThreadItem | undefined;
+  ancestors: ThreadItem[];
+  belowChain: ThreadItem[];
   replies: ThreadItem[];
   rootThreadId: number | null | undefined;
   hasNextPage: boolean;
@@ -98,9 +100,52 @@ export function useThreadChain(id: number | string): ThreadChainResult {
     }
   }
 
-  const replies = repliesQuery.data?.pages.flatMap((p) =>
-    p.data.filter((item) => item.parent_id === effectiveId)
-  ) ?? [];
+  const allChainItems = repliesQuery.data?.pages.flatMap((p) => p.data) ?? [];
+  const directChildren = allChainItems.filter((item) => item.parent_id === effectiveId);
+
+  // Walk back from the anchor's parent through page-1 items to build the
+  // ancestor chain in display order (root → … → immediate parent).
+  // Backend returns [ancestors…, anchor, children…] in page 1, so all
+  // ancestors are reachable for any reasonable chain depth.
+  const ancestors: ThreadItem[] = [];
+  if (root?.parent_id != null) {
+    const byId = new Map<number, ThreadItem>();
+    for (const item of repliesQuery.data?.pages[0]?.data ?? []) {
+      byId.set(item.id, item);
+    }
+    const seen = new Set<number>();
+    let cur = byId.get(root.parent_id);
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      ancestors.unshift(cur);
+      cur = cur.parent_id != null ? byId.get(cur.parent_id) : undefined;
+    }
+  }
+
+  // belowChain: X-style self-reply continuation under the anchor. Walk
+  // forward through children authored by the anchor's owner. Backend's
+  // recursive children query returns these in the chain response.
+  const belowChain: ThreadItem[] = [];
+  if (root) {
+    const ownerId = root.author.id;
+    const seen = new Set<number>();
+    let parentId = effectiveId;
+    while (true) {
+      const child = allChainItems.find(
+        (item) => item.parent_id === parentId && item.author.id === ownerId && !seen.has(item.id),
+      );
+      if (!child) break;
+      belowChain.push(child);
+      seen.add(child.id);
+      parentId = child.id;
+    }
+  }
+
+  // Replies = direct children minus the one absorbed into belowChain.
+  const belowChainStartId = belowChain[0]?.id;
+  const replies = belowChainStartId !== undefined
+    ? directChildren.filter((item) => item.id !== belowChainStartId)
+    : directChildren;
 
   const rootThreadId =
     thread?.parent_id !== null && thread?.parent_id !== undefined
@@ -109,6 +154,8 @@ export function useThreadChain(id: number | string): ThreadChainResult {
 
   return {
     root,
+    ancestors,
+    belowChain,
     replies,
     rootThreadId: rootThreadId === root?.id ? null : rootThreadId,
     hasNextPage: repliesQuery.hasNextPage ?? false,

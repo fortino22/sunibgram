@@ -20,7 +20,7 @@ interface EventListItemResponse {
 interface EventDetailResponse extends EventListItemResponse {
   status: string;
   attachment_url?: string;
-  pdf_urls?: string[];
+  doc_urls?: string[];
 }
 
 interface EventReviewNoteResponse {
@@ -143,7 +143,7 @@ function mapEventDetail(raw: EventDetailResponse): EventDetail {
   return {
     ...mapEventItem(raw),
     status: raw.status,
-    documentUrl: raw.attachment_url ?? raw.pdf_urls?.[0],
+    documentUrl: raw.attachment_url ?? raw.doc_urls?.[0],
   };
 }
 
@@ -165,7 +165,7 @@ function buildCreateEventFormData(input: CreateEventInput): FormData {
   formData.append('type', input.type);
   formData.append('banner', input.banner);
   if (input.document) {
-    formData.append('attachment', input.document);
+    formData.append('docs', input.document);
   }
   return formData;
 }
@@ -205,7 +205,7 @@ export function updateEvent(id: string, input: UpdateEventInput, token: string) 
   formData.append('end_time', input.endTime);
   formData.append('type', input.type);
   if (input.banner) formData.append('banner', input.banner);
-  if (input.document) formData.append('attachment', input.document);
+  if (input.document) formData.append('docs', input.document);
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
   return fetch(`${baseUrl}/api/events/${id}`, {
     method: 'PUT',

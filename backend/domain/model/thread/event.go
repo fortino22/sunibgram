@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"mime/multipart"
 	"path/filepath"
 	"strings"
@@ -13,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	mediamodel "github.com/sunibgram/domain/model/media"
 	usermodel "github.com/sunibgram/domain/model/user"
 )
 
@@ -29,7 +27,7 @@ type Event struct {
 	EndTime              time.Time `gorm:"not null;index"`
 	BannerObjectName     string    `gorm:"type:varchar(500)"`
 	AttachmentObjectName string    `gorm:"type:varchar(500)"`
-	PDFs                 EventPDFs `gorm:"type:jsonb;default:'[]'"`
+	Docs                 EventDocs `gorm:"type:jsonb;default:'[]';column:docs"`
 	ParticipantCount     int       `gorm:"not null;default:0"`
 	ThreadCount          int       `gorm:"not null;default:0"`
 	LikeCount            int       `gorm:"not null;default:0"`
@@ -58,15 +56,15 @@ func ValidateEventType(t string) error {
 	return nil
 }
 
-var allowedEventAttachmentExts = map[string]bool{".pdf": true}
+var allowedEventDocExts = map[string]bool{".doc": true, ".docx": true}
 
-type EventPDF struct {
+type EventDoc struct {
 	ObjectName string `json:"object_name"`
 }
 
-type EventPDFs []EventPDF
+type EventDocs []EventDoc
 
-func (p EventPDFs) Value() (driver.Value, error) {
+func (p EventDocs) Value() (driver.Value, error) {
 	if len(p) == 0 {
 		return "[]", nil
 	}
@@ -77,9 +75,9 @@ func (p EventPDFs) Value() (driver.Value, error) {
 	return string(b), nil
 }
 
-func (p *EventPDFs) Scan(value any) error {
+func (p *EventDocs) Scan(value any) error {
 	if value == nil {
-		*p = EventPDFs{}
+		*p = EventDocs{}
 		return nil
 	}
 
@@ -89,40 +87,29 @@ func (p *EventPDFs) Scan(value any) error {
 	case string:
 		return json.Unmarshal([]byte(v), p)
 	default:
-		return errors.New("invalid event pdfs value")
+		return errors.New("invalid event docs value")
 	}
 }
 
-func ValidateEventPDFCount(count int) error {
-	if count > 4 {
-		return errors.New("maximum 4 PDF files allowed per event")
+func ValidateEventDocumentRequired(count int) error {
+	if count == 0 {
+		return errors.New("document is required")
+	}
+	if count > 1 {
+		return errors.New("only one document is allowed per event")
 	}
 	return nil
 }
 
-func ValidateEventAttachmentExt(filename string) error {
+func ValidateEventDocExt(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
-	if !allowedEventAttachmentExts[ext] {
-		return errors.New("attachment must be a .pdf file")
+	if !allowedEventDocExts[ext] {
+		return errors.New("document must be a .doc or .docx file")
 	}
 	return nil
 }
 
-func ValidateEventAttachmentContentType(contentType string) error {
-	if strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0])) != "application/pdf" {
-		return errors.New("attachment must be an application/pdf file")
-	}
-	return nil
-}
-
-func ValidateEventAttachmentFile(file multipart.File) error {
-	contentType, err := mediamodel.DetectMultipartContentType(file)
-	if err != nil {
-		return err
-	}
-	if contentType != "application/pdf" {
-		return fmt.Errorf("attachment content type %s is not allowed", contentType)
-	}
+func ValidateEventDocFile(_ multipart.File) error {
 	return nil
 }
 

@@ -325,7 +325,7 @@ func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Eve
 			log.Printf("presign error object=%s: %v", event.AttachmentObjectName, err)
 		}
 	}
-	pdfURLs := c.eventPDFURLs(ctx, event)
+	docURLs := c.eventDocURLs(ctx, event)
 	return eventdto.EventResponse{
 		ID:            event.ID,
 		UserID:        event.UserID,
@@ -338,7 +338,7 @@ func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Eve
 		EndTime:       eventdto.EventTime{Time: event.EndTime},
 		BannerURL:     bannerURL,
 		AttachmentURL: attachmentURL,
-		PDFURLs:       pdfURLs,
+		DocURLs:       docURLs,
 		CreatedAt:     utils.Wrap(event.CreatedAt),
 		UpdatedAt:     utils.Wrap(event.UpdatedAt),
 	}
@@ -423,22 +423,22 @@ func (c *EventController) toEventAdminReviewNoteResponses(reviews []eventreviewm
 	return out
 }
 
-func (c *EventController) eventPDFURLs(ctx context.Context, event *threadmodel.Event) []string {
-	pdfs := event.PDFs
-	if len(pdfs) == 0 && event.AttachmentObjectName != "" {
-		pdfs = threadmodel.EventPDFs{{ObjectName: event.AttachmentObjectName}}
+func (c *EventController) eventDocURLs(ctx context.Context, event *threadmodel.Event) []string {
+	docs := event.Docs
+	if len(docs) == 0 && event.AttachmentObjectName != "" {
+		docs = threadmodel.EventDocs{{ObjectName: event.AttachmentObjectName}}
 	}
-	if len(pdfs) == 0 {
+	if len(docs) == 0 {
 		return nil
 	}
-	urls := make([]string, 0, len(pdfs))
-	for _, pdf := range pdfs {
-		if pdf.ObjectName == "" {
+	urls := make([]string, 0, len(docs))
+	for _, doc := range docs {
+		if doc.ObjectName == "" {
 			continue
 		}
-		url, err := c.eventService.GeneratePresignedAttachmentURL(ctx, pdf.ObjectName)
+		url, err := c.eventService.GeneratePresignedAttachmentURL(ctx, doc.ObjectName)
 		if err != nil {
-			log.Printf("presign error object=%s: %v", pdf.ObjectName, err)
+			log.Printf("presign error object=%s: %v", doc.ObjectName, err)
 			continue
 		}
 		urls = append(urls, url)
@@ -454,7 +454,7 @@ func parseCreateEventRequest(ctx *fiber.Ctx) (eventdto.CreateEventRequest, *mult
 		}
 		banner, _ := ctx.FormFile("banner")
 		attachments := eventPDFFiles(ctx)
-		if err := validateEventPDFHeaders(attachments); err != nil {
+		if err := validateEventDocHeaders(attachments); err != nil {
 			return req, nil, nil, err
 		}
 		return req, banner, attachments, nil
@@ -470,18 +470,15 @@ func eventPDFFiles(ctx *fiber.Ctx) []*multipart.FileHeader {
 	if form == nil {
 		return nil
 	}
-	return form.File["attachment"]
+	return form.File["docs"]
 }
 
-func validateEventPDFHeaders(files []*multipart.FileHeader) error {
-	if err := threadmodel.ValidateEventPDFCount(len(files)); err != nil {
-		return err
-	}
+func validateEventDocHeaders(files []*multipart.FileHeader) error {
 	for _, file := range files {
 		if err := mediamodel.ValidateUploadSize(file, mediamodel.MaxDocumentUploadSize); err != nil {
 			return err
 		}
-		if err := threadmodel.ValidateEventAttachmentExt(file.Filename); err != nil {
+		if err := threadmodel.ValidateEventDocExt(file.Filename); err != nil {
 			return err
 		}
 	}
@@ -496,7 +493,7 @@ func parseUpdateEventRequest(ctx *fiber.Ctx) (eventdto.UpdateEventRequest, *mult
 		}
 		banner, _ := ctx.FormFile("banner")
 		attachments := eventPDFFiles(ctx)
-		if err := validateEventPDFHeaders(attachments); err != nil {
+		if err := validateEventDocHeaders(attachments); err != nil {
 			return req, nil, false, nil, err
 		}
 		clearBanner := ctx.FormValue("clear_banner") == "true"

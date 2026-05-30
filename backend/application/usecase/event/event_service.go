@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -87,9 +86,6 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	if utf8.RuneCountInString(location) > 255 {
 		return nil, errors.New("location must be 255 characters or less")
 	}
-	if err := threadmodel.ValidateEventPDFCount(len(attachments)); err != nil {
-		return nil, err
-	}
 	eventType = strings.TrimSpace(eventType)
 	if eventType == "" {
 		eventType = "unofficial"
@@ -97,10 +93,10 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	if err := threadmodel.ValidateEventType(eventType); err != nil {
 		return nil, err
 	}
-	if eventType == "official" && len(attachments) == 0 {
-		return nil, errors.New("proposal attachment required for official events")
+	if err := threadmodel.ValidateEventDocumentRequired(len(attachments)); err != nil {
+		return nil, err
 	}
-	if err := validateEventPDFHeaders(attachments); err != nil {
+	if err := validateEventDocHeaders(attachments); err != nil {
 		return nil, err
 	}
 	event := &threadmodel.Event{
@@ -125,15 +121,15 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 		event.Status = "approved"
 	}
 	if len(attachments) > 0 {
-		pdfs, err := s.uploadPDFs(ctx, attachments, "document_event")
+		docs, err := s.uploadDoc(ctx, attachments[0], "document_event")
 		if err != nil {
 			return nil, err
 		}
-		event.PDFs = pdfs
-		event.AttachmentObjectName = pdfs[0].ObjectName
+		event.Docs = docs
+		event.AttachmentObjectName = docs[0].ObjectName
 	}
 	if err := s.eventRepo.Save(event); err != nil {
-		s.deletePDFs(ctx, event.PDFs)
+		s.deleteDocs(ctx, event.Docs)
 		return nil, err
 	}
 	return event, nil
@@ -274,16 +270,16 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 		event.BannerObjectName = objName
 	}
 	if len(attachments) > 0 {
-		pdfs, err := s.uploadPDFs(ctx, attachments, "document_event")
+		docs, err := s.uploadDoc(ctx, attachments[0], "document_event")
 		if err != nil {
 			return nil, err
 		}
-		s.deletePDFs(ctx, event.PDFs)
-		if event.AttachmentObjectName != "" && len(event.PDFs) == 0 {
+		s.deleteDocs(ctx, event.Docs)
+		if event.AttachmentObjectName != "" && len(event.Docs) == 0 {
 			_ = s.storageUsecase.Delete(ctx, event.AttachmentObjectName)
 		}
-		event.PDFs = pdfs
-		event.AttachmentObjectName = pdfs[0].ObjectName
+		event.Docs = docs
+		event.AttachmentObjectName = docs[0].ObjectName
 	}
 	if err := s.eventRepo.Update(event); err != nil {
 		return nil, err
@@ -303,8 +299,8 @@ func (s *EventService) Delete(ctx context.Context, id string) error {
 	if event.BannerObjectName != "" {
 		_ = s.storageUsecase.Delete(ctx, event.BannerObjectName)
 	}
-	s.deletePDFs(ctx, event.PDFs)
-	if event.AttachmentObjectName != "" && len(event.PDFs) == 0 {
+	s.deleteDocs(ctx, event.Docs)
+	if event.AttachmentObjectName != "" && len(event.Docs) == 0 {
 		_ = s.storageUsecase.Delete(ctx, event.AttachmentObjectName)
 	}
 	s.invalidateUserScopedCaches(id)
@@ -325,8 +321,8 @@ func (s *EventService) ApproveEvent(id, adminID string) error {
 	if err != nil {
 		return errors.New("event not found")
 	}
-	if event.Status == "approved" {
-		return errors.New("event already approved")
+	if event.Status != "pending" {
+		return errors.New("only pending events can be approved")
 	}
 	if err := s.eventRepo.UpdateStatus(id, "approved"); err != nil {
 		return err
@@ -346,8 +342,8 @@ func (s *EventService) DeclineEvent(id, adminID, reason string) error {
 	if err != nil {
 		return errors.New("event not found")
 	}
-	if event.Status == "declined" {
-		return errors.New("event already declined")
+	if event.Status != "pending" {
+		return errors.New("only pending events can be declined")
 	}
 	if err := s.eventRepo.UpdateStatus(id, "declined"); err != nil {
 		return err
@@ -474,7 +470,7 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 	if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxDocumentUploadSize); err != nil {
 		return "", err
 	}
-	if err := threadmodel.ValidateEventAttachmentExt(header.Filename); err != nil {
+	if err := threadmodel.ValidateEventDocExt(header.Filename); err != nil {
 		return "", err
 	}
 	_, prefix, err := s.storageUsecase.ResolveBucketAndPrefix(uploadType)
@@ -486,7 +482,7 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 		return "", err
 	}
 	defer f.Close()
-	if err := threadmodel.ValidateEventAttachmentFile(f); err != nil {
+	if err := threadmodel.ValidateEventDocFile(f); err != nil {
 		return "", err
 	}
 	objName, err := s.storageUsecase.Upload(ctx, prefix, f, header)
@@ -496,61 +492,32 @@ func (s *EventService) uploadFile(ctx context.Context, header *multipart.FileHea
 	return objName, nil
 }
 
-func (s *EventService) uploadPDFs(ctx context.Context, headers []*multipart.FileHeader, uploadType string) (threadmodel.EventPDFs, error) {
-	if err := validateEventPDFHeaders(headers); err != nil {
+func (s *EventService) uploadDoc(ctx context.Context, header *multipart.FileHeader, uploadType string) (threadmodel.EventDocs, error) {
+	objName, err := s.uploadFile(ctx, header, uploadType)
+	if err != nil {
 		return nil, err
 	}
-
-	pdfs := make(threadmodel.EventPDFs, len(headers))
-	errCh := make(chan error, len(headers))
-	var wg sync.WaitGroup
-
-	for i, header := range headers {
-		i, header := i, header
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			objName, err := s.uploadFile(ctx, header, uploadType)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			pdfs[i] = threadmodel.EventPDF{ObjectName: objName}
-		}()
-	}
-
-	wg.Wait()
-	close(errCh)
-	for err := range errCh {
-		if err != nil {
-			s.deletePDFs(ctx, pdfs)
-			return nil, err
-		}
-	}
-	return pdfs, nil
+	return threadmodel.EventDocs{{ObjectName: objName}}, nil
 }
 
-func validateEventPDFHeaders(headers []*multipart.FileHeader) error {
-	if err := threadmodel.ValidateEventPDFCount(len(headers)); err != nil {
-		return err
-	}
+func validateEventDocHeaders(headers []*multipart.FileHeader) error {
 	for _, header := range headers {
 		if err := mediamodel.ValidateUploadSize(header, mediamodel.MaxDocumentUploadSize); err != nil {
 			return err
 		}
-		if err := threadmodel.ValidateEventAttachmentExt(header.Filename); err != nil {
+		if err := threadmodel.ValidateEventDocExt(header.Filename); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *EventService) deletePDFs(ctx context.Context, pdfs threadmodel.EventPDFs) {
-	for _, pdf := range pdfs {
-		if pdf.ObjectName == "" {
+func (s *EventService) deleteDocs(ctx context.Context, docs threadmodel.EventDocs) {
+	for _, doc := range docs {
+		if doc.ObjectName == "" {
 			continue
 		}
-		_ = s.storageUsecase.Delete(ctx, pdf.ObjectName)
+		_ = s.storageUsecase.Delete(ctx, doc.ObjectName)
 	}
 }
 
