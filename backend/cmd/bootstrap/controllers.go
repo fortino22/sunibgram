@@ -27,6 +27,7 @@ import (
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
 	notificationctrl "github.com/sunibgram/webapi/controller/notification"
+	notificationusermutectrl "github.com/sunibgram/webapi/controller/notification_user_mute"
 	orderctrl "github.com/sunibgram/webapi/controller/order"
 	premiumsubscriptionctrl "github.com/sunibgram/webapi/controller/premium_subscription"
 	reportctrl "github.com/sunibgram/webapi/controller/report"
@@ -58,9 +59,10 @@ type Controllers struct {
 	UserProfile         *userprofilectrl.UserProfileController
 	Email               *emailctrl.EmailController
 	Verification        *verificationctrl.VerificationController
-	Follow              *followctrl.FollowController
-	UserBlock           *userblockctrl.UserBlockController
-	Thread              *threadctrl.ThreadController
+	Follow               *followctrl.FollowController
+	UserBlock            *userblockctrl.UserBlockController
+	NotificationUserMute *notificationusermutectrl.NotificationUserMuteController
+	Thread               *threadctrl.ThreadController
 	Event               *eventctrl.EventController
 	EventThreadPin      *eventthreadpinctrl.EventThreadPinController
 	Hashtag             *hashtagctrl.HashtagController
@@ -109,7 +111,8 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		Email:               emailctrl.NewEmailController(ext.Email),
 		Verification:        verificationctrl.NewVerificationController(svcs.Verification, c),
 		Follow:              followctrl.NewFollowController(svcs.Follow, svcs.UserProfile),
-		UserBlock:           userblockctrl.NewUserBlockController(svcs.UserBlock, svcs.UserProfile),
+		UserBlock:            userblockctrl.NewUserBlockController(svcs.UserBlock, svcs.UserProfile),
+		NotificationUserMute: notificationusermutectrl.NewNotificationUserMuteController(svcs.NotificationUserMute, svcs.UserProfile),
 		Thread:              threadctrl.NewThreadController(svcs.Thread, svcs.ThreadMedia, svcs.CommunityMember, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll),
 		Event:               eventctrl.NewEventController(svcs.Event, svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.EventThreadPin),
 		EventThreadPin:      eventthreadpinctrl.NewEventThreadPinController(svcs.EventThreadPin),

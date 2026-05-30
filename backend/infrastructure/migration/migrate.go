@@ -31,6 +31,7 @@ import (
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	likemodel "github.com/sunibgram/domain/model/like"
 	notificationmodel "github.com/sunibgram/domain/model/notification"
+	notificationusermutemodel "github.com/sunibgram/domain/model/notification_user_mute"
 	ordermodel "github.com/sunibgram/domain/model/order"
 	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 	reportmodel "github.com/sunibgram/domain/model/report"
@@ -84,6 +85,7 @@ func AutoMigrate(db *gorm.DB) {
 		&verificationcodemodel.VerificationCode{},
 		&userrelationshipmodel.UserRelationship{},
 		&userblockmodel.UserBlock{},
+		&notificationusermutemodel.NotificationUserMute{},
 		&userstatmodel.UserStat{},
 		&communitymembermodel.CommunityMember{},
 		&communityrequestmodel.CommunityRequest{},
@@ -150,6 +152,8 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_user_rel_follower ON user_relationships(follower_id)",
 		"CREATE INDEX IF NOT EXISTS idx_user_block_blocker ON user_blocks(blocker_id)",
 		"CREATE INDEX IF NOT EXISTS idx_user_block_blocked ON user_blocks(blocked_id)",
+		"CREATE INDEX IF NOT EXISTS idx_notification_user_mute_user ON notification_user_mutes(user_id)",
+		"CREATE INDEX IF NOT EXISTS idx_notification_user_mute_muted ON notification_user_mutes(muted_user_id)",
 		"CREATE INDEX IF NOT EXISTS idx_hashtags_name ON hashtags(name)",
 		"CREATE INDEX IF NOT EXISTS idx_thread_hashtags_hashtag_id ON thread_hashtags(hashtag_id)",
 		"CREATE INDEX IF NOT EXISTS idx_events_status ON events(status)",

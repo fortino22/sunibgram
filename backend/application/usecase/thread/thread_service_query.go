@@ -39,6 +39,10 @@ func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, li
 	if err != nil {
 		return nil, nil, 0, err
 	}
+	threads, parents, err = s.filterMutedFeed(&userID, threads, parents)
+	if err != nil {
+		return nil, nil, 0, err
+	}
 	return threads, parents, total, nil
 }
 

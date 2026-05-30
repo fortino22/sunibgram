@@ -55,6 +55,8 @@ func (r *notificationRepository) GetNotificationsByRecipientUserID(ctx context.C
 			SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
 			UNION
 			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, recipientUserID, recipientUserID).
+		Where(`sender_user_id NOT IN (
+			SELECT muted_user_id FROM notification_user_mutes WHERE user_id = ?)`, recipientUserID).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).

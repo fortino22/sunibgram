@@ -16,6 +16,7 @@ import (
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	notificationusermuterepoiface "github.com/sunibgram/domain/repository/notification_user_mute"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
@@ -31,6 +32,7 @@ type UserProfileService struct {
 	userRepo        userrepoiface.IUserRepository
 	followRepo      followrepoiface.IFollowRepository
 	blockRepo       userblockrepoiface.IUserBlockRepository
+	muteRepo        notificationusermuterepoiface.INotificationUserMuteRepository
 	profileRepo     userprofilerepoiface.IUserProfileRepository
 	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository
 	cacheRepo       cacherepoiface.ICacheRepository
@@ -41,6 +43,7 @@ func NewUserProfileService(
 	userRepo userrepoiface.IUserRepository,
 	followRepo followrepoiface.IFollowRepository,
 	blockRepo userblockrepoiface.IUserBlockRepository,
+	muteRepo notificationusermuterepoiface.INotificationUserMuteRepository,
 	profileRepo userprofilerepoiface.IUserProfileRepository,
 	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
@@ -50,6 +53,7 @@ func NewUserProfileService(
 		userRepo:        userRepo,
 		followRepo:      followRepo,
 		blockRepo:       blockRepo,
+		muteRepo:        muteRepo,
 		profileRepo:     profileRepo,
 		userFacultyRepo: userFacultyRepo,
 		cacheRepo:       cacheRepo,
@@ -290,6 +294,7 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 	isFollowing := false
 	isBlocked := false
 	isBlockedBy := false
+	isMuted := false
 	if viewerID != nil && *viewerID != 0 && *viewerID != userID {
 		isFollowing, err = s.followRepo.Exists(*viewerID, userID)
 		if err != nil {
@@ -307,6 +312,13 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 				return nil, err
 			}
 		}
+		if s.muteRepo != nil {
+			// Directional one-way: viewer muted target → show Unmute UI.
+			isMuted, err = s.muteRepo.IsMuted(*viewerID, userID)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	return &userprofilesvciface.FullProfile{
 		User:        user,
@@ -316,6 +328,7 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 		IsFollowing: isFollowing,
 		IsBlocked:   isBlocked,
 		IsBlockedBy: isBlockedBy,
+		IsMuted:     isMuted,
 	}, nil
 }
 

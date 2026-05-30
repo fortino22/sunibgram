@@ -18,6 +18,7 @@ type FullProfile struct {
 	IsFollowing bool
 	IsBlocked   bool
 	IsBlockedBy bool
+	IsMuted     bool
 }
 
 type UpsertProfileInput struct {

@@ -12,7 +12,41 @@ func (s *ThreadService) filterViewableThreads(ctx context.Context, requesterID *
 	if err != nil {
 		return nil, err
 	}
-	return s.filterBlockedThreads(requesterID, viewable)
+	blockFiltered, err := s.filterBlockedThreads(requesterID, viewable)
+	if err != nil {
+		return nil, err
+	}
+	return s.filterMutedThreads(requesterID, blockFiltered)
+}
+
+// filterMutedThreads drops threads authored by users the requester has muted
+// (one-way). Mute flags are cached per pair, so the per-author lookups over a
+// single chain are cheap.
+func (s *ThreadService) filterMutedThreads(requesterID *uint, threads []threadmodel.Thread) ([]threadmodel.Thread, error) {
+	if s.muteRepo == nil || requesterID == nil || *requesterID == 0 {
+		return threads, nil
+	}
+	mutedByAuthor := make(map[uint]bool)
+	filtered := make([]threadmodel.Thread, 0, len(threads))
+	for _, thread := range threads {
+		if thread.UserID == *requesterID {
+			filtered = append(filtered, thread)
+			continue
+		}
+		muted, seen := mutedByAuthor[thread.UserID]
+		if !seen {
+			var err error
+			muted, err = s.muteRepo.IsMuted(*requesterID, thread.UserID)
+			if err != nil {
+				return nil, err
+			}
+			mutedByAuthor[thread.UserID] = muted
+		}
+		if !muted {
+			filtered = append(filtered, thread)
+		}
+	}
+	return filtered, nil
 }
 
 // filterBlockedThreads drops threads authored by users in a mutual block
@@ -72,6 +106,41 @@ func (s *ThreadService) filterBlockedFeed(requesterID *uint, threads []threadmod
 				blockedByAuthor[thread.UserID] = blocked
 			}
 			if blocked {
+				continue
+			}
+		}
+		keptThreads = append(keptThreads, thread)
+		keptParents = append(keptParents, parent)
+	}
+	return keptThreads, keptParents, nil
+}
+
+// filterMutedFeed drops muted-author threads from a (threads, parents) feed pair
+// (one-way), keeping the two slices index-aligned. Mirrors filterBlockedFeed for
+// the mute relationship.
+func (s *ThreadService) filterMutedFeed(requesterID *uint, threads []threadmodel.Thread, parents []*threadmodel.Thread) ([]threadmodel.Thread, []*threadmodel.Thread, error) {
+	if s.muteRepo == nil || requesterID == nil || *requesterID == 0 {
+		return threads, parents, nil
+	}
+	mutedByAuthor := make(map[uint]bool)
+	keptThreads := make([]threadmodel.Thread, 0, len(threads))
+	keptParents := make([]*threadmodel.Thread, 0, len(parents))
+	for i, thread := range threads {
+		var parent *threadmodel.Thread
+		if i < len(parents) {
+			parent = parents[i]
+		}
+		if thread.UserID != *requesterID {
+			muted, seen := mutedByAuthor[thread.UserID]
+			if !seen {
+				var err error
+				muted, err = s.muteRepo.IsMuted(*requesterID, thread.UserID)
+				if err != nil {
+					return nil, nil, err
+				}
+				mutedByAuthor[thread.UserID] = muted
+			}
+			if muted {
 				continue
 			}
 		}

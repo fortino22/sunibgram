@@ -19,6 +19,7 @@ const SECTIONS: SettingsSection[] = [
   { href: '/settings/appearance',   icon: 'palette',  label: 'Appearance',            description: 'Light or dark theme' },
   { href: '/settings/password',     icon: 'key',      label: 'Password',              description: 'Change account password' },
   { href: '/settings/blocked-users', icon: 'userX',   label: 'Blocked accounts',      description: 'People you’ve blocked' },
+  { href: '/settings/muted-users',  icon: 'volumeX',  label: 'Muted accounts',        description: 'People you’ve muted' },
   { href: '/settings/subscription', icon: 'premium',  label: 'Premium',               description: 'Manage your subscription' },
 ];
 

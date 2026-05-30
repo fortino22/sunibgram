@@ -33,6 +33,7 @@ import {
   Check,
   SquarePen,
   UserX,
+  VolumeX,
   type LucideProps,
 } from 'lucide-react';
 import type { FC } from 'react';
@@ -72,6 +73,7 @@ const ICON_MAP: Record<string, FC<LucideProps>> = {
   check:        Check,
   compose:      SquarePen,
   userX:        UserX,
+  volumeX:      VolumeX,
 };
 
 interface IconProps {

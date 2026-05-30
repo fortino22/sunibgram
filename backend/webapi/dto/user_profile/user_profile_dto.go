@@ -21,6 +21,7 @@ type UserProfileResponse struct {
 	IsFollowing    bool                         `json:"is_following"`
 	IsBlocked      bool                         `json:"is_blocked"`
 	IsBlockedBy    bool                         `json:"is_blocked_by"`
+	IsMuted        bool                         `json:"is_muted"`
 	Faculty        *threaddto.FeedAuthorFaculty `json:"faculty,omitempty"`
 	CreatedAt      utils.FormattedTime          `json:"created_at"`
 }

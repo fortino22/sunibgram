@@ -247,6 +247,7 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 		IsFollowing:    fp.IsFollowing,
 		IsBlocked:      fp.IsBlocked,
 		IsBlockedBy:    fp.IsBlockedBy,
+		IsMuted:        fp.IsMuted,
 		Faculty:        faculty,
 		CreatedAt:      utils.Wrap(fp.User.CreatedAt),
 	}

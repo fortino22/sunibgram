@@ -1,12 +1,14 @@
 'use client';
 
-import { MoreHorizontal, Flag, Ban } from 'lucide-react';
+import { MoreHorizontal, Flag, Ban, VolumeX } from 'lucide-react';
 import { type CSSProperties, type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
 
 interface ProfileOptionsMenuProps {
   username: string;
   isBlocked: boolean;
+  isMuted: boolean;
   onBlock?: () => void;
+  onMute?: () => void;
   onReport: () => void;
 }
 
@@ -30,7 +32,7 @@ const ITEM_BASE: CSSProperties = {
 
 const ICON_SIZE = 17;
 
-export function ProfileOptionsMenu({ username, isBlocked, onBlock, onReport }: ProfileOptionsMenuProps) {
+export function ProfileOptionsMenu({ username, isBlocked, isMuted, onBlock, onMute, onReport }: ProfileOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -106,6 +108,19 @@ export function ProfileOptionsMenu({ username, isBlocked, onBlock, onReport }: P
             overflow: 'hidden',
           }}
         >
+          {onMute && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={run(onMute)}
+              onMouseEnter={onItemEnter}
+              onMouseLeave={onItemLeave}
+              style={ITEM_BASE}
+            >
+              <VolumeX size={ICON_SIZE} strokeWidth={2} />
+              {isMuted ? `Unmute @${username}` : `Mute @${username}`}
+            </button>
+          )}
           {onBlock && (
             <button
               type="button"

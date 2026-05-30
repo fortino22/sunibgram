@@ -16,6 +16,7 @@ import { useUserThreads } from '@/hooks/useUserThreads';
 import { useUserReplies } from '@/hooks/useUserReplies';
 import { useFollowUser } from '@/hooks/useFollowUser';
 import { useBlockUser } from '@/hooks/useBlockUser';
+import { useMuteUser } from '@/hooks/useMuteUser';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function UserProfilePage() {
@@ -34,6 +35,7 @@ export default function UserProfilePage() {
   const repliesQuery = useUserReplies(profileUserId, { enabled: !blockedRelationship });
   const { follow, unfollow } = useFollowUser(profileUserId, [profileUserId]);
   const { block, unblock } = useBlockUser(profileUserId, [profileUserId]);
+  const { mute, unmute } = useMuteUser(profileUserId, [profileUserId]);
 
   const threadsSentinelRef = useRef<HTMLDivElement>(null);
   const repliesSentinelRef = useRef<HTMLDivElement>(null);
@@ -86,6 +88,7 @@ export default function UserProfilePage() {
   const isFollowing = !!profile.is_following;
   const isBlocked = !!profile.is_blocked;
   const isBlockedBy = !!profile.is_blocked_by;
+  const isMuted = !!profile.is_muted;
   const threads = threadsQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const replies = repliesQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const mediaThreads = threads.filter((t) => t.media.length > 0);
@@ -107,6 +110,14 @@ export default function UserProfilePage() {
       unblock.mutate();
     } else {
       block.mutate();
+    }
+  }
+
+  function handleMuteToggle() {
+    if (isMuted) {
+      unmute.mutate();
+    } else {
+      mute.mutate();
     }
   }
 
@@ -137,6 +148,8 @@ export default function UserProfilePage() {
         isBlockedBy={isBlockedBy}
         onBlock={isOwn || isBlockedBy ? undefined : handleBlockToggle}
         blockPending={block.isPending || unblock.isPending}
+        isMuted={isMuted}
+        onMute={isOwn || isBlockedBy ? undefined : handleMuteToggle}
       />
 
       {reportOpen && (
