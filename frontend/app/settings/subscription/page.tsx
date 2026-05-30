@@ -14,8 +14,7 @@ import { useActivateTrial, useSubscriptionStatus } from '@/hooks/useSubscription
 const PREMIUM_PERKS: string[] = [
   'Verified badge on your profile, posts, and replies',
   'Verified badge in chats, communities, and notifications',
-  'Priority ranking in trending users and discover suggestions',
-  'Higher placement in followers and following lists',
+  'Create and manage your own communities',
 ];
 
 export default function SubscriptionSettingsPage() {
@@ -122,7 +121,7 @@ function StatusCard({
       }}
     >
       {isPremium ? (
-        <VerifiedBadge size={44} />
+        <VerifiedBadge size={28} />
       ) : (
         <div
           style={{

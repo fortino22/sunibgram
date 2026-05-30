@@ -241,19 +241,25 @@ func (s *ChatRoomService) GetGroupMembers(ctx context.Context, roomID, requester
 	if err != nil {
 		return nil, err
 	}
-	result := make([]chatroomsvciface.RoomParticipant, len(members))
-	for i, m := range members {
+	result := make([]chatroomsvciface.RoomParticipant, 0, len(members))
+	for _, m := range members {
+		// Hide members in a mutual block relationship with the requester.
+		if s.blockRepo != nil && m.UserID != requesterID {
+			if blocked, bErr := s.blockRepo.IsBlocked(requesterID, m.UserID); bErr == nil && blocked {
+				continue
+			}
+		}
 		avatarURL := ""
 		if s.storageUsecase != nil && m.AvatarObjectName != "" {
 			avatarURL = s.storageUsecase.GetURL(m.AvatarObjectName)
 		}
-		result[i] = chatroomsvciface.RoomParticipant{
+		result = append(result, chatroomsvciface.RoomParticipant{
 			UserID:      m.UserID,
 			Username:    m.Username,
 			Name:        m.Name,
 			FacultyName: m.FacultyName,
 			AvatarURL:   avatarURL,
-		}
+		})
 	}
 	return result, nil
 }
@@ -270,6 +276,25 @@ func (s *ChatRoomService) DeleteGroup(ctx context.Context, roomID, requesterID u
 		return errors.New("room is not a group")
 	}
 	return s.roomRepo.DeleteGroup(roomID)
+}
+
+// IsPrivateRoomBlocked reports whether roomID is a private room whose other
+// member is mutually blocked with userID. Group rooms return false. Used by the
+// socket layer to seal join/typing on an existing A↔B DM after a block.
+func (s *ChatRoomService) IsPrivateRoomBlocked(roomID, userID uint) bool {
+	if s.blockRepo == nil {
+		return false
+	}
+	memberMap, err := s.roomRepo.FindOtherMemberInfo([]uint{roomID}, userID)
+	if err != nil {
+		return false
+	}
+	info, ok := memberMap[roomID]
+	if !ok {
+		return false
+	}
+	blocked, err := s.blockRepo.IsBlocked(userID, info.UserID)
+	return err == nil && blocked
 }
 
 func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]chatroommodel.ChatRoom, int64, error) {

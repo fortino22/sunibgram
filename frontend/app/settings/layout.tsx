@@ -18,6 +18,7 @@ const SECTIONS: SettingsSection[] = [
   { href: '/settings/privacy',      icon: 'lock',     label: 'Privacy and safety',    description: 'Control who sees your posts' },
   { href: '/settings/appearance',   icon: 'palette',  label: 'Appearance',            description: 'Light or dark theme' },
   { href: '/settings/password',     icon: 'key',      label: 'Password',              description: 'Change account password' },
+  { href: '/settings/blocked-users', icon: 'userX',   label: 'Blocked accounts',      description: 'People you’ve blocked' },
   { href: '/settings/subscription', icon: 'premium',  label: 'Premium',               description: 'Manage your subscription' },
 ];
 
@@ -87,7 +88,7 @@ function SettingsNavItem({ section, active }: { section: SettingsSection; active
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
     >
       {section.icon === 'premium' ? (
-        <VerifiedBadge size={20} />
+        <VerifiedBadge size={20} variant="mono" />
       ) : (
         <Icon name={section.icon} size={20} color="var(--text)" strokeWidth={1.8} />
       )}

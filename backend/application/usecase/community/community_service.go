@@ -26,6 +26,7 @@ import (
 	communitypinrepoiface "github.com/sunibgram/domain/repository/community_pin"
 	communityrulerepoiface "github.com/sunibgram/domain/repository/community_rule"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
 	communitysvciface "github.com/sunibgram/domain/service/community"
@@ -38,6 +39,7 @@ type CommunityService struct {
 	userRepo       userrepoiface.IUserRepository
 	profileRepo    userprofilerepoiface.IUserProfileRepository
 	followRepo     followrepoiface.IFollowRepository
+	blockRepo      userblockrepoiface.IUserBlockRepository
 	categoryRepo   categoryrepoiface.ICategoryRepository
 	ruleRepo       communityrulerepoiface.ICommunityRuleRepository
 	pinRepo        communitypinrepoiface.ICommunityPinRepository
@@ -52,6 +54,7 @@ func NewCommunityService(
 	userRepo userrepoiface.IUserRepository,
 	profileRepo userprofilerepoiface.IUserProfileRepository,
 	followRepo followrepoiface.IFollowRepository,
+	blockRepo userblockrepoiface.IUserBlockRepository,
 	categoryRepo categoryrepoiface.ICategoryRepository,
 	ruleRepo communityrulerepoiface.ICommunityRuleRepository,
 	pinRepo communitypinrepoiface.ICommunityPinRepository,
@@ -65,6 +68,7 @@ func NewCommunityService(
 		userRepo:       userRepo,
 		profileRepo:    profileRepo,
 		followRepo:     followRepo,
+		blockRepo:      blockRepo,
 		categoryRepo:   categoryRepo,
 		ruleRepo:       ruleRepo,
 		pinRepo:        pinRepo,
@@ -380,6 +384,9 @@ func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewe
 	if err != nil {
 		return nil, err
 	}
+	// Hide admins/top-members in a mutual block relationship with the viewer.
+	admins = s.filterBlockedAboutMembers(viewerID, admins)
+	topMembers = s.filterBlockedAboutMembers(viewerID, topMembers)
 
 	creatorUser, err := s.userRepo.FindByID(community.UserID)
 	if err != nil {
@@ -423,6 +430,27 @@ func (s *CommunityService) GetAbout(ctx context.Context, communityID uint, viewe
 		Admins:     adminAbout,
 		TopMembers: memberAbout,
 	}, nil
+}
+
+// filterBlockedAboutMembers drops members in a mutual block relationship with
+// the viewer. No-op for guests (viewerID nil) — guests have no block context.
+func (s *CommunityService) filterBlockedAboutMembers(viewerID *uint, members []communitymembermodel.CommunityMember) []communitymembermodel.CommunityMember {
+	if s.blockRepo == nil || viewerID == nil || *viewerID == 0 || len(members) == 0 {
+		return members
+	}
+	out := make([]communitymembermodel.CommunityMember, 0, len(members))
+	for _, m := range members {
+		if m.UserID == *viewerID {
+			out = append(out, m)
+			continue
+		}
+		blocked, err := s.blockRepo.IsBlocked(*viewerID, m.UserID)
+		if err == nil && blocked {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 func (s *CommunityService) buildAboutUsers(members []communitymembermodel.CommunityMember, viewerID *uint, followSet map[uint]bool) []communitysvciface.CommunityAboutUser {

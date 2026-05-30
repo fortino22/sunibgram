@@ -32,6 +32,9 @@
   --shadow-dropdown: 0 8px 28px oklch(0% 0 0 / 0.5);
   --auth-bolt-mid:   oklch(44% 0.008 260);
   --auth-bolt-edge:  oklch(36% 0.007 260);
+  /* Mono premium badge (settings nav only). Dark theme → white circle, black check. */
+  --premium-badge-bg: #ffffff;
+  --premium-badge-fg: #000000;
   /* Native controls (date/time pickers, scrollbars) follow the theme. */
   color-scheme: dark;
   --font-dm-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -71,6 +74,9 @@
   /* Auth watermark bolt: solid black outline in light theme. */
   --auth-bolt-mid:   oklch(20% 0 0);
   --auth-bolt-edge:  oklch(20% 0 0);
+  /* Mono premium badge: light theme → black circle, white check. */
+  --premium-badge-bg: #000000;
+  --premium-badge-fg: #ffffff;
   color-scheme: light;
 }
 

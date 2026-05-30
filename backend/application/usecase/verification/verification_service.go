@@ -107,7 +107,7 @@ func (s *VerificationService) SendCode(email string, t verificationcodemodel.Ver
 		if exists {
 			return errors.New("email already registered")
 		}
-	case verificationcodemodel.VerificationTypeForgotPassword, verificationcodemodel.VerificationTypeLogin:
+	case verificationcodemodel.VerificationTypeForgotPassword, verificationcodemodel.VerificationTypeLogin, verificationcodemodel.VerificationTypeChangePassword:
 		if !exists {
 			return errors.New("email not found")
 		}
@@ -142,6 +142,8 @@ func (s *VerificationService) SendCode(email string, t verificationcodemodel.Ver
 		return s.emailService.SendPasswordResetOTP(email, plain)
 	case verificationcodemodel.VerificationTypeLogin:
 		return s.emailService.SendLoginOTP(email, plain)
+	case verificationcodemodel.VerificationTypeChangePassword:
+		return s.emailService.SendChangePasswordOTP(email, plain)
 	default:
 		return errors.New("unsupported verification type")
 	}

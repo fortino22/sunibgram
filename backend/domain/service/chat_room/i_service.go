@@ -51,5 +51,8 @@ type IChatRoomService interface {
 	// GetUserRoomIDs returns all room IDs the user is a member of.
 	GetUserRoomIDs(userID uint) ([]uint, error)
 	GetByID(roomID, userID uint) (*chatroommodel.ChatRoom, error)
+	// IsPrivateRoomBlocked reports whether the room is a private DM whose other
+	// member is mutually blocked with userID (group rooms return false).
+	IsPrivateRoomBlocked(roomID, userID uint) bool
 	ToggleMute(ctx context.Context, roomID, userID uint) (bool, error)
 }

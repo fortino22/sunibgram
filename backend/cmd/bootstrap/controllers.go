@@ -109,7 +109,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		Email:               emailctrl.NewEmailController(ext.Email),
 		Verification:        verificationctrl.NewVerificationController(svcs.Verification, c),
 		Follow:              followctrl.NewFollowController(svcs.Follow, svcs.UserProfile),
-		UserBlock:           userblockctrl.NewUserBlockController(svcs.UserBlock),
+		UserBlock:           userblockctrl.NewUserBlockController(svcs.UserBlock, svcs.UserProfile),
 		Thread:              threadctrl.NewThreadController(svcs.Thread, svcs.ThreadMedia, svcs.CommunityMember, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll),
 		Event:               eventctrl.NewEventController(svcs.Event, svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.EventThreadPin),
 		EventThreadPin:      eventthreadpinctrl.NewEventThreadPinController(svcs.EventThreadPin),

@@ -16,6 +16,7 @@ import (
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	bookmarksvciface "github.com/sunibgram/domain/service/bookmark"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -28,6 +29,7 @@ type BookmarkService struct {
 	memberRepo     communitymemberrepoiface.ICommunityMemberRepository
 	settingsRepo   usersettingsrepoiface.IUserSettingsRepository
 	followRepo     followrepoiface.IFollowRepository
+	blockRepo      userblockrepoiface.IUserBlockRepository
 	notification   notificationsvciface.INotificationService
 	collectionRepo bookmarkcollectionrepoiface.IBookmarkCollectionRepository
 }
@@ -39,6 +41,7 @@ func NewBookmarkService(
 	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
 	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
 	followRepo followrepoiface.IFollowRepository,
+	blockRepo userblockrepoiface.IUserBlockRepository,
 	notification notificationsvciface.INotificationService,
 	collectionRepo bookmarkcollectionrepoiface.IBookmarkCollectionRepository,
 ) bookmarksvciface.IBookmarkService {
@@ -49,6 +52,7 @@ func NewBookmarkService(
 		memberRepo:     memberRepo,
 		settingsRepo:   settingsRepo,
 		followRepo:     followRepo,
+		blockRepo:      blockRepo,
 		notification:   notification,
 		collectionRepo: collectionRepo,
 	}
@@ -69,6 +73,16 @@ func (s *BookmarkService) Bookmark(userID, threadID uint) (uint, error) {
 	}
 	if err := threaduc.CanViewPrivateUser(context.Background(), s.settingsRepo, s.followRepo, &userID, thread.UserID); err != nil {
 		return 0, err
+	}
+	// Cannot interact with a blocked user's thread (mutual hide).
+	if s.blockRepo != nil && userID != thread.UserID {
+		blocked, err := s.blockRepo.IsBlocked(userID, thread.UserID)
+		if err != nil {
+			return 0, err
+		}
+		if blocked {
+			return 0, errors.New("blocked")
+		}
 	}
 	if thread.CommunityID != nil {
 		community, err := s.communityRepo.FindByID(*thread.CommunityID)

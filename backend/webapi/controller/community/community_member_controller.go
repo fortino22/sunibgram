@@ -61,6 +61,10 @@ func (c *CommunityMemberController) Leave(ctx *fiber.Ctx) error {
 }
 
 func (c *CommunityMemberController) GetMembers(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
 	id, ok := ctrlshared.ParseIDParam(ctx, "id", "community")
 	if !ok {
 		return nil
@@ -68,7 +72,7 @@ func (c *CommunityMemberController) GetMembers(ctx *fiber.Ctx) error {
 
 	page, limit := ctrlshared.ParsePagination(ctx)
 
-	members, total, err := c.memberService.GetMembers(id, page, limit)
+	members, total, err := c.memberService.GetMembers(claims.UserID, id, page, limit)
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}

@@ -13,6 +13,7 @@ import (
 	chatrepoiface "github.com/sunibgram/domain/repository/chat"
 	chatreadrepoiface "github.com/sunibgram/domain/repository/chat_read"
 	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	chatsvciface "github.com/sunibgram/domain/service/chat"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
 )
@@ -21,6 +22,7 @@ type ChatService struct {
 	chatRepo            chatrepoiface.IChatRepository
 	roomRepo            chatroomrepoiface.IChatRoomRepository
 	chatReadRepo        chatreadrepoiface.IChatReadRepository
+	blockRepo           userblockrepoiface.IUserBlockRepository
 	notificationService notificationsvciface.INotificationService
 }
 
@@ -28,6 +30,7 @@ func NewChatService(
 	chatRepo chatrepoiface.IChatRepository,
 	roomRepo chatroomrepoiface.IChatRoomRepository,
 	chatReadRepo chatreadrepoiface.IChatReadRepository,
+	blockRepo userblockrepoiface.IUserBlockRepository,
 	notificationServices ...notificationsvciface.INotificationService,
 ) chatsvciface.IChatService {
 	var notificationService notificationsvciface.INotificationService
@@ -38,13 +41,38 @@ func NewChatService(
 		chatRepo:            chatRepo,
 		roomRepo:            roomRepo,
 		chatReadRepo:        chatReadRepo,
+		blockRepo:           blockRepo,
 		notificationService: notificationService,
 	}
+}
+
+// privateRoomBlocked reports whether roomID is a private room whose other member
+// is in a mutual block relationship with userID. Group rooms always return false
+// (FindOtherMemberInfo only resolves private-room counterparts). Used to seal an
+// existing A↔B DM after a block — IsMember alone still passes post-block.
+func (s *ChatService) privateRoomBlocked(roomID, userID uint) bool {
+	if s.blockRepo == nil {
+		return false
+	}
+	memberMap, err := s.roomRepo.FindOtherMemberInfo([]uint{roomID}, userID)
+	if err != nil {
+		return false
+	}
+	info, ok := memberMap[roomID]
+	if !ok {
+		return false
+	}
+	blocked, err := s.blockRepo.IsBlocked(userID, info.UserID)
+	return err == nil && blocked
 }
 
 func (s *ChatService) Send(ctx context.Context, roomID, senderID uint, message *string, gifURL *string, replyToID *uint, sharedThreadID *uint) (*chatmodel.Chat, error) {
 	if !s.roomRepo.IsMember(roomID, senderID) {
 		return nil, errors.New("forbidden")
+	}
+	// Seal an existing private DM once a block is in place (either direction).
+	if s.privateRoomBlocked(roomID, senderID) {
+		return nil, errors.New("blocked")
 	}
 	room, err := s.roomRepo.FindByID(roomID)
 	if err != nil {
@@ -339,6 +367,10 @@ func (s *ChatService) decryptChat(chat *chatmodel.Chat, roomKey []byte) {
 func (s *ChatService) MarkMessagesRead(ctx context.Context, roomID uint, chatIDs []uint, userID uint) ([]chatsvciface.ChatMarkResult, error) {
 	if !s.roomRepo.IsMember(roomID, userID) {
 		return nil, errors.New("forbidden")
+	}
+	// No read receipts to a blocked counterpart in an existing private DM.
+	if s.privateRoomBlocked(roomID, userID) {
+		return nil, errors.New("blocked")
 	}
 	room, err := s.roomRepo.FindByID(roomID)
 	if err != nil {
