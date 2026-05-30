@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
-import { SettingsPanel, SuccessBanner } from '@/components/settings/SettingsPanel';
+import { SettingsPanel } from '@/components/settings/SettingsPanel';
 import { useUpdateUserTheme, useUserSettings } from '@/hooks/useUserSettings';
 import type { UserTheme } from '@/lib/services/userSettings';
 
@@ -14,26 +13,17 @@ const THEMES: { value: UserTheme; label: string; description: string }[] = [
 export default function AppearanceSettingsPage() {
   const { data: settings, isLoading } = useUserSettings();
   const { mutate, isPending, error } = useUpdateUserTheme();
-  const [success, setSuccess] = useState<string | null>(null);
 
   const current = settings?.user_theme ?? 'black';
 
   function handleSelect(next: UserTheme) {
     if (next === current) return;
-    setSuccess(null);
-    mutate(
-      { user_theme: next },
-      {
-        onSuccess: () =>
-          setSuccess(next === 'white' ? 'Light theme applied.' : 'Dark theme applied.'),
-      }
-    );
+    mutate({ user_theme: next });
   }
 
   return (
     <SettingsPanel title="Appearance" description="Choose how Sunibgram looks to you.">
       <div style={{ maxWidth: 640 }}>
-        <SuccessBanner message={success} />
         <ErrorAlert message={error ? (error as Error).message : null} />
 
         {isLoading || !settings ? (

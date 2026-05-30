@@ -110,7 +110,7 @@ func (c *AuthController) ChangePassword(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "new password and confirm password do not match"})
 	}
 
-	if err := c.authService.ChangePassword(claims.UserID, req.OldPassword, req.NewPassword); err != nil {
+	if err := c.authService.ChangePassword(claims.UserID, claims.Email, req.NewPassword); err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
 

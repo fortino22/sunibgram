@@ -70,6 +70,11 @@ func (h *ChatHandler) joinRoom(ep *fibersocketio.EventPayload, userID, roomID ui
 		emitSocketError(ep.Kws, err.Error())
 		return
 	}
+	// Seal an existing private DM after a block — no real-time access either way.
+	if h.roomService.IsPrivateRoomBlocked(roomID, userID) {
+		emitSocketError(ep.Kws, "blocked")
+		return
+	}
 
 	h.hub.Join(roomID, ep.SocketUUID)
 	emitSocketEvent(ep.Kws, "room:joined", roomPayload{RoomID: roomID})
@@ -92,6 +97,10 @@ func (h *ChatHandler) typing(ep *fibersocketio.EventPayload, event string, userI
 	}
 	if !h.hub.IsInRoom(roomID, ep.SocketUUID) {
 		emitSocketError(ep.Kws, "join_room required")
+		return
+	}
+	if h.roomService.IsPrivateRoomBlocked(roomID, userID) {
+		emitSocketError(ep.Kws, "blocked")
 		return
 	}
 

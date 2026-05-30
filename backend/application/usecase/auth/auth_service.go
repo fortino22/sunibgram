@@ -143,22 +143,24 @@ func (s *AuthService) Register(user *usermodel.User, profile *userprofilemodel.U
 	return s.userSettingsRepo.Create(context.Background(), &usersettingsmodel.UserSettings{UserID: user.UserID})
 }
 
-func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword string) error {
+// ChangePassword changes a logged-in user's password after an email OTP of type
+// CHANGE_PASSWORD has been verified server-side. Identity comes from the JWT
+// (userID); email is the account email from claims and must match the account.
+func (s *AuthService) ChangePassword(userID uint, email, newPassword string) error {
+	if _, err := s.verificationRepo.FindVerifiedByEmailAndType(email, verificationcodemodel.VerificationTypeChangePassword); err != nil {
+		return errors.New("otp not verified or expired, please verify your otp first")
+	}
+
 	user, err := s.userRepo.FindByID(userID)
 	if err != nil {
 		return errors.New("user not found")
 	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPassword)); err != nil {
-		return errors.New("old password is incorrect")
+	if user.Email != email {
+		return errors.New("email mismatch")
 	}
 
 	if err := usermodel.ValidatePassword(newPassword); err != nil {
 		return err
-	}
-
-	if oldPassword == newPassword {
-		return errors.New("new password must be different from old password")
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
@@ -169,6 +171,8 @@ func (s *AuthService) ChangePassword(userID uint, oldPassword, newPassword strin
 	if err := s.userRepo.UpdatePassword(userID, string(hashed)); err != nil {
 		return err
 	}
+
+	_ = s.verificationRepo.DeleteByEmailAndType(email, verificationcodemodel.VerificationTypeChangePassword)
 	s.revokeAllSessions(context.Background(), userID)
 	return nil
 }

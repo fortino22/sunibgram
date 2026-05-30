@@ -11,16 +11,18 @@ import (
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	eventrepoiface "github.com/sunibgram/domain/repository/event"
 	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	eventparticipantsvciface "github.com/sunibgram/domain/service/event_participant"
 )
 
 type EventParticipantService struct {
 	partRepo  eventparticipantrepoiface.IEventParticipantRepository
 	eventRepo eventrepoiface.IEventRepository
+	blockRepo userblockrepoiface.IUserBlockRepository
 }
 
-func NewEventParticipantService(partRepo eventparticipantrepoiface.IEventParticipantRepository, eventRepo eventrepoiface.IEventRepository) eventparticipantsvciface.IEventParticipantService {
-	return &EventParticipantService{partRepo: partRepo, eventRepo: eventRepo}
+func NewEventParticipantService(partRepo eventparticipantrepoiface.IEventParticipantRepository, eventRepo eventrepoiface.IEventRepository, blockRepo userblockrepoiface.IUserBlockRepository) eventparticipantsvciface.IEventParticipantService {
+	return &EventParticipantService{partRepo: partRepo, eventRepo: eventRepo, blockRepo: blockRepo}
 }
 
 func (s *EventParticipantService) Join(userID uint, eventID string) error {
@@ -30,6 +32,16 @@ func (s *EventParticipantService) Join(userID uint, eventID string) error {
 	event, err := s.eventRepo.FindByID(eventID)
 	if err != nil {
 		return errors.New("event not found")
+	}
+	// Cannot join an event created by a blocked user (mutual hide).
+	if s.blockRepo != nil && userID != event.UserID {
+		blocked, err := s.blockRepo.IsBlocked(userID, event.UserID)
+		if err != nil {
+			return err
+		}
+		if blocked {
+			return errors.New("blocked")
+		}
 	}
 	if event.Status != "approved" {
 		return errors.New("event is not open for participation")

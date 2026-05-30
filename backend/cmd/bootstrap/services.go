@@ -43,6 +43,7 @@ import (
 	trendreportuc "github.com/sunibgram/application/usecase/trend_report"
 	trendinguseruc "github.com/sunibgram/application/usecase/trending_user"
 	useruc "github.com/sunibgram/application/usecase/user"
+	userblockuc "github.com/sunibgram/application/usecase/user_block"
 	userprofileuc "github.com/sunibgram/application/usecase/user_profile"
 	usersettingsuc "github.com/sunibgram/application/usecase/user_settings"
 	verificationuc "github.com/sunibgram/application/usecase/verification"
@@ -72,6 +73,7 @@ import (
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
 	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
 	followsvciface "github.com/sunibgram/domain/service/follow"
+	userblocksvciface "github.com/sunibgram/domain/service/user_block"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -105,6 +107,7 @@ type Services struct {
 	Verification         verificationsvciface.IVerificationService
 	Notification         notificationsvciface.INotificationService
 	Follow               followsvciface.IFollowService
+	UserBlock            userblocksvciface.IUserBlockService
 	Hashtag              hashtagsvciface.IHashtagService
 	ThreadSummary        threadsummarysvciface.IThreadSummaryService
 	Thread               threadsvciface.IThreadService
@@ -144,20 +147,21 @@ type Services struct {
 }
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
-	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
+	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
 	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub)
-	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.Cache, notification)
+	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.UserBlock, repos.Cache, notification)
+	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
 	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
-	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, summary, repos.User)
-	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification)
-	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, notification, repos.BookmarkCollection)
+	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, summary, repos.User)
+	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification)
+	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, repos.BookmarkCollection)
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
 	communityActionConfirmation := communityactionconfirmationuc.NewCommunityActionConfirmationService(repos.CommunityActionConfirmation)
 	eventActionConfirmation := eventactionconfirmationuc.NewEventActionConfirmationService(repos.EventActionConfirmation)
-	chatRoom := chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, ext.Storage)
-	chat := chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, notification)
-	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, chat, chatRoom, ext.Storage)
+	chatRoom := chatroomuc.NewChatRoomService(repos.ChatRoom, repos.User, repos.UserBlock, ext.Storage)
+	chat := chatuc.NewChatService(repos.Chat, repos.ChatRoom, repos.ChatRead, repos.UserBlock, notification)
+	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, repos.UserBlock, chat, chatRoom, ext.Storage)
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
@@ -169,6 +173,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Verification:         verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email, c),
 		Notification:         notification,
 		Follow:               follow,
+		UserBlock:            userBlock,
 		Hashtag:              hashtag,
 		ThreadSummary:        summary,
 		Thread:               thread,
@@ -182,15 +187,15 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Category:             categoryuc.NewCategoryService(repos.Category),
 		Violation:            violationuc.NewViolationService(repos.Violation),
 		Report:               reportuc.NewReportService(repos.Report, repos.Violation, repos.User, repos.Thread, profile, repos.Cache),
-		Community:                   communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage, communityActionConfirmation),
+		Community:                   communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.UserBlock, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage, communityActionConfirmation),
 		CommunityActionConfirmation: communityActionConfirmation,
-		CommunityMember:             communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.Cache, communityActionConfirmation),
-		CommunityRequest:     communityrequestuc.NewCommunityRequestService(repos.Community, repos.CommunityMember, repos.CommunityRequest, repos.Cache),
+		CommunityMember:             communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.UserBlock, repos.Cache, communityActionConfirmation),
+		CommunityRequest:     communityrequestuc.NewCommunityRequestService(repos.Community, repos.CommunityMember, repos.CommunityRequest, repos.UserBlock, repos.Cache),
 		CommunityRule:        communityruleuc.NewCommunityRuleService(repos.Community, repos.CommunityRule),
 		CommunityThreadPin:   communitythreadpinuc.NewCommunityThreadPinService(repos.CommunityThreadPin, repos.Community, repos.CommunityMember, repos.Thread),
 		CommunityPin:         communitypinuc.NewCommunityPinService(repos.CommunityPin, repos.Community, repos.CommunityMember),
 		EventPin:             eventpinuc.NewEventPinService(repos.EventPin, repos.Event),
-		EventParticipant:     eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event),
+		EventParticipant:     eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event, repos.UserBlock),
 		Faculty:              facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
 		Feedback:             feedbackuc.NewFeedbackService(repos.Feedback),
 		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),
@@ -198,9 +203,9 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		ChatRoom:             chatRoom,
 		Chat:                 chat,
 		ChatMedia:            chatmediauc.NewChatMediaService(repos.Chat, repos.ChatMedia, ext.Storage),
-		ChatReaction:         chatreactionuc.NewChatReactionService(repos.Chat, repos.ChatReaction, repos.ChatRoom),
+		ChatReaction:         chatreactionuc.NewChatReactionService(repos.Chat, repos.ChatReaction, repos.ChatRoom, repos.UserBlock),
 		Share:                share,
-		ThreadPoll:           threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, ext.Storage),
+		ThreadPoll:           threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, repos.UserBlock, ext.Storage),
 		EventThreadPin:       eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
 		TrendingUser:         trendinguseruc.NewTrendingUserService(repos.TrendingUser, repos.TrendingUserSnapshot, repos.Follow),
 		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport, hashtag),

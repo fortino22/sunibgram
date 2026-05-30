@@ -35,6 +35,9 @@ func (c *FollowController) Follow(ctx *fiber.Ctx) error {
 		if err.Error() == "user not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
+		if err.Error() == "blocked" {
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
+		}
 		return ctx.Status(fiber.StatusConflict).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "followed successfully"})
@@ -56,7 +59,8 @@ func (c *FollowController) Unfollow(ctx *fiber.Ctx) error {
 }
 
 func (c *FollowController) GetFollowing(ctx *fiber.Ctx) error {
-	if _, ok := ctrlshared.RequireAuth(ctx); !ok {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
 		return nil
 	}
 
@@ -67,7 +71,7 @@ func (c *FollowController) GetFollowing(ctx *fiber.Ctx) error {
 
 	page, limit := ctrlshared.ParsePagination(ctx)
 
-	users, total, err := c.followService.GetFollowing(userID, page, limit)
+	users, total, err := c.followService.GetFollowing(claims.UserID, userID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -90,6 +94,11 @@ func (c *FollowController) GetFollowing(ctx *fiber.Ctx) error {
 }
 
 func (c *FollowController) GetFollowers(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
 	userID, ok := ctrlshared.ParseIDParam(ctx, "user_id", "user")
 	if !ok {
 		return nil
@@ -97,7 +106,7 @@ func (c *FollowController) GetFollowers(ctx *fiber.Ctx) error {
 
 	page, limit := ctrlshared.ParsePagination(ctx)
 
-	users, total, err := c.followService.GetFollowers(userID, page, limit)
+	users, total, err := c.followService.GetFollowers(claims.UserID, userID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -127,7 +136,7 @@ func (c *FollowController) GetMyFollowing(ctx *fiber.Ctx) error {
 
 	page, limit := ctrlshared.ParsePagination(ctx)
 
-	users, total, err := c.followService.GetFollowing(claims.UserID, page, limit)
+	users, total, err := c.followService.GetFollowing(claims.UserID, claims.UserID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -157,7 +166,7 @@ func (c *FollowController) GetMyFollowers(ctx *fiber.Ctx) error {
 
 	page, limit := ctrlshared.ParsePagination(ctx)
 
-	users, total, err := c.followService.GetFollowers(claims.UserID, page, limit)
+	users, total, err := c.followService.GetFollowers(claims.UserID, claims.UserID, page, limit)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}

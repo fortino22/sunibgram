@@ -80,7 +80,7 @@ func (c *ThreadController) Create(ctx *fiber.Ctx) error {
 
 	thread, err := c.threadService.Create(ctx.Context(), claims.UserID, content, parentID, eventID, replyPermission)
 	if err != nil {
-		if err.Error() == "not allowed to reply to this thread" {
+		if err.Error() == "not allowed to reply to this thread" || err.Error() == "blocked" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return ctrlshared.HandleServiceError(ctx, err)
@@ -150,7 +150,7 @@ func (c *ThreadController) CreateEventThread(ctx *fiber.Ctx) error {
 	thread, err := c.threadService.CreateEventThread(ctx.Context(), claims.UserID, content, parentID, eventID, replyPermission, isOfficial)
 	if err != nil {
 		switch err.Error() {
-		case "not allowed to reply to this thread", "forbidden":
+		case "not allowed to reply to this thread", "forbidden", "blocked":
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
 		return ctrlshared.HandleServiceError(ctx, err)
@@ -275,6 +275,9 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, thread.UserID); err != nil {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
+		}
+		if err.Error() == "blocked" {
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "you can't view this account"})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
@@ -484,6 +487,9 @@ func (c *ThreadController) GetMyPosts(ctx *fiber.Ctx) error {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
+		if err.Error() == "blocked" {
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "you can't view this account"})
+		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ctrlshared.ParsePagination(ctx)
@@ -513,6 +519,9 @@ func (c *ThreadController) GetMyReplies(ctx *fiber.Ctx) error {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
+		if err.Error() == "blocked" {
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "you can't view this account"})
+		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 	page, limit := ctrlshared.ParsePagination(ctx)
@@ -541,6 +550,9 @@ func (c *ThreadController) GetMyMediaThread(ctx *fiber.Ctx) error {
 	if err := c.threadService.CanViewUserThreads(ctx.Context(), claims.UserID, targetUserID); err != nil {
 		if err.Error() == "this account is private" {
 			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
+		}
+		if err.Error() == "blocked" {
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: "you can't view this account"})
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}

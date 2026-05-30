@@ -7,9 +7,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { OtpInput } from '@/components/auth/OtpInput';
+import { useAuthStore } from '@/stores/authStore';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import {
-  forgotPassword,
+  changePasswordWithOtp,
   sendVerification,
   verifyVerification,
 } from '@/lib/services/auth';
@@ -37,6 +38,9 @@ type PasswordValues = z.infer<typeof passwordSchema>;
 
 export default function PasswordSettingsPage() {
   const { data: profile, isLoading: profileLoading } = useMyProfile();
+  const storeEmail = useAuthStore((s) => s.user?.email);
+  const token = useAuthStore((s) => s.token);
+  const email = profile?.email ?? storeEmail;
   const [step, setStep] = useState<Step>('form');
   const [code, setCode] = useState<string[]>(Array(6).fill(''));
   const [pendingPassword, setPendingPassword] = useState<PasswordValues | null>(null);
@@ -53,7 +57,7 @@ export default function PasswordSettingsPage() {
   });
 
   const sendCodeMutation = useMutation({
-    mutationFn: (email: string) => sendVerification(email, 'FORGOT_PASSWORD'),
+    mutationFn: (email: string) => sendVerification(email, 'CHANGE_PASSWORD'),
   });
 
   const verifyAndChange = useMutation({
@@ -68,26 +72,27 @@ export default function PasswordSettingsPage() {
       newPassword: string;
       confirmPassword: string;
     }) => {
-      await verifyVerification(email, otp, 'FORGOT_PASSWORD');
-      return forgotPassword({ email, newPassword, confirmPassword });
+      if (!token) throw new Error('Not authenticated.');
+      await verifyVerification(email, otp, 'CHANGE_PASSWORD');
+      return changePasswordWithOtp({ newPassword, confirmPassword }, token);
     },
   });
 
   function onSubmitPassword(values: PasswordValues) {
-    if (!profile?.email) {
+    if (!email) {
       setErrorMsg('Cannot resolve account email.');
       return;
     }
     setErrorMsg(null);
     setPendingPassword(values);
-    sendCodeMutation.mutate(profile.email, {
+    sendCodeMutation.mutate(email, {
       onSuccess: () => setStep('otp'),
       onError: (err) => setErrorMsg((err as Error).message),
     });
   }
 
   function onSubmitOtp() {
-    if (!profile?.email || !pendingPassword) return;
+    if (!email || !pendingPassword) return;
     const otp = code.join('');
     if (otp.length !== 6) {
       setErrorMsg('Enter the 6-digit code.');
@@ -96,7 +101,7 @@ export default function PasswordSettingsPage() {
     setErrorMsg(null);
     verifyAndChange.mutate(
       {
-        email: profile.email,
+        email,
         otp,
         newPassword: pendingPassword.newPassword,
         confirmPassword: pendingPassword.confirmPassword,
@@ -114,9 +119,9 @@ export default function PasswordSettingsPage() {
   }
 
   function resendCode() {
-    if (!profile?.email) return;
+    if (!email) return;
     setErrorMsg(null);
-    sendCodeMutation.mutate(profile.email);
+    sendCodeMutation.mutate(email);
   }
 
   function backToForm() {
@@ -142,10 +147,27 @@ export default function PasswordSettingsPage() {
       <div style={{ maxWidth: 560 }}>
         <ErrorAlert message={errorMsg} />
 
-        {profileLoading || !profile ? (
+        {!email && profileLoading ? (
           <SkeletonForm />
+        ) : !email ? (
+          <ErrorAlert message="Cannot resolve account email. Please re-login and try again." />
         ) : step === 'form' ? (
           <form onSubmit={handleSubmit(onSubmitPassword)}>
+            <SettingsField
+              label="Email"
+              htmlFor="accountEmail"
+              hint="The verification code is sent here."
+            >
+              <input
+                id="accountEmail"
+                type="email"
+                value={email}
+                readOnly
+                disabled
+                style={{ ...settingsInputStyle(false), cursor: 'not-allowed', opacity: 0.7 }}
+              />
+            </SettingsField>
+
             <SettingsField
               label="New password"
               htmlFor="newPassword"
@@ -185,7 +207,7 @@ export default function PasswordSettingsPage() {
           <div>
             <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 18 }}>
               We sent a 6-digit code to{' '}
-              <strong style={{ color: 'var(--text)' }}>{profile.email}</strong>. Enter it below to
+              <strong style={{ color: 'var(--text)' }}>{email}</strong>. Enter it below to
               confirm the password change.
             </p>
 

@@ -93,6 +93,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.Email,
 		ctrls.Verification,
 		ctrls.Follow,
+		ctrls.UserBlock,
 		ctrls.Community,
 		ctrls.CommunityMember,
 		ctrls.CommunityRequest,

@@ -70,6 +70,16 @@ func (s *ThreadService) createThread(ctx context.Context, userID uint, content s
 		}
 		parent = foundParent
 		if parent.UserID != userID {
+			// Block check: can't reply to a thread by someone in a mutual block.
+			if s.blockRepo != nil {
+				blocked, err := s.blockRepo.IsBlocked(userID, parent.UserID)
+				if err != nil {
+					return nil, err
+				}
+				if blocked {
+					return nil, errors.New("blocked")
+				}
+			}
 			isPrivate, err := s.settingsRepo.IsUserPrivate(ctx, parent.UserID)
 			if err != nil {
 				return nil, err
@@ -158,7 +168,7 @@ func (s *ThreadService) createThread(ctx context.Context, userID uint, content s
 	if parent != nil {
 		helper.SendCommentNotification(s.notification, userID, parent.UserID, thread.ThreadID)
 	}
-	helper.SendMentionNotifications(s.notification, s.userRepo, userID, thread.ThreadID, content)
+	helper.SendMentionNotifications(s.notification, s.userRepo, s.blockRepo, userID, thread.ThreadID, content)
 	return thread, nil
 }
 
@@ -199,7 +209,7 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 	if s.hashtagService != nil {
 		s.hashtagService.InvalidateTrendingCache(ctx)
 	}
-	helper.SendMentionNotifications(s.notification, s.userRepo, userID, thread.ThreadID, content)
+	helper.SendMentionNotifications(s.notification, s.userRepo, s.blockRepo, userID, thread.ThreadID, content)
 	return thread, nil
 }
 
@@ -287,6 +297,16 @@ func (s *ThreadService) Repost(ctx context.Context, userID, threadID uint) error
 	}
 	if err := CanViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &userID, original.UserID); err != nil {
 		return err
+	}
+	// Cannot repost a blocked user's thread (mutual hide).
+	if s.blockRepo != nil && userID != original.UserID {
+		blocked, err := s.blockRepo.IsBlocked(userID, original.UserID)
+		if err != nil {
+			return err
+		}
+		if blocked {
+			return errors.New("blocked")
+		}
 	}
 	if original.CommunityID != nil {
 		community, err := s.communityRepo.FindByID(*original.CommunityID)

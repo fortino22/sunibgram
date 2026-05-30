@@ -1,6 +1,6 @@
 import { api } from '../api';
 
-export type VerificationType = 'REGISTER' | 'FORGOT_PASSWORD';
+export type VerificationType = 'REGISTER' | 'FORGOT_PASSWORD' | 'CHANGE_PASSWORD';
 
 export interface AuthSessionResponse {
   message: string;
@@ -39,7 +39,6 @@ export interface SendLoginOtpParams {
 }
 
 export interface ChangePasswordParams {
-  oldPassword: string;
   newPassword: string;
   confirmPassword: string;
 }
@@ -105,14 +104,13 @@ export function logout(token: string): Promise<MessageResponse> {
   return api.post<MessageResponse>('/api/auth/logout', undefined, token);
 }
 
-export function changePassword(
+export function changePasswordWithOtp(
   params: ChangePasswordParams,
   token: string
 ): Promise<MessageResponse> {
   return api.put<MessageResponse>(
     '/api/auth/change-password',
     {
-      old_password: params.oldPassword,
       new_password: params.newPassword,
       confirm_password: params.confirmPassword,
     },

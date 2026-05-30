@@ -11,6 +11,7 @@ import (
 	communityrepoiface "github.com/sunibgram/domain/repository/community"
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	communityactionconfirmationsvciface "github.com/sunibgram/domain/service/community_action_confirmation"
 	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
 )
@@ -19,6 +20,7 @@ type CommunityMemberService struct {
 	communityRepo communityrepoiface.ICommunityRepository
 	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
 	followRepo    followrepoiface.IFollowRepository
+	blockRepo     userblockrepoiface.IUserBlockRepository
 	cacheRepo     cacherepoiface.ICacheRepository
 	auditSvc      communityactionconfirmationsvciface.ICommunityActionConfirmationService
 }
@@ -31,6 +33,7 @@ func NewCommunityMemberService(
 	communityRepo communityrepoiface.ICommunityRepository,
 	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
 	followRepo followrepoiface.IFollowRepository,
+	blockRepo userblockrepoiface.IUserBlockRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
 	auditSvc communityactionconfirmationsvciface.ICommunityActionConfirmationService,
 ) communitymembersvciface.ICommunityMemberService {
@@ -38,6 +41,7 @@ func NewCommunityMemberService(
 		communityRepo: communityRepo,
 		memberRepo:    memberRepo,
 		followRepo:    followRepo,
+		blockRepo:     blockRepo,
 		cacheRepo:     cacheRepo,
 		auditSvc:      auditSvc,
 	}
@@ -103,12 +107,16 @@ func (s *CommunityMemberService) Leave(ctx context.Context, communityID, userID 
 	return nil
 }
 
-func (s *CommunityMemberService) GetMembers(communityID uint, page, limit int) ([]communitymembermodel.CommunityMember, int64, error) {
+func (s *CommunityMemberService) GetMembers(viewerID, communityID uint, page, limit int) ([]communitymembermodel.CommunityMember, int64, error) {
 	if _, err := s.communityRepo.FindByID(communityID); err != nil {
 		return nil, 0, errors.New("community not found")
 	}
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	return s.memberRepo.FindByCommunityID(communityID, page, limit)
+	members, total, err := s.memberRepo.FindByCommunityID(communityID, page, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	return s.filterBlockedMembers(viewerID, members), total, nil
 }
 
 func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communityID, viewerID uint, role *communitymembermodel.CommunityMemberRole, query string, page, limit int) ([]communitymembersvciface.CommunityUserItem, int64, error) {
@@ -121,6 +129,7 @@ func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communit
 	if err != nil {
 		return nil, 0, err
 	}
+	members = s.filterBlockedMembers(viewerID, members)
 
 	userIDs := make([]uint, 0, len(members))
 	for _, m := range members {
@@ -148,6 +157,28 @@ func (s *CommunityMemberService) GetCommunityUsers(ctx context.Context, communit
 		}
 	}
 	return items, total, nil
+}
+
+// filterBlockedMembers drops members in a mutual block relationship with the
+// viewer (mutual hide). Page-bounded (≤20) so the per-user IsBlocked loop is
+// cheap. Filtered at the service layer; total stays approximate.
+func (s *CommunityMemberService) filterBlockedMembers(viewerID uint, members []communitymembermodel.CommunityMember) []communitymembermodel.CommunityMember {
+	if s.blockRepo == nil || viewerID == 0 || len(members) == 0 {
+		return members
+	}
+	out := make([]communitymembermodel.CommunityMember, 0, len(members))
+	for _, m := range members {
+		if m.UserID == viewerID {
+			out = append(out, m)
+			continue
+		}
+		blocked, err := s.blockRepo.IsBlocked(viewerID, m.UserID)
+		if err == nil && blocked {
+			continue
+		}
+		out = append(out, m)
+	}
+	return out
 }
 
 func (s *CommunityMemberService) RemoveMember(ctx context.Context, communityID, actorUserID, targetUserID uint) error {

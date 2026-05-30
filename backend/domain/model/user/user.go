@@ -20,7 +20,11 @@ type User struct {
 	UserID      uint           `gorm:"primaryKey;autoIncrement"`
 	Name        string         `gorm:"not null"`
 	UserName    string         `gorm:"uniqueIndex;not null"`
-	Email       string         `gorm:"uniqueIndex;not null" json:"-"`
+	// Email is included in (de)serialization so the Redis cache round-trip for
+	// FindByID preserves it. The User struct is never returned raw to clients —
+	// email exposure is gated by DTOs (e.g. UserProfileResponse only sets it on
+	// self-view). Password stays json:"-" — it must never serialize anywhere.
+	Email       string         `gorm:"uniqueIndex;not null" json:"email"`
 	Password    string         `gorm:"not null" json:"-"`
 	RoleID      uint           `gorm:"not null;default:1"`
 	IsPremium   bool           `gorm:"not null;default:false"`

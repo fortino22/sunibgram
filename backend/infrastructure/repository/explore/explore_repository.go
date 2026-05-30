@@ -88,7 +88,7 @@ func (r *exploreRepository) ExploreSearch(ctx context.Context, query string, req
 	if err != nil {
 		return nil, err
 	}
-	threads, err := r.exploreThreads(ctx, query, offset, limit)
+	threads, err := r.exploreThreads(ctx, query, requesterID, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +209,7 @@ func (r *exploreRepository) FindFacultySuggestions(ctx context.Context, requeste
 	}
 
 	var rows []ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("user_faculties AS me").
 		Select(suggestionSelectColumns).
 		Joins("JOIN user_faculties AS peer ON peer.faculty_id = me.faculty_id AND peer.user_id <> me.user_id").
@@ -219,7 +219,9 @@ func (r *exploreRepository) FindFacultySuggestions(ctx context.Context, requeste
 		Joins("LEFT JOIN user_relationships AS existing ON existing.follower_id = ? AND existing.following_id = peer.user_id", requesterID).
 		Where("me.user_id = ?", requesterID).
 		Where("existing.following_id IS NULL").
-		Where("roles.name <> ?", "admin").
+		Where("roles.name <> ?", "admin")
+	db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)
+	if err := db.
 		Group(suggestionGroupColumns).
 		Order("users.is_premium DESC, users.created_at DESC").
 		Offset(offset).
@@ -245,7 +247,7 @@ func (r *exploreRepository) FindMutualSuggestions(ctx context.Context, requester
 	}
 
 	var rows []ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("user_relationships AS followed").
 		Select(suggestionSelectColumns).
 		Joins("JOIN user_relationships AS suggested ON suggested.follower_id = followed.following_id").
@@ -256,7 +258,9 @@ func (r *exploreRepository) FindMutualSuggestions(ctx context.Context, requester
 		Where("followed.follower_id = ?", requesterID).
 		Where("suggested.following_id <> ?", requesterID).
 		Where("existing.following_id IS NULL").
-		Where("roles.name <> ?", "admin").
+		Where("roles.name <> ?", "admin")
+	db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)
+	if err := db.
 		Group(suggestionGroupColumns).
 		Order("COUNT(DISTINCT followed.following_id) DESC, users.is_premium DESC, users.created_at DESC").
 		Offset(offset).
@@ -281,7 +285,7 @@ func (r *exploreRepository) FindRandomSuggestions(ctx context.Context, requester
 	}
 
 	var rows []ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("users").
 		Select(suggestionSelectColumns).
 		Joins("JOIN roles ON roles.role_id = users.role_id").
@@ -289,7 +293,9 @@ func (r *exploreRepository) FindRandomSuggestions(ctx context.Context, requester
 		Joins("LEFT JOIN user_relationships AS existing ON existing.follower_id = ? AND existing.following_id = users.user_id", requesterID).
 		Where("users.user_id <> ?", requesterID).
 		Where("existing.following_id IS NULL").
-		Where("roles.name <> ?", "admin").
+		Where("roles.name <> ?", "admin")
+	db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)
+	if err := db.
 		Order("RANDOM()").
 		Offset(offset).
 		Limit(limit).
@@ -512,7 +518,7 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 	}
 
 	var rows []ExploreUserRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("users").
 		Select(`
 			users.user_id,
@@ -526,7 +532,11 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
 		Joins("LEFT JOIN user_relationships ON user_relationships.following_id = users.user_id AND user_relationships.follower_id = ?", viewerID).
 		Where("roles.name <> ?", "admin").
-		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\' OR user_profiles.bio ILIKE ? ESCAPE '\\'", pattern, pattern, pattern).
+		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\' OR user_profiles.bio ILIKE ? ESCAPE '\\'", pattern, pattern, pattern)
+	if viewerID != 0 {
+		db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", viewerID)
+	}
+	if err := db.
 		Order("users.is_premium DESC, users.created_at DESC").
 		Offset(offset).
 		Limit(limit).
@@ -548,10 +558,10 @@ func (r *exploreRepository) exploreUsers(ctx context.Context, query string, requ
 	return users, nil
 }
 
-func (r *exploreRepository) exploreThreads(ctx context.Context, query string, offset, limit int) ([]exploremodel.ExploreThreadResult, error) {
+func (r *exploreRepository) exploreThreads(ctx context.Context, query string, requesterID *uint, offset, limit int) ([]exploremodel.ExploreThreadResult, error) {
 	pattern := LikePattern(query)
 	var rows []exploreThreadRow
-	if err := r.readDB.WithContext(ctx).
+	db := r.readDB.WithContext(ctx).
 		Table("threads").
 		Select("DISTINCT ON (threads.content) threads.user_id, threads.content").
 		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
@@ -559,7 +569,11 @@ func (r *exploreRepository) exploreThreads(ctx context.Context, query string, of
 		Where("threads.type IN ?", []string{string(threadmodel.ThreadTypePost), string(threadmodel.ThreadTypeReply)}).
 		Where("threads.community_id IS NULL OR communities.visibility = ?", communitymodel.CommunityVisibilityPublic).
 		Where("COALESCE(thread_visibility_settings.is_private, false) = ?", false).
-		Where("threads.content ILIKE ? ESCAPE '\\'", pattern).
+		Where("threads.content ILIKE ? ESCAPE '\\'", pattern)
+	if requesterID != nil && *requesterID != 0 {
+		db = threadrepo.ApplyBlockFilter(db, *requesterID)
+	}
+	if err := db.
 		Order("threads.content, threads.created_at DESC").
 		Offset(offset).
 		Limit(limit).

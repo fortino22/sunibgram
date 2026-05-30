@@ -61,6 +61,9 @@ func (c *BookmarkController) Bookmark(ctx *fiber.Ctx) error {
 		if err.Error() == "thread not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
 		}
+		if err.Error() == "blocked" {
+			return ctx.Status(fiber.StatusForbidden).JSON(authdto.ErrorResponse{Message: err.Error()})
+		}
 		return ctx.Status(fiber.StatusConflict).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
 
