@@ -410,6 +410,39 @@ body {
 [data-theme="white"] .fox-sleep-frame--white { display: none; }
 [data-theme="white"] .fox-sleep-frame--black { display: block; }
 
+/* Summary modal header: rainbow gradient flowing left->right while streaming. */
+.summary-shimmer {
+  background: linear-gradient(90deg, #ff004d, #ff8a00, #ffd400, #00d672, #00a3ff, #b14bff, #ff004d);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: summary-shimmer 2s linear infinite;
+}
+@keyframes summary-shimmer {
+  from { background-position: 0% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* Hover highlight on summary modal content blocks (thread + summary box). */
+.summary-block {
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+.summary-block:hover {
+  background: var(--bg-hover);
+}
+.summary-block-subtle {
+  background: var(--bg-subtle);
+  transition: background 0.15s ease;
+}
+.summary-block-subtle:hover {
+  background: var(--bg-hover);
+}
+@media (prefers-reduced-motion: reduce) {
+  .summary-shimmer { animation: none; color: var(--text); }
+}
+
 /* Coming-soon card glow — white halo on dark theme, black halo on light. */
 .fox-soon-card {
   box-shadow: var(--shadow-dropdown), 0 0 26px rgba(255, 255, 255, 0.38), 0 0 6px rgba(255, 255, 255, 0.55);

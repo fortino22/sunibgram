@@ -107,7 +107,12 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
           <span className="summary-fox" aria-hidden="true">
             <img src="/assets/fox.png" alt="" />
           </span>
-          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>Summary</span>
+          <span
+            className={status === 'streaming' ? 'summary-shimmer' : undefined}
+            style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', display: 'inline-block' }}
+          >
+            {status === 'streaming' ? 'Wait Fox Cooking…' : 'Summary'}
+          </span>
           <button
             type="button"
             aria-label="Close"
@@ -137,7 +142,7 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
               Full thread
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div className="summary-block" style={{ display: 'flex', gap: 10, padding: 8, margin: -8 }}>
               <Link href={`/profile/${author.id}`} style={{ flexShrink: 0 }}>
                 <Avatar username={author.username} avatarUrl={getAuthorAvatarUrl(author)} size="md" />
               </Link>
@@ -163,10 +168,10 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
               Summary
             </div>
             <div
+              className="summary-block-subtle"
               style={{
                 borderRadius: 12,
                 border: '1px solid var(--border)',
-                background: 'var(--bg-subtle)',
                 padding: 12,
               }}
             >
