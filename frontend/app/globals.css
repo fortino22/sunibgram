@@ -816,3 +816,245 @@ body {
   text-transform: uppercase;
 }
 
+/* ============================================================
+   About / marketing page
+   ------------------------------------------------------------
+   Uses the project's existing design tokens (--bg, --text, --accent,
+   --border, --bg-card, --accent-soft). The page forces the light
+   theme via `data-theme="white"` on the .about-root div so the
+   marketing surface stays consistent regardless of the student's
+   in-app theme choice. No invented marketing palette.
+   ============================================================ */
+
+.about-root {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-dm-sans);
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Centered content container — every marketing section uses this.
+   72rem (1152px) gives obvious horizontal centering on wide viewports. */
+.about-container {
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+.about-container-narrow {
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+@media (max-width: 640px) {
+  .about-container,
+  .about-container-narrow {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+/* Hero mesh background — soft blue glow on light theme */
+.about-hero-mesh {
+  position: relative;
+  background:
+    radial-gradient(55% 50% at 25% 40%, var(--accent-soft) 0%, transparent 65%),
+    radial-gradient(50% 45% at 75% 55%, var(--accent-soft) 0%, transparent 70%),
+    var(--bg);
+}
+
+/* Subtle grid overlay inside the hero mesh */
+.about-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 50%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 50%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
+  pointer-events: none;
+}
+
+/* Monospace UI chrome — eyebrow tags, CTA buttons, footer labels */
+.about-root .mono {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+/* Eyebrow tag: ■ EYEBROW TEXT */
+.about-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.about-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* Primary CTA — uses the project's brand blue */
+.about-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: var(--accent);
+  color: var(--text-on-dark);
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.about-btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* Secondary CTA — outline on light surface */
+.about-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: transparent;
+  color: var(--text);
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.about-btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--text);
+}
+
+/* Inverted variants — used on the blue closure band */
+.about-btn-primary-inverted {
+  background: #ffffff;
+  color: var(--accent);
+  border-color: #ffffff;
+}
+.about-btn-primary-inverted:hover {
+  background: oklch(95% 0.005 260);
+  border-color: oklch(95% 0.005 260);
+}
+.about-btn-secondary-inverted {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.about-btn-secondary-inverted:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #ffffff;
+}
+
+/* Inline mono link with arrow — used as in-section CTA */
+.about-link-mono {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 2px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.about-link-mono:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Use-case card — tinted with the project's brand blue */
+.about-usecase-card {
+  background: var(--accent-soft);
+  border-radius: 14px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 280px;
+  transition: transform 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+.about-usecase-card:hover { transform: translateY(-2px); }
+.about-usecase-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to right,
+    color-mix(in oklab, var(--accent) 8%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.about-usecase-card > * { position: relative; z-index: 1; }
+
+/* Generic card surface used by split-section visuals */
+.about-surface-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* Inline profile chip used inside the hero headline */
+.about-inline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px oklch(0% 0 0 / 0.06);
+  font-size: 0.55em;
+  line-height: 1;
+  vertical-align: -0.12em;
+}
+.about-inline-chip-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent) 0%, oklch(58% 0.18 220) 100%);
+  flex-shrink: 0;
+}
+.about-inline-chip-badge {
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', 'Roboto Mono', monospace;
+  font-size: 0.7em;
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
