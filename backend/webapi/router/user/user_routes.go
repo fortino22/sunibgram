@@ -5,15 +5,23 @@ import (
 
 	explorectrl "github.com/sunibgram/webapi/controller/explore"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
+	notificationusermutectrl "github.com/sunibgram/webapi/controller/notification_user_mute"
+	userblockctrl "github.com/sunibgram/webapi/controller/user_block"
 )
 
-func RegisterUserRoutes(api fiber.Router, followCtrl *followctrl.FollowController, exploreCtrl *explorectrl.ExploreController, auth fiber.Handler) {
+func RegisterUserRoutes(api fiber.Router, followCtrl *followctrl.FollowController, exploreCtrl *explorectrl.ExploreController, blockCtrl *userblockctrl.UserBlockController, muteCtrl *notificationusermutectrl.NotificationUserMuteController, auth fiber.Handler) {
 	users := api.Group("/users")
 	users.Get("/suggestions/faculty", auth, exploreCtrl.GetFacultySuggestions)
 	users.Get("/suggestions/mutual", auth, exploreCtrl.GetMutualSuggestions)
 	users.Get("/suggested/preview", auth, exploreCtrl.GetSuggestedPeoplePreview)
 	users.Post("/:id/follow", auth, followCtrl.Follow)
 	users.Delete("/:id/unfollow", auth, followCtrl.Unfollow)
+	users.Get("/me/blocks", auth, blockCtrl.GetMyBlockedUsers)
+	users.Post("/:id/block", auth, blockCtrl.Block)
+	users.Delete("/:id/unblock", auth, blockCtrl.Unblock)
+	users.Get("/me/mutes", auth, muteCtrl.GetMyMutedUsers)
+	users.Post("/:id/mute", auth, muteCtrl.Mute)
+	users.Delete("/:id/unmute", auth, muteCtrl.Unmute)
 
 	follows := api.Group("/follows")
 	follows.Get("/me/following", auth, followCtrl.GetMyFollowing)

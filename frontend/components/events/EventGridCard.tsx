@@ -46,7 +46,7 @@ export function EventGridCard({ event, live = false, badge }: Props) {
   const dateLabel = formatRange(event.startTime, event.endTime);
 
   const badgeTones: Record<string, { bg: string; fg: string; border: string }> = {
-    default: { bg: 'oklch(100% 0 0 / 0.08)', fg: 'var(--text)',         border: 'oklch(100% 0 0 / 0.15)' },
+    default: { bg: 'var(--bg-hover)', fg: 'var(--text)',         border: 'var(--border)' },
     success: { bg: 'oklch(70% 0.15 145 / 0.18)', fg: 'oklch(82% 0.15 145)', border: 'oklch(70% 0.15 145 / 0.4)' },
     warning: { bg: 'oklch(75% 0.15 80 / 0.18)',  fg: 'oklch(85% 0.15 80)',  border: 'oklch(75% 0.15 80 / 0.4)' },
     danger:  { bg: 'oklch(65% 0.2 25 / 0.18)',   fg: 'oklch(75% 0.2 25)',   border: 'oklch(65% 0.2 25 / 0.4)' },
@@ -70,7 +70,7 @@ export function EventGridCard({ event, live = false, badge }: Props) {
         transition: 'transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
         transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
         borderColor: hovered ? 'var(--text)' : 'var(--border)',
-        boxShadow: hovered ? '0 16px 32px oklch(0% 0 0 / 0.5)' : '0 0 0 oklch(0% 0 0 / 0)',
+        boxShadow: hovered ? 'var(--shadow-dropdown)' : '0 0 0 oklch(0% 0 0 / 0)',
       }}
     >
       {/* Banner */}

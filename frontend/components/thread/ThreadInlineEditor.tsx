@@ -1,15 +1,25 @@
 'use client';
 
-import { ImagePlus, LoaderCircle, X } from 'lucide-react';
+import { ImagePlus, LoaderCircle, X, Smile, Film, Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import {
   type ChangeEvent,
   type MouseEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-import type { ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
+import type { EmojiClickData } from 'emoji-picker-react';
+import type { ThreadMediaResponse, ThreadMutationParams, MentionUser } from '@/lib/services/threads';
+import { decodeMentionsForEditing, encodeMentions } from '@/lib/mentions';
+import { GifPicker } from '@/components/chat/GifPicker';
+import { MentionAutocomplete } from '@/components/thread/MentionAutocomplete';
+
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
 type PreviewKind = 'image' | 'video' | 'file';
 
@@ -69,9 +79,24 @@ export function ThreadInlineEditor({
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
-  const [content, setContent] = useState(initialContent);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [textareaEl, setTextareaEl] = useState<HTMLTextAreaElement | null>(null);
+  const decoded = useMemo(() => decodeMentionsForEditing(initialContent), [initialContent]);
+  const mentionMapRef = useRef<Map<string, string | number>>(decoded.mentionMap);
+  const [content, setContent] = useState(decoded.text);
   const [removedMediaIds, setRemovedMediaIds] = useState<number[]>([]);
   const [previews, setPreviews] = useState<FilePreview[]>([]);
+
+  // Mention autocomplete state
+  const [mentionState, setMentionState] = useState<{ query: string; start: number; end: number } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const mentionResultsRef = useRef<MentionUser[]>([]);
+
+  // Emoji / GIF pickers
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifFetching, setGifFetching] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     previewsRef.current = previews;
@@ -82,6 +107,17 @@ export function ThreadInlineEditor({
       previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url));
     };
   }, []);
+
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handler = (e: globalThis.MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showEmojiPicker]);
 
   const normalizedContent = content.trim();
   const selectedFiles = previews.map((preview) => preview.file);
@@ -106,13 +142,134 @@ export function ThreadInlineEditor({
           ? 'Saving will replace the current media with the new uploads.'
           : undefined;
 
-  const canSave = normalizedContent.length > 0 && !pending && !hasUnsupportedMediaState;
+  const canSave = normalizedContent.length > 0 && !pending && !gifFetching && !hasUnsupportedMediaState;
 
   function stopEvent(event: MouseEvent<HTMLElement>) {
     event.preventDefault();
     event.stopPropagation();
   }
 
+  // --- Mention autocomplete --------------------------------------------------
+  function detectMentionAt(text: string, caret: number): { query: string; start: number; end: number } | null {
+    let i = caret - 1;
+    while (i >= 0 && /[a-zA-Z0-9_.]/.test(text[i])) i--;
+    if (i < 0 || text[i] !== '@') return null;
+    const before = i === 0 ? '' : text[i - 1];
+    if (before && !/\s/.test(before)) return null;
+    const query = text.slice(i + 1, caret);
+    if (query.length > 30) return null;
+    return { query, start: i, end: caret };
+  }
+
+  function handleContentChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    setContent(value);
+    const caret = e.target.selectionStart ?? value.length;
+    const detected = detectMentionAt(value, caret);
+    if (detected) {
+      setMentionState(detected);
+      setMentionIndex(0);
+    } else if (mentionState) {
+      setMentionState(null);
+    }
+  }
+
+  const insertMention = useCallback((user: MentionUser) => {
+    const el = textareaRef.current;
+    const state = mentionState;
+    if (!state) return;
+    const insertion = `@${user.username} `;
+    setContent((prev) => prev.slice(0, state.start) + insertion + prev.slice(state.end));
+    mentionMapRef.current.set(user.username, user.user_id);
+    setMentionState(null);
+    setMentionIndex(0);
+    requestAnimationFrame(() => {
+      if (!el) return;
+      el.focus();
+      const pos = state.start + insertion.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }, [mentionState]);
+
+  function handleTextareaKeyDown(e: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (!mentionState) return;
+    const results = mentionResultsRef.current;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      setMentionState(null);
+      return;
+    }
+    if (results.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setMentionIndex((i) => (i + 1) % results.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setMentionIndex((i) => (i - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      const target = results[Math.min(mentionIndex, results.length - 1)];
+      if (target) insertMention(target);
+    }
+  }
+
+  const handleMentionResults = useCallback((results: MentionUser[]) => {
+    mentionResultsRef.current = results;
+    setMentionIndex((i) => (results.length === 0 ? 0 : Math.min(i, results.length - 1)));
+  }, []);
+
+  function handleTextareaSelect(e: React.SyntheticEvent<HTMLTextAreaElement>) {
+    const el = e.currentTarget;
+    const detected = detectMentionAt(el.value, el.selectionStart ?? 0);
+    if (detected) {
+      if (
+        !mentionState ||
+        mentionState.query !== detected.query ||
+        mentionState.start !== detected.start
+      ) {
+        setMentionState(detected);
+        setMentionIndex(0);
+      }
+    } else if (mentionState) {
+      setMentionState(null);
+    }
+  }
+
+  // --- Emoji / GIF -----------------------------------------------------------
+  function handleEmojiClick(emojiData: EmojiClickData) {
+    const el = textareaRef.current;
+    if (!el) {
+      setContent((prev) => prev + emojiData.emoji);
+    } else {
+      const start = el.selectionStart ?? content.length;
+      const end = el.selectionEnd ?? content.length;
+      setContent((prev) => prev.slice(0, start) + emojiData.emoji + prev.slice(end));
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + emojiData.emoji.length;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+    setShowEmojiPicker(false);
+  }
+
+  async function handleGifSelect(gifUrl: string) {
+    setShowGifPicker(false);
+    setGifFetching(true);
+    try {
+      const res = await fetch(gifUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `gif-${gifUrl.length}-${blob.size}.gif`, { type: blob.type || 'image/gif' });
+      const url = URL.createObjectURL(file);
+      setPreviews((cur) => [...cur, { file, kind: 'image', url }]);
+    } catch {
+      // silently ignore if CORS blocks
+    } finally {
+      setGifFetching(false);
+    }
+  }
+
+  // --- Media -----------------------------------------------------------------
   function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const incoming = Array.from(event.target.files ?? []);
     if (incoming.length === 0) {
@@ -157,7 +314,7 @@ export function ThreadInlineEditor({
 
     try {
       const params: ThreadMutationParams = {
-        content: normalizedContent,
+        content: encodeMentions(normalizedContent, mentionMapRef.current),
       };
 
       if (selectedFiles.length > 0) {
@@ -174,41 +331,79 @@ export function ThreadInlineEditor({
 
   function handleCancel(event: MouseEvent<HTMLButtonElement>) {
     stopEvent(event);
-    setContent(initialContent);
+    setContent(decoded.text);
     setRemovedMediaIds([]);
     previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url));
     previewsRef.current = [];
     setPreviews([]);
+    setShowEmojiPicker(false);
+    setShowGifPicker(false);
+    setMentionState(null);
     if (inputRef.current !== null) {
       inputRef.current.value = '';
     }
     onCancel();
   }
 
+  const iconBtnStyle = (active: boolean, busy = false) => ({
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    background: 'none',
+    border: 'none',
+    color: active ? 'var(--accent)' : 'var(--text-secondary)',
+    cursor: busy ? 'not-allowed' : 'pointer',
+    opacity: busy ? 0.6 : 1,
+  });
+
   return (
     <div
       className="mt-3 overflow-hidden rounded-2xl border"
-      style={{ borderColor: 'var(--border)' }}
+      style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }}
       onClick={(event) => event.stopPropagation()}
     >
       {/* Content area */}
-      <div className="px-5 pt-5 pb-4">
+      <div style={{ padding: '12px 16px 0' }}>
         <textarea
+          ref={(el) => {
+            textareaRef.current = el;
+            setTextareaEl(el);
+          }}
           value={content}
-          onChange={(event) => setContent(event.target.value)}
-          rows={compact ? 5 : 6}
+          onChange={handleContentChange}
+          onKeyDown={handleTextareaKeyDown}
+          onSelect={handleTextareaSelect}
+          rows={compact ? 2 : 3}
           autoFocus
-          className="w-full resize-y bg-transparent text-base outline-none"
+          className="w-full resize-none bg-transparent text-base outline-none"
           style={{
             color: 'var(--text)',
-            lineHeight: 1.7,
-            minHeight: compact ? 148 : 172,
+            lineHeight: 1.5,
+            minHeight: compact ? 56 : 72,
             border: 'none',
+            padding: '2px 2px',
           }}
         />
 
+        {mentionState && (
+          <MentionAutocomplete
+            query={mentionState.query}
+            anchorEl={textareaEl}
+            mentionStart={mentionState.start}
+            caretIndex={mentionState.end}
+            activeIndex={mentionIndex}
+            onActiveIndexChange={setMentionIndex}
+            onSelect={insertMention}
+            onClose={() => setMentionState(null)}
+            onResults={handleMentionResults}
+          />
+        )}
+
         {initialMedia.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-3">
             <div
               className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
               style={{ color: 'var(--text-tertiary)' }}
@@ -286,7 +481,7 @@ export function ThreadInlineEditor({
         )}
 
         {previews.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-3">
             <div
               className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
               style={{ color: 'var(--text-tertiary)' }}
@@ -375,14 +570,30 @@ export function ThreadInlineEditor({
             {errorMessage}
           </div>
         )}
+
+        {/* Emoji / GIF inline popovers */}
+        {showEmojiPicker && (
+          <div ref={emojiPickerRef} style={{ position: 'relative', zIndex: 50, marginTop: 10 }}>
+            <EmojiPicker onEmojiClick={handleEmojiClick} lazyLoadEmojis height={360} width="100%" />
+          </div>
+        )}
+        {showGifPicker && (
+          <div style={{ position: 'relative', marginTop: 10 }}>
+            <GifPicker
+              placement="inline"
+              onSelect={(url) => void handleGifSelect(url)}
+              onClose={() => setShowGifPicker(false)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Action footer */}
       <div
-        className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
-        style={{ borderTop: '1px solid var(--border)' }}
+        className="flex flex-wrap items-center justify-between gap-3"
+        style={{ borderTop: '1px solid var(--border)', padding: '10px 16px', marginTop: 6 }}
       >
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center" style={{ gap: 4 }}>
           <input
             ref={inputRef}
             id={inputId}
@@ -394,23 +605,43 @@ export function ThreadInlineEditor({
           />
           <label
             htmlFor={inputId}
-            className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
+            title="Add image or video"
+            className="icon-knock"
             style={{
-              border: '1px solid var(--border)',
-              background: 'transparent',
-              color: 'var(--text)',
-              opacity: pending ? 0.6 : 1,
-              pointerEvents: pending ? 'none' : 'auto',
+              ...iconBtnStyle(false, pending),
+              pointerEvents: pending ? 'none' : undefined,
             }}
           >
-            <ImagePlus size={16} />
-            <span>Add media</span>
+            <ImagePlus size={18} />
           </label>
 
+          <button
+            type="button"
+            title="Add GIF"
+            className="icon-knock"
+            onClick={() => { setShowGifPicker((v) => !v); setShowEmojiPicker(false); }}
+            style={iconBtnStyle(showGifPicker, gifFetching)}
+          >
+            {gifFetching ? <Loader2 size={18} className="animate-spin" /> : <Film size={18} />}
+          </button>
+
+          <button
+            type="button"
+            title="Add emoji"
+            className="icon-knock"
+            onClick={() => { setShowEmojiPicker((v) => !v); setShowGifPicker(false); }}
+            style={iconBtnStyle(showEmojiPicker)}
+          >
+            <Smile size={18} />
+          </button>
+
           {(keptExistingMedia.length > 0 || selectedFiles.length > 0) && (
-            <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>
               {keptExistingMedia.length} current · {selectedFiles.length} new
             </span>
+          )}
+          {gifFetching && (
+            <span className="text-sm" style={{ color: 'var(--accent)', marginLeft: 4 }}>Adding GIF…</span>
           )}
         </div>
 
@@ -419,10 +650,11 @@ export function ThreadInlineEditor({
             type="button"
             onClick={handleCancel}
             disabled={pending}
-            className="btn-ghost inline-flex min-h-10 min-w-24 items-center justify-center rounded-full px-5 py-2.5 text-sm font-bold"
+            className="btn-ghost inline-flex min-w-20 items-center justify-center rounded-full text-sm font-bold"
             style={{
               border: '1px solid var(--border)',
               color: 'var(--text)',
+              padding: '9px 22px',
               cursor: pending ? 'not-allowed' : 'pointer',
               opacity: pending ? 0.5 : 1,
             }}
@@ -433,11 +665,12 @@ export function ThreadInlineEditor({
             type="button"
             onClick={(event) => void handleSubmit(event)}
             disabled={!canSave}
-            className="btn-solid inline-flex min-h-10 min-w-20 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold"
+            className="btn-solid inline-flex min-w-20 items-center justify-center gap-2 rounded-full text-sm font-bold"
             style={{
-              background: 'var(--accent)',
+              background: 'var(--text)',
               border: 0,
-              color: '#fff',
+              color: 'var(--bg)',
+              padding: '9px 22px',
               cursor: canSave ? 'pointer' : 'not-allowed',
               opacity: canSave ? 1 : 0.5,
             }}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ProfilePageHeader } from '@/components/profile/ProfilePageHeader';
 import { ProfileBanner } from '@/components/profile/ProfileBanner';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
+import { ReportModal } from '@/components/shared/ReportModal';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/ProfileTabs';
 import { ProfileThreadCard } from '@/components/profile/ProfileThreadCard';
 import { ProfileSkeleton } from '@/components/profile/skeletons/ProfileSkeleton';
@@ -14,6 +15,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { useUserThreads } from '@/hooks/useUserThreads';
 import { useUserReplies } from '@/hooks/useUserReplies';
 import { useFollowUser } from '@/hooks/useFollowUser';
+import { useBlockUser } from '@/hooks/useBlockUser';
+import { useMuteUser } from '@/hooks/useMuteUser';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function UserProfilePage() {
@@ -24,11 +27,15 @@ export default function UserProfilePage() {
   const profileUserId = hasValidUserId ? routeUserId : undefined;
   const currentUserId = useAuthStore((state) => state.user?.id);
   const [activeTab, setActiveTab] = useState<ProfileTab>('threads');
+  const [reportOpen, setReportOpen] = useState(false);
 
   const { data: profile, isLoading, isError, error } = useProfile(profileUserId);
-  const threadsQuery = useUserThreads(profileUserId);
-  const repliesQuery = useUserReplies(profileUserId);
+  const blockedRelationship = !!profile?.is_blocked || !!profile?.is_blocked_by;
+  const threadsQuery = useUserThreads(profileUserId, { enabled: !blockedRelationship });
+  const repliesQuery = useUserReplies(profileUserId, { enabled: !blockedRelationship });
   const { follow, unfollow } = useFollowUser(profileUserId, [profileUserId]);
+  const { block, unblock } = useBlockUser(profileUserId, [profileUserId]);
+  const { mute, unmute } = useMuteUser(profileUserId, [profileUserId]);
 
   const threadsSentinelRef = useRef<HTMLDivElement>(null);
   const repliesSentinelRef = useRef<HTMLDivElement>(null);
@@ -79,6 +86,9 @@ export default function UserProfilePage() {
 
   const isOwn = currentUserId === profile.id;
   const isFollowing = !!profile.is_following;
+  const isBlocked = !!profile.is_blocked;
+  const isBlockedBy = !!profile.is_blocked_by;
+  const isMuted = !!profile.is_muted;
   const threads = threadsQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const replies = repliesQuery.data?.pages.flatMap((p) => p.data) ?? [];
   const mediaThreads = threads.filter((t) => t.media.length > 0);
@@ -92,6 +102,22 @@ export default function UserProfilePage() {
       unfollow.mutate();
     } else {
       follow.mutate();
+    }
+  }
+
+  function handleBlockToggle() {
+    if (isBlocked) {
+      unblock.mutate();
+    } else {
+      block.mutate();
+    }
+  }
+
+  function handleMuteToggle() {
+    if (isMuted) {
+      unmute.mutate();
+    } else {
+      mute.mutate();
     }
   }
 
@@ -111,13 +137,46 @@ export default function UserProfilePage() {
           avatarUrl: profile.avatar ?? null,
           isPremium: profile.is_premium,
         }}
+        userId={profile.id}
         isOwn={isOwn}
         isFollowing={isFollowing}
         followPending={follow.isPending || unfollow.isPending}
         onFollowToggle={handleFollowToggle}
         onFollowersClick={() => router.push(`/profile/${profile.id}/followers?tab=followers`)}
         onFollowingClick={() => router.push(`/profile/${profile.id}/followers?tab=following`)}
+        onReport={isOwn ? undefined : () => setReportOpen(true)}
+        isBlocked={isBlocked}
+        isBlockedBy={isBlockedBy}
+        onBlock={isOwn || isBlockedBy ? undefined : handleBlockToggle}
+        blockPending={block.isPending || unblock.isPending}
+        isMuted={isMuted}
+        onMute={isOwn || isBlockedBy ? undefined : handleMuteToggle}
       />
+
+      {reportOpen && (
+        <ReportModal target={{ type: 'user', userId: profile.id }} onClose={() => setReportOpen(false)} />
+      )}
+      {isBlocked || isBlockedBy ? (
+        <>
+          <div
+            style={{
+              padding: '16px 20px',
+              borderTop: '1px solid var(--border)',
+              borderBottom: '1px solid var(--border)',
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--text)',
+            }}
+          >
+            {isBlocked ? `You blocked @${profile.username}` : `@${profile.username} blocked you`}
+          </div>
+          <EmptyState
+            title={isBlocked ? 'You blocked this account' : 'You’re blocked'}
+            subtitle={isBlocked ? 'Unblock to see their posts.' : `You can’t see @${profile.username}’s posts.`}
+          />
+        </>
+      ) : (
+        <>
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       {activeTab === 'threads' && (
@@ -153,6 +212,8 @@ export default function UserProfilePage() {
 
       {activeTab === 'likes' && (
         <EmptyState title="Likes are private" subtitle="Only the account owner can see their likes." />
+      )}
+        </>
       )}
     </div>
   );

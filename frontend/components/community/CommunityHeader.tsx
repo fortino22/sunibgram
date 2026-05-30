@@ -56,7 +56,7 @@ export function CommunityHeader({
   const isPublic = community.visibility === 'PUBLIC';
 
   const adminIconBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
-    border: '1px solid #808080',
+    border: '1px solid var(--border)',
     borderRadius: 999,
     width: 36,
     height: 36,
@@ -85,7 +85,7 @@ export function CommunityHeader({
           style={{
             padding: '7px 18px',
             borderRadius: 999,
-            border: `1px solid ${joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : '#808080'}`,
+            border: `1px solid ${joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : 'var(--border)'}`,
             background: 'transparent',
             color: joinedHovered && !leavePending ? 'var(--error, #e53e3e)' : 'var(--text)',
             fontSize: 14,
@@ -109,7 +109,7 @@ export function CommunityHeader({
             style={{
               padding: '7px 18px',
               borderRadius: 999,
-              border: '1px solid #808080',
+              border: '1px solid var(--border)',
               background: 'transparent',
               color: 'var(--text-secondary)',
               fontSize: 14,
@@ -179,7 +179,7 @@ export function CommunityHeader({
       />
 
       {/* Content */}
-      <div style={{ padding: '14px 20px 16px', background: '#1C1C1C' }}>
+      <div style={{ padding: '14px 20px 16px', background: 'var(--bg)' }}>
         <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 8 }}>
           {community.name}
         </div>
@@ -191,8 +191,8 @@ export function CommunityHeader({
               alignItems: 'center',
               fontSize: 13,
               fontWeight: 600,
-              color: '#ffffff',
-              border: '1.5px solid #ffffff',
+              color: 'var(--text)',
+              border: '1.5px solid var(--border)',
               borderRadius: 999,
               padding: '2px 12px',
             }}>

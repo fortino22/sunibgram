@@ -31,6 +31,7 @@ import (
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	likemodel "github.com/sunibgram/domain/model/like"
 	notificationmodel "github.com/sunibgram/domain/model/notification"
+	notificationusermutemodel "github.com/sunibgram/domain/model/notification_user_mute"
 	ordermodel "github.com/sunibgram/domain/model/order"
 	premiumsubscriptionmodel "github.com/sunibgram/domain/model/premium_subscription"
 	reportmodel "github.com/sunibgram/domain/model/report"
@@ -45,6 +46,7 @@ import (
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
+	userblockmodel "github.com/sunibgram/domain/model/user_block"
 	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 	userstatmodel "github.com/sunibgram/domain/model/user_stat"
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
@@ -82,6 +84,8 @@ func AutoMigrate(db *gorm.DB) {
 		&threadpinmodel.ThreadPin{},
 		&verificationcodemodel.VerificationCode{},
 		&userrelationshipmodel.UserRelationship{},
+		&userblockmodel.UserBlock{},
+		&notificationusermutemodel.NotificationUserMute{},
 		&userstatmodel.UserStat{},
 		&communitymembermodel.CommunityMember{},
 		&communityrequestmodel.CommunityRequest{},
@@ -146,6 +150,10 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_threads_root_id_not_null ON threads(root_id) WHERE root_id IS NOT NULL",
 		"CREATE INDEX IF NOT EXISTS idx_thread_media_thread_id ON thread_media(thread_id)",
 		"CREATE INDEX IF NOT EXISTS idx_user_rel_follower ON user_relationships(follower_id)",
+		"CREATE INDEX IF NOT EXISTS idx_user_block_blocker ON user_blocks(blocker_id)",
+		"CREATE INDEX IF NOT EXISTS idx_user_block_blocked ON user_blocks(blocked_id)",
+		"CREATE INDEX IF NOT EXISTS idx_notification_user_mute_user ON notification_user_mutes(user_id)",
+		"CREATE INDEX IF NOT EXISTS idx_notification_user_mute_muted ON notification_user_mutes(muted_user_id)",
 		"CREATE INDEX IF NOT EXISTS idx_hashtags_name ON hashtags(name)",
 		"CREATE INDEX IF NOT EXISTS idx_thread_hashtags_hashtag_id ON thread_hashtags(hashtag_id)",
 		"CREATE INDEX IF NOT EXISTS idx_events_status ON events(status)",
@@ -201,6 +209,18 @@ func createIndexes(db *gorm.DB) {
 		// created_at on top helps when since_id is small (large scan) and the
 		// visibility predicates filter most of the table.
 		"CREATE INDEX IF NOT EXISTS idx_threads_type_created ON threads(type, created_at DESC)",
+
+		// Sort-covering composites for paginated GetMy* list endpoints. The
+		// composite PKs already cover the WHERE user_id filter, but the
+		// ORDER BY sort column is absent, forcing an in-memory sort after the
+		// range scan. Adding the sort column lets Postgres read index-ordered
+		// (no Sort node, skip-to-offset). Read-only optimization.
+		"CREATE INDEX IF NOT EXISTS idx_likes_user_created ON likes(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_bookmarks_user_created ON bookmarks(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_reposts_user_created ON reposts(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_event_participants_user_joined ON event_participants(user_id, joined_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_user_event_pins_user_created ON user_event_pins(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_user_community_pins_user_created ON user_community_pins(user_id, created_at DESC)",
 	}
 	for _, s := range stmts {
 		db.Exec(s)
@@ -259,6 +279,17 @@ func addCheckConstraints(db *gorm.DB) {
 			) THEN
 				ALTER TABLE user_profiles ADD CONSTRAINT chk_user_profiles_gender
 				CHECK (gender IN ('male', 'female', 'other', 'prefer_not_to_say'));
+			END IF;
+		END $$;
+	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_settings_theme'
+			) THEN
+				ALTER TABLE user_settings ADD CONSTRAINT chk_user_settings_theme
+				CHECK (user_theme IN ('black', 'white'));
 			END IF;
 		END $$;
 	`)

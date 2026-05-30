@@ -84,7 +84,7 @@ export function TrendingHashtagsTab() {
             cursor: 'pointer',
             textAlign: 'left',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >
           <div style={{ minWidth: 0 }}>

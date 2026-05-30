@@ -13,6 +13,7 @@ import (
 	communityrepoiface "github.com/sunibgram/domain/repository/community"
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	communityrequestrepoiface "github.com/sunibgram/domain/repository/community_request"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	communityrequestsvciface "github.com/sunibgram/domain/service/community_request"
 )
 
@@ -20,6 +21,7 @@ type CommunityRequestService struct {
 	communityRepo communityrepoiface.ICommunityRepository
 	memberRepo    communitymemberrepoiface.ICommunityMemberRepository
 	requestRepo   communityrequestrepoiface.ICommunityRequestRepository
+	blockRepo     userblockrepoiface.IUserBlockRepository
 	cacheRepo     cacherepoiface.ICacheRepository
 }
 
@@ -27,12 +29,14 @@ func NewCommunityRequestService(
 	communityRepo communityrepoiface.ICommunityRepository,
 	memberRepo communitymemberrepoiface.ICommunityMemberRepository,
 	requestRepo communityrequestrepoiface.ICommunityRequestRepository,
+	blockRepo userblockrepoiface.IUserBlockRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
 ) communityrequestsvciface.ICommunityRequestService {
 	return &CommunityRequestService{
 		communityRepo: communityRepo,
 		memberRepo:    memberRepo,
 		requestRepo:   requestRepo,
+		blockRepo:     blockRepo,
 		cacheRepo:     cacheRepo,
 	}
 }
@@ -44,6 +48,16 @@ func (s *CommunityRequestService) Send(ctx context.Context, communityID, userID 
 	}
 	if !community.IsWritable() {
 		return errors.New("community is inactive")
+	}
+	// Cannot request to join a community owned by a blocked user (mutual hide).
+	if s.blockRepo != nil && userID != community.UserID {
+		blocked, err := s.blockRepo.IsBlocked(userID, community.UserID)
+		if err != nil {
+			return err
+		}
+		if blocked {
+			return errors.New("blocked")
+		}
 	}
 	if community.Visibility != communitymodel.CommunityVisibilityPrivate {
 		return errors.New("community is not private, use join instead")

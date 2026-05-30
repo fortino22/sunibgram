@@ -9,4 +9,5 @@ type IEmailService interface {
 	SendWelcomeOTP(to, code string) error
 	SendPasswordResetOTP(to, code string) error
 	SendLoginOTP(to, code string) error
+	SendChangePasswordOTP(to, code string) error
 }

@@ -100,6 +100,7 @@ export default function ProfilePage() {
           avatarUrl: profile.avatar ?? null,
           isPremium: profile.is_premium,
         }}
+        userId={profile.id}
         isOwn
         isFollowing={false}
         onFollowToggle={() => {}}

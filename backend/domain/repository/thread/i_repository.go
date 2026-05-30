@@ -13,6 +13,7 @@ type IThreadRepository interface {
 	Save(thread *threadmodel.Thread) error
 	InvalidateThread(threadID uint)
 	FindByID(id uint) (*threadmodel.Thread, error)
+	FindByIDs(ids []uint) ([]threadmodel.Thread, error)
 	FindRoots(requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error)
 	FindByRootID(rootID uint, page, limit int) ([]threadmodel.Thread, int64, error)
 	FindChain(anchorID uint) (threadmodel.Thread, []threadmodel.Thread, []threadmodel.Thread, error)

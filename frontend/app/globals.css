@@ -27,7 +27,57 @@
   --text-on-dark-muted: oklch(50% 0.008 260);
   --border:          oklch(36% 0.007 260);
   --border-strong:   oklch(44% 0.008 260);
+  --bg-blur:         oklch(10.5% 0.005 260 / 0.92);
+  --bg-secondary:    oklch(12% 0.006 260);
+  --shadow-dropdown: 0 8px 28px oklch(0% 0 0 / 0.5);
+  --auth-bolt-mid:   oklch(44% 0.008 260);
+  --auth-bolt-edge:  oklch(36% 0.007 260);
+  /* Mono premium badge (settings nav only). Dark theme → white circle, black check. */
+  --premium-badge-bg: #ffffff;
+  --premium-badge-fg: #000000;
+  /* Native controls (date/time pickers, scrollbars) follow the theme. */
+  color-scheme: dark;
   --font-dm-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* White (X light-mode) theme — overrides the dark :root tokens.
+   Every component reads var(--*), so the whole UI re-themes from here.
+   --x-blue / --x-blue-soft stay brand-constant across themes. */
+[data-theme="white"] {
+  --bg:              oklch(100% 0 0);
+  --bg-subtle:       oklch(97.5% 0.002 260);
+  --bg-card:         oklch(100% 0 0);
+  --bg-hover:        oklch(95.5% 0.003 260);
+  --sidebar:         oklch(100% 0 0);
+  --sidebar-hover:   oklch(96% 0.003 260);
+  --sidebar-active:  oklch(93% 0.004 260);
+  --accent:          oklch(58% 0.21 260);
+  --accent-hover:    oklch(52% 0.22 260);
+  --accent-soft:     oklch(93% 0.04 260);
+  --coral:           oklch(58% 0.2 25);
+  --coral-soft:      oklch(94% 0.04 25);
+  --green:           oklch(52% 0.16 155);
+  --green-soft:      oklch(93% 0.05 155);
+  --amber:           oklch(62% 0.14 70);
+  --amber-soft:      oklch(94% 0.05 70);
+  --text:            oklch(15% 0.01 260);
+  --text-muted:      oklch(50% 0.008 260);
+  --text-secondary:  oklch(44% 0.008 260);
+  --text-tertiary:   oklch(58% 0.008 260);
+  --text-on-dark:    oklch(15% 0.01 260);
+  --text-on-dark-muted: oklch(50% 0.008 260);
+  --border:          oklch(90% 0.005 260);
+  --border-strong:   oklch(82% 0.006 260);
+  --bg-blur:         oklch(100% 0 0 / 0.85);
+  --bg-secondary:    oklch(97.5% 0.002 260);
+  --shadow-dropdown: 0 8px 28px oklch(0% 0 0 / 0.12);
+  /* Auth watermark bolt: solid black outline in light theme. */
+  --auth-bolt-mid:   oklch(20% 0 0);
+  --auth-bolt-edge:  oklch(20% 0 0);
+  /* Mono premium badge: light theme → black circle, white check. */
+  --premium-badge-bg: #000000;
+  --premium-badge-fg: #ffffff;
+  color-scheme: light;
 }
 
 * {
@@ -202,6 +252,110 @@ body {
 }
 .btn-ghost:hover:not(:disabled) {
   background-color: var(--bg-hover);
+}
+
+/* Light theme: a dark solid button (background: var(--text)) barely changes
+   under brightness(<1), so lift it instead for a visible hover. */
+[data-theme="white"] .btn-solid:hover:not(:disabled) {
+  filter: brightness(1.9);
+}
+[data-theme="white"] .btn-solid:active:not(:disabled) {
+  filter: brightness(1.65);
+}
+/* Stronger, more contrasted tint for ghost/cancel buttons in light theme. */
+[data-theme="white"] .btn-ghost:hover:not(:disabled) {
+  background-color: var(--sidebar-active);
+}
+
+/* Decorative fox brand icon beside the thread 3-dots menu.
+   fox.png is black line-art, so we tint it per theme via CSS filter. */
+.thread-fox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  width: 56px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  flex-shrink: 0;
+  overflow: hidden;        /* clip the source whitespace margins -> fox fills */
+  transition: background 0.15s ease;
+}
+.thread-fox img {
+  width: 27px;             /* zoom past the blank margins in the 2400x1309 source */
+  height: auto;            /* keep aspect, never squish */
+  display: block;
+  object-fit: contain;
+  /* dark default: black art -> light grey */
+  filter: invert(1) opacity(0.75);
+  transition: filter 0.15s ease;
+}
+[data-theme="white"] .thread-fox img {
+  /* light theme: keep black art, dim to grey */
+  filter: opacity(0.6);
+}
+.thread-fox:hover {
+  /* smaller centered highlight (~36px) instead of the full 56px circle */
+  background: radial-gradient(circle, var(--x-blue-soft) 0 64%, transparent 65%);
+}
+.thread-fox:hover img,
+[data-theme="white"] .thread-fox:hover img {
+  /* tint black art -> brand blue (#1d9bf0) */
+  filter: invert(48%) sepia(89%) saturate(1300%) hue-rotate(176deg) brightness(95%) contrast(91%);
+}
+
+/* Floating fox orb, pinned bottom-right (X Grok-style). UI only for now. */
+.floating-fox {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  width: 60px;
+  border-radius: 18px;     /* X-style rounded square (squircle), not a circle */
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: var(--bg-card);
+  /* dark mode: white glowing border */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.45), 0 0 2px rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+[data-theme="white"] .floating-fox {
+  /* light theme: black glowing border */
+  border-color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.55);
+}
+.floating-fox img {
+  width: 50px;             /* zoom past the blank margins in the 2400x1309 source */
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: invert(1) opacity(0.9);     /* dark theme: black art -> near-white */
+  transition: filter 0.15s ease;
+}
+[data-theme="white"] .floating-fox img {
+  filter: opacity(0.85);
+}
+.floating-fox:hover {
+  background: var(--bg-hover);
+  transform: scale(1.05);
+  /* dark mode: stronger white glow */
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.7), 0 0 4px rgba(255, 255, 255, 0.85);
+}
+[data-theme="white"] .floating-fox:hover {
+  /* light theme: stronger black glow */
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6), 0 0 4px rgba(0, 0, 0, 0.75);
+}
+.floating-fox:hover img {
+  filter: invert(1) opacity(1);
+}
+[data-theme="white"] .floating-fox:hover img {
+  filter: opacity(1);
 }
 
 /* Subtle icon / image / overlay buttons */
@@ -770,5 +924,631 @@ body {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* ============================================================
+   About / marketing page
+   ------------------------------------------------------------
+   Uses the project's existing design tokens (--bg, --text, --accent,
+   --border, --bg-card, --accent-soft). The page forces the light
+   theme via `data-theme="white"` on the .about-root div so the
+   marketing surface stays consistent regardless of the student's
+   in-app theme choice. No invented marketing palette.
+   ============================================================ */
+
+.about-root {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-dm-sans);
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Centered content container — every marketing section uses this.
+   72rem (1152px) gives obvious horizontal centering on wide viewports. */
+.about-container {
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+.about-container-narrow {
+  max-width: 56rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+@media (max-width: 640px) {
+  .about-container,
+  .about-container-narrow {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+
+/* Subtle grid overlay inside the hero mesh */
+.about-hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 50%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 50%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
+  pointer-events: none;
+}
+
+/* Monospace UI chrome — eyebrow tags, CTA buttons, footer labels */
+.about-root .mono {
+  letter-spacing: 0.02em;
+}
+
+/* Eyebrow tag: ■ EYEBROW TEXT */
+.about-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.about-eyebrow::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+
+/* Primary CTA — uses the project's brand blue */
+.about-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: var(--accent);
+  color: var(--text-on-dark);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.about-btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+/* Secondary CTA — outline on light surface */
+.about-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.about-btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--text);
+}
+
+/* Inverted variants — used on the blue closure band */
+.about-btn-primary-inverted {
+  background: #ffffff;
+  color: var(--accent);
+  border-color: #ffffff;
+}
+.about-btn-primary-inverted:hover {
+  background: oklch(95% 0.005 260);
+  border-color: oklch(95% 0.005 260);
+}
+.about-btn-secondary-inverted {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.about-btn-secondary-inverted:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: #ffffff;
+}
+
+/* Inline mono link with arrow — used as in-section CTA */
+.about-link-mono {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text);
+  border-bottom: 1px solid var(--border-strong);
+  padding-bottom: 2px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.about-link-mono:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Use-case card — tinted with the project's brand blue */
+.about-usecase-card {
+  background: var(--accent-soft);
+  border-radius: 14px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 280px;
+  transition: transform 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+.about-usecase-card:hover { transform: translateY(-2px); }
+.about-usecase-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to right,
+    color-mix(in oklab, var(--accent) 8%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.about-usecase-card > * { position: relative; z-index: 1; }
+
+/* Generic card surface used by split-section visuals */
+.about-surface-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* Inline profile chip used inside the hero headline */
+.about-inline-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px oklch(0% 0 0 / 0.05);
+  font-size: 0.5em;
+  line-height: 1;
+  vertical-align: middle;
+}
+.about-inline-chip-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent) 0%, oklch(58% 0.18 220) 100%);
+  flex-shrink: 0;
+}
+.about-inline-chip-badge {
+  font-size: 0.7em;
+  letter-spacing: 0.08em;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ============================================================
+   About page — Composio-style navbar
+   ============================================================ */
+
+/* Nav bar wrapper — sticky, glass-style */
+.about-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Inner row — logo | links | cta */
+.about-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  gap: 16px;
+}
+
+/* Logo area */
+.about-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.about-nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+.about-nav-logo:hover {
+  opacity: 0.75;
+}
+.about-nav-logo-text {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+/* Badge pill */
+.about-nav-badge {
+  font-size: 0.625rem;
+  padding: 3px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---- Desktop nav links ---- */
+.about-nav-center {
+  display: none;
+  align-items: center;
+  gap: 4px;
+}
+@media (min-width: 860px) {
+  .about-nav-center {
+    display: flex;
+  }
+}
+
+/* Base link style */
+.about-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  color: var(--text);
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+.about-nav-link:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+/* Dropdown trigger wrapper */
+.about-nav-trigger-wrap {
+  position: relative;
+}
+
+/* Chevron icon */
+.about-nav-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.about-nav-chevron-open {
+  transform: rotate(180deg);
+}
+
+/* ---- Dropdown panel ---- */
+.about-nav-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 420px;
+  display: flex;
+  gap: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px oklch(0% 0 0 / 0.1), 0 2px 8px oklch(0% 0 0 / 0.06);
+  padding: 24px 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.about-nav-dropdown-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Column inside dropdown */
+.about-nav-dropdown-col {
+  flex: 1;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.about-nav-dropdown-col + .about-nav-dropdown-col {
+  border-left: 1px solid var(--border);
+}
+
+/* Column heading */
+.about-nav-dropdown-heading {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  margin-bottom: 8px;
+  padding-left: 12px;
+}
+
+/* Individual dropdown item */
+.about-nav-dropdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background-color 0.12s ease;
+}
+.about-nav-dropdown-item:hover {
+  background: var(--bg-hover);
+}
+.about-nav-dropdown-title {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.about-nav-dropdown-desc {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+/* ---- Dark CTA button ---- */
+.about-btn-dark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 8px;
+  border: 1px solid var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, transform 0.08s ease;
+}
+.about-btn-dark:hover {
+  background: oklch(25% 0.01 260);
+}
+.about-btn-dark:active {
+  transform: scale(0.97);
+}
+
+/* ---- Right side (CTA + hamburger) ---- */
+.about-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.about-nav-right > .about-btn-dark {
+  display: none;
+}
+@media (min-width: 860px) {
+  .about-nav-right > .about-btn-dark {
+    display: inline-flex;
+  }
+}
+
+/* ---- Hamburger button ---- */
+.about-nav-hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.12s ease;
+}
+.about-nav-hamburger:hover {
+  background: var(--bg-hover);
+}
+@media (min-width: 860px) {
+  .about-nav-hamburger {
+    display: none;
+  }
+}
+
+/* Hamburger bars */
+.about-hamburger-bar {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+  transform-origin: center;
+}
+.about-hamburger-bar-1.about-hamburger-open {
+  transform: translateY(7px) rotate(45deg);
+}
+.about-hamburger-bar-2.about-hamburger-open {
+  opacity: 0;
+}
+.about-hamburger-bar-3.about-hamburger-open {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ============================================================
+   Mobile menu
+   ============================================================ */
+
+.about-nav-mobile {
+  display: block;
+  position: fixed;
+  top: 61px; /* below nav */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  z-index: 99;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s ease;
+}
+.about-nav-mobile-open {
+  max-height: calc(100vh - 61px);
+  opacity: 1;
+}
+@media (min-width: 860px) {
+  .about-nav-mobile {
+    display: none !important;
+  }
+}
+
+.about-nav-mobile-scroll {
+  padding: 12px 24px 40px;
+  overflow-y: auto;
+  max-height: calc(100vh - 61px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile group (accordion) */
+.about-nav-mobile-group {
+  border-bottom: 1px solid var(--border);
+}
+
+.about-nav-mobile-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.about-nav-mobile-items {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.about-nav-mobile-items-open {
+  max-height: 500px;
+}
+
+.about-nav-mobile-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  margin-bottom: 4px;
+  transition: background-color 0.12s ease;
+}
+.about-nav-mobile-item:hover {
+  background: var(--bg-hover);
+}
+
+/* Plain mobile links */
+.about-nav-mobile-link {
+  display: block;
+  padding: 16px 0;
+  color: var(--text);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  transition: color 0.12s ease;
+}
+.about-nav-mobile-link:hover {
+  color: var(--accent);
+}
+
+/* Mobile CTA */
+.about-nav-mobile-cta {
+  margin-top: 20px;
+  text-align: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Sonner success toasts → brand blue (X style). Theme-constant via --x-blue. */
+[data-sonner-toast][data-type="success"] {
+  --normal-bg: var(--x-blue);
+  --normal-border: var(--x-blue);
+  --normal-text: #ffffff;
+  --success-bg: var(--x-blue);
+  --success-border: var(--x-blue);
+  --success-text: #ffffff;
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: #ffffff;
+}
+
+/* Blue X close button */
+[data-sonner-toast] [data-close-button] {
+  background: var(--x-blue);
+  border-color: var(--x-blue);
+  color: #ffffff;
+}
+[data-sonner-toast] [data-close-button]:hover {
+  background: var(--accent-hover);
 }
 

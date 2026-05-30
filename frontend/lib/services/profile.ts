@@ -20,6 +20,9 @@ interface BackendProfileResponse {
   birthday_date?: string;
   created_at?: string;
   is_following?: boolean;
+  is_blocked?: boolean;
+  is_blocked_by?: boolean;
+  is_muted?: boolean;
 }
 
 // Frontend model — used throughout components
@@ -38,6 +41,9 @@ export interface UserProfile {
   followers_count?: number;
   following_count?: number;
   is_following?: boolean;
+  is_blocked?: boolean;
+  is_blocked_by?: boolean;
+  is_muted?: boolean;
   created_at?: string;
 }
 
@@ -57,6 +63,9 @@ function mapProfile(raw: BackendProfileResponse): UserProfile {
     followers_count: raw.follower_count ?? 0,
     following_count: raw.following_count ?? 0,
     is_following: raw.is_following,
+    is_blocked: raw.is_blocked,
+    is_blocked_by: raw.is_blocked_by,
+    is_muted: raw.is_muted,
     created_at: raw.created_at,
   };
 }

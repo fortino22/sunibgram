@@ -2,6 +2,7 @@ package threadpollrepo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -101,11 +102,21 @@ func (r *ThreadPollRepository) FindByThreadIDs(threadIDs []uint) (map[uint]*thre
 	ctx := context.Background()
 	missing := make([]uint, 0, len(threadIDs))
 	if r.cache != nil {
+		keys := make([]string, len(threadIDs))
+		keyToID := make(map[string]uint, len(threadIDs))
+		for i, id := range threadIDs {
+			k := pollThreadKey(id)
+			keys[i] = k
+			keyToID[k] = id
+		}
+		hits, _ := r.cache.MGet(ctx, keys)
 		for _, id := range threadIDs {
-			var cached threadpollmodel.ThreadPoll
-			if err := r.cache.Get(ctx, pollThreadKey(id), &cached); err == nil {
-				result[id] = &cached
-				continue
+			if raw, ok := hits[pollThreadKey(id)]; ok {
+				var cached threadpollmodel.ThreadPoll
+				if json.Unmarshal(raw, &cached) == nil {
+					result[id] = &cached
+					continue
+				}
 			}
 			missing = append(missing, id)
 		}
@@ -116,36 +127,26 @@ func (r *ThreadPollRepository) FindByThreadIDs(threadIDs []uint) (map[uint]*thre
 		return result, nil
 	}
 
+	// Single query: poll rows with their options preloaded (ordered), instead of
+	// a second SELECT on poll options plus a manual attach loop.
 	var polls []threadpollmodel.ThreadPoll
-	if err := r.readDB.Where("thread_id IN ?", missing).Find(&polls).Error; err != nil {
+	if err := r.readDB.
+		Preload("Options", func(db *gorm.DB) *gorm.DB { return db.Order("position ASC") }).
+		Where("thread_id IN ?", missing).
+		Find(&polls).Error; err != nil {
 		return nil, err
 	}
 	if len(polls) == 0 {
 		return result, nil
 	}
-	pollIDs := make([]uint, 0, len(polls))
-	pollByID := make(map[uint]*threadpollmodel.ThreadPoll, len(polls))
+	entries := make(map[string]any, len(polls))
 	for i := range polls {
-		pollIDs = append(pollIDs, polls[i].PollID)
-		pollByID[polls[i].PollID] = &polls[i]
-	}
-	var options []threadpollmodel.ThreadPollOption
-	if err := r.readDB.
-		Where("poll_id IN ?", pollIDs).
-		Order("position ASC").
-		Find(&options).Error; err != nil {
-		return nil, err
-	}
-	for _, opt := range options {
-		if p, ok := pollByID[opt.PollID]; ok {
-			p.Options = append(p.Options, opt)
-		}
-	}
-	for _, p := range pollByID {
+		p := &polls[i]
 		result[p.ThreadID] = p
-		if r.cache != nil {
-			_ = r.cache.Set(ctx, pollThreadKey(p.ThreadID), *p, pollBodyTTL)
-		}
+		entries[pollThreadKey(p.ThreadID)] = *p
+	}
+	if r.cache != nil {
+		_ = r.cache.MSet(ctx, entries, pollBodyTTL)
 	}
 	return result, nil
 }
@@ -158,13 +159,20 @@ func (r *ThreadPollRepository) FindUserVotes(userID uint, pollIDs []uint) (map[u
 	ctx := context.Background()
 	missing := make([]uint, 0, len(pollIDs))
 	if r.cache != nil {
+		keys := make([]string, len(pollIDs))
+		for i, pid := range pollIDs {
+			keys[i] = PollUserVoteKey(pid, userID)
+		}
+		hits, _ := r.cache.MGet(ctx, keys)
 		for _, pid := range pollIDs {
-			var optID uint
-			if err := r.cache.Get(ctx, PollUserVoteKey(pid, userID), &optID); err == nil {
-				if optID != 0 {
-					result[pid] = optID
+			if raw, ok := hits[PollUserVoteKey(pid, userID)]; ok {
+				var optID uint
+				if json.Unmarshal(raw, &optID) == nil {
+					if optID != 0 {
+						result[pid] = optID
+					}
+					continue
 				}
-				continue
 			}
 			missing = append(missing, pid)
 		}
@@ -187,11 +195,14 @@ func (r *ThreadPollRepository) FindUserVotes(userID uint, pollIDs []uint) (map[u
 		result[v.PollID] = v.OptionID
 	}
 	if r.cache != nil {
+		entries := make(map[string]any, len(missing))
 		for _, pid := range missing {
-			optID := hit[pid] // 0 if no vote — cache miss-marker
-			key := PollUserVoteKey(pid, userID)
-			if err := r.cache.Set(ctx, key, optID, pollVoteTTL); err == nil {
-				r.cache.RegisterCacheKey(ctx, infrarepoShared.PollUserVotesTag(pid), key)
+			entries[PollUserVoteKey(pid, userID)] = hit[pid] // 0 if no vote — cache miss-marker
+		}
+		if err := r.cache.MSet(ctx, entries, pollVoteTTL); err == nil {
+			// Tag registry has no batch API; register per-key so invalidation works.
+			for _, pid := range missing {
+				r.cache.RegisterCacheKey(ctx, infrarepoShared.PollUserVotesTag(pid), PollUserVoteKey(pid, userID))
 			}
 		}
 	}

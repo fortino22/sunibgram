@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Icon } from '@/components/ui/Icon';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 
 interface SettingsSection {
   href: string;
@@ -15,8 +16,11 @@ interface SettingsSection {
 const SECTIONS: SettingsSection[] = [
   { href: '/settings/account',      icon: 'userCog',  label: 'Your account',          description: 'Display name, username, email' },
   { href: '/settings/privacy',      icon: 'lock',     label: 'Privacy and safety',    description: 'Control who sees your posts' },
+  { href: '/settings/appearance',   icon: 'palette',  label: 'Appearance',            description: 'Light or dark theme' },
   { href: '/settings/password',     icon: 'key',      label: 'Password',              description: 'Change account password' },
-  { href: '/settings/subscription', icon: 'sparkles', label: 'Premium',               description: 'Manage your subscription' },
+  { href: '/settings/blocked-users', icon: 'userX',   label: 'Blocked accounts',      description: 'People you’ve blocked' },
+  { href: '/settings/muted-users',  icon: 'volumeX',  label: 'Muted accounts',        description: 'People you’ve muted' },
+  { href: '/settings/subscription', icon: 'premium',  label: 'Premium',               description: 'Manage your subscription' },
 ];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
@@ -84,7 +88,11 @@ function SettingsNavItem({ section, active }: { section: SettingsSection; active
       onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'var(--bg-hover)'; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
     >
-      <Icon name={section.icon} size={20} color="var(--text)" strokeWidth={1.8} />
+      {section.icon === 'premium' ? (
+        <VerifiedBadge size={20} variant="mono" />
+      ) : (
+        <Icon name={section.icon} size={20} color="var(--text)" strokeWidth={1.8} />
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}>
           {section.label}

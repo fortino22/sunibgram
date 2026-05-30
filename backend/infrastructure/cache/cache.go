@@ -23,8 +23,11 @@ func New() *Cache {
 
 	password := os.Getenv("REDIS_PASSWORD")
 	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
+		Addr:         addr,
+		Password:     password,
+		PoolSize:     20,
+		MinIdleConns: 5,
+		MaxRetries:   2,
 	})
 	return &Cache{client: client}
 }

@@ -4,13 +4,14 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightPanel } from './RightPanel';
+import { FloatingFoxButton } from './FloatingFoxButton';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { NewPostModal } from '@/components/shared/NewPostModal';
 import { ReplyModal } from '@/components/shared/ReplyModal';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
 import { useAuthStore } from '@/stores/authStore';
 
-const AUTH_PATHS = ['/login', '/signup', '/forgot-password'];
+const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/about'];
 const NO_RIGHT_PANEL_PATHS = ['/settings', '/messages'];
 
 function NotificationSocketMount() {
@@ -69,6 +70,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
           {!hideRightPanel && <RightPanel />}
         </div>
       </div>
+      <FloatingFoxButton />
     </AuthGuard>
   );
 }

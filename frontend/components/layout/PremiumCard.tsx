@@ -57,7 +57,7 @@ export function PremiumCard() {
           </h2>
           <span
             className="rounded-full text-[12px] font-bold"
-            style={{ padding: '2px 8px', background: 'rgba(0, 186, 124, 0.12)', color: '#00ba7c' }}
+            style={{ padding: '2px 8px', background: 'var(--green-soft)', color: 'var(--green)' }}
           >
             1 month free
           </span>

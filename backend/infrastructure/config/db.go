@@ -54,11 +54,11 @@ func newPostgres(role string) *gorm.DB {
 		panic("sql.DB handle failed")
 	}
 	if role == "read" {
-		sqlDB.SetMaxOpenConns(40)
-		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetMaxIdleConns(25)
 	} else {
-		sqlDB.SetMaxOpenConns(20)
-		sqlDB.SetMaxIdleConns(5)
+		sqlDB.SetMaxOpenConns(50)
+		sqlDB.SetMaxIdleConns(12)
 	}
 	sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	sqlDB.SetConnMaxIdleTime(5 * time.Minute)

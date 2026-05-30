@@ -10,6 +10,7 @@ import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
+import { ThreadFoxButton } from '@/components/thread/ThreadFoxButton';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
@@ -177,8 +178,9 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
                 @{thread.author.username}
               </Link>
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
-              {(canManage || canReport) && (
-                <div style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                <ThreadFoxButton />
+                {(canManage || canReport) && (
                   <ThreadOptionsMenu
                     onEdit={canManage ? () => setIsEditing(true) : undefined}
                     onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
@@ -192,8 +194,8 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
                     onUnpin={onUnpinThread ? () => onUnpinThread(thread.id) : undefined}
                     onReport={canReport ? () => setReportModalOpen(true) : undefined}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </div>
             {thread.author.faculty && (
               <div style={{ marginTop: 2 }}>

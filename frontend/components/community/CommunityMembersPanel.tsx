@@ -66,7 +66,7 @@ export function CommunityMembersPanel({ communityId, communityName, myRole, onCl
           borderBottom: '1px solid var(--border)',
           position: 'sticky',
           top: 0,
-          background: 'oklch(10.5% 0.005 260 / 0.92)',
+          background: 'var(--bg-blur)',
           backdropFilter: 'blur(12px)',
           zIndex: 10,
         }}

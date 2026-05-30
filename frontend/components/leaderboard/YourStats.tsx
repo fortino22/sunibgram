@@ -212,7 +212,6 @@ function inputStyle(): CSSProperties {
     fontSize: 12,
     fontWeight: 600,
     outline: 'none',
-    colorScheme: 'dark',
   };
 }
 

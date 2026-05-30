@@ -154,14 +154,14 @@ func (r *hashtagRepository) PatchHashtagCounterByThreadID(ctx context.Context, t
 	}
 
 	var hashtagIDs []uuid.UUID
-	if err := r.writeDB.WithContext(ctx).Model(&hashtagmodel.ThreadHashtag{}).
+	if err := r.readDB.WithContext(ctx).Model(&hashtagmodel.ThreadHashtag{}).
 		Where("thread_id = ?", threadID).
 		Pluck("hashtag_id", &hashtagIDs).Error; err != nil {
 		return err
 	}
 	if len(hashtagIDs) == 0 {
 		var thread threadmodel.Thread
-		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
+		if err := r.readDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return err
 		}
 		if thread.RootID != nil {
@@ -173,7 +173,7 @@ func (r *hashtagRepository) PatchHashtagCounterByThreadID(ctx context.Context, t
 		} else {
 			return nil
 		}
-		if err := r.writeDB.WithContext(ctx).Model(&hashtagmodel.ThreadHashtag{}).
+		if err := r.readDB.WithContext(ctx).Model(&hashtagmodel.ThreadHashtag{}).
 			Where("thread_id = ?", threadID).
 			Pluck("hashtag_id", &hashtagIDs).Error; err != nil {
 			return err

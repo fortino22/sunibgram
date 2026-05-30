@@ -1,8 +1,9 @@
 'use client';
 
-import { BookOpen, Calendar, MoreHorizontal } from 'lucide-react';
+import { BookOpen, Calendar } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
+import { ProfileOptionsMenu } from '@/components/profile/ProfileOptionsMenu';
 
 interface ProfileUser {
   name: string;
@@ -18,6 +19,7 @@ interface ProfileUser {
 
 interface ProfileInfoProps {
   user: ProfileUser;
+  userId: number;
   isOwn: boolean;
   isFollowing: boolean;
   onFollowToggle: () => void;
@@ -25,10 +27,18 @@ interface ProfileInfoProps {
   onEditClick?: () => void;
   onFollowersClick?: () => void;
   onFollowingClick?: () => void;
+  onReport?: () => void;
+  isBlocked?: boolean;
+  isBlockedBy?: boolean;
+  onBlock?: () => void;
+  blockPending?: boolean;
+  isMuted?: boolean;
+  onMute?: () => void;
 }
 
 export function ProfileInfo({
   user,
+  userId,
   isOwn,
   isFollowing,
   onFollowToggle,
@@ -36,6 +46,13 @@ export function ProfileInfo({
   onEditClick,
   onFollowersClick,
   onFollowingClick,
+  onReport,
+  isBlocked = false,
+  isBlockedBy = false,
+  onBlock,
+  blockPending = false,
+  isMuted = false,
+  onMute,
 }: ProfileInfoProps) {
   return (
     <div style={{ position: 'relative', padding: '0 20px' }}>
@@ -76,46 +93,84 @@ export function ProfileInfo({
           </button>
         ) : (
           <>
-            <button
-              type="button"
-              aria-label="More options"
-              className="btn-ghost"
-              style={{
-                border: '1px solid var(--border-strong)',
-                borderRadius: '50%',
-                width: 36,
-                height: 36,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                color: 'var(--text)',
-              }}
-            >
-              <MoreHorizontal size={17} strokeWidth={1.8} />
-            </button>
-            <button
-              type="button"
-              onClick={onFollowToggle}
-              disabled={followPending}
-              className="hover-dim"
-              style={{
-                background: isFollowing ? 'none' : 'var(--text)',
-                border: isFollowing ? '1px solid var(--border-strong)' : '1px solid transparent',
-                borderRadius: 20,
-                padding: '7px 20px',
-                fontSize: 14,
-                fontWeight: 700,
-                color: isFollowing ? 'var(--text)' : 'var(--bg)',
-                fontFamily: 'inherit',
-                letterSpacing: '-0.01em',
-                transition: 'all 0.15s ease',
-                opacity: followPending ? 0.7 : 1,
-                cursor: followPending ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {isFollowing ? 'Unfollow' : 'Follow'}
-            </button>
+            {onReport && (
+              <ProfileOptionsMenu
+                username={user.username}
+                userId={userId}
+                isBlocked={isBlocked}
+                isMuted={isMuted}
+                onBlock={onBlock}
+                onMute={onMute}
+                onReport={onReport}
+              />
+            )}
+            {isBlockedBy ? (
+              <button
+                type="button"
+                disabled
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 20,
+                  padding: '7px 20px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: 'var(--text-tertiary)',
+                  fontFamily: 'inherit',
+                  letterSpacing: '-0.01em',
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                }}
+              >
+                Follow
+              </button>
+            ) : isBlocked ? (
+              <button
+                type="button"
+                onClick={onBlock}
+                disabled={blockPending}
+                className="hover-dim"
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--coral)',
+                  borderRadius: 20,
+                  padding: '7px 20px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: 'var(--coral)',
+                  fontFamily: 'inherit',
+                  letterSpacing: '-0.01em',
+                  transition: 'all 0.15s ease',
+                  opacity: blockPending ? 0.7 : 1,
+                  cursor: blockPending ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Blocked
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onFollowToggle}
+                disabled={followPending}
+                className="hover-dim"
+                style={{
+                  background: isFollowing ? 'none' : 'var(--text)',
+                  border: isFollowing ? '1px solid var(--border-strong)' : '1px solid transparent',
+                  borderRadius: 20,
+                  padding: '7px 20px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: isFollowing ? 'var(--text)' : 'var(--bg)',
+                  fontFamily: 'inherit',
+                  letterSpacing: '-0.01em',
+                  transition: 'all 0.15s ease',
+                  opacity: followPending ? 0.7 : 1,
+                  cursor: followPending ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isFollowing ? 'Unfollow' : 'Follow'}
+              </button>
+            )}
           </>
         )}
       </div>

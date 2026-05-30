@@ -6,7 +6,10 @@ import { useAuthStore } from '@/stores/authStore';
 
 const PAGE_SIZE = 20;
 
-export function useUserThreads(userId: number | string | null | undefined) {
+export function useUserThreads(
+  userId: number | string | null | undefined,
+  options?: { enabled?: boolean }
+) {
   const token = useAuthStore((s) => s.token);
   return useInfiniteQuery<ThreadListResponse>({
     queryKey: ['threads', userId],
@@ -22,6 +25,11 @@ export function useUserThreads(userId: number | string | null | undefined) {
       const loaded = allPages.reduce((sum, p) => sum + p.data.length, 0);
       return loaded < lastPage.meta.total ? allPages.length + 1 : undefined;
     },
-    enabled: !!token && userId !== null && userId !== undefined && userId !== '',
+    enabled:
+      (options?.enabled ?? true) &&
+      !!token &&
+      userId !== null &&
+      userId !== undefined &&
+      userId !== '',
   });
 }

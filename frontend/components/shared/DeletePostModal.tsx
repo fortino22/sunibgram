@@ -42,7 +42,7 @@ export function DeletePostModal({ open, isPending = false, onConfirm, onCancel, 
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#000',
+          background: 'var(--bg-card)',
           borderRadius: 20,
           padding: '32px 28px 24px',
           width: 300,
@@ -53,11 +53,11 @@ export function DeletePostModal({ open, isPending = false, onConfirm, onCancel, 
       >
         <p
           id="delete-modal-title"
-          style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em', marginBottom: 4 }}
+          style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 4 }}
         >
           {title}
         </p>
-        <p style={{ fontSize: 14, color: 'rgb(113,118,123)', lineHeight: 1.5, marginBottom: 16 }}>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: 16 }}>
           {description}
         </p>
         <button
@@ -96,9 +96,9 @@ export function DeletePostModal({ open, isPending = false, onConfirm, onCancel, 
             width: '100%',
             padding: '14px 0',
             borderRadius: 999,
-            border: '1px solid rgb(51,54,57)',
+            border: '1px solid var(--border)',
             background: 'transparent',
-            color: '#fff',
+            color: 'var(--text)',
             fontSize: 15,
             fontWeight: 700,
             cursor: isPending ? 'not-allowed' : 'pointer',

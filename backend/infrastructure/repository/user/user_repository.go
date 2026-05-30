@@ -285,6 +285,12 @@ func (r *UserRepository) SearchForShare(ctx context.Context, query string, exclu
 		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
 		Where("roles.name <> ?", "admin").
 		Where("users.user_id <> ?", excludeUserID).
+		Where(`users.user_id NOT IN (
+			SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+			UNION
+			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, excludeUserID, excludeUserID).
+		Where(`users.user_id NOT IN (
+			SELECT muted_user_id FROM notification_user_mutes WHERE user_id = ?)`, excludeUserID).
 		Where("users.user_name ILIKE ? ESCAPE '\\' OR users.name ILIKE ? ESCAPE '\\'", pattern, pattern).
 		Order("users.is_premium DESC, users.created_at DESC").
 		Limit(10).

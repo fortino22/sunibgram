@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"strings"
 	"unicode/utf8"
@@ -13,17 +14,19 @@ import (
 	chatroommodel "github.com/sunibgram/domain/model/chat_room"
 	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
 )
 
 type ChatRoomService struct {
 	roomRepo       chatroomrepoiface.IChatRoomRepository
 	userRepo       userrepoiface.IUserRepository
+	blockRepo      userblockrepoiface.IUserBlockRepository
 	storageUsecase *storageuc.StorageUsecase
 }
 
-func NewChatRoomService(roomRepo chatroomrepoiface.IChatRoomRepository, userRepo userrepoiface.IUserRepository, storageUsecase *storageuc.StorageUsecase) chatroomsvciface.IChatRoomService {
-	return &ChatRoomService{roomRepo: roomRepo, userRepo: userRepo, storageUsecase: storageUsecase}
+func NewChatRoomService(roomRepo chatroomrepoiface.IChatRoomRepository, userRepo userrepoiface.IUserRepository, blockRepo userblockrepoiface.IUserBlockRepository, storageUsecase *storageuc.StorageUsecase) chatroomsvciface.IChatRoomService {
+	return &ChatRoomService{roomRepo: roomRepo, userRepo: userRepo, blockRepo: blockRepo, storageUsecase: storageUsecase}
 }
 
 func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, targetUserID uint) (*chatroommodel.ChatRoom, error) {
@@ -32,6 +35,16 @@ func (s *ChatRoomService) CreatePrivate(ctx context.Context, initiatorID, target
 	}
 	if _, err := s.userRepo.FindByID(targetUserID); err != nil {
 		return nil, errors.New("target user not found")
+	}
+	// Cannot open a DM with someone in a mutual block relationship.
+	if s.blockRepo != nil {
+		blocked, err := s.blockRepo.IsBlocked(initiatorID, targetUserID)
+		if err != nil {
+			return nil, err
+		}
+		if blocked {
+			return nil, errors.New("blocked")
+		}
 	}
 	if room, err := s.roomRepo.FindPrivateRoom(initiatorID, targetUserID); err == nil {
 		if _, err := s.roomKey(room); err != nil {
@@ -229,19 +242,25 @@ func (s *ChatRoomService) GetGroupMembers(ctx context.Context, roomID, requester
 	if err != nil {
 		return nil, err
 	}
-	result := make([]chatroomsvciface.RoomParticipant, len(members))
-	for i, m := range members {
+	result := make([]chatroomsvciface.RoomParticipant, 0, len(members))
+	for _, m := range members {
+		// Hide members in a mutual block relationship with the requester.
+		if s.blockRepo != nil && m.UserID != requesterID {
+			if blocked, bErr := s.blockRepo.IsBlocked(requesterID, m.UserID); bErr == nil && blocked {
+				continue
+			}
+		}
 		avatarURL := ""
 		if s.storageUsecase != nil && m.AvatarObjectName != "" {
 			avatarURL = s.storageUsecase.GetURL(m.AvatarObjectName)
 		}
-		result[i] = chatroomsvciface.RoomParticipant{
+		result = append(result, chatroomsvciface.RoomParticipant{
 			UserID:      m.UserID,
 			Username:    m.Username,
 			Name:        m.Name,
 			FacultyName: m.FacultyName,
 			AvatarURL:   avatarURL,
-		}
+		})
 	}
 	return result, nil
 }
@@ -257,7 +276,44 @@ func (s *ChatRoomService) DeleteGroup(ctx context.Context, roomID, requesterID u
 	if room.Type != chatroommodel.ChatRoomTypeGroup {
 		return errors.New("room is not a group")
 	}
-	return s.roomRepo.DeleteGroup(roomID)
+
+	// Collect media object names before the rows are deleted; remove them from
+	// object storage after the DB delete succeeds (storage has no rollback).
+	var mediaObjects []string
+	if s.storageUsecase != nil {
+		mediaObjects, _ = s.roomRepo.MediaObjectNamesByRoom(roomID)
+	}
+	if err := s.roomRepo.DeleteGroup(roomID); err != nil {
+		return err
+	}
+	for _, obj := range mediaObjects {
+		if obj == "" {
+			continue
+		}
+		if err := s.storageUsecase.Delete(ctx, obj); err != nil {
+			log.Printf("chat media orphan on group %d delete: %s: %v", roomID, obj, err)
+		}
+	}
+	return nil
+}
+
+// IsPrivateRoomBlocked reports whether roomID is a private room whose other
+// member is mutually blocked with userID. Group rooms return false. Used by the
+// socket layer to seal join/typing on an existing A↔B DM after a block.
+func (s *ChatRoomService) IsPrivateRoomBlocked(roomID, userID uint) bool {
+	if s.blockRepo == nil {
+		return false
+	}
+	memberMap, err := s.roomRepo.FindOtherMemberInfo([]uint{roomID}, userID)
+	if err != nil {
+		return false
+	}
+	info, ok := memberMap[roomID]
+	if !ok {
+		return false
+	}
+	blocked, err := s.blockRepo.IsBlocked(userID, info.UserID)
+	return err == nil && blocked
 }
 
 func (s *ChatRoomService) GetUserRooms(userID uint, page, limit int) ([]chatroommodel.ChatRoom, int64, error) {
@@ -287,6 +343,26 @@ func (s *ChatRoomService) GetUserRoomsWithParticipants(userID uint, page, limit 
 		if err != nil {
 			return nil, 0, err
 		}
+	}
+
+	// Hide private rooms whose other member is in a mutual block relationship
+	// with the viewer (mutual hide). Group rooms are unaffected.
+	if s.blockRepo != nil {
+		filtered := make([]chatroommodel.ChatRoom, 0, len(rooms))
+		newAllIDs := make([]uint, 0, len(rooms))
+		for _, r := range rooms {
+			if r.Type == chatroommodel.ChatRoomTypePrivate {
+				if info, ok := memberMap[r.RoomID]; ok {
+					if blocked, bErr := s.blockRepo.IsBlocked(userID, info.UserID); bErr == nil && blocked {
+						continue
+					}
+				}
+			}
+			filtered = append(filtered, r)
+			newAllIDs = append(newAllIDs, r.RoomID)
+		}
+		rooms = filtered
+		allIDs = newAllIDs
 	}
 
 	muteMap, _ := s.roomRepo.GetMuteStatuses(userID, allIDs)

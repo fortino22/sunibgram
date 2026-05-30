@@ -308,7 +308,7 @@ export default function HomePage() {
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          background: 'oklch(10.5% 0.005 260 / 0.92)',
+          background: 'var(--bg-blur)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border)',
         }}

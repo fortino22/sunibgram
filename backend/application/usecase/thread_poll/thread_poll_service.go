@@ -13,21 +13,24 @@ import (
 	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	threadpollrepoiface "github.com/sunibgram/domain/repository/thread_poll"
+	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
 )
 
 type ThreadPollService struct {
 	threadRepo threadrepoiface.IThreadRepository
 	pollRepo   threadpollrepoiface.IThreadPollRepository
+	blockRepo  userblockrepoiface.IUserBlockRepository
 	storage    *storageuc.StorageUsecase
 }
 
 func NewThreadPollService(
 	threadRepo threadrepoiface.IThreadRepository,
 	pollRepo threadpollrepoiface.IThreadPollRepository,
+	blockRepo userblockrepoiface.IUserBlockRepository,
 	storage *storageuc.StorageUsecase,
 ) threadpollsvciface.IThreadPollService {
-	return &ThreadPollService{threadRepo: threadRepo, pollRepo: pollRepo, storage: storage}
+	return &ThreadPollService{threadRepo: threadRepo, pollRepo: pollRepo, blockRepo: blockRepo, storage: storage}
 }
 
 func (s *ThreadPollService) Create(ctx context.Context, threadID, userID uint, input threadpollsvciface.CreatePollInput) (*threadpollmodel.ThreadPoll, error) {
@@ -156,6 +159,16 @@ func (s *ThreadPollService) Vote(ctx context.Context, threadID, optionID, userID
 	}
 	if resolvedOwnerID == userID {
 		return nil, nil, errors.New("forbidden: cannot vote on your own poll")
+	}
+	// Cannot vote on a blocked user's poll (mutual hide).
+	if s.blockRepo != nil {
+		blocked, err := s.blockRepo.IsBlocked(userID, resolvedOwnerID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if blocked {
+			return nil, nil, errors.New("blocked")
+		}
 	}
 	poll, err := s.pollRepo.FindByThreadID(resolvedThreadID)
 	if err != nil {

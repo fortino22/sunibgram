@@ -286,7 +286,7 @@ export function Sidebar() {
                 borderRadius: 16,
                 padding: 6,
                 zIndex: 50,
-                boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+                boxShadow: 'var(--shadow-dropdown)',
               }}
             >
               {moreItems.map((item) => {
@@ -349,11 +349,12 @@ export function Sidebar() {
               width: isCollapsed ? 44 : '100%',
               height: isCollapsed ? 44 : undefined,
               padding: isCollapsed ? undefined : '13px 0',
-              background: postHovered ? '#e6e6e6' : '#fff',
+              background: 'var(--text)',
+              filter: postHovered ? 'brightness(0.9)' : 'none',
               border: 'none',
               cursor: 'pointer',
               borderRadius: 9999,
-              color: '#000',
+              color: 'var(--bg)',
               fontWeight: 600,
               fontSize: 16,
               letterSpacing: '-0.02em',
@@ -364,7 +365,11 @@ export function Sidebar() {
               transition: 'background 0.15s ease',
             }}
           >
-            <span className="sidebar-label">Post</span>
+            {isCollapsed ? (
+              <Icon name="compose" size={22} color="var(--bg)" strokeWidth={2} />
+            ) : (
+              <span className="sidebar-label">Post</span>
+            )}
           </button>
         </div>
       </div>
@@ -384,7 +389,7 @@ export function Sidebar() {
               padding: 6,
               marginBottom: 4,
               zIndex: 50,
-              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              boxShadow: 'var(--shadow-dropdown)',
             }}
           >
             <button

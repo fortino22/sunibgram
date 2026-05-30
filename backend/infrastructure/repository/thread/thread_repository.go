@@ -103,12 +103,33 @@ func ApplyThreadVisibility(db *gorm.DB, requesterID *uint) *gorm.DB {
 	if requesterID == nil {
 		return db.Where("COALESCE(thread_visibility_settings.is_private, false) = ?", false)
 	}
+	db = ApplyBlockFilter(db, *requesterID)
 	db = db.Joins("LEFT JOIN user_relationships thread_visibility_relationships ON thread_visibility_relationships.follower_id = ? AND thread_visibility_relationships.following_id = threads.user_id", *requesterID)
 	return db.Where(
 		"threads.user_id = ? OR COALESCE(thread_visibility_settings.is_private, false) = ? OR thread_visibility_relationships.following_id IS NOT NULL",
 		*requesterID,
 		false,
 	)
+}
+
+// ApplyBlockFilter excludes threads authored by users blocked by the requester
+// or who have blocked the requester (mutual hide). Use it directly on feed
+// queries that build their own visibility joins instead of ApplyThreadVisibility.
+func ApplyBlockFilter(db *gorm.DB, requesterID uint) *gorm.DB {
+	return ApplyBlockFilterOnColumn(db, "threads.user_id", requesterID)
+}
+
+// ApplyBlockFilterOnColumn is ApplyBlockFilter for queries whose author/user id
+// lives in a different column (e.g. users.user_id in explore searches). It also
+// excludes authors the requester has muted (one-way), so every thread-visibility
+// consumer hides muted users' posts alongside blocked users'.
+func ApplyBlockFilterOnColumn(db *gorm.DB, userColumn string, requesterID uint) *gorm.DB {
+	return db.Where(userColumn+` NOT IN (
+		SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+		UNION
+		SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, requesterID, requesterID).
+		Where(userColumn+` NOT IN (
+		SELECT muted_user_id FROM notification_user_mutes WHERE user_id = ?)`, requesterID)
 }
 
 func ThreadVisibilityCachePart(requesterID *uint) string {

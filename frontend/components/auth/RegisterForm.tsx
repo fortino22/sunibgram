@@ -198,7 +198,7 @@ export function RegisterForm({
                 {...register('birthdayDate')}
                 type="date"
                 max={today}
-                style={{ ...inputStyle(!!errors.birthdayDate), colorScheme: 'dark' }}
+                style={inputStyle(!!errors.birthdayDate)}
               />
             </FormField>
 

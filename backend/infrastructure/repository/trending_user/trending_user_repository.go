@@ -274,6 +274,28 @@ LEFT JOIN user_profiles up ON up.user_id = u.user_id
 WHERE u.user_id IN ?
 `
 
+// fetchBlockedSet returns the set of user ids in a mutual block relationship
+// with the viewer, so trending lists hide blocked users (mutual hide). Empty for
+// guests (viewerID 0).
+func (r *trendingUserRepository) fetchBlockedSet(ctx context.Context, viewerID uint) map[uint]bool {
+	set := map[uint]bool{}
+	if viewerID == 0 {
+		return set
+	}
+	var ids []uint
+	r.readDB.WithContext(ctx).
+		Raw(`SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+			UNION
+			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?
+			UNION
+			SELECT muted_user_id FROM notification_user_mutes WHERE user_id = ?`, viewerID, viewerID, viewerID).
+		Scan(&ids)
+	for _, id := range ids {
+		set[id] = true
+	}
+	return set
+}
+
 func (r *trendingUserRepository) GetWeeklyTrending(ctx context.Context, viewerID uint, page, limit int) (trendinguserrepoiface.TrendingUsersPage, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
@@ -309,9 +331,13 @@ func (r *trendingUserRepository) GetWeeklyTrending(ctx context.Context, viewerID
 	if err != nil {
 		return trendinguserrepoiface.TrendingUsersPage{}, err
 	}
+	blockedSet := r.fetchBlockedSet(ctx, viewerID)
 
 	users := make([]trendingusermodel.TrendingUser, 0, len(scores))
 	for _, s := range scores {
+		if blockedSet[s.UserID] {
+			continue
+		}
 		info, ok := infos[s.UserID]
 		if !ok {
 			continue

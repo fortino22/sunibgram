@@ -96,7 +96,7 @@ function EventDetailHeader({ onBack }: { onBack: () => void }) {
         alignItems: 'center',
         gap: 14,
         borderBottom: '1px solid var(--border)',
-        background: 'oklch(10.5% 0.005 260 / 0.92)',
+        background: 'var(--bg-blur)',
         backdropFilter: 'blur(12px)',
       }}
     >
@@ -304,7 +304,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
               style={{
                 padding: '7px 18px',
                 borderRadius: 999,
-                border: `1px solid ${joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : '#808080'}`,
+                border: `1px solid ${joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : 'var(--border)'}`,
                 background: 'transparent',
                 color: joinHovered && !leave.isPending ? 'var(--error, #e53e3e)' : 'var(--text)',
                 fontSize: 14,
@@ -372,7 +372,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           zIndex: 10,
           display: 'flex',
           borderBottom: '1px solid var(--border)',
-          background: 'oklch(10.5% 0.005 260 / 0.92)',
+          background: 'var(--bg-blur)',
           backdropFilter: 'blur(12px)',
         }}
       >

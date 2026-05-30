@@ -48,7 +48,9 @@ func (r *bookmarkCollectionRepository) FindByID(collectionID uint) (*bookmarkcol
 
 func (r *bookmarkCollectionRepository) FindByUserID(userID uint) ([]bookmarkcollectionmodel.BookmarkCollection, error) {
 	var list []bookmarkcollectionmodel.BookmarkCollection
-	if err := r.readDB.Where("user_id = ?", userID).Order("created_at DESC").Find(&list).Error; err != nil {
+	// Defensive cap: a user's collection count is small by UX, but bound the
+	// query so a pathological account can't load an unbounded row set.
+	if err := r.readDB.Where("user_id = ?", userID).Order("created_at DESC").Limit(200).Find(&list).Error; err != nil {
 		return nil, err
 	}
 	return list, nil

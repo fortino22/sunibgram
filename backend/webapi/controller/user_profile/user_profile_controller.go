@@ -181,6 +181,25 @@ func (c *UserProfileController) fetchAndRespond(ctx *fiber.Ctx, userID uint, vie
 }
 
 func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(string) string, includeEmail bool) userprofiledto.UserProfileResponse {
+	// Blocked relationship (either direction): strip to a shell. Keep only
+	// identity + block flags so the client can render the restricted state.
+	// Self-view is never blocked against itself, so includeEmail callers are safe.
+	if fp.IsBlocked || fp.IsBlockedBy {
+		shellAvatar := ""
+		if fp.Profile != nil {
+			shellAvatar = ctrlshared.BuildMediaURL(fp.Profile.AvatarObjectName, getURL)
+		}
+		return userprofiledto.UserProfileResponse{
+			UserID:      fp.User.UserID,
+			Name:        fp.User.Name,
+			Username:    fp.User.UserName,
+			AvatarURL:   shellAvatar,
+			IsFollowing: false,
+			IsBlocked:   fp.IsBlocked,
+			IsBlockedBy: fp.IsBlockedBy,
+		}
+	}
+
 	avatarURL := ""
 	bannerURL := ""
 	if fp.Profile != nil {
@@ -226,6 +245,9 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 		FollowerCount:  followerCount,
 		FollowingCount: followingCount,
 		IsFollowing:    fp.IsFollowing,
+		IsBlocked:      fp.IsBlocked,
+		IsBlockedBy:    fp.IsBlockedBy,
+		IsMuted:        fp.IsMuted,
 		Faculty:        faculty,
 		CreatedAt:      utils.Wrap(fp.User.CreatedAt),
 	}

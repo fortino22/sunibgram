@@ -426,7 +426,7 @@ function QuickReactButton({ chatId, isOwn, currentUserId, reactions, onReact, on
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 24,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            boxShadow: 'var(--shadow-dropdown)',
             padding: '6px 8px',
             display: 'flex',
             gap: 2,
@@ -560,7 +560,7 @@ function MessageMenu({ isOwn, hasTextMessage, onEdit, onDelete, onReply }: Messa
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
             borderRadius: 10,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            boxShadow: 'var(--shadow-dropdown)',
             minWidth: 130,
             overflow: 'hidden',
           }}
@@ -953,7 +953,7 @@ export function MessageBubble({
                     ? 'transparent'
                     : isOwn
                     ? 'var(--accent)'
-                    : 'oklch(28% 0.01 260)',
+                    : 'var(--bg-subtle)',
                   border: isDeleted ? '1px dashed var(--border)' : 'none',
                   fontSize: 14,
                   lineHeight: 1.5,

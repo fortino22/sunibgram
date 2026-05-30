@@ -129,7 +129,7 @@ export function ReportTrendModal({ open, onOpenChange, hashtagName, anchorRect, 
             }}
             onMouseEnter={(e) => {
               if (mutation.isPending) return;
-              (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.04)';
+              (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)';
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.background = 'transparent';

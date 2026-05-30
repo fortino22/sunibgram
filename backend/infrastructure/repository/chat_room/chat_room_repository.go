@@ -179,6 +179,15 @@ func (r *ChatRoomRepository) UpdateGroup(roomID uint, name string, description *
 	return r.cache.Delete(context.Background(), fmt.Sprintf("chat:room:%d", roomID))
 }
 
+func (r *ChatRoomRepository) MediaObjectNamesByRoom(roomID uint) ([]string, error) {
+	var names []string
+	chatIDs := r.readDB.Model(&chatmodel.Chat{}).Select("chat_id").Where("room_id = ?", roomID)
+	err := r.readDB.Model(&chatmediamodel.ChatMedia{}).
+		Where("chat_id IN (?)", chatIDs).
+		Pluck("object_name", &names).Error
+	return names, err
+}
+
 func (r *ChatRoomRepository) DeleteGroup(roomID uint) error {
 	ctx := context.Background()
 	var userIDs []uint

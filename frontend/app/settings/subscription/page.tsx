@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import {
   PrimaryButton,
   SettingsPanel,
@@ -13,8 +14,7 @@ import { useActivateTrial, useSubscriptionStatus } from '@/hooks/useSubscription
 const PREMIUM_PERKS: string[] = [
   'Verified badge on your profile, posts, and replies',
   'Verified badge in chats, communities, and notifications',
-  'Priority ranking in trending users and discover suggestions',
-  'Higher placement in followers and following lists',
+  'Create and manage your own communities',
 ];
 
 export default function SubscriptionSettingsPage() {
@@ -70,7 +70,7 @@ export default function SubscriptionSettingsPage() {
                       color: 'var(--text-secondary)',
                     }}
                   >
-                    <Check size={16} color="var(--accent)" />
+                    <VerifiedBadge size={16} />
                     {perk}
                   </li>
                 ))}
@@ -120,21 +120,25 @@ function StatusCard({
         gap: 14,
       }}
     >
-      <div
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          background: isPremium ? 'var(--accent)' : 'var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: isPremium ? '#fff' : 'var(--text-tertiary)',
-          flexShrink: 0,
-        }}
-      >
-        <Sparkles size={20} strokeWidth={2} />
-      </div>
+      {isPremium ? (
+        <VerifiedBadge size={28} />
+      ) : (
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            background: 'var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--text-tertiary)',
+            flexShrink: 0,
+          }}
+        >
+          <Check size={20} strokeWidth={2.5} />
+        </div>
+      )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
           {isPremium ? (isTrial ? 'Premium (Trial)' : 'Premium') : 'Not subscribed'}

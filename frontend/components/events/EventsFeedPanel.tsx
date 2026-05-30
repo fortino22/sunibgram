@@ -269,7 +269,7 @@ function EventListRow({ event, live = false, badge }: ListRowProps) {
   const dateLabel = formatRange(event.startTime, event.endTime);
 
   const tones: Record<string, { bg: string; fg: string; border: string }> = {
-    default: { bg: 'oklch(100% 0 0 / 0.06)', fg: 'var(--text)',         border: 'oklch(100% 0 0 / 0.15)' },
+    default: { bg: 'var(--bg-hover)', fg: 'var(--text)',         border: 'var(--border)' },
     success: { bg: 'oklch(70% 0.15 145 / 0.15)', fg: 'oklch(82% 0.15 145)', border: 'oklch(70% 0.15 145 / 0.4)' },
     warning: { bg: 'oklch(75% 0.15 80 / 0.15)',  fg: 'oklch(85% 0.15 80)',  border: 'oklch(75% 0.15 80 / 0.4)' },
     danger:  { bg: 'oklch(65% 0.2 25 / 0.15)',   fg: 'oklch(75% 0.2 25)',   border: 'oklch(65% 0.2 25 / 0.4)' },
@@ -640,7 +640,7 @@ export function EventsFeedPanel({ active }: PanelProps) {
           position: 'sticky',
           top: 0,
           zIndex: 10,
-          background: 'oklch(8% 0.005 260 / 0.85)',
+          background: 'var(--bg-blur)',
           backdropFilter: 'blur(16px)',
           borderBottom: '1px solid var(--border)',
         }}
@@ -854,7 +854,6 @@ export function EventsFeedPanel({ active }: PanelProps) {
                             padding: '8px 10px', borderRadius: 8,
                             border: '1px solid var(--border)', background: 'var(--bg)',
                             color: 'var(--text)', fontSize: 13, outline: 'none',
-                            colorScheme: 'dark',
                           }}
                         />
                       </label>
@@ -868,7 +867,6 @@ export function EventsFeedPanel({ active }: PanelProps) {
                             padding: '8px 10px', borderRadius: 8,
                             border: '1px solid var(--border)', background: 'var(--bg)',
                             color: 'var(--text)', fontSize: 13, outline: 'none',
-                            colorScheme: 'dark',
                           }}
                         />
                       </label>

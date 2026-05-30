@@ -18,6 +18,10 @@ func (s *ThreadService) GetByID(id uint) (*threadmodel.Thread, error) {
 	return s.threadRepo.FindByID(id)
 }
 
+func (s *ThreadService) GetByIDs(ids []uint) ([]threadmodel.Thread, error) {
+	return s.threadRepo.FindByIDs(ids)
+}
+
 func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
 	threads, total, err := s.threadRepo.FindRoots(requesterID, page, limit)
@@ -29,7 +33,21 @@ func (s *ThreadService) GetRoots(ctx context.Context, requesterID *uint, page, l
 
 func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {
 	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	return s.threadRepo.FindForYouFeed(ctx, userID, page, limit)
+	threads, parents, total, err := s.threadRepo.FindForYouFeed(ctx, userID, page, limit)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	// For You source queries are not block-filtered at the repo layer; drop
+	// blocked-author threads here (total stays approximate, like private filtering).
+	threads, parents, err = s.filterBlockedFeed(&userID, threads, parents)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	threads, parents, err = s.filterMutedFeed(&userID, threads, parents)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	return threads, parents, total, nil
 }
 
 func (s *ThreadService) RefreshForYouFeed(ctx context.Context, userID uint) {
@@ -92,7 +110,26 @@ func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint
 	return filtered[offset:end], total, nil
 }
 
+// IsAuthorMutedBy reports whether viewerID has muted authorID (one-way). Used to
+// hide a muted author's post on direct single-thread GET, matching the feed-level
+// mute filtering applied everywhere else.
+func (s *ThreadService) IsAuthorMutedBy(viewerID, authorID uint) (bool, error) {
+	if s.muteRepo == nil || viewerID == 0 || viewerID == authorID {
+		return false, nil
+	}
+	return s.muteRepo.IsMuted(viewerID, authorID)
+}
+
 func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error {
+	if s.blockRepo != nil && requesterID != 0 && requesterID != targetUserID {
+		blocked, err := s.blockRepo.IsBlocked(requesterID, targetUserID)
+		if err != nil {
+			return err
+		}
+		if blocked {
+			return errors.New("blocked")
+		}
+	}
 	return CanViewPrivateUser(ctx, s.settingsRepo, s.followRepo, &requesterID, targetUserID)
 }
 
@@ -137,7 +174,7 @@ func (s *ThreadService) GetMentionUsers(ctx context.Context, userID uint, query 
 	if query == "" {
 		return []exploremodel.ExploreUserResult{}, nil
 	}
-	return s.followRepo.SearchMentionUsers(ctx, query)
+	return s.followRepo.SearchMentionUsers(ctx, userID, query)
 }
 
 func (s *ThreadService) filterUserFeed(ctx context.Context, requesterID uint, threads []threadmodel.Thread, parents []*threadmodel.Thread) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error) {

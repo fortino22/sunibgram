@@ -27,6 +27,7 @@ import (
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
 	notificationctrl "github.com/sunibgram/webapi/controller/notification"
+	notificationusermutectrl "github.com/sunibgram/webapi/controller/notification_user_mute"
 	orderctrl "github.com/sunibgram/webapi/controller/order"
 	premiumsubscriptionctrl "github.com/sunibgram/webapi/controller/premium_subscription"
 	reportctrl "github.com/sunibgram/webapi/controller/report"
@@ -40,6 +41,7 @@ import (
 	trendreportctrl "github.com/sunibgram/webapi/controller/trend_report"
 	trendinguserctrl "github.com/sunibgram/webapi/controller/trending_user"
 	userctrl "github.com/sunibgram/webapi/controller/user"
+	userblockctrl "github.com/sunibgram/webapi/controller/user_block"
 	userprofilectrl "github.com/sunibgram/webapi/controller/user_profile"
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
 	verificationctrl "github.com/sunibgram/webapi/controller/verification"
@@ -96,6 +98,8 @@ func Register(
 	emailCtrl *emailctrl.EmailController,
 	verificationCtrl *verificationctrl.VerificationController,
 	followCtrl *followctrl.FollowController,
+	userBlockCtrl *userblockctrl.UserBlockController,
+	muteCtrl *notificationusermutectrl.NotificationUserMuteController,
 	communityCtrl *communityctrl.CommunityController,
 	communityMemberCtrl *communityctrl.CommunityMemberController,
 	communityRequestCtrl *communityrequestctrl.CommunityRequestController,
@@ -136,7 +140,7 @@ func Register(
 	bookmarkcollectionroute.RegisterBookmarkCollectionRoutes(api, bookmarkCollectionCtrl, auth)
 	eventroute.RegisterEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, eventThreadPinCtrl, auth)
 	emailroute.RegisterEmailRoutes(api, emailCtrl, auth)
-	userroute.RegisterUserRoutes(api, followCtrl, exploreCtrl, auth)
+	userroute.RegisterUserRoutes(api, followCtrl, exploreCtrl, userBlockCtrl, muteCtrl, auth)
 	adminroute.RegisterAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
 	communityroute.RegisterCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, communityRuleCtrl, communityThreadPinCtrl, communityPinCtrl, auth)
 	categoryroute.RegisterCategoryRoutes(api, categoryCtrl)

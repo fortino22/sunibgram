@@ -53,18 +53,18 @@ export function ImageCropModal({ imageSrc, filename, aspect, maxSizeBytes = IMAG
       style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ background: '#1a1a1a', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.6)' }}>
+      <div style={{ background: 'var(--bg-card)', borderRadius: 16, width: '100%', maxWidth: 480, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: 'var(--shadow-dropdown)' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontFamily: 'inherit', padding: '4px 0' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontFamily: 'inherit', padding: '4px 0' }}
           >
             <X size={16} strokeWidth={2} />
             Cancel
           </button>
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>Crop photo</span>
+          <span style={{ color: 'var(--text)', fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em' }}>Crop photo</span>
           <button
             type="button"
             onClick={handleConfirm}
@@ -94,9 +94,9 @@ export function ImageCropModal({ imageSrc, filename, aspect, maxSizeBytes = IMAG
         </div>
 
         {/* Zoom slider */}
-        <div style={{ padding: '14px 24px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ padding: '14px 24px 16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', lineHeight: 1, userSelect: 'none' }}>−</span>
+            <span style={{ fontSize: 16, color: 'var(--text-tertiary)', lineHeight: 1, userSelect: 'none' }}>−</span>
             <input
               type="range"
               min={1}
@@ -106,10 +106,10 @@ export function ImageCropModal({ imageSrc, filename, aspect, maxSizeBytes = IMAG
               onChange={(e) => { setZoom(Number(e.target.value)); setSizeError(null); }}
               style={{ flex: 1, accentColor: 'var(--accent)', cursor: 'pointer' }}
             />
-            <span style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)', lineHeight: 1, userSelect: 'none' }}>+</span>
+            <span style={{ fontSize: 16, color: 'var(--text-tertiary)', lineHeight: 1, userSelect: 'none' }}>+</span>
           </div>
           {sizeError && (
-            <p style={{ margin: 0, fontSize: 12, color: '#f87171', textAlign: 'center' }}>{sizeError}</p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--coral)', textAlign: 'center' }}>{sizeError}</p>
           )}
         </div>
       </div>

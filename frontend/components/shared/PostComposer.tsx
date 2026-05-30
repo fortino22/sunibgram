@@ -36,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { useJoinedCommunities } from '@/hooks/useCommunities';
 import { useMyJoinedEventItems } from '@/hooks/useMyJoinedEventItems';
 import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
+import { encodeMentions } from '@/lib/mentions';
 import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 import { toast } from 'sonner';
 import { GifPicker } from '@/components/chat/GifPicker';
@@ -702,10 +703,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   }, []);
 
   function transformMentionsForSubmit(text: string): string {
-    return text.replace(/@([a-zA-Z0-9_.]+)/g, (full, name: string) => {
-      const id = pickedMentionsRef.current.get(name);
-      return id ? `@[${name}|${id}]` : full;
-    });
+    return encodeMentions(text, pickedMentionsRef.current);
   }
 
   function handleEmojiClick(emojiData: EmojiClickData) {
@@ -1753,10 +1751,10 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               className="btn-solid"
               disabled={!canSubmit}
               style={{
-                background: '#fff',
+                background: 'var(--text)',
                 border: 'none',
                 borderRadius: 9999,
-                color: '#000',
+                color: 'var(--bg)',
                 fontWeight: 600,
                 fontSize: 14,
                 padding: '9px 20px',

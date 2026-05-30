@@ -52,9 +52,7 @@ function PodiumColumn({ user, rank, onSelect }: PodiumColumnProps) {
   }
 
   const pedestalBg = isFirst
-    ? hovered
-      ? 'var(--text)'
-      : 'rgba(255,255,255,0.92)'
+    ? 'var(--text)'
     : hovered
       ? 'var(--bg-hover)'
       : 'var(--bg-subtle)';
