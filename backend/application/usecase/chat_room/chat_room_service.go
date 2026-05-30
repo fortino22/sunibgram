@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"strings"
 	"unicode/utf8"
@@ -275,7 +276,25 @@ func (s *ChatRoomService) DeleteGroup(ctx context.Context, roomID, requesterID u
 	if room.Type != chatroommodel.ChatRoomTypeGroup {
 		return errors.New("room is not a group")
 	}
-	return s.roomRepo.DeleteGroup(roomID)
+
+	// Collect media object names before the rows are deleted; remove them from
+	// object storage after the DB delete succeeds (storage has no rollback).
+	var mediaObjects []string
+	if s.storageUsecase != nil {
+		mediaObjects, _ = s.roomRepo.MediaObjectNamesByRoom(roomID)
+	}
+	if err := s.roomRepo.DeleteGroup(roomID); err != nil {
+		return err
+	}
+	for _, obj := range mediaObjects {
+		if obj == "" {
+			continue
+		}
+		if err := s.storageUsecase.Delete(ctx, obj); err != nil {
+			log.Printf("chat media orphan on group %d delete: %s: %v", roomID, obj, err)
+		}
+	}
+	return nil
 }
 
 // IsPrivateRoomBlocked reports whether roomID is a private room whose other

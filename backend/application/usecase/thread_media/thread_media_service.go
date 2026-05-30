@@ -3,6 +3,7 @@ package threadmediauc
 import (
 	"context"
 	"errors"
+	"log"
 	"mime/multipart"
 	"sync"
 
@@ -73,7 +74,9 @@ func (s *ThreadMediaService) Update(ctx context.Context, threadID, userID uint, 
 
 	existing, _ := s.mediaRepo.FindByThreadID(threadID)
 	for _, m := range existing {
-		_ = s.storage.Delete(ctx, m.ObjectName)
+		if err := s.storage.Delete(ctx, m.ObjectName); err != nil {
+			log.Printf("thread media orphan: %s: %v", m.ObjectName, err)
+		}
 	}
 	_ = s.mediaRepo.DeleteByThreadID(threadID)
 
@@ -136,7 +139,9 @@ func (s *ThreadMediaService) UpdateGranular(ctx context.Context, threadID, userI
 			return err
 		}
 		for _, m := range deleted {
-			_ = s.storage.Delete(ctx, m.ObjectName)
+			if err := s.storage.Delete(ctx, m.ObjectName); err != nil {
+			log.Printf("thread media orphan: %s: %v", m.ObjectName, err)
+		}
 		}
 	}
 
@@ -218,7 +223,9 @@ func (s *ThreadMediaService) DeleteByThread(ctx context.Context, threadID uint) 
 		return err
 	}
 	for _, m := range media {
-		_ = s.storage.Delete(ctx, m.ObjectName)
+		if err := s.storage.Delete(ctx, m.ObjectName); err != nil {
+			log.Printf("thread media orphan: %s: %v", m.ObjectName, err)
+		}
 	}
 	return s.mediaRepo.DeleteByThreadID(threadID)
 }
@@ -260,7 +267,9 @@ func (s *ThreadMediaService) Delete(ctx context.Context, threadID, userID uint, 
 		return err
 	}
 	for _, m := range deleted {
-		_ = s.storage.Delete(ctx, m.ObjectName)
+		if err := s.storage.Delete(ctx, m.ObjectName); err != nil {
+			log.Printf("thread media orphan: %s: %v", m.ObjectName, err)
+		}
 	}
 	return nil
 }

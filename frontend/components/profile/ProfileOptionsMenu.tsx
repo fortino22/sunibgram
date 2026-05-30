@@ -1,10 +1,13 @@
 'use client';
 
-import { MoreHorizontal, Flag, Ban, VolumeX } from 'lucide-react';
+import { MoreHorizontal, Flag, Ban, VolumeX, Link2 } from 'lucide-react';
 import { type CSSProperties, type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { buildProfileShareUrl } from '@/lib/shareUrl';
 
 interface ProfileOptionsMenuProps {
   username: string;
+  userId: number;
   isBlocked: boolean;
   isMuted: boolean;
   onBlock?: () => void;
@@ -32,7 +35,7 @@ const ITEM_BASE: CSSProperties = {
 
 const ICON_SIZE = 17;
 
-export function ProfileOptionsMenu({ username, isBlocked, isMuted, onBlock, onMute, onReport }: ProfileOptionsMenuProps) {
+export function ProfileOptionsMenu({ username, userId, isBlocked, isMuted, onBlock, onMute, onReport }: ProfileOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -108,6 +111,24 @@ export function ProfileOptionsMenu({ username, isBlocked, isMuted, onBlock, onMu
             overflow: 'hidden',
           }}
         >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={run(async () => {
+              try {
+                await navigator.clipboard.writeText(buildProfileShareUrl(userId));
+                toast.success('Link copied to clipboard');
+              } catch {
+                toast.error('Failed to copy link');
+              }
+            })}
+            onMouseEnter={onItemEnter}
+            onMouseLeave={onItemLeave}
+            style={ITEM_BASE}
+          >
+            <Link2 size={ICON_SIZE} strokeWidth={2} />
+            Copy link to profile
+          </button>
           {onMute && (
             <button
               type="button"

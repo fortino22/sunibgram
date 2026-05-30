@@ -2,6 +2,7 @@ package threadrepo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -51,14 +52,24 @@ func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]thread
 	}
 	found := make(map[uint]threadmodel.Thread, len(ids))
 	missing := make([]uint, 0)
+	keys := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id == 0 {
 			continue
 		}
-		var t threadmodel.Thread
-		if err := r.cache.Get(ctx, ThreadKey(id), &t); err == nil {
-			found[id] = t
+		keys = append(keys, ThreadKey(id))
+	}
+	hits, _ := r.cache.MGet(ctx, keys)
+	for _, id := range ids {
+		if id == 0 {
 			continue
+		}
+		if raw, ok := hits[ThreadKey(id)]; ok {
+			var t threadmodel.Thread
+			if json.Unmarshal(raw, &t) == nil {
+				found[id] = t
+				continue
+			}
 		}
 		missing = append(missing, id)
 	}
@@ -69,10 +80,12 @@ func (r *threadCached) hydrateThreads(ctx context.Context, ids []uint) ([]thread
 			Find(&rows).Error; err != nil {
 			return nil, err
 		}
+		entries := make(map[string]any, len(rows))
 		for i := range rows {
 			found[rows[i].ThreadID] = rows[i]
-			_ = r.cache.Set(ctx, ThreadKey(rows[i].ThreadID), rows[i], r.ttl)
+			entries[ThreadKey(rows[i].ThreadID)] = rows[i]
 		}
+		_ = r.cache.MSet(ctx, entries, r.ttl)
 	}
 	out := make([]threadmodel.Thread, 0, len(ids))
 	for _, id := range ids {
@@ -99,12 +112,19 @@ func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]
 	}
 	found := make(map[uint]*threadmodel.Thread, len(uniq))
 	missing := make([]uint, 0, len(uniq))
+	keys := make([]string, 0, len(uniq))
 	for id := range uniq {
-		var t threadmodel.Thread
-		if err := r.cache.Get(ctx, ParentThreadKey(id), &t); err == nil {
-			tc := t
-			found[id] = &tc
-			continue
+		keys = append(keys, ParentThreadKey(id))
+	}
+	hits, _ := r.cache.MGet(ctx, keys)
+	for id := range uniq {
+		if raw, ok := hits[ParentThreadKey(id)]; ok {
+			var t threadmodel.Thread
+			if json.Unmarshal(raw, &t) == nil {
+				tc := t
+				found[id] = &tc
+				continue
+			}
 		}
 		missing = append(missing, id)
 	}
@@ -115,11 +135,13 @@ func (r *threadCached) hydrateParents(ctx context.Context, parentIDs []uint) ([]
 			Find(&rows).Error; err != nil {
 			return nil, err
 		}
+		entries := make(map[string]any, len(rows))
 		for i := range rows {
 			tc := rows[i]
 			found[rows[i].ThreadID] = &tc
-			_ = r.cache.Set(ctx, ParentThreadKey(rows[i].ThreadID), rows[i], r.ttl)
+			entries[ParentThreadKey(rows[i].ThreadID)] = rows[i]
 		}
+		_ = r.cache.MSet(ctx, entries, r.ttl)
 	}
 	out := make([]*threadmodel.Thread, len(parentIDs))
 	for i, id := range parentIDs {
@@ -145,14 +167,16 @@ func (r *threadCached) storeFeedIDs(
 	if parents != nil {
 		entry.ParentIDs = make([]uint, len(threads))
 	}
+	entries := make(map[string]any, len(threads)*2)
 	for i, t := range threads {
 		entry.IDs[i] = t.ThreadID
-		_ = r.cache.Set(ctx, ThreadKey(t.ThreadID), t, r.ttl)
+		entries[ThreadKey(t.ThreadID)] = t
 		if parents != nil && parents[i] != nil {
 			entry.ParentIDs[i] = parents[i].ThreadID
-			_ = r.cache.Set(ctx, ParentThreadKey(parents[i].ThreadID), *parents[i], r.ttl)
+			entries[ParentThreadKey(parents[i].ThreadID)] = *parents[i]
 		}
 	}
+	_ = r.cache.MSet(ctx, entries, r.ttl)
 	if err := r.cache.Set(ctx, key, entry, ttl); err == nil {
 		for _, id := range entry.IDs {
 			r.trackFeedCacheKey(ctx, id, key)
@@ -178,14 +202,24 @@ func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]t
 	}
 	found := make(map[uint]threadmodel.Thread, len(ids))
 	missing := make([]uint, 0)
+	keys := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id == 0 {
 			continue
 		}
-		var t threadmodel.Thread
-		if err := r.cache.Get(ctx, ParentThreadKey(id), &t); err == nil {
-			found[id] = t
+		keys = append(keys, ParentThreadKey(id))
+	}
+	hits, _ := r.cache.MGet(ctx, keys)
+	for _, id := range ids {
+		if id == 0 {
 			continue
+		}
+		if raw, ok := hits[ParentThreadKey(id)]; ok {
+			var t threadmodel.Thread
+			if json.Unmarshal(raw, &t) == nil {
+				found[id] = t
+				continue
+			}
 		}
 		missing = append(missing, id)
 	}
@@ -196,10 +230,12 @@ func (r *threadCached) hydrateChainThreads(ctx context.Context, ids []uint) ([]t
 			Find(&rows).Error; err != nil {
 			return nil, err
 		}
+		entries := make(map[string]any, len(rows))
 		for i := range rows {
 			found[rows[i].ThreadID] = rows[i]
-			_ = r.cache.Set(ctx, ParentThreadKey(rows[i].ThreadID), rows[i], r.ttl)
+			entries[ParentThreadKey(rows[i].ThreadID)] = rows[i]
 		}
+		_ = r.cache.MSet(ctx, entries, r.ttl)
 	}
 	out := make([]threadmodel.Thread, 0, len(ids))
 	for _, id := range ids {

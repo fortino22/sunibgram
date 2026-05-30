@@ -1425,3 +1425,26 @@ body {
   width: 100%;
 }
 
+/* Sonner success toasts → brand blue (X style). Theme-constant via --x-blue. */
+[data-sonner-toast][data-type="success"] {
+  --normal-bg: var(--x-blue);
+  --normal-border: var(--x-blue);
+  --normal-text: #ffffff;
+  --success-bg: var(--x-blue);
+  --success-border: var(--x-blue);
+  --success-text: #ffffff;
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: #ffffff;
+}
+
+/* Blue X close button */
+[data-sonner-toast] [data-close-button] {
+  background: var(--x-blue);
+  border-color: var(--x-blue);
+  color: #ffffff;
+}
+[data-sonner-toast] [data-close-button]:hover {
+  background: var(--accent-hover);
+}
+

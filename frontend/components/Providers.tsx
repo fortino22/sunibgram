@@ -11,7 +11,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeSync />
       {children}
-      <Toaster position="bottom-center" richColors />
+      <Toaster position="bottom-center" richColors closeButton />
     </QueryClientProvider>
   );
 }

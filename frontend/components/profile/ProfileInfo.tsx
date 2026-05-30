@@ -19,6 +19,7 @@ interface ProfileUser {
 
 interface ProfileInfoProps {
   user: ProfileUser;
+  userId: number;
   isOwn: boolean;
   isFollowing: boolean;
   onFollowToggle: () => void;
@@ -37,6 +38,7 @@ interface ProfileInfoProps {
 
 export function ProfileInfo({
   user,
+  userId,
   isOwn,
   isFollowing,
   onFollowToggle,
@@ -94,6 +96,7 @@ export function ProfileInfo({
             {onReport && (
               <ProfileOptionsMenu
                 username={user.username}
+                userId={userId}
                 isBlocked={isBlocked}
                 isMuted={isMuted}
                 onBlock={onBlock}

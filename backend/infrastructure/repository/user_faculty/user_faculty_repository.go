@@ -2,6 +2,7 @@ package userfacultyrepo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -62,11 +63,18 @@ func (r *userFacultyRepository) FindByUserIDs(ids []uint) ([]usermodel.UserFacul
 	rows := make([]usermodel.UserFaculty, 0, len(ids))
 	missing := make([]uint, 0, len(ids))
 	if r.cache != nil {
+		keys := make([]string, len(ids))
+		for i, id := range ids {
+			keys[i] = userFacultyKey(id)
+		}
+		hits, _ := r.cache.MGet(ctx, keys)
 		for _, id := range ids {
-			var uf usermodel.UserFaculty
-			if err := r.cache.Get(ctx, userFacultyKey(id), &uf); err == nil {
-				rows = append(rows, uf)
-				continue
+			if raw, ok := hits[userFacultyKey(id)]; ok {
+				var uf usermodel.UserFaculty
+				if json.Unmarshal(raw, &uf) == nil {
+					rows = append(rows, uf)
+					continue
+				}
 			}
 			missing = append(missing, id)
 		}
@@ -81,9 +89,11 @@ func (r *userFacultyRepository) FindByUserIDs(ids []uint) ([]usermodel.UserFacul
 		return nil, err
 	}
 	if r.cache != nil {
+		entries := make(map[string]any, len(fetched))
 		for i := range fetched {
-			r.cache.Set(ctx, userFacultyKey(fetched[i].UserID), fetched[i], cache.FacultyTTL)
+			entries[userFacultyKey(fetched[i].UserID)] = fetched[i]
 		}
+		_ = r.cache.MSet(ctx, entries, cache.FacultyTTL)
 	}
 	rows = append(rows, fetched...)
 	return rows, nil
