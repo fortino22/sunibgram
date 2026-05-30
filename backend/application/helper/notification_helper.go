@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	notificationusermuterepoiface "github.com/sunibgram/domain/repository/notification_user_mute"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -63,6 +64,7 @@ func SendMentionNotifications(
 	notificationService notificationsvciface.INotificationService,
 	userRepo userrepoiface.IUserRepository,
 	blockRepo userblockrepoiface.IUserBlockRepository,
+	muteRepo notificationusermuterepoiface.INotificationUserMuteRepository,
 	actorUserID uint,
 	threadID uint,
 	content string,
@@ -109,6 +111,12 @@ func SendMentionNotifications(
 			// Skip mentioning a user in a mutual block relationship with the actor.
 			if blockRepo != nil {
 				if blocked, bErr := blockRepo.IsBlocked(actorUserID, user.UserID); bErr == nil && blocked {
+					continue
+				}
+			}
+			// Skip mentioning a user who has muted the actor (one-way: recipient muted actor).
+			if muteRepo != nil {
+				if muted, mErr := muteRepo.IsMuted(user.UserID, actorUserID); mErr == nil && muted {
 					continue
 				}
 			}

@@ -159,6 +159,8 @@ func (r *InteractionRepo) FindByUserID(userID uint, page, limit int) ([]threadmo
 			SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
 			UNION
 			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, userID, userID).
+		Where(`threads.user_id NOT IN (
+			SELECT muted_user_id FROM notification_user_mutes WHERE user_id = ?)`, userID).
 		Find(&threads).Error; err != nil {
 		return nil, nil, total, err
 	}

@@ -286,7 +286,9 @@ func (r *trendingUserRepository) fetchBlockedSet(ctx context.Context, viewerID u
 	r.readDB.WithContext(ctx).
 		Raw(`SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
 			UNION
-			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?`, viewerID, viewerID).
+			SELECT blocker_id FROM user_blocks WHERE blocked_id = ?
+			UNION
+			SELECT muted_user_id FROM notification_user_mutes WHERE user_id = ?`, viewerID, viewerID, viewerID).
 		Scan(&ids)
 	for _, id := range ids {
 		set[id] = true

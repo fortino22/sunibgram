@@ -31,6 +31,8 @@ interface ProfileInfoProps {
   isBlockedBy?: boolean;
   onBlock?: () => void;
   blockPending?: boolean;
+  isMuted?: boolean;
+  onMute?: () => void;
 }
 
 export function ProfileInfo({
@@ -47,6 +49,8 @@ export function ProfileInfo({
   isBlockedBy = false,
   onBlock,
   blockPending = false,
+  isMuted = false,
+  onMute,
 }: ProfileInfoProps) {
   return (
     <div style={{ position: 'relative', padding: '0 20px' }}>
@@ -91,7 +95,9 @@ export function ProfileInfo({
               <ProfileOptionsMenu
                 username={user.username}
                 isBlocked={isBlocked}
+                isMuted={isMuted}
                 onBlock={onBlock}
+                onMute={onMute}
                 onReport={onReport}
               />
             )}

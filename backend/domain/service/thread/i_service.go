@@ -25,6 +25,8 @@ type IThreadService interface {
 	IsReposted(userID, threadID uint) bool
 	AreThreadsReposted(userID uint, threadIDs []uint) (map[uint]bool, error)
 	CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error
+	// IsAuthorMutedBy reports whether viewerID has muted authorID (one-way).
+	IsAuthorMutedBy(viewerID, authorID uint) (bool, error)
 	GetMyPosts(ctx context.Context, requesterID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
 	GetMyReplies(ctx context.Context, requesterID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
 	GetMyMediaThread(ctx context.Context, requesterID, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)

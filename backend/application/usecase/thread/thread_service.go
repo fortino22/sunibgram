@@ -7,6 +7,7 @@ import (
 	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
+	notificationusermuterepoiface "github.com/sunibgram/domain/repository/notification_user_mute"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
@@ -28,6 +29,7 @@ type ThreadService struct {
 	settingsRepo   usersettingsrepoiface.IUserSettingsRepository
 	followRepo     followrepoiface.IFollowRepository
 	blockRepo      userblockrepoiface.IUserBlockRepository
+	muteRepo       notificationusermuterepoiface.INotificationUserMuteRepository
 	notification   notificationsvciface.INotificationService
 	summaryService threadsummarysvciface.IThreadSummaryService
 	userRepo       userrepoiface.IUserRepository
@@ -44,6 +46,7 @@ func NewThreadService(
 	settingsRepo usersettingsrepoiface.IUserSettingsRepository,
 	followRepo followrepoiface.IFollowRepository,
 	blockRepo userblockrepoiface.IUserBlockRepository,
+	muteRepo notificationusermuterepoiface.INotificationUserMuteRepository,
 	notification notificationsvciface.INotificationService,
 	summaryService threadsummarysvciface.IThreadSummaryService,
 	userRepo userrepoiface.IUserRepository,
@@ -59,6 +62,7 @@ func NewThreadService(
 		settingsRepo:   settingsRepo,
 		followRepo:     followRepo,
 		blockRepo:      blockRepo,
+		muteRepo:       muteRepo,
 		notification:   notification,
 		summaryService: summaryService,
 		userRepo:       userRepo,

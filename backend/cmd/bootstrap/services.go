@@ -30,6 +30,7 @@ import (
 	hashtaguc "github.com/sunibgram/application/usecase/hashtag"
 	likeuc "github.com/sunibgram/application/usecase/like"
 	notificationuc "github.com/sunibgram/application/usecase/notification"
+	notificationusermuteuc "github.com/sunibgram/application/usecase/notification_user_mute"
 	orderuc "github.com/sunibgram/application/usecase/order"
 	premiumsubscriptionuc "github.com/sunibgram/application/usecase/premium_subscription"
 	reportuc "github.com/sunibgram/application/usecase/report"
@@ -77,6 +78,7 @@ import (
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
+	notificationusermutesvciface "github.com/sunibgram/domain/service/notification_user_mute"
 	ordersvciface "github.com/sunibgram/domain/service/order"
 	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 	reportsvciface "github.com/sunibgram/domain/service/report"
@@ -108,6 +110,7 @@ type Services struct {
 	Notification         notificationsvciface.INotificationService
 	Follow               followsvciface.IFollowService
 	UserBlock            userblocksvciface.IUserBlockService
+	NotificationUserMute notificationusermutesvciface.INotificationUserMuteService
 	Hashtag              hashtagsvciface.IHashtagService
 	ThreadSummary        threadsummarysvciface.IThreadSummaryService
 	Thread               threadsvciface.IThreadService
@@ -147,13 +150,14 @@ type Services struct {
 }
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
-	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
+	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.NotificationUserMute, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
 	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub)
 	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.UserBlock, repos.Cache, notification)
 	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
+	notificationUserMute := notificationusermuteuc.NewNotificationUserMuteService(repos.NotificationUserMute, repos.User)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
 	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
-	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, summary, repos.User)
+	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, repos.NotificationUserMute, notification, summary, repos.User)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, repos.BookmarkCollection)
 	bookmarkCollection := bookmarkcollectionuc.NewBookmarkCollectionService(repos.BookmarkCollection, repos.Bookmark, repos.Thread, repos.UserSettings, repos.Follow)
@@ -174,6 +178,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Notification:         notification,
 		Follow:               follow,
 		UserBlock:            userBlock,
+		NotificationUserMute: notificationUserMute,
 		Hashtag:              hashtag,
 		ThreadSummary:        summary,
 		Thread:               thread,

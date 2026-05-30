@@ -120,12 +120,16 @@ func ApplyBlockFilter(db *gorm.DB, requesterID uint) *gorm.DB {
 }
 
 // ApplyBlockFilterOnColumn is ApplyBlockFilter for queries whose author/user id
-// lives in a different column (e.g. users.user_id in explore searches).
+// lives in a different column (e.g. users.user_id in explore searches). It also
+// excludes authors the requester has muted (one-way), so every thread-visibility
+// consumer hides muted users' posts alongside blocked users'.
 func ApplyBlockFilterOnColumn(db *gorm.DB, userColumn string, requesterID uint) *gorm.DB {
 	return db.Where(userColumn+` NOT IN (
 		SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
 		UNION
-		SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, requesterID, requesterID)
+		SELECT blocker_id FROM user_blocks WHERE blocked_id = ?)`, requesterID, requesterID).
+		Where(userColumn+` NOT IN (
+		SELECT muted_user_id FROM notification_user_mutes WHERE user_id = ?)`, requesterID)
 }
 
 func ThreadVisibilityCachePart(requesterID *uint) string {

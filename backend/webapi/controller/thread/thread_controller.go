@@ -282,6 +282,11 @@ func (c *ThreadController) GetByID(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
+	// Hide a muted author's post on direct GET (one-way mute), matching feed-level filtering.
+	if muted, mErr := c.threadService.IsAuthorMutedBy(claims.UserID, thread.UserID); mErr == nil && muted {
+		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "thread not found"})
+	}
+
 	media, _ := c.mediaService.GetByThreadID(id)
 	fb := c.fbNoPin(&claims.UserID)
 	fb.LoadAvatarsForUserIDs(ThreadUserIDs([]threadmodel.Thread{*thread}))

@@ -39,6 +39,10 @@ func (s *ThreadService) GetForYouFeed(ctx context.Context, userID uint, page, li
 	if err != nil {
 		return nil, nil, 0, err
 	}
+	threads, parents, err = s.filterMutedFeed(&userID, threads, parents)
+	if err != nil {
+		return nil, nil, 0, err
+	}
 	return threads, parents, total, nil
 }
 
@@ -100,6 +104,16 @@ func (s *ThreadService) GetChain(ctx context.Context, anchorID, requesterID uint
 		end = len(filtered)
 	}
 	return filtered[offset:end], total, nil
+}
+
+// IsAuthorMutedBy reports whether viewerID has muted authorID (one-way). Used to
+// hide a muted author's post on direct single-thread GET, matching the feed-level
+// mute filtering applied everywhere else.
+func (s *ThreadService) IsAuthorMutedBy(viewerID, authorID uint) (bool, error) {
+	if s.muteRepo == nil || viewerID == 0 || viewerID == authorID {
+		return false, nil
+	}
+	return s.muteRepo.IsMuted(viewerID, authorID)
 }
 
 func (s *ThreadService) CanViewUserThreads(ctx context.Context, requesterID, targetUserID uint) error {

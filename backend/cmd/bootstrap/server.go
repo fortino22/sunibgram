@@ -94,6 +94,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.Verification,
 		ctrls.Follow,
 		ctrls.UserBlock,
+		ctrls.NotificationUserMute,
 		ctrls.Community,
 		ctrls.CommunityMember,
 		ctrls.CommunityRequest,
