@@ -63,7 +63,7 @@ function DocViewer({ url }: { url: string }) {
         border: '1px solid var(--border)',
         borderRadius: 12,
         overflow: 'auto',
-        background: '#f3f3f3',
+        background: 'var(--bg-subtle)',
         boxSizing: 'border-box',
       }}
     >

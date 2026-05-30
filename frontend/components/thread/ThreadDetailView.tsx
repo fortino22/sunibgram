@@ -142,7 +142,9 @@ export function ThreadDetailView({ root, ancestors = [], belowChain = [], replie
           type="button"
           aria-label="Back"
           onClick={() => router.back()}
-          className="inline-flex items-center justify-center rounded-full transition-colors hover:bg-white/20 cursor-pointer"
+          className="inline-flex items-center justify-center rounded-full transition-colors cursor-pointer"
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           style={{
             width: 36,
             height: 36,

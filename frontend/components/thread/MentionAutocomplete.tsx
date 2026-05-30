@@ -193,7 +193,7 @@ export function MentionAutocomplete({
               padding: '8px 10px',
               borderRadius: 10,
               border: 'none',
-              background: i === activeIndex ? 'rgba(255,255,255,0.04)' : 'transparent',
+              background: i === activeIndex ? 'var(--bg-hover)' : 'transparent',
               cursor: 'pointer',
               textAlign: 'left',
             }}

@@ -29,6 +29,8 @@ import {
   UserCog,
   ChevronRight,
   Megaphone,
+  Palette,
+  Check,
   type LucideProps,
 } from 'lucide-react';
 import type { FC } from 'react';
@@ -64,6 +66,8 @@ const ICON_MAP: Record<string, FC<LucideProps>> = {
   userCog:      UserCog,
   chevronRight: ChevronRight,
   feedback:     Megaphone,
+  palette:      Palette,
+  check:        Check,
 };
 
 interface IconProps {

@@ -93,7 +93,7 @@ export function TrendingHashtags({ title = 'Trending on campus', bare = false, l
             href={getHashtagHref(hashtag.name)}
             className="group flex items-start justify-between transition-colors"
             style={{ padding: '6px 16px', color: 'inherit' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
             <div className="min-w-0">
@@ -136,7 +136,7 @@ export function TrendingHashtags({ title = 'Trending on campus', bare = false, l
           onClick={() => router.push('/explore?tab=trending')}
           className="w-full text-left text-[14px] transition-colors"
           style={{ padding: '10px 16px', color: 'var(--accent)' }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
         >
           Show more

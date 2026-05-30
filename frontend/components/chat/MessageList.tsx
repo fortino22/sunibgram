@@ -185,7 +185,7 @@ export function MessageList({
             style={{
               padding: '13px 16px',
               borderRadius: '18px 18px 18px 4px',
-              background: 'oklch(28% 0.01 260)',
+              background: 'var(--bg-subtle)',
               display: 'flex',
               gap: 5,
               alignItems: 'center',

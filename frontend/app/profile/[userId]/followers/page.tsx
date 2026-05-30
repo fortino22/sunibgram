@@ -37,7 +37,7 @@ function FollowersPageInner() {
           position: 'sticky',
           top: 0,
           zIndex: 20,
-          background: 'oklch(10.5% 0.005 260 / 0.92)',
+          background: 'var(--bg-blur)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid var(--border)',
           padding: '12px 16px',
@@ -94,7 +94,7 @@ function FollowersPageInner() {
           position: 'sticky',
           top: 65,
           zIndex: 10,
-          background: 'oklch(10.5% 0.005 260 / 0.92)',
+          background: 'var(--bg-blur)',
           backdropFilter: 'blur(12px)',
         }}
       >

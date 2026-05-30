@@ -196,7 +196,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
                 id="birthdayDate"
                 type="date"
                 {...register('birthdayDate')}
-                style={{ width: '100%', background: 'var(--bg-subtle)', border: `1px solid var(--border)`, borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit', outline: 'none', colorScheme: 'dark' }}
+                style={{ width: '100%', background: 'var(--bg-subtle)', border: `1px solid var(--border)`, borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit', outline: 'none' }}
               />
             </div>
 

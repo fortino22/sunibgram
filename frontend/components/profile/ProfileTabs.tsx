@@ -24,7 +24,7 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
         position: 'sticky',
         top: 77,
         zIndex: 10,
-        background: 'oklch(10.5% 0.005 260 / 0.92)',
+        background: 'var(--bg-blur)',
         backdropFilter: 'blur(12px)',
       }}
     >

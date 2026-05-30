@@ -57,9 +57,9 @@ export function AuthBrandPanel() {
             r={560}
           >
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="10%" stopColor="var(--border-strong)" />
-            <stop offset="80%" stopColor="var(--border-strong)" />
-            <stop offset="100%" stopColor="var(--border)" />
+            <stop offset="10%" stopColor="var(--auth-bolt-mid)" />
+            <stop offset="80%" stopColor="var(--auth-bolt-mid)" />
+            <stop offset="100%" stopColor="var(--auth-bolt-edge)" />
           </radialGradient>
           {/* Mirror of that light across the vertical center axis */}
           <radialGradient
@@ -70,9 +70,9 @@ export function AuthBrandPanel() {
             r={560}
           >
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="10%" stopColor="var(--border-strong)" />
-            <stop offset="80%" stopColor="var(--border-strong)" />
-            <stop offset="100%" stopColor="var(--border)" />
+            <stop offset="10%" stopColor="var(--auth-bolt-mid)" />
+            <stop offset="80%" stopColor="var(--auth-bolt-mid)" />
+            <stop offset="100%" stopColor="var(--auth-bolt-edge)" />
           </radialGradient>
         </defs>
 

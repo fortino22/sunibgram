@@ -48,3 +48,14 @@ func (s *UserSettingsService) UpdateUserSetting(ctx context.Context, userID uint
 	}
 	return nil
 }
+
+func (s *UserSettingsService) UpdateUserTheme(ctx context.Context, userID uint, theme string) error {
+	parsed := usersettingsmodel.ParseUserTheme(theme)
+	if err := usersettingsmodel.ValidateUserTheme(parsed); err != nil {
+		return err
+	}
+	return s.settingsRepo.UpdateUserTheme(ctx, &usersettingsmodel.UserSettings{
+		UserID:    userID,
+		UserTheme: parsed,
+	})
+}

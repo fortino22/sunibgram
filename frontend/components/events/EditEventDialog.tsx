@@ -354,7 +354,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
               <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <CalendarDays size={12} /> Start date
               </label>
-              <input type="date" style={{ ...inputStyle, colorScheme: 'dark' }} {...form.register('start_date')} />
+              <input type="date" style={inputStyle} {...form.register('start_date')} />
               {form.formState.errors.start_date && (
                 <p style={errorStyle}>{form.formState.errors.start_date.message}</p>
               )}
@@ -363,7 +363,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
               <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Clock size={12} /> Start time
               </label>
-              <input type="time" style={{ ...inputStyle, colorScheme: 'dark' }} {...form.register('start_time')} />
+              <input type="time" style={inputStyle} {...form.register('start_time')} />
               {form.formState.errors.start_time && (
                 <p style={errorStyle}>{form.formState.errors.start_time.message}</p>
               )}
@@ -372,7 +372,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
               <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <CalendarDays size={12} /> End date
               </label>
-              <input type="date" style={{ ...inputStyle, colorScheme: 'dark' }} {...form.register('end_date')} />
+              <input type="date" style={inputStyle} {...form.register('end_date')} />
               {form.formState.errors.end_date && (
                 <p style={errorStyle}>{form.formState.errors.end_date.message}</p>
               )}
@@ -381,7 +381,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
               <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Clock size={12} /> End time
               </label>
-              <input type="time" style={{ ...inputStyle, colorScheme: 'dark' }} {...form.register('end_time')} />
+              <input type="time" style={inputStyle} {...form.register('end_time')} />
               {form.formState.errors.end_time && (
                 <p style={errorStyle}>{form.formState.errors.end_time.message}</p>
               )}

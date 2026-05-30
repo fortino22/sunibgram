@@ -117,6 +117,14 @@ func (r *UserSettingsRepository) UpdateUserSetting(ctx context.Context, setting 
 	return nil
 }
 
+func (r *UserSettingsRepository) UpdateUserTheme(ctx context.Context, setting *usersettingsmodel.UserSettings) error {
+	// Theme is cosmetic — no privacy/feed cache invalidation needed.
+	return r.writeDB.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "user_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"user_theme"}),
+	}).Create(setting).Error
+}
+
 func (r *UserSettingsRepository) invalidatePrivacy(ctx context.Context, userID uint) {
 	if r.cache == nil {
 		return

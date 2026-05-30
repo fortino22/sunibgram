@@ -1,8 +1,11 @@
 import { api } from '../api';
 
+export type UserTheme = 'black' | 'white';
+
 export interface UserSettings {
   user_id: number;
   is_private: boolean;
+  user_theme: UserTheme;
 }
 
 export interface MessageResponse {
@@ -18,4 +21,11 @@ export function updateMyUserSettings(
   token: string
 ): Promise<MessageResponse> {
   return api.put<MessageResponse>('/api/user-settings/me', params, token);
+}
+
+export function updateMyUserTheme(
+  params: { user_theme: UserTheme },
+  token: string
+): Promise<MessageResponse> {
+  return api.put<MessageResponse>('/api/user-settings/me/theme', params, token);
 }

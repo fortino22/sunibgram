@@ -15,8 +15,9 @@ interface SettingsSection {
 const SECTIONS: SettingsSection[] = [
   { href: '/settings/account',      icon: 'userCog',  label: 'Your account',          description: 'Display name, username, email' },
   { href: '/settings/privacy',      icon: 'lock',     label: 'Privacy and safety',    description: 'Control who sees your posts' },
+  { href: '/settings/appearance',   icon: 'palette',  label: 'Appearance',            description: 'Light or dark theme' },
   { href: '/settings/password',     icon: 'key',      label: 'Password',              description: 'Change account password' },
-  { href: '/settings/subscription', icon: 'sparkles', label: 'Premium',               description: 'Manage your subscription' },
+  { href: '/settings/subscription', icon: 'check',    label: 'Premium',               description: 'Manage your subscription' },
 ];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {

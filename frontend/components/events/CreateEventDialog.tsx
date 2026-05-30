@@ -355,7 +355,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               </label>
               <input
                 type="date"
-                style={{ ...inputStyle, colorScheme: 'dark' }}
+                style={inputStyle}
                 {...form.register('start_date')}
               />
               {form.formState.errors.start_date && (
@@ -368,7 +368,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               </label>
               <input
                 type="time"
-                style={{ ...inputStyle, colorScheme: 'dark' }}
+                style={inputStyle}
                 {...form.register('start_time')}
               />
               {form.formState.errors.start_time && (
@@ -381,7 +381,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               </label>
               <input
                 type="date"
-                style={{ ...inputStyle, colorScheme: 'dark' }}
+                style={inputStyle}
                 {...form.register('end_date')}
               />
               {form.formState.errors.end_date && (
@@ -394,7 +394,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               </label>
               <input
                 type="time"
-                style={{ ...inputStyle, colorScheme: 'dark' }}
+                style={inputStyle}
                 {...form.register('end_time')}
               />
               {form.formState.errors.end_time && (

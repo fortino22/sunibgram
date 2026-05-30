@@ -1753,10 +1753,10 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               className="btn-solid"
               disabled={!canSubmit}
               style={{
-                background: '#fff',
+                background: 'var(--text)',
                 border: 'none',
                 borderRadius: 9999,
-                color: '#000',
+                color: 'var(--bg)',
                 fontWeight: 600,
                 fontSize: 14,
                 padding: '9px 20px',

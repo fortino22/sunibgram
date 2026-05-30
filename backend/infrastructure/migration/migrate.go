@@ -262,6 +262,17 @@ func addCheckConstraints(db *gorm.DB) {
 			END IF;
 		END $$;
 	`)
+	db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint WHERE conname = 'chk_user_settings_theme'
+			) THEN
+				ALTER TABLE user_settings ADD CONSTRAINT chk_user_settings_theme
+				CHECK (user_theme IN ('black', 'white'));
+			END IF;
+		END $$;
+	`)
 }
 
 func addForeignKeys(db *gorm.DB) {

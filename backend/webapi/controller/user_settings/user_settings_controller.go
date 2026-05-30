@@ -34,6 +34,7 @@ func (c *UserSettingsController) GetUserSettingByUserID(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(usersettingsdto.UserSettingsResponse{
 		UserID:    setting.UserID,
 		IsPrivate: setting.IsPrivate,
+		UserTheme: string(setting.UserTheme),
 	})
 }
 func (c *UserSettingsController) UpdateUserSetting(ctx *fiber.Ctx) error {
@@ -55,4 +56,22 @@ func (c *UserSettingsController) UpdateUserSetting(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "user settings updated successfully"})
+}
+
+func (c *UserSettingsController) UpdateUserTheme(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	var req usersettingsdto.UpdateUserThemeRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
+	}
+
+	if err := c.settingsService.UpdateUserTheme(ctx.Context(), claims.UserID, req.UserTheme); err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "user theme updated successfully"})
 }

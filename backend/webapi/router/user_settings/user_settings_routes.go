@@ -10,4 +10,5 @@ func RegisterUserSettingsRoutes(api fiber.Router, ctrl *usersettingsctrl.UserSet
 	settings := api.Group("/user-settings", auth)
 	settings.Get("/me", ctrl.GetUserSettingByUserID)
 	settings.Put("/me", ctrl.UpdateUserSetting)
+	settings.Put("/me/theme", ctrl.UpdateUserTheme)
 }

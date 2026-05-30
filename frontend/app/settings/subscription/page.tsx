@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import {
   PrimaryButton,
@@ -133,7 +133,7 @@ function StatusCard({
           flexShrink: 0,
         }}
       >
-        <Sparkles size={20} strokeWidth={2} />
+        <Check size={20} strokeWidth={2.5} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>

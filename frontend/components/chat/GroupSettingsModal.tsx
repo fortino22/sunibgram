@@ -458,8 +458,8 @@ export function GroupSettingsModal({ room, onClose, onLeave }: GroupSettingsModa
                       padding: '11px',
                       borderRadius: 10,
                       background: 'none',
-                      border: '1px solid #ef4444',
-                      color: '#ef4444',
+                      border: '1px solid var(--coral)',
+                      color: 'var(--coral)',
                       fontWeight: 600,
                       fontSize: 14,
                       cursor: 'pointer',
@@ -470,7 +470,7 @@ export function GroupSettingsModal({ room, onClose, onLeave }: GroupSettingsModa
                       gap: 7,
                       transition: 'background 0.15s',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--coral-soft)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                   >
                     <LogOut size={15} />

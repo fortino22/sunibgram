@@ -96,7 +96,7 @@ function EventDetailHeader({ onBack }: { onBack: () => void }) {
         alignItems: 'center',
         gap: 14,
         borderBottom: '1px solid var(--border)',
-        background: 'oklch(10.5% 0.005 260 / 0.92)',
+        background: 'var(--bg-blur)',
         backdropFilter: 'blur(12px)',
       }}
     >
@@ -372,7 +372,7 @@ export function EventDetailView({ eventId }: { eventId: string }) {
           zIndex: 10,
           display: 'flex',
           borderBottom: '1px solid var(--border)',
-          background: 'oklch(10.5% 0.005 260 / 0.92)',
+          background: 'var(--bg-blur)',
           backdropFilter: 'blur(12px)',
         }}
       >
