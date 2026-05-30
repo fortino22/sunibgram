@@ -127,7 +127,6 @@ export function AboutSplitValue() {
             style={{ paddingBottom: '14px', borderBottom: '1px solid var(--border)' }}
           >
             <span
-              className="mono"
               style={{
                 fontSize: '0.6875rem',
                 textTransform: 'uppercase',
@@ -139,7 +138,6 @@ export function AboutSplitValue() {
               ☑ Today on campus
             </span>
             <span
-              className="mono"
               style={{
                 fontSize: '0.6875rem',
                 color: 'var(--text-tertiary)',

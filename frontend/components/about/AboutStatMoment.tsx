@@ -59,7 +59,6 @@ export function AboutStatMoment() {
           }}
         >
           <div
-            className="mono"
             style={{
               fontSize: '0.75rem',
               textTransform: 'uppercase',

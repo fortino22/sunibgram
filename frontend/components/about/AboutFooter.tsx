@@ -71,7 +71,6 @@ export function AboutFooter() {
             Sunibgram
           </span>
           <span
-            className="mono"
             style={{
               fontSize: '0.6875rem',
               padding: '3px 8px',
@@ -95,7 +94,6 @@ export function AboutFooter() {
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <div
-                className="mono"
                 style={{
                   fontSize: '0.6875rem',
                   textTransform: 'uppercase',
@@ -148,7 +146,6 @@ export function AboutFooter() {
             Binus University. Made in Jakarta with a lot of coffee.
           </p>
           <span
-            className="mono"
             style={{
               fontSize: '0.75rem',
               letterSpacing: '0.06em',
