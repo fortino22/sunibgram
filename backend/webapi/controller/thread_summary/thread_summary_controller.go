@@ -5,22 +5,32 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"
 
 	threadsummaryuc "github.com/sunibgram/application/usecase/thread_summary"
+	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
+	dtoutils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
+	threaddto "github.com/sunibgram/webapi/dto/thread"
+	threadmediadto "github.com/sunibgram/webapi/dto/thread_media"
+	threadsummarydto "github.com/sunibgram/webapi/dto/thread_summary"
 )
 
 type ThreadSummaryController struct {
 	summaryService threadsummarysvciface.IThreadSummaryService
+	mediaService   threadmediasvciface.IThreadMediaService
 }
 
-func NewThreadSummaryController(summaryService threadsummarysvciface.IThreadSummaryService) *ThreadSummaryController {
-	return &ThreadSummaryController{summaryService: summaryService}
+func NewThreadSummaryController(
+	summaryService threadsummarysvciface.IThreadSummaryService,
+	mediaService threadmediasvciface.IThreadMediaService,
+) *ThreadSummaryController {
+	return &ThreadSummaryController{summaryService: summaryService, mediaService: mediaService}
 }
 
 func (c *ThreadSummaryController) GetSummary(ctx *fiber.Ctx) error {
@@ -79,13 +89,63 @@ func (c *ThreadSummaryController) StreamSummary(ctx *fiber.Ctx) error {
 		if isCached {
 			_, _ = w.WriteString(cached)
 			_ = w.Flush()
+			// Cached path never enters StreamSummarize — record the view here so
+			// cached hits still appear in the user's summary history.
+			_ = c.summaryService.RecordView(reqCtx, userID, threadID)
 			return
 		}
 		if err := c.summaryService.StreamSummarize(reqCtx, threadID, userID, w); err != nil {
 			log.Printf("thread summary stream failed for thread %d: %v", threadID, err)
 		}
 		_ = w.Flush()
+		// Record after generation so the persisted summary row exists first.
+		_ = c.summaryService.RecordView(reqCtx, userID, threadID)
 	}))
 
 	return nil
+}
+
+// GetHistory returns the authenticated user's summary history: threads they have
+// summarized, newest first, each with the summarized content and the result.
+func (c *ThreadSummaryController) GetHistory(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	page, limit := ctrlshared.ParsePagination(ctx)
+	q := strings.TrimSpace(ctx.Query("q"))
+
+	summaries, timestamps, total, err := c.summaryService.ListHistory(ctx.Context(), claims.UserID, page, limit, q)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
+	}
+
+	// Group current thread media by thread so the detail view can show images.
+	ids := make([]uint, len(summaries))
+	for i, s := range summaries {
+		ids[i] = s.ThreadID
+	}
+	mediaByThread := ctrlshared.LoadThreadMediaByID(c.mediaService, ids)
+
+	data := make([]threadsummarydto.SummaryHistoryItem, len(summaries))
+	for i, s := range summaries {
+		media := mediaByThread[s.ThreadID]
+		mediaResp := make([]threadmediadto.ThreadMediaResponse, len(media))
+		for j, m := range media {
+			mediaResp[j] = threadmediadto.ThreadMediaResponse{MediaID: m.MediaID, URL: c.mediaService.GetURL(m.ObjectName)}
+		}
+		data[i] = threadsummarydto.SummaryHistoryItem{
+			ThreadID:     s.ThreadID,
+			Content:      s.ContentSnapshot,
+			Summary:      s.Summary,
+			IsStale:      s.IsStale,
+			SummarizedAt: dtoutils.Wrap(timestamps[i]),
+			Media:        mediaResp,
+		}
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(threadsummarydto.PaginatedSummaryHistoryResponse{
+		Data: data,
+		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
+	})
 }

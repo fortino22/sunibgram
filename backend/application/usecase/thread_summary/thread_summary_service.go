@@ -12,8 +12,11 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	helper "github.com/sunibgram/application/helper"
+	threadsummarymodel "github.com/sunibgram/domain/model/thread_summary"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
+	threadsummaryrepoiface "github.com/sunibgram/domain/repository/thread_summary"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 	"github.com/sunibgram/infrastructure/openai"
 )
@@ -37,6 +40,7 @@ var ErrDailyLimitReached = errors.New("daily summary limit reached")
 type ThreadSummaryService struct {
 	threadRepo   threadrepoiface.IThreadRepository
 	cacheRepo    cacherepoiface.ICacheRepository
+	summaryRepo  threadsummaryrepoiface.IThreadSummaryRepository
 	openaiClient *openai.Client
 	group        singleflight.Group
 }
@@ -44,12 +48,46 @@ type ThreadSummaryService struct {
 func NewThreadSummaryService(
 	threadRepo threadrepoiface.IThreadRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
+	summaryRepo threadsummaryrepoiface.IThreadSummaryRepository,
 	openaiClient *openai.Client,
 ) threadsummarysvciface.IThreadSummaryService {
 	return &ThreadSummaryService{
 		threadRepo:   threadRepo,
 		cacheRepo:    cacheRepo,
+		summaryRepo:  summaryRepo,
 		openaiClient: openaiClient,
+	}
+}
+
+// loadFromDB returns a persisted, non-stale summary for the thread and warms the
+// cache with it. Returns ("", false) on miss or when the stored summary is stale
+// (must be regenerated). Centralizes the cache-miss → DB fallback path.
+func (s *ThreadSummaryService) loadFromDB(ctx context.Context, threadID uint, key string) (string, bool) {
+	if s.summaryRepo == nil {
+		return "", false
+	}
+	row, err := s.summaryRepo.GetSummary(threadID)
+	if err != nil || row == nil || row.IsStale || strings.TrimSpace(row.Summary) == "" {
+		return "", false
+	}
+	if err := s.cacheRepo.Set(ctx, key, row.Summary, threadSummaryTTL); err != nil {
+		log.Printf("thread summary cache warm failed for thread %d: %v", threadID, err)
+	}
+	return row.Summary, true
+}
+
+// persistSummary writes a freshly generated summary to the DB with a snapshot of
+// the root post content (for the history view). Best-effort; logs on failure.
+func (s *ThreadSummaryService) persistSummary(threadID uint, summary string) {
+	if s.summaryRepo == nil {
+		return
+	}
+	var snapshot string
+	if root, err := s.threadRepo.FindByID(threadID); err == nil && root != nil {
+		snapshot = root.Content
+	}
+	if err := s.summaryRepo.UpsertSummary(summary, snapshot, threadID); err != nil {
+		log.Printf("thread summary persist failed for thread %d: %v", threadID, err)
 	}
 }
 
@@ -59,6 +97,10 @@ func (s *ThreadSummaryService) Summarize(ctx context.Context, threadID uint) (st
 	var cached string
 	if err := s.cacheRepo.Get(ctx, key, &cached); err == nil {
 		return cached, nil
+	}
+
+	if summary, ok := s.loadFromDB(ctx, threadID, key); ok {
+		return summary, nil
 	}
 
 	s.queueSummaryGeneration(threadID, key)
@@ -79,6 +121,9 @@ func (s *ThreadSummaryService) queueSummaryGeneration(threadID uint, key string)
 			if err := s.cacheRepo.Get(ctx, key, &cached); err == nil {
 				return cached, nil
 			}
+			if summary, ok := s.loadFromDB(ctx, threadID, key); ok {
+				return summary, nil
+			}
 
 			summary, err := s.generateSummary(ctx, threadID)
 			if err != nil {
@@ -91,6 +136,7 @@ func (s *ThreadSummaryService) queueSummaryGeneration(threadID uint, key string)
 			if err := s.cacheRepo.Set(ctx, key, summary, threadSummaryTTL); err != nil {
 				return nil, err
 			}
+			s.persistSummary(threadID, summary)
 
 			return summary, nil
 		})
@@ -194,11 +240,13 @@ func (s *ThreadSummaryService) generateSummary(ctx context.Context, threadID uin
 // non-empty. Lets the controller serve cached summaries without charging the
 // user's token quota (no LLM call is made).
 func (s *ThreadSummaryService) CachedSummary(ctx context.Context, threadID uint) (string, bool) {
+	key := threadSummaryKey(threadID)
 	var cached string
-	if err := s.cacheRepo.Get(ctx, threadSummaryKey(threadID), &cached); err == nil && strings.TrimSpace(cached) != "" {
+	if err := s.cacheRepo.Get(ctx, key, &cached); err == nil && strings.TrimSpace(cached) != "" {
 		return cached, true
 	}
-	return "", false
+	// Cache miss — fall back to the persisted summary (also free, no LLM call).
+	return s.loadFromDB(ctx, threadID, key)
 }
 
 // QuotaExceeded reports whether the user has already burned their daily summary
@@ -242,6 +290,12 @@ func (s *ThreadSummaryService) StreamSummarize(ctx context.Context, threadID, us
 		return err
 	}
 
+	// Cache miss — serve the persisted summary if present and fresh (free, no LLM).
+	if summary, ok := s.loadFromDB(ctx, threadID, key); ok {
+		_, err := io.WriteString(w, summary)
+		return err
+	}
+
 	prompt, err := s.buildSummaryPrompt(threadID)
 	if err != nil {
 		return err
@@ -270,12 +324,46 @@ func (s *ThreadSummaryService) StreamSummarize(ctx context.Context, threadID, us
 		if err := s.cacheRepo.Set(ctx, key, summary, threadSummaryTTL); err != nil {
 			log.Printf("thread summary cache set failed for thread %d: %v", threadID, err)
 		}
+		s.persistSummary(threadID, summary)
 	}
 	return nil
 }
 
 func (s *ThreadSummaryService) InvalidateCache(ctx context.Context, threadID uint) error {
+	// Mark the persisted summary stale so the next read regenerates it; the old
+	// summary stays visible in history until replaced.
+	if s.summaryRepo != nil {
+		if err := s.summaryRepo.MarkStale(threadID); err != nil {
+			log.Printf("thread summary mark-stale failed for thread %d: %v", threadID, err)
+		}
+	}
 	return s.cacheRepo.Delete(ctx, threadSummaryKey(threadID), threadSummaryReplyCountKey(threadID))
+}
+
+// RecordView records that the user summarized this thread, building their
+// history. Best-effort — called after a summary has been served (cached or
+// fresh). A no-op if no summary row exists yet (foreign data is upserted lazily;
+// the row is created by persistSummary on generation).
+func (s *ThreadSummaryService) RecordView(ctx context.Context, userID, threadID uint) error {
+	if s.summaryRepo == nil {
+		return nil
+	}
+	if err := s.summaryRepo.RecordUserView(userID, threadID); err != nil {
+		log.Printf("thread summary record-view failed user=%d thread=%d: %v", userID, threadID, err)
+		return err
+	}
+	return nil
+}
+
+// ListHistory returns the user's summary history (most-recently-summarized
+// first) plus the per-thread view timestamps and total count.
+func (s *ThreadSummaryService) ListHistory(ctx context.Context, userID uint, page, limit int, q string) ([]threadsummarymodel.ThreadSummary, []time.Time, int64, error) {
+	if s.summaryRepo == nil {
+		return nil, nil, 0, nil
+	}
+	page, limit = helper.NormalizePageLimit(page, limit, 20)
+	offset := (page - 1) * limit
+	return s.summaryRepo.ListUserHistory(userID, offset, limit, q)
 }
 
 func (s *ThreadSummaryService) RegisterReply(ctx context.Context, threadID uint) error {

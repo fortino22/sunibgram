@@ -24,12 +24,22 @@ const frameStyle: React.CSSProperties = {
   imageRendering: 'pixelated',
 };
 
+interface FoxSleepSpriteProps {
+  /** Render the fox recolored with the rainbow shimmer (mask = frame silhouette). */
+  rainbow?: boolean;
+  /** Container size; frames scale to fit (default 132×106, the native crop). */
+  width?: number;
+  height?: number;
+}
+
 /**
  * Sleeping-fox animation for the "coming soon" popup. Cycles pre-cropped frame
- * PNGs (settle → curl → sleep). Renders both colour variants; CSS shows the
- * white fox on dark theme and the black fox on light theme.
+ * PNGs (settle → curl → sleep). Default renders both colour variants; CSS shows
+ * the white fox on dark theme and the black fox on light theme. With `rainbow`,
+ * the frame silhouette masks the flowing rainbow gradient instead (theme-
+ * independent — both variants share the same alpha shape, so white frames mask).
  */
-export function FoxSleepSprite() {
+export function FoxSleepSprite({ rainbow = false, width = 132, height = 106 }: FoxSleepSpriteProps) {
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
@@ -37,8 +47,20 @@ export function FoxSleepSprite() {
     return () => clearInterval(timer);
   }, []);
 
+  if (rainbow) {
+    const frameUrl = `/assets/fox-sleep/white/${pad(WHITE_SLEEP.start + (frame % WHITE_SLEEP.count))}.png`;
+    return (
+      <span style={{ position: 'relative', display: 'block', width, height }} aria-hidden="true">
+        <span
+          className="fox-rainbow"
+          style={{ position: 'absolute', inset: 0, WebkitMaskImage: `url(${frameUrl})`, maskImage: `url(${frameUrl})` }}
+        />
+      </span>
+    );
+  }
+
   return (
-    <span style={{ position: 'relative', display: 'block', width: 132, height: 106 }} aria-hidden="true">
+    <span style={{ position: 'relative', display: 'block', width, height }} aria-hidden="true">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className="fox-sleep-frame--white"

@@ -41,12 +41,13 @@ import (
 	threadmediamodel "github.com/sunibgram/domain/model/thread_media"
 	threadpinmodel "github.com/sunibgram/domain/model/thread_pin"
 	threadpollmodel "github.com/sunibgram/domain/model/thread_poll"
+	threadsummarymodel "github.com/sunibgram/domain/model/thread_summary"
 	trendreportmodel "github.com/sunibgram/domain/model/trend_report"
 	trendingusersnapshotmodel "github.com/sunibgram/domain/model/trending_user_snapshot"
 	usermodel "github.com/sunibgram/domain/model/user"
+	userblockmodel "github.com/sunibgram/domain/model/user_block"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	userrelationshipmodel "github.com/sunibgram/domain/model/user_relationship"
-	userblockmodel "github.com/sunibgram/domain/model/user_block"
 	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 	userstatmodel "github.com/sunibgram/domain/model/user_stat"
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
@@ -82,6 +83,8 @@ func AutoMigrate(db *gorm.DB) {
 		&bookmarkcollectionmodel.BookmarkCollection{},
 		&bookmarkcollectionmodel.BookmarkCollectionItem{},
 		&threadpinmodel.ThreadPin{},
+		&threadsummarymodel.ThreadSummary{},
+		&threadsummarymodel.UserThreadSummary{},
 		&verificationcodemodel.VerificationCode{},
 		&userrelationshipmodel.UserRelationship{},
 		&userblockmodel.UserBlock{},
@@ -135,6 +138,7 @@ func AutoMigrate(db *gorm.DB) {
 	seeder.SeedTrendReportReason(db)
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
+	// seeder.SeedAgent(db)
 	seeder.SeedDummy(db)
 	seeder.SeedThreadWithReplies(db)
 	seeder.SeedTrendingUserSnapshot(db)

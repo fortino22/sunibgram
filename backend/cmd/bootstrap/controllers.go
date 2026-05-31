@@ -123,7 +123,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		BookmarkCollection:  bookmarkcollectionctrl.NewBookmarkCollectionController(svcs.BookmarkCollection, svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
 		ThreadPin:           threadpinctrl.NewThreadPinController(svcs.ThreadPin),
 		Repost:              repostctrl.NewRepostController(svcs.Thread, svcs.ThreadMedia),
-		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary),
+		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary, svcs.ThreadMedia),
 		Category:            categoryctrl.NewCategoryController(svcs.Category),
 		Violation:           violationctrl.NewViolationController(svcs.Violation),
 		Report:              reportctrl.NewReportController(svcs.Report),

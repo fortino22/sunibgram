@@ -24,7 +24,8 @@ export function ReplyModal() {
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        paddingTop: 80,
+        padding: '80px 0',
+        overflowY: 'auto',
         animation: 'modal-backdrop-in 0.18s ease',
       }}
     >
@@ -33,9 +34,9 @@ export function ReplyModal() {
         style={{
           width: '100%',
           maxWidth: 600,
+          height: 'fit-content',
           background: 'var(--bg-card)',
           borderRadius: 16,
-          overflow: 'hidden',
           boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
           margin: '0 16px',
           animation: 'modal-panel-in 0.22s cubic-bezier(0.16, 1, 0.3, 1)',

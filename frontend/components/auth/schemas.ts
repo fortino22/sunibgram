@@ -22,8 +22,9 @@ export const signupSchema = z
     gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say'], 'Gender is required'),
     birthdayDate: z
       .string()
-      .min(1, 'Birthday is required')
+      .optional()
       .refine((val) => {
+        if (!val) return true;
         const d = new Date(val);
         return !isNaN(d.getTime()) && d <= new Date();
       }, 'Must be a valid past date'),

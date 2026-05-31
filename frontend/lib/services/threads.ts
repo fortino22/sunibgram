@@ -17,6 +17,8 @@ export interface ThreadMessageResponse {
 export interface PaginationParams {
   page?: number;
   limit?: number;
+  /** Optional free-text filter (server-side search). Currently used by summary history. */
+  q?: string;
 }
 
 export interface ThreadMediaResponse {
@@ -177,14 +179,14 @@ export interface ThreadMutationParams {
   content: string;
   files?: File[];
   parentId?: number | string;
-  clearMedia?: boolean;
+  keepMediaIds?: number[];
   isPrivate?: boolean;
   poll?: ThreadPollInput;
   replyPermission?: string;
   eventId?: string;
 }
 
-export const DEFAULT_THREAD_CHAIN_PARAMS: Required<PaginationParams> = {
+export const DEFAULT_THREAD_CHAIN_PARAMS: Required<Pick<PaginationParams, 'page' | 'limit'>> = {
   page: 1,
   limit: 10,
 };
@@ -197,6 +199,9 @@ function query(params?: PaginationParams): string {
   if (params?.limit !== undefined) {
     search.set('limit', String(params.limit));
   }
+  if (params?.q !== undefined && params.q !== '') {
+    search.set('q', params.q);
+  }
   const value = search.toString();
   return value ? `?${value}` : '';
 }
@@ -207,8 +212,8 @@ function buildThreadFormData(params: ThreadMutationParams): FormData {
   if (params.parentId !== undefined) {
     formData.append('parent_id', String(params.parentId));
   }
-  if (params.clearMedia !== undefined) {
-    formData.append('clear_media', String(params.clearMedia));
+  if (params.keepMediaIds !== undefined) {
+    formData.append('keep_media_ids', params.keepMediaIds.join(','));
   }
   if (params.isPrivate !== undefined) {
     formData.append('is_private', String(params.isPrivate));
@@ -388,6 +393,32 @@ export async function streamThreadSummary(
     const text = decoder.decode(value, { stream: true });
     if (text) options.onChunk(text);
   }
+}
+
+export interface SummaryHistoryItem {
+  thread_id: number;
+  /** Root post content captured when the summary was generated. */
+  content: string;
+  /** Generated summary text (bullet lines). */
+  summary: string;
+  /** True when the thread changed after summarizing — summary may be outdated. */
+  is_stale: boolean;
+  /** "YYYY-MM-DD HH:mm" (WIB). */
+  summarized_at: string;
+  /** Current thread images (empty if none / thread deleted). */
+  media: ThreadMediaResponse[];
+}
+
+export interface SummaryHistoryResponse {
+  data: SummaryHistoryItem[];
+  meta: FeedMeta;
+}
+
+export function getSummaryHistory(
+  params: PaginationParams = {},
+  token: string,
+): Promise<SummaryHistoryResponse> {
+  return api.get<SummaryHistoryResponse>(`/api/summaries/history${query(params)}`, token);
 }
 
 export function getThreadFeed(id: number | string, token: string): Promise<FeedItemResponse> {
