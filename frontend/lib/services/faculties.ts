@@ -80,7 +80,9 @@ function adminQuery(params: AdminPaginationParams = {}): string {
   return value ? `?${value}` : '';
 }
 
-export function getFaculties(token: string): Promise<FacultyListResponse> {
+// Public endpoint — token optional (omit it pre-auth, e.g. on the signup form;
+// passing '' would make the api wrapper throw before fetching).
+export function getFaculties(token?: string): Promise<FacultyListResponse> {
   return api.get<FacultyListResponse>('/api/faculties', token);
 }
 

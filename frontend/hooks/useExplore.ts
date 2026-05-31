@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import {
   getSuggestedPeople,
   getSuggestedPeoplePreview,
+  getOnboardingPeople,
   searchExplore,
   getTopPosts,
   getLatestPosts,
@@ -22,6 +23,19 @@ export function useSuggestedPeople(limit = 10) {
     queryFn: () => {
       if (!token) throw new Error('Not authenticated');
       return getSuggestedPeople(token, limit);
+    },
+    enabled: token !== null,
+  });
+}
+
+// Onboarding follow gate — one query for both idle (q='') and search.
+export function useOnboardingPeople(q: string) {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ['onboarding-people', q],
+    queryFn: () => {
+      if (!token) throw new Error('Not authenticated');
+      return getOnboardingPeople(token, q);
     },
     enabled: token !== null,
   });

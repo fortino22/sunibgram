@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { BookOpen, Calendar } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { ProfileOptionsMenu } from '@/components/profile/ProfileOptionsMenu';
+import { AvatarZoomModal } from '@/components/profile/AvatarZoomModal';
 
 interface ProfileUser {
   name: string;
@@ -54,21 +56,35 @@ export function ProfileInfo({
   isMuted = false,
   onMute,
 }: ProfileInfoProps) {
+  const [zoomOpen, setZoomOpen] = useState(false);
+
   return (
     <div style={{ position: 'relative', padding: '0 20px' }}>
-      {/* Avatar overlaps banner */}
-      <Avatar
-        username={user.name}
-        avatarUrl={user.avatarUrl}
-        size="lg"
+      {/* Avatar overlaps banner — click to zoom */}
+      <button
+        type="button"
+        onClick={() => setZoomOpen(true)}
+        aria-label={`View ${user.name}'s profile photo`}
         style={{
           position: 'absolute',
           top: -44,
           left: 20,
-          border: '4px solid var(--bg-card)',
           zIndex: 1,
+          padding: 0,
+          border: 'none',
+          background: 'none',
+          borderRadius: '50%',
+          cursor: 'zoom-in',
+          fontFamily: 'inherit',
         }}
-      />
+      >
+        <Avatar
+          username={user.name}
+          avatarUrl={user.avatarUrl}
+          size="lg"
+          style={{ border: '4px solid var(--bg-card)' }}
+        />
+      </button>
 
       {/* Action buttons row */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 10 }}>
@@ -221,6 +237,13 @@ export function ProfileInfo({
           </button>
         </div>
       </div>
+
+      <AvatarZoomModal
+        open={zoomOpen}
+        onClose={() => setZoomOpen(false)}
+        username={user.name}
+        avatarUrl={user.avatarUrl}
+      />
     </div>
   );
 }

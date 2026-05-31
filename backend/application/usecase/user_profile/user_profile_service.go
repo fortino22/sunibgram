@@ -332,6 +332,27 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 	}, nil
 }
 
+// onboardingMinFollows is the number of people a first-time user must follow
+// before the onboarding gate is cleared.
+const onboardingMinFollows = 5
+
+// CompleteOnboarding clears the first-time follow gate. Idempotent (no-op if
+// already done) and server-authoritative: rejects unless the user follows at
+// least onboardingMinFollows people, so the UI check cannot be bypassed.
+func (s *UserProfileService) CompleteOnboarding(userID uint) error {
+	if done, err := s.userRepo.IsOnboarded(userID); err == nil && done {
+		return nil
+	}
+	stat, err := s.followRepo.GetStat(userID)
+	if err != nil {
+		return err
+	}
+	if stat == nil || stat.FollowingCount < onboardingMinFollows {
+		return fmt.Errorf("must follow at least %d people to continue", onboardingMinFollows)
+	}
+	return s.userRepo.CompleteOnboarding(userID)
+}
+
 func (s *UserProfileService) GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error) {
 	return s.profileRepo.FindByUserIDs(userIDs)
 }

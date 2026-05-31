@@ -17,4 +17,6 @@ type IExploreService interface {
 	GetFacultySuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error)
 	GetMutualSuggestions(ctx context.Context, requesterID uint, page, limit int) ([]exploremodel.ExploreUserResult, error)
 	GetSuggestedPeoplePreview(ctx context.Context, requesterID uint) ([]exploremodel.ExploreUserResult, error)
+	GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error)
+	GetOnboardingPeople(ctx context.Context, requesterID uint, q string, limit int) ([]exploremodel.ExploreUserResult, error)
 }

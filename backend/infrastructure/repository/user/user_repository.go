@@ -2,7 +2,9 @@ package userrepo
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/sunibgram/infrastructure/cache"
@@ -10,8 +12,10 @@ import (
 	"gorm.io/gorm"
 
 	exploremodel "github.com/sunibgram/domain/model/explore"
+	facultymodel "github.com/sunibgram/domain/model/faculty"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
+	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	explorerepo "github.com/sunibgram/infrastructure/repository/explore"
 	infrarepoShared "github.com/sunibgram/infrastructure/repository/_shared"
@@ -27,6 +31,10 @@ type UserRepository struct {
 
 func userKey(userID uint) string {
 	return fmt.Sprintf("user:id:%d", userID)
+}
+
+func onboardingKey(userID uint) string {
+	return fmt.Sprintf("user:onboarding:%d", userID)
 }
 
 func NewUserRepository(writeDB *gorm.DB, readDB *gorm.DB, c ...*cache.Cache) userrepoiface.IUserRepository {
@@ -88,6 +96,59 @@ func (r *UserRepository) SaveWithProfile(user *usermodel.User, profile *userprof
 	return nil
 }
 
+// RegisterAccount persists the full account (user + profile + settings + optional
+// faculty assignment) in one writeDB transaction. Either the whole account lands
+// or nothing does — no orphaned user row to collide with on retry.
+func (r *UserRepository) RegisterAccount(user *usermodel.User, profile *userprofilemodel.UserProfile, settings *usersettingsmodel.UserSettings, facultyID *uint) error {
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
+		profile.UserID = user.UserID
+		if err := tx.Create(profile).Error; err != nil {
+			return err
+		}
+		settings.UserID = user.UserID
+		if err := tx.Create(settings).Error; err != nil {
+			return err
+		}
+		if facultyID != nil {
+			// Omit associations so GORM persists only the join row, not the
+			// zero-value embedded User/Faculty structs.
+			if err := tx.Omit("User", "Faculty").Create(&usermodel.UserFaculty{UserID: user.UserID, FacultyID: *facultyID}).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&facultymodel.Faculty{}).
+				Where("faculty_id = ?", *facultyID).
+				UpdateColumn("total_users", gorm.Expr("total_users + 1")).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		// Map the unique-violation race to a friendly, frontend-mappable message.
+		msg := strings.ToLower(err.Error())
+		if strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique") {
+			if strings.Contains(msg, "user_name") || strings.Contains(msg, "username") {
+				return errors.New("username already taken")
+			}
+			return errors.New("email already registered")
+		}
+		return err
+	}
+
+	ctx := context.Background()
+	if r.cache != nil {
+		_ = r.cache.Delete(ctx,
+			fmt.Sprintf("user:exists:email:%s", user.Email),
+			fmt.Sprintf("user:exists:username:%s", user.UserName),
+		)
+	}
+	notificationrepo.InvalidateNotificationSenderCache(ctx, r.cache, user.UserID)
+	infrarepoShared.InvalidateExploreCache(ctx, r.cache)
+	return nil
+}
+
 func (r *UserRepository) FindByEmail(email string) (*usermodel.User, error) {
 	var user usermodel.User
 	err := r.readDB.Preload("Role").Where("email = ?", email).First(&user).Error
@@ -111,7 +172,11 @@ func (r *UserRepository) ExistsByEmail(email string) (bool, error) {
 	}
 	var exists bool
 	err := r.readDB.Model(&usermodel.User{}).Select("1").Where("email = ?", email).Limit(1).Scan(&exists).Error
-	if err == nil && r.cache != nil {
+	// Only cache the terminal true state. A cached false is a TOCTOU trap: a
+	// registration commits the row but can't cheaply invalidate every pending
+	// negative lookup, so a stale false would pass the app check and hit the DB
+	// unique constraint. False is cheap to recompute and flips on register.
+	if err == nil && exists && r.cache != nil {
 		_ = r.cache.Set(ctx, key, exists, 30*time.Second)
 	}
 	return exists, err
@@ -128,7 +193,9 @@ func (r *UserRepository) ExistsByUserName(username string) (bool, error) {
 	}
 	var exists bool
 	err := r.readDB.Model(&usermodel.User{}).Select("1").Where("user_name = ?", username).Limit(1).Scan(&exists).Error
-	if err == nil && r.cache != nil {
+	// Only cache the terminal true state — see ExistsByEmail for why a cached
+	// false is unsafe.
+	if err == nil && exists && r.cache != nil {
 		_ = r.cache.Set(ctx, key, exists, 30*time.Second)
 	}
 	return exists, err
@@ -183,6 +250,42 @@ func (r *UserRepository) UpdatePremiumByIDs(userIDs []uint, premium bool) error 
 	}
 	infrarepoShared.InvalidateExploreCache(context.Background(), r.cache)
 	r.invalidateUserPremiumCaches()
+	return nil
+}
+
+// IsOnboarded reports whether the user finished first-time onboarding. The
+// terminal true state is cached long (OnboardingTTL); false is left uncached
+// (cheap to recompute, flips soon). Used for an idempotent completion guard.
+func (r *UserRepository) IsOnboarded(userID uint) (bool, error) {
+	ctx := context.Background()
+	key := onboardingKey(userID)
+	if r.cache != nil {
+		var done bool
+		if err := r.cache.Get(ctx, key, &done); err == nil {
+			return done, nil
+		}
+	}
+	var user usermodel.User
+	if err := r.readDB.Select("onboarding_completed").First(&user, userID).Error; err != nil {
+		return false, err
+	}
+	if r.cache != nil && user.OnboardingCompleted {
+		r.cache.Set(ctx, key, true, cache.OnboardingTTL)
+	}
+	return user.OnboardingCompleted, nil
+}
+
+// CompleteOnboarding marks first-time onboarding done. Invalidates the user
+// cache so the next profile read reflects it, and primes the long-lived
+// onboarding marker.
+func (r *UserRepository) CompleteOnboarding(userID uint) error {
+	if err := r.writeDB.Model(&usermodel.User{}).Where("user_id = ?", userID).Update("onboarding_completed", true).Error; err != nil {
+		return err
+	}
+	r.invalidateUser(userID)
+	if r.cache != nil {
+		r.cache.Set(context.Background(), onboardingKey(userID), true, cache.OnboardingTTL)
+	}
 	return nil
 }
 

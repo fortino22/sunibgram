@@ -35,32 +35,37 @@ const DROPDOWNS: NavDropdown[] = [
     label: 'Features',
     columns: [
       {
-        heading: 'Social',
+        heading: 'Connect',
         items: [
           {
             title: 'Threads',
             description: 'Share thoughts and updates with the campus community.',
-            href: '/about/what',
+            href: '/about/threads',
           },
           {
             title: 'Communities',
             description: 'Join groups around shared interests and courses.',
-            href: '/about/what',
-          },
-        ],
-      },
-      {
-        heading: 'Tools',
-        items: [
-          {
-            title: 'Events',
-            description: 'Discover and organize campus events and meetups.',
-            href: '/about/what',
+            href: '/about/communities',
           },
           {
             title: 'Messages',
             description: 'Real-time private messaging with fellow students.',
-            href: '/about/what',
+            href: '/about/messages',
+          },
+        ],
+      },
+      {
+        heading: 'Discover',
+        items: [
+          {
+            title: 'Events',
+            description: 'Discover and organize campus events and meetups.',
+            href: '/about/events',
+          },
+          {
+            title: 'Leaderboard',
+            description: 'See top contributors and rising voices on campus.',
+            href: '/about/leaderboard',
           },
         ],
       },
@@ -70,7 +75,7 @@ const DROPDOWNS: NavDropdown[] = [
     label: 'About',
     columns: [
       {
-        heading: 'Learn more',
+        heading: 'Mission',
         items: [
           {
             title: 'What it is',
@@ -78,7 +83,7 @@ const DROPDOWNS: NavDropdown[] = [
             href: '/about/what',
           },
           {
-            title: 'The team',
+            title: 'Team',
             description: 'Meet the people building Sunibgram.',
             href: '/about/team',
           },
@@ -96,13 +101,39 @@ const DROPDOWNS: NavDropdown[] = [
       },
     ],
   },
+  {
+    label: 'Resources',
+    columns: [
+      {
+        heading: 'Support',
+        items: [
+          {
+            title: 'Help center',
+            description: 'Guides, FAQs, and answers to common questions.',
+            href: '/about/help',
+          },
+        ],
+      },
+      {
+        heading: 'Legal',
+        items: [
+          {
+            title: 'Privacy center',
+            description: 'How we handle and protect your data.',
+            href: '/about/privacy',
+          },
+          {
+            title: 'Terms and conditions',
+            description: 'Rules and policies for using Sunibgram.',
+            href: '/about/terms',
+          },
+        ],
+      },
+    ],
+  },
 ];
 
-const PLAIN_LINKS: NavLink[] = [
-  { label: 'Use cases', href: '/about/use-cases' },
-  { label: 'Leaderboard', href: '/leaderboard' },
-  { label: 'Sign in', href: '/login' },
-];
+const PLAIN_LINKS: NavLink[] = [];
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -155,7 +186,7 @@ export function AboutNav() {
         {/* ---- Logo ---- */}
         <div className="about-nav-left">
           <Link href="/about" className="about-nav-logo">
-            <Logo size={26} />
+            <Logo size={35} />
             <span className="about-nav-logo-text">Sunibgram</span>
           </Link>
         </div>

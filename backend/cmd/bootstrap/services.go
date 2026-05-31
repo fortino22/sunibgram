@@ -74,7 +74,6 @@ import (
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
 	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
 	followsvciface "github.com/sunibgram/domain/service/follow"
-	userblocksvciface "github.com/sunibgram/domain/service/user_block"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -92,6 +91,7 @@ import (
 	trendreportsvciface "github.com/sunibgram/domain/service/trend_report"
 	trendingusersvciface "github.com/sunibgram/domain/service/trending_user"
 	usersvciface "github.com/sunibgram/domain/service/user"
+	userblocksvciface "github.com/sunibgram/domain/service/user_block"
 	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	usersettingssvciface "github.com/sunibgram/domain/service/user_settings"
 	verificationsvciface "github.com/sunibgram/domain/service/verification"
@@ -100,53 +100,53 @@ import (
 )
 
 type Services struct {
-	Cache                cachesvciface.ICacheService
-	Auth                 authsvciface.IAuthService
-	Role                 rolesvciface.IRoleService
-	User                 usersvciface.IUserService
-	UserSettings         usersettingssvciface.IUserSettingsService
-	UserProfile          userprofilesvciface.IUserProfileService
-	Verification         verificationsvciface.IVerificationService
-	Notification         notificationsvciface.INotificationService
-	Follow               followsvciface.IFollowService
-	UserBlock            userblocksvciface.IUserBlockService
-	NotificationUserMute notificationusermutesvciface.INotificationUserMuteService
-	Hashtag              hashtagsvciface.IHashtagService
-	ThreadSummary        threadsummarysvciface.IThreadSummaryService
-	Thread               threadsvciface.IThreadService
-	Event                eventsvciface.IEventService
-	Explore              exploresvciface.IExploreService
-	ThreadMedia          threadmediasvciface.IThreadMediaService
-	Like                 likesvciface.ILikeService
-	Bookmark             bookmarksvciface.IBookmarkService
-	BookmarkCollection   bookmarkcollectionsvciface.IBookmarkCollectionService
-	ThreadPin            threadpinsvciface.IThreadPinService
-	Category             categorysvciface.ICategoryService
-	Violation            violationsvciface.IViolationService
-	Report               reportsvciface.IReportService
+	Cache                       cachesvciface.ICacheService
+	Auth                        authsvciface.IAuthService
+	Role                        rolesvciface.IRoleService
+	User                        usersvciface.IUserService
+	UserSettings                usersettingssvciface.IUserSettingsService
+	UserProfile                 userprofilesvciface.IUserProfileService
+	Verification                verificationsvciface.IVerificationService
+	Notification                notificationsvciface.INotificationService
+	Follow                      followsvciface.IFollowService
+	UserBlock                   userblocksvciface.IUserBlockService
+	NotificationUserMute        notificationusermutesvciface.INotificationUserMuteService
+	Hashtag                     hashtagsvciface.IHashtagService
+	ThreadSummary               threadsummarysvciface.IThreadSummaryService
+	Thread                      threadsvciface.IThreadService
+	Event                       eventsvciface.IEventService
+	Explore                     exploresvciface.IExploreService
+	ThreadMedia                 threadmediasvciface.IThreadMediaService
+	Like                        likesvciface.ILikeService
+	Bookmark                    bookmarksvciface.IBookmarkService
+	BookmarkCollection          bookmarkcollectionsvciface.IBookmarkCollectionService
+	ThreadPin                   threadpinsvciface.IThreadPinService
+	Category                    categorysvciface.ICategoryService
+	Violation                   violationsvciface.IViolationService
+	Report                      reportsvciface.IReportService
 	Community                   communitysvciface.ICommunityService
 	CommunityActionConfirmation communityactionconfirmationsvciface.ICommunityActionConfirmationService
 	CommunityMember             communitymembersvciface.ICommunityMemberService
-	CommunityRequest     communityrequestsvciface.ICommunityRequestService
-	CommunityRule        communityrulesvciface.ICommunityRuleService
-	CommunityThreadPin   communitythreadpinsvciface.ICommunityThreadPinService
-	CommunityPin         communitypinsvciface.ICommunityPinService
-	EventPin                eventpinsvciface.IEventPinService
-	EventParticipant        eventparticipantsvciface.IEventParticipantService
-	EventActionConfirmation eventactionconfirmationsvciface.IEventActionConfirmationService
-	Faculty              facultysvciface.IFacultyService
-	Feedback             feedbacksvciface.IFeedbackService
-	Order                ordersvciface.IOrderService
-	PremiumSubscription  premiumsubscriptionsvciface.IPremiumSubscriptionService
-	ChatRoom             chatroomsvciface.IChatRoomService
-	Chat                 chatsvciface.IChatService
-	ChatMedia            chatmediasvciface.IChatMediaService
-	ChatReaction         chatreactionsvciface.IChatReactionService
-	Share                sharesvciface.IShareService
-	ThreadPoll           threadpollsvciface.IThreadPollService
-	EventThreadPin       eventthreadpinsvciface.IEventThreadPinService
-	TrendingUser         trendingusersvciface.ITrendingUserService
-	TrendReport          trendreportsvciface.ITrendReportService
+	CommunityRequest            communityrequestsvciface.ICommunityRequestService
+	CommunityRule               communityrulesvciface.ICommunityRuleService
+	CommunityThreadPin          communitythreadpinsvciface.ICommunityThreadPinService
+	CommunityPin                communitypinsvciface.ICommunityPinService
+	EventPin                    eventpinsvciface.IEventPinService
+	EventParticipant            eventparticipantsvciface.IEventParticipantService
+	EventActionConfirmation     eventactionconfirmationsvciface.IEventActionConfirmationService
+	Faculty                     facultysvciface.IFacultyService
+	Feedback                    feedbacksvciface.IFeedbackService
+	Order                       ordersvciface.IOrderService
+	PremiumSubscription         premiumsubscriptionsvciface.IPremiumSubscriptionService
+	ChatRoom                    chatroomsvciface.IChatRoomService
+	Chat                        chatsvciface.IChatService
+	ChatMedia                   chatmediasvciface.IChatMediaService
+	ChatReaction                chatreactionsvciface.IChatReactionService
+	Share                       sharesvciface.IShareService
+	ThreadPoll                  threadpollsvciface.IThreadPollService
+	EventThreadPin              eventthreadpinsvciface.IEventThreadPinService
+	TrendingUser                trendingusersvciface.ITrendingUserService
+	TrendReport                 trendreportsvciface.ITrendReportService
 }
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
@@ -156,7 +156,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
 	notificationUserMute := notificationusermuteuc.NewNotificationUserMuteService(repos.NotificationUserMute, repos.User)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
-	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, ext.OpenAI)
+	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, repos.ThreadSummary, ext.OpenAI)
 	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, repos.NotificationUserMute, notification, summary, repos.User)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, repos.BookmarkCollection)
@@ -168,51 +168,51 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	share := shareuc.NewShareService(repos.Thread, repos.User, repos.Chat, repos.UserBlock, chat, chatRoom, ext.Storage)
 
 	return &Services{
-		Cache:                cacheuc.NewCacheService(repos.Cache),
-		Auth:                 authuc.NewAuthService(repos.User, repos.Role, repos.Verification, repos.UserSettings, c),
-		Role:                 roleuc.NewRoleService(repos.Role),
-		User:                 useruc.NewUserService(repos.User, repos.Follow, repos.UserProfile),
-		UserSettings:         usersettingsuc.NewUserSettingsService(repos.UserSettings, repos.Thread),
-		UserProfile:          profile,
-		Verification:         verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email, c),
-		Notification:         notification,
-		Follow:               follow,
-		UserBlock:            userBlock,
-		NotificationUserMute: notificationUserMute,
-		Hashtag:              hashtag,
-		ThreadSummary:        summary,
-		Thread:               thread,
-		Event:                eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread, eventActionConfirmation),
-		Explore:              exploreuc.NewExploreService(repos.Explore, repos.Thread, repos.UserSettings, repos.Follow),
-		ThreadMedia:          threadmediauc.NewThreadMediaService(repos.Thread, repos.ThreadMedia, ext.Storage),
-		Like:                 like,
-		Bookmark:             bookmark,
-		BookmarkCollection:   bookmarkCollection,
-		ThreadPin:            threadpinuc.NewThreadPinService(repos.ThreadPin, repos.Thread),
-		Category:             categoryuc.NewCategoryService(repos.Category),
-		Violation:            violationuc.NewViolationService(repos.Violation),
-		Report:               reportuc.NewReportService(repos.Report, repos.Violation, repos.User, repos.Thread, profile, repos.Cache),
+		Cache:                       cacheuc.NewCacheService(repos.Cache),
+		Auth:                        authuc.NewAuthService(repos.User, repos.Role, repos.Verification, repos.UserSettings, ext.Storage, c),
+		Role:                        roleuc.NewRoleService(repos.Role),
+		User:                        useruc.NewUserService(repos.User, repos.Follow, repos.UserProfile),
+		UserSettings:                usersettingsuc.NewUserSettingsService(repos.UserSettings, repos.Thread),
+		UserProfile:                 profile,
+		Verification:                verificationuc.NewVerificationService(repos.Verification, repos.User, ext.Email, c),
+		Notification:                notification,
+		Follow:                      follow,
+		UserBlock:                   userBlock,
+		NotificationUserMute:        notificationUserMute,
+		Hashtag:                     hashtag,
+		ThreadSummary:               summary,
+		Thread:                      thread,
+		Event:                       eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread, eventActionConfirmation),
+		Explore:                     exploreuc.NewExploreService(repos.Explore, repos.Thread, repos.UserSettings, repos.Follow),
+		ThreadMedia:                 threadmediauc.NewThreadMediaService(repos.Thread, repos.ThreadMedia, ext.Storage),
+		Like:                        like,
+		Bookmark:                    bookmark,
+		BookmarkCollection:          bookmarkCollection,
+		ThreadPin:                   threadpinuc.NewThreadPinService(repos.ThreadPin, repos.Thread),
+		Category:                    categoryuc.NewCategoryService(repos.Category),
+		Violation:                   violationuc.NewViolationService(repos.Violation),
+		Report:                      reportuc.NewReportService(repos.Report, repos.Violation, repos.User, repos.Thread, profile, repos.Cache),
 		Community:                   communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.UserBlock, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage, communityActionConfirmation),
 		CommunityActionConfirmation: communityActionConfirmation,
 		CommunityMember:             communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.UserBlock, repos.Cache, communityActionConfirmation),
-		CommunityRequest:     communityrequestuc.NewCommunityRequestService(repos.Community, repos.CommunityMember, repos.CommunityRequest, repos.UserBlock, repos.Cache),
-		CommunityRule:        communityruleuc.NewCommunityRuleService(repos.Community, repos.CommunityRule),
-		CommunityThreadPin:   communitythreadpinuc.NewCommunityThreadPinService(repos.CommunityThreadPin, repos.Community, repos.CommunityMember, repos.Thread),
-		CommunityPin:         communitypinuc.NewCommunityPinService(repos.CommunityPin, repos.Community, repos.CommunityMember),
-		EventPin:             eventpinuc.NewEventPinService(repos.EventPin, repos.Event),
-		EventParticipant:     eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event, repos.UserBlock),
-		Faculty:              facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
-		Feedback:             feedbackuc.NewFeedbackService(repos.Feedback),
-		Order:                orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),
-		PremiumSubscription:  premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
-		ChatRoom:             chatRoom,
-		Chat:                 chat,
-		ChatMedia:            chatmediauc.NewChatMediaService(repos.Chat, repos.ChatMedia, ext.Storage),
-		ChatReaction:         chatreactionuc.NewChatReactionService(repos.Chat, repos.ChatReaction, repos.ChatRoom, repos.UserBlock),
-		Share:                share,
-		ThreadPoll:           threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, repos.UserBlock, ext.Storage),
-		EventThreadPin:       eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
-		TrendingUser:         trendinguseruc.NewTrendingUserService(repos.TrendingUser, repos.TrendingUserSnapshot, repos.Follow),
-		TrendReport:          trendreportuc.NewTrendReportService(repos.TrendReport, hashtag),
+		CommunityRequest:            communityrequestuc.NewCommunityRequestService(repos.Community, repos.CommunityMember, repos.CommunityRequest, repos.UserBlock, repos.Cache),
+		CommunityRule:               communityruleuc.NewCommunityRuleService(repos.Community, repos.CommunityRule),
+		CommunityThreadPin:          communitythreadpinuc.NewCommunityThreadPinService(repos.CommunityThreadPin, repos.Community, repos.CommunityMember, repos.Thread),
+		CommunityPin:                communitypinuc.NewCommunityPinService(repos.CommunityPin, repos.Community, repos.CommunityMember),
+		EventPin:                    eventpinuc.NewEventPinService(repos.EventPin, repos.Event),
+		EventParticipant:            eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event, repos.UserBlock),
+		Faculty:                     facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
+		Feedback:                    feedbackuc.NewFeedbackService(repos.Feedback),
+		Order:                       orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),
+		PremiumSubscription:         premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
+		ChatRoom:                    chatRoom,
+		Chat:                        chat,
+		ChatMedia:                   chatmediauc.NewChatMediaService(repos.Chat, repos.ChatMedia, ext.Storage),
+		ChatReaction:                chatreactionuc.NewChatReactionService(repos.Chat, repos.ChatReaction, repos.ChatRoom, repos.UserBlock),
+		Share:                       share,
+		ThreadPoll:                  threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, repos.UserBlock, ext.Storage),
+		EventThreadPin:              eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
+		TrendingUser:                trendinguseruc.NewTrendingUserService(repos.TrendingUser, repos.TrendingUserSnapshot, repos.Follow),
+		TrendReport:                 trendreportuc.NewTrendReportService(repos.TrendReport, hashtag),
 	}
 }

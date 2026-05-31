@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/authStore';
 import {
   createThread,
   createEventThread,
+  THREAD_CONTENT_MAX,
   type ThreadMutationParams,
   type ThreadResponse,
   type ThreadItem,
@@ -47,6 +48,7 @@ const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 type PreviewKind = 'image' | 'video' | 'file';
 
 interface FilePreview {
+  id: string;
   file: File;
   kind: PreviewKind;
   url: string;
@@ -143,16 +145,66 @@ function getPreviewKind(file: File): PreviewKind {
   return 'file';
 }
 
-function isSameFile(left: File, right: File): boolean {
-  return (
-    left.name === right.name &&
-    left.lastModified === right.lastModified &&
-    left.size === right.size
-  );
-}
-
 function countRunes(value: string): number {
   return Array.from(value).length;
+}
+
+// X-style circular character-count indicator. Ring fills as the user types
+// (var(--accent)), turns amber within the last 20 chars, coral once over the
+// limit. The remaining count appears only when near/over, like X.
+function CharCountRing({ count, max }: { count: number; max: number }) {
+  const remaining = max - count;
+  const isOver = remaining < 0;
+  const isNear = remaining <= 20;
+  const fraction = Math.min(count / max, 1);
+  const size = isNear ? 28 : 22;
+  const strokeWidth = 2.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const ringColor = isOver ? 'var(--coral)' : isNear ? 'var(--amber)' : 'var(--accent)';
+
+  return (
+    <div className="char-ring" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      {/* Hover-revealed full ratio (used/max), shown even when not near the limit */}
+      <span
+        className="char-ring-count"
+        style={{
+          fontSize: 13,
+          fontVariantNumeric: 'tabular-nums',
+          color: isOver ? 'var(--coral)' : 'var(--text-secondary)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {count}/{max}
+      </span>
+      {isNear && (
+        <span
+          style={{
+            fontSize: 13,
+            fontVariantNumeric: 'tabular-nums',
+            color: isOver ? 'var(--coral)' : 'var(--text-secondary)',
+          }}
+        >
+          {remaining}
+        </span>
+      )}
+      <div className="char-ring-svg" style={{ display: 'inline-flex', flexShrink: 0 }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden>
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border)" strokeWidth={strokeWidth} />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={`${circumference * fraction} ${circumference}`}
+          />
+        </svg>
+      </div>
+    </div>
+  );
 }
 
 function buildPollDuration(values: Pick<PollFormValues, 'days' | 'hours' | 'minutes'>): number {
@@ -175,6 +227,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const audienceMenuRef = useRef<HTMLDivElement | null>(null);
   const replyPermMenuRef = useRef<HTMLDivElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
+  const previewIdRef = useRef(0);
   const pollOptionInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const pollImageUrlsRef = useRef<Record<string, string>>({});
 
@@ -292,6 +345,9 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const avatarSrc = profile?.avatar ?? null;
   const selectedFiles = previews.map((p) => p.file);
   const normalizedContent = content.trim();
+  // Count trimmed runes to match the backend (it TrimSpace-s then RuneCount-s).
+  const contentLength = countRunes(normalizedContent);
+  const isOverLimit = contentLength > THREAD_CONTENT_MAX;
   const pollDurationSeconds = buildPollDuration({ days: pollDays, hours: pollHours, minutes: pollMinutes });
   const rawOptionsError = pollForm.formState.errors.options;
   const pollOptionsError =
@@ -504,7 +560,28 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     },
   });
 
-  const isPending = mutation.isPending || communityMutation.isPending;
+  // Event thread create (official update / event discussion). Wrapped in a
+  // mutation so the Post button shows pending state and the event thread lists
+  // refresh on success. Invalidating ['event', eventId] prefix-matches the
+  // useEventPosts keys (['event', eventId, 'official'|'discussion', size]).
+  const eventMutation = useMutation<
+    { message: string },
+    Error,
+    { eventId: string; content: string; files: File[]; isOfficial: boolean }
+  >({
+    mutationFn: async ({ eventId, content: c, files, isOfficial }) => {
+      if (!token) throw new Error('Not authenticated.');
+      return createEventThread({ content: c, files, eventId, isOfficial }, token);
+    },
+    onSuccess: (_data, { eventId }) => {
+      void queryClient.invalidateQueries({ queryKey: ['event', eventId] });
+    },
+    onError: (err) => {
+      toast.error(err.message || 'Failed to post.');
+    },
+  });
+
+  const isPending = mutation.isPending || communityMutation.isPending || eventMutation.isPending;
   const isError = mutation.isError && !communityMutation.isError;
   const errorMessage = mutation.error?.message ?? '';
 
@@ -513,6 +590,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     !isPending &&
     !compressing &&
     !gifFetching &&
+    !isOverLimit &&
     (normalizedContent.length > 0 || selectedFiles.length > 0 || (pollEnabled && !isReply));
 
   async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
@@ -534,6 +612,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       setPreviews((cur) => [
         ...cur,
         ...accepted.map((file) => ({
+          id: `pv-${previewIdRef.current++}`,
           file,
           kind: getPreviewKind(file),
           url: URL.createObjectURL(file),
@@ -544,11 +623,11 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     }
   }
 
-  function removeSelectedFile(target: File) {
+  function removeSelectedFile(id: string) {
     setPreviews((cur) => {
-      const toRemove = cur.find((p) => isSameFile(p.file, target));
+      const toRemove = cur.find((p) => p.id === id);
       if (toRemove) URL.revokeObjectURL(toRemove.url);
-      return cur.filter((p) => !isSameFile(p.file, target));
+      return cur.filter((p) => p.id !== id);
     });
   }
 
@@ -732,7 +811,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
       const blob = await res.blob();
       const file = new File([blob], `gif-${Date.now()}.gif`, { type: blob.type || 'image/gif' });
       const url = URL.createObjectURL(file);
-      setPreviews((cur) => [...cur, { file, kind: 'image', url }]);
+      setPreviews((cur) => [...cur, { id: `pv-${previewIdRef.current++}`, file, kind: 'image', url }]);
     } catch {
       // silently ignore if CORS blocks
     } finally {
@@ -755,14 +834,12 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
 
     try {
       if (!isReply && selectedEvent) {
-        if (!token) throw new Error('Not authenticated.');
-        await createEventThread({
+        await eventMutation.mutateAsync({
+          eventId: selectedEvent.id,
           content: submitContent,
           files: selectedFiles,
-          eventId: selectedEvent.id,
           isOfficial: preselectedIsOfficialEvent ?? false,
-        }, token);
-        void queryClient.invalidateQueries({ queryKey: ['event', selectedEvent.id] });
+        });
       } else if (!isReply && selectedCommunity) {
         await communityMutation.mutateAsync({
           communityId: selectedCommunity.community_id,
@@ -1080,7 +1157,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
             >
               {previews.map((preview) => (
                 <div
-                  key={`${preview.file.name}-${preview.file.lastModified}-${preview.file.size}`}
+                  key={preview.id}
                   style={{
                     position: 'relative',
                     borderRadius: 12,
@@ -1125,7 +1202,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                   )}
                   <button
                     type="button"
-                    onClick={() => removeSelectedFile(preview.file)}
+                    onClick={() => removeSelectedFile(preview.id)}
                     aria-label={`Remove ${preview.file.name}`}
                     style={{
                       position: 'absolute',
@@ -1746,6 +1823,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
               )}
             </div>
 
+            {contentLength > 0 && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+                <CharCountRing count={contentLength} max={THREAD_CONTENT_MAX} />
+                <div style={{ width: 1, height: 24, background: 'var(--border)' }} />
+              </div>
+            )}
+
             <button
               type="submit"
               className="btn-solid"
@@ -1766,7 +1850,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                 gap: 8,
               }}
             >
-              {isPending && <LoaderCircle size={16} />}
+              {isPending && <LoaderCircle size={16} className="animate-spin" />}
               <span>
                 {isPending
                   ? isReply ? 'Replying...' : 'Posting...'

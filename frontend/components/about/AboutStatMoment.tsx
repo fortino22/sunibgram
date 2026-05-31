@@ -7,7 +7,6 @@ export function AboutStatMoment() {
       style={{
         paddingTop: '96px',
         paddingBottom: '96px',
-        borderTop: '1px solid var(--border)',
       }}
     >
       <div

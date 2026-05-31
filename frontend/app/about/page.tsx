@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AboutHero } from '@/components/about/AboutHero';
-import { AboutFinalCTA } from '@/components/about/AboutFinalCTA';
+import { AboutSplitConnection } from '@/components/about/AboutSplitConnection';
+import { AboutThreadFlow } from '@/components/about/AboutThreadFlow';
 
 export const metadata: Metadata = {
   title: 'Sunibgram — The social network for Binus',
@@ -11,8 +12,11 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <>
-      <AboutHero />
-      <AboutFinalCTA />
+      <div className="about-fold">
+        <AboutHero />
+        <AboutThreadFlow />
+      </div>
+      <AboutSplitConnection />
     </>
   );
 }

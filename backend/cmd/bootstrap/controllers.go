@@ -103,7 +103,7 @@ type Controllers struct {
 func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers {
 	return &Controllers{
 		Cache:               cachectrl.NewCacheController(svcs.Cache),
-		Auth:                authctrl.NewAuthController(svcs.Auth, svcs.UserProfile, svcs.Faculty),
+		Auth:                authctrl.NewAuthController(svcs.Auth, svcs.Faculty),
 		Role:                rolectrl.NewRoleController(svcs.Role),
 		User:                userctrl.NewUserController(svcs.User, svcs.UserProfile),
 		UserSettings:        usersettingsctrl.NewUserSettingsController(svcs.UserSettings),
@@ -123,7 +123,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		BookmarkCollection:  bookmarkcollectionctrl.NewBookmarkCollectionController(svcs.BookmarkCollection, svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
 		ThreadPin:           threadpinctrl.NewThreadPinController(svcs.ThreadPin),
 		Repost:              repostctrl.NewRepostController(svcs.Thread, svcs.ThreadMedia),
-		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary),
+		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary, svcs.ThreadMedia),
 		Category:            categoryctrl.NewCategoryController(svcs.Category),
 		Violation:           violationctrl.NewViolationController(svcs.Violation),
 		Report:              reportctrl.NewReportController(svcs.Report),

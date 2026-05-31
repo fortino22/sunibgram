@@ -8,17 +8,11 @@ import { Avatar } from '@/components/shared/Avatar';
 import { ThreadBody } from '@/components/thread/ThreadBody';
 import { getAuthorAvatarUrl } from '@/components/thread/threadUtils';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
+import { useQueryClient } from '@tanstack/react-query';
 import { useThreadSummaryStream } from '@/hooks/thread/useThreadSummary';
 import { useSummaryStore } from '@/stores/summaryStore';
+import { toBullets } from '@/components/thread/summaryUtils';
 import type { ThreadItem } from '@/lib/services/threads';
-
-function toBullets(text: string): string[] {
-  const lines = text
-    .split('\n')
-    .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
-    .filter((l) => l.length > 0);
-  return lines.length > 0 ? lines : [''];
-}
 
 const CARD_WIDTH = 360;
 
@@ -52,8 +46,16 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
   const [closing, setClosing] = useState(false);
   const author = thread.author;
   const showSpinner = status === 'streaming' && text.length === 0;
+  const queryClient = useQueryClient();
 
   const requestClose = useCallback(() => setClosing(true), []);
+
+  // Once a summary finishes, refresh the fox history list so it shows up there.
+  useEffect(() => {
+    if (status === 'done') {
+      queryClient.invalidateQueries({ queryKey: ['summaries', 'history'] });
+    }
+  }, [status, queryClient]);
 
   // Esc requests close (plays the collapse-into-orb animation first).
   useEffect(() => {

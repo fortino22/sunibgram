@@ -63,7 +63,6 @@ export function AboutUseCases() {
       style={{
         paddingTop: '96px',
         paddingBottom: '96px',
-        borderTop: '1px solid var(--border)',
       }}
     >
       <div
@@ -109,7 +108,7 @@ export function AboutUseCases() {
                 width: 36,
                 height: 36,
                 border: '1px solid var(--border)',
-                borderRadius: 6,
+                borderRadius: 0,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -123,7 +122,7 @@ export function AboutUseCases() {
                 width: 36,
                 height: 36,
                 border: '1px solid var(--border)',
-                borderRadius: 6,
+                borderRadius: 0,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',

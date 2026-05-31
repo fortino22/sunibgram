@@ -60,30 +60,15 @@ const COLUMNS: Column[] = [
 
 export function AboutFooter() {
   return (
-    <footer style={{ background: 'oklch(9% 0.005 260)', color: '#ffffff' }}>
+    <footer style={{ background: 'var(--bg)', color: 'var(--text)' }}>
       <div
         className="about-container"
         style={{ paddingTop: '64px', paddingBottom: '40px' }}
       >
         <div className="flex items-center gap-2.5" style={{ marginBottom: '48px' }}>
-          <Logo size={26} />
-          <span style={{ fontWeight: 700, fontSize: '1rem', letterSpacing: '-0.01em' }}>
+          <Logo size={35} />
+          <span style={{ fontWeight: 700, fontSize: '1.35rem', letterSpacing: '-0.01em' }}>
             Sunibgram
-          </span>
-          <span
-            style={{
-              fontSize: '0.6875rem',
-              padding: '3px 8px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '4px',
-              color: 'rgba(255,255,255,0.7)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 600,
-              marginLeft: '4px',
-            }}
-          >
-            Binus only
           </span>
         </div>
 
@@ -98,7 +83,7 @@ export function AboutFooter() {
                   fontSize: '0.6875rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.1em',
-                  color: 'rgba(255,255,255,0.55)',
+                  color: 'var(--text-muted)',
                   marginBottom: '18px',
                   fontWeight: 600,
                 }}
@@ -111,7 +96,7 @@ export function AboutFooter() {
                     <Link
                       href={link.href}
                       style={{
-                        color: '#ffffff',
+                        color: 'var(--text)',
                         fontSize: '0.875rem',
                         opacity: 0.85,
                       }}
@@ -131,12 +116,12 @@ export function AboutFooter() {
           style={{
             marginTop: '56px',
             paddingTop: '24px',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
+            borderTop: '1px solid var(--border)',
           }}
         >
           <p
             style={{
-              color: 'rgba(255,255,255,0.55)',
+              color: 'var(--text-muted)',
               fontSize: '0.8125rem',
               maxWidth: '36rem',
               lineHeight: 1.55,
@@ -149,7 +134,7 @@ export function AboutFooter() {
             style={{
               fontSize: '0.75rem',
               letterSpacing: '0.06em',
-              color: 'rgba(255,255,255,0.55)',
+              color: 'var(--text-muted)',
               textTransform: 'uppercase',
               fontWeight: 600,
             }}

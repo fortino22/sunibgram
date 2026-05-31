@@ -3,6 +3,7 @@ package authctrl
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -10,7 +11,6 @@ import (
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	authsvciface "github.com/sunibgram/domain/service/auth"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
-	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
 	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
@@ -18,12 +18,20 @@ import (
 
 type AuthController struct {
 	authService    authsvciface.IAuthService
-	profileService userprofilesvciface.IUserProfileService
 	facultyService facultysvciface.IFacultyService
 }
 
-func NewAuthController(authService authsvciface.IAuthService, profileService userprofilesvciface.IUserProfileService, facultyService facultysvciface.IFacultyService) *AuthController {
-	return &AuthController{authService: authService, profileService: profileService, facultyService: facultyService}
+func NewAuthController(authService authsvciface.IAuthService, facultyService facultysvciface.IFacultyService) *AuthController {
+	return &AuthController{authService: authService, facultyService: facultyService}
+}
+
+// CheckUsername is a public availability probe for the signup form (pre-auth).
+func (c *AuthController) CheckUsername(ctx *fiber.Ctx) error {
+	available, err := c.authService.IsUsernameAvailable(ctx.Query("username"))
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"available": available})
 }
 
 func (c *AuthController) Register(ctx *fiber.Ctx) error {
@@ -36,9 +44,14 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		Gender:          ctx.FormValue("gender"),
 		BirthdayDate:    ctx.FormValue("birthday_date"),
 	}
-	birthdayDate, err := ctrlshared.ParseDateField(req.BirthdayDate, "birthday_date")
-	if err != nil {
-		return ctrlshared.HandleServiceError(ctx, err)
+	// Birthday is optional. Parse only when provided; a malformed value still errors.
+	var birthdayDate time.Time
+	if req.BirthdayDate != "" {
+		parsed, err := ctrlshared.ParseDateField(req.BirthdayDate, "birthday_date")
+		if err != nil {
+			return ctrlshared.HandleServiceError(ctx, err)
+		}
+		birthdayDate = parsed
 	}
 
 	raw := ctx.FormValue("faculty_id")
@@ -66,30 +79,22 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		BirthdayDate: birthdayDate,
 	}
 
-	if err := c.authService.Register(user, profile, req.ConfirmPassword); err != nil {
-		return ctrlshared.HandleServiceError(ctx, err)
+	input := authsvciface.RegisterInput{
+		User:            user,
+		Profile:         profile,
+		ConfirmPassword: req.ConfirmPassword,
+		Bio:             ctx.FormValue("bio"),
+		FacultyID:       facultyID,
 	}
-
-	input := userprofilesvciface.UpsertProfileInput{}
 	if avatar, err := ctx.FormFile("avatar"); err == nil {
 		input.Avatar = avatar
 	}
 	if banner, err := ctx.FormFile("banner"); err == nil {
 		input.Banner = banner
 	}
-	if bio := ctx.FormValue("bio"); bio != "" {
-		input.Bio = &bio
-	}
-	if input.Avatar != nil || input.Banner != nil || input.Bio != nil {
-		if err := c.profileService.UpsertProfile(ctx.Context(), user.UserID, input); err != nil {
-			return ctrlshared.HandleServiceError(ctx, err)
-		}
-	}
 
-	if facultyID != nil {
-		if err := c.facultyService.SetUserFaculty(user.UserID, facultyID); err != nil {
-			return ctrlshared.HandleServiceError(ctx, err)
-		}
+	if err := c.authService.Register(ctx.Context(), input); err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user registered successfully"})

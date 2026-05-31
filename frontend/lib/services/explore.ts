@@ -138,6 +138,16 @@ export async function getSuggestedPeople(token: string, limit = 10): Promise<Exp
   return raw.data.map(mapPerson);
 }
 
+// Onboarding follow gate. Empty q → ranked suggestions; q → people search.
+// Either way ≤10, self- and admin-excluded (server-enforced).
+export async function getOnboardingPeople(token: string, q = '', limit = 10): Promise<ExplorePerson[]> {
+  const raw = await api.get<{ data: RawExplorePerson[] }>(
+    `/api/users/onboarding/suggestions?q=${encodeURIComponent(q)}&limit=${limit}`,
+    token
+  );
+  return (raw.data ?? []).map(mapPerson);
+}
+
 export async function getSuggestedPeoplePreview(token: string): Promise<ExplorePerson[]> {
   const raw = await api.get<{ data: RawExplorePerson[] }>('/api/users/suggested/preview', token);
   return (raw.data ?? []).map(mapPerson);
