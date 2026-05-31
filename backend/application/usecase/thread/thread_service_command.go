@@ -36,8 +36,8 @@ func (s *ThreadService) CreateEventThread(ctx context.Context, userID uint, cont
 
 func (s *ThreadService) createThread(ctx context.Context, userID uint, content string, parentID *uint, eventID *string, replyPermission *string, isOfficial bool) (*threadmodel.Thread, error) {
 	content = strings.TrimSpace(content)
-	if utf8.RuneCountInString(content) > 5000 {
-		return nil, errors.New("content must be 5000 characters or less")
+	if utf8.RuneCountInString(content) > 500 {
+		return nil, errors.New("content must be 500 characters or less")
 	}
 	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
@@ -174,8 +174,8 @@ func (s *ThreadService) createThread(ctx context.Context, userID uint, content s
 
 func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, userID uint, content string, eventID *string) (*threadmodel.Thread, error) {
 	content = strings.TrimSpace(content)
-	if utf8.RuneCountInString(content) > 5000 {
-		return nil, errors.New("content must be 5000 characters or less")
+	if utf8.RuneCountInString(content) > 500 {
+		return nil, errors.New("content must be 500 characters or less")
 	}
 	if err := s.requireEventApproved(eventID); err != nil {
 		return nil, err
@@ -215,8 +215,8 @@ func (s *ThreadService) CreateCommunityThread(ctx context.Context, communityID, 
 
 func (s *ThreadService) Update(ctx context.Context, id, userID uint, content string) (*threadmodel.Thread, error) {
 	content = strings.TrimSpace(content)
-	if utf8.RuneCountInString(content) > 5000 {
-		return nil, errors.New("content must be 5000 characters or less")
+	if utf8.RuneCountInString(content) > 500 {
+		return nil, errors.New("content must be 500 characters or less")
 	}
 	thread, err := s.threadRepo.FindByID(id)
 	if err != nil {

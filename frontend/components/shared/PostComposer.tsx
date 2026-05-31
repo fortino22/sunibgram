@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/authStore';
 import {
   createThread,
   createEventThread,
+  THREAD_CONTENT_MAX,
   type ThreadMutationParams,
   type ThreadResponse,
   type ThreadItem,
@@ -153,6 +154,50 @@ function isSameFile(left: File, right: File): boolean {
 
 function countRunes(value: string): number {
   return Array.from(value).length;
+}
+
+// X-style circular character-count indicator. Ring fills as the user types
+// (var(--accent)), turns amber within the last 20 chars, coral once over the
+// limit. The remaining count appears only when near/over, like X.
+function CharCountRing({ count, max }: { count: number; max: number }) {
+  const remaining = max - count;
+  const isOver = remaining < 0;
+  const isNear = remaining <= 20;
+  const fraction = Math.min(count / max, 1);
+  const size = isNear ? 28 : 22;
+  const strokeWidth = 2.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const ringColor = isOver ? 'var(--coral)' : isNear ? 'var(--amber)' : 'var(--accent)';
+
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      {isNear && (
+        <span
+          style={{
+            fontSize: 13,
+            fontVariantNumeric: 'tabular-nums',
+            color: isOver ? 'var(--coral)' : 'var(--text-secondary)',
+          }}
+        >
+          {remaining}
+        </span>
+      )}
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }} aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border)" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={ringColor}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={`${circumference * fraction} ${circumference}`}
+        />
+      </svg>
+    </div>
+  );
 }
 
 function buildPollDuration(values: Pick<PollFormValues, 'days' | 'hours' | 'minutes'>): number {
@@ -292,6 +337,9 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
   const avatarSrc = profile?.avatar ?? null;
   const selectedFiles = previews.map((p) => p.file);
   const normalizedContent = content.trim();
+  // Count trimmed runes to match the backend (it TrimSpace-s then RuneCount-s).
+  const contentLength = countRunes(normalizedContent);
+  const isOverLimit = contentLength > THREAD_CONTENT_MAX;
   const pollDurationSeconds = buildPollDuration({ days: pollDays, hours: pollHours, minutes: pollMinutes });
   const rawOptionsError = pollForm.formState.errors.options;
   const pollOptionsError =
@@ -513,6 +561,7 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
     !isPending &&
     !compressing &&
     !gifFetching &&
+    !isOverLimit &&
     (normalizedContent.length > 0 || selectedFiles.length > 0 || (pollEnabled && !isReply));
 
   async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
@@ -1745,6 +1794,13 @@ export function PostComposer({ placeholder = 'What is happening?!', parentId, fo
                 <span style={{ color: 'var(--accent)', fontSize: 13, marginLeft: 4 }}>Adding GIF…</span>
               )}
             </div>
+
+            {contentLength > 0 && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginLeft: 'auto' }}>
+                <CharCountRing count={contentLength} max={THREAD_CONTENT_MAX} />
+                <div style={{ width: 1, height: 24, background: 'var(--border)' }} />
+              </div>
+            )}
 
             <button
               type="submit"

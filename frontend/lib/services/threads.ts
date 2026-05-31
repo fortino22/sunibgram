@@ -1,5 +1,13 @@
 import { api } from '../api';
 
+/**
+ * Max thread/reply content length, in characters (Unicode code points).
+ * Mirrors the backend limit enforced in
+ * backend/application/usecase/thread/thread_service_command.go
+ * (utf8.RuneCountInString > THREAD_CONTENT_MAX). Keep both in sync.
+ */
+export const THREAD_CONTENT_MAX = 500;
+
 export type FormattedTime = string;
 
 export interface ThreadMessageResponse {

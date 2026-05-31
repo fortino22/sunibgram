@@ -311,12 +311,12 @@ body {
   justify-content: center;
   height: 32px;            /* match the 3-dots button so the header row stays compact */
   width: 32px;
-  border-radius: 50%;
-  background: transparent;
-  border: none;
+  border-radius: 8px;      /* soft rounded box (elegant) instead of bare circle */
+  background: var(--bg-subtle);    /* faint card-tint fill */
+  border: 1px solid var(--border); /* hairline ring */
   flex-shrink: 0;
   overflow: hidden;        /* clip the source whitespace margins -> fox fills */
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .thread-fox img {
   width: 27px;             /* zoom past the blank margins in the 2400x1309 source */
@@ -332,8 +332,9 @@ body {
   filter: opacity(0.6);
 }
 .thread-fox:hover {
-  /* smaller centered highlight (~36px) instead of the full 56px circle */
-  background: radial-gradient(circle, var(--x-blue-soft) 0 64%, transparent 65%);
+  /* box goes brand-blue on hover: soft fill + blue ring */
+  background: var(--x-blue-soft);
+  border-color: var(--x-blue);
 }
 .thread-fox:hover img,
 [data-theme="white"] .thread-fox:hover img {
