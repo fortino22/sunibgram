@@ -1,5 +1,13 @@
 import { api } from '../api';
 
+/**
+ * Max thread/reply content length, in characters (Unicode code points).
+ * Mirrors the backend limit enforced in
+ * backend/application/usecase/thread/thread_service_command.go
+ * (utf8.RuneCountInString > THREAD_CONTENT_MAX). Keep both in sync.
+ */
+export const THREAD_CONTENT_MAX = 500;
+
 export type FormattedTime = string;
 
 export interface ThreadMessageResponse {
@@ -320,6 +328,66 @@ export function getMyMediaThreads(userId: number | string, params: PaginationPar
 
 export function getThread(id: number | string, token: string): Promise<ThreadResponse> {
   return api.get<ThreadResponse>(`/api/threads/${id}`, token);
+}
+
+export interface ThreadSummaryResponse {
+  summary?: string;
+  status?: string;
+}
+
+export function getThreadSummary(id: number | string, token: string): Promise<ThreadSummaryResponse> {
+  return api.get<ThreadSummaryResponse>(`/api/threads/${id}/summary`, token);
+}
+
+/**
+ * Thrown when the user has exhausted their daily summary token budget (HTTP
+ * 429). Carries the server's human-readable message for display.
+ */
+export class SummaryLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SummaryLimitError';
+  }
+}
+
+/**
+ * Streams the thread summary as plain text. Calls onChunk with each decoded
+ * piece as it arrives so the UI can render the text live (typewriter effect).
+ * Uses fetch (not EventSource) so the Bearer token can be sent.
+ */
+export async function streamThreadSummary(
+  id: number | string,
+  token: string,
+  options: { onChunk: (text: string) => void; signal?: AbortSignal },
+): Promise<void> {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
+  const res = await fetch(`${baseUrl}/api/threads/${id}/summary/stream`, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
+    signal: options.signal,
+  });
+
+  if (res.status === 429) {
+    const fallback = "You've reached your daily summary limit. It resets tomorrow.";
+    const message = await res
+      .json()
+      .then((body: { message?: string }) => body.message ?? fallback)
+      .catch(() => fallback);
+    throw new SummaryLimitError(message);
+  }
+
+  if (!res.ok || res.body === null) {
+    throw new Error('Failed to stream summary');
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const text = decoder.decode(value, { stream: true });
+    if (text) options.onChunk(text);
+  }
 }
 
 export function getThreadFeed(id: number | string, token: string): Promise<FeedItemResponse> {

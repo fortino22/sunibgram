@@ -209,6 +209,18 @@ func createIndexes(db *gorm.DB) {
 		// created_at on top helps when since_id is small (large scan) and the
 		// visibility predicates filter most of the table.
 		"CREATE INDEX IF NOT EXISTS idx_threads_type_created ON threads(type, created_at DESC)",
+
+		// Sort-covering composites for paginated GetMy* list endpoints. The
+		// composite PKs already cover the WHERE user_id filter, but the
+		// ORDER BY sort column is absent, forcing an in-memory sort after the
+		// range scan. Adding the sort column lets Postgres read index-ordered
+		// (no Sort node, skip-to-offset). Read-only optimization.
+		"CREATE INDEX IF NOT EXISTS idx_likes_user_created ON likes(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_bookmarks_user_created ON bookmarks(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_reposts_user_created ON reposts(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_event_participants_user_joined ON event_participants(user_id, joined_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_user_event_pins_user_created ON user_event_pins(user_id, created_at DESC)",
+		"CREATE INDEX IF NOT EXISTS idx_user_community_pins_user_created ON user_community_pins(user_id, created_at DESC)",
 	}
 	for _, s := range stmts {
 		db.Exec(s)

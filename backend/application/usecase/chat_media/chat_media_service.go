@@ -3,6 +3,7 @@ package chatmediauc
 import (
 	"context"
 	"errors"
+	"log"
 	"mime/multipart"
 	"sync"
 
@@ -122,7 +123,9 @@ func (s *ChatMediaService) rollbackUploaded(ctx context.Context, chatID uint, me
 		if item.ObjectName == "" {
 			continue
 		}
-		_ = s.storage.Delete(ctx, item.ObjectName)
+		if err := s.storage.Delete(ctx, item.ObjectName); err != nil {
+			log.Printf("chat media orphan on rollback chat %d: %s: %v", chatID, item.ObjectName, err)
+		}
 	}
 }
 

@@ -1,34 +1,20 @@
 'use client';
 
-import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   deleteThread,
   updateThread,
-  type ThreadListResponse,
   type ThreadMessageResponse,
   type ThreadMutationParams,
   type ThreadResponse,
 } from '@/lib/services/threads';
 import { useAuthStore } from '@/stores/authStore';
+import { removeThreadFromCache } from '@/lib/threadCache';
 import { INACTIVE_COMMUNITY_TOAST, isInactiveCommunityError } from '@/lib/api';
 import { toast } from 'sonner';
 
 interface UseThreadManagementOptions {
   onDeleteSuccess?: () => void;
-}
-
-function removeThreadFromList(
-  current: ThreadListResponse | undefined,
-  threadId: number
-): ThreadListResponse | undefined {
-  if (current === undefined) {
-    return current;
-  }
-
-  return {
-    ...current,
-    data: current.data.filter((item) => item.id !== threadId),
-  };
 }
 
 function removeSingleThread(
@@ -84,44 +70,14 @@ export function useThreadManagement(
       return deleteThread(threadId, token);
     },
     onSuccess: async () => {
-      queryClient.setQueriesData<ThreadListResponse>(
-        { queryKey: ['threads'] },
-        (current) => removeThreadFromList(current, threadId)
-      );
-      queryClient.setQueriesData<ThreadListResponse>(
-        { queryKey: ['likes'] },
-        (current) => removeThreadFromList(current, threadId)
-      );
-      queryClient.setQueriesData<InfiniteData<ThreadListResponse>>(
-        { queryKey: ['thread-replies'] },
-        (current) => {
-          if (!current) return current;
-          return {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              data: page.data.filter((item) => item.id !== threadId),
-            })),
-          };
-        }
-      );
+      queryClient.setQueriesData({ queryKey: ['threads'] }, (current) => removeThreadFromCache(current, threadId));
+      queryClient.setQueriesData({ queryKey: ['likes'] }, (current) => removeThreadFromCache(current, threadId));
+      queryClient.setQueriesData({ queryKey: ['thread-replies'] }, (current) => removeThreadFromCache(current, threadId));
       queryClient.setQueriesData<ThreadResponse | undefined>(
         { queryKey: ['thread'] },
         (current) => removeSingleThread(current, threadId)
       );
-      queryClient.setQueriesData<InfiniteData<ThreadListResponse>>(
-        { queryKey: ['event'] },
-        (current) => {
-          if (!current) return current;
-          return {
-            ...current,
-            pages: current.pages.map((page) => ({
-              ...page,
-              data: page.data.filter((item) => item.id !== threadId),
-            })),
-          };
-        }
-      );
+      queryClient.setQueriesData({ queryKey: ['event'] }, (current) => removeThreadFromCache(current, threadId));
 
       options.onDeleteSuccess?.();
 

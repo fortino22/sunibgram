@@ -1,9 +1,13 @@
 package threadsummaryctrl
 
 import (
+	"bufio"
+	"context"
 	"errors"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/valyala/fasthttp"
 
 	threadsummaryuc "github.com/sunibgram/application/usecase/thread_summary"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
@@ -34,4 +38,54 @@ func (c *ThreadSummaryController) GetSummary(ctx *fiber.Ctx) error {
 	}
 
 	return ctx.JSON(fiber.Map{"summary": summary})
+}
+
+// StreamSummary streams the summary as plain text as it is generated, so the
+// client can render it live (typewriter effect). Cached summaries are written
+// in one shot.
+func (c *ThreadSummaryController) StreamSummary(ctx *fiber.Ctx) error {
+	threadID, ok := ctrlshared.ParseIDParam(ctx, "id", "thread")
+	if !ok {
+		return nil
+	}
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	userID := claims.UserID
+
+	// Detach from the fiber request context — the body stream writer runs after
+	// the handler returns, so ctx.Context() would already be released.
+	reqCtx := context.Background()
+
+	// A cached summary costs no quota (no LLM call). Serve it directly.
+	cached, isCached := c.summaryService.CachedSummary(reqCtx, threadID)
+
+	// Quota gate must happen before SetBodyStreamWriter — once the stream body
+	// starts the status code locks to 200, so we can't return 429 afterwards.
+	if !isCached {
+		if over, err := c.summaryService.QuotaExceeded(reqCtx, userID); err == nil && over {
+			return ctx.Status(fiber.StatusTooManyRequests).JSON(authdto.ErrorResponse{
+				Message: "You've reached your daily summary limit. It resets tomorrow.",
+			})
+		}
+	}
+
+	ctx.Set("Content-Type", "text/plain; charset=utf-8")
+	ctx.Set("Cache-Control", "no-cache")
+	ctx.Set("X-Accel-Buffering", "no")
+
+	ctx.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+		if isCached {
+			_, _ = w.WriteString(cached)
+			_ = w.Flush()
+			return
+		}
+		if err := c.summaryService.StreamSummarize(reqCtx, threadID, userID, w); err != nil {
+			log.Printf("thread summary stream failed for thread %d: %v", threadID, err)
+		}
+		_ = w.Flush()
+	}))
+
+	return nil
 }

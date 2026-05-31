@@ -26,6 +26,13 @@ func (r *threadCached) FindByID(id uint) (*threadmodel.Thread, error) {
 	return &thread, nil
 }
 
+// FindByIDs batch-resolves threads via the same per-thread cache + preload set
+// as FindByID (reuses hydrateThreads). Missing IDs are simply absent from the
+// result; order follows ids.
+func (r *threadCached) FindByIDs(ids []uint) ([]threadmodel.Thread, error) {
+	return r.hydrateThreads(context.Background(), ids)
+}
+
 func (r *threadCached) FindRoots(requesterID *uint, page, limit int) ([]threadmodel.Thread, int64, error) {
 	ctx := context.Background()
 	key := fmt.Sprintf("%s:viewer:%s", threadRootsKey(page, limit), ThreadVisibilityCachePart(requesterID))

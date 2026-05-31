@@ -216,6 +216,42 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Summary modal grows out of / collapses back into the fox orb (bottom-right). */
+@keyframes fox-modal-in {
+  from { opacity: 0; transform: translateY(40px) scale(0.2); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fox-modal-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(40px) scale(0.2); }
+}
+
+/* Fox icon in the summary panel header (small, tinted like .thread-fox). */
+.summary-fox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.summary-fox img {
+  width: 40px;
+  height: auto;
+  display: block;
+  filter: invert(1) opacity(0.9);
+}
+[data-theme="white"] .summary-fox img {
+  filter: opacity(0.85);
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
@@ -252,6 +288,209 @@ body {
 }
 .btn-ghost:hover:not(:disabled) {
   background-color: var(--bg-hover);
+}
+
+/* Light theme: a dark solid button (background: var(--text)) barely changes
+   under brightness(<1), so lift it instead for a visible hover. */
+[data-theme="white"] .btn-solid:hover:not(:disabled) {
+  filter: brightness(1.9);
+}
+[data-theme="white"] .btn-solid:active:not(:disabled) {
+  filter: brightness(1.65);
+}
+/* Stronger, more contrasted tint for ghost/cancel buttons in light theme. */
+[data-theme="white"] .btn-ghost:hover:not(:disabled) {
+  background-color: var(--sidebar-active);
+}
+
+/* Decorative fox brand icon beside the thread 3-dots menu.
+   fox.png is black line-art, so we tint it per theme via CSS filter. */
+.thread-fox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;            /* match the 3-dots button so the header row stays compact */
+  width: 32px;
+  border-radius: 8px;      /* soft rounded box (elegant) instead of bare circle */
+  background: var(--bg-subtle);    /* faint card-tint fill */
+  border: 1px solid var(--border); /* hairline ring */
+  flex-shrink: 0;
+  overflow: hidden;        /* clip the source whitespace margins -> fox fills */
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.thread-fox img {
+  width: 27px;             /* zoom past the blank margins in the 2400x1309 source */
+  height: auto;            /* keep aspect, never squish */
+  display: block;
+  object-fit: contain;
+  /* dark default: black art -> light grey */
+  filter: invert(1) opacity(0.75);
+  transition: filter 0.15s ease;
+}
+[data-theme="white"] .thread-fox img {
+  /* light theme: keep black art, dim to grey */
+  filter: opacity(0.6);
+}
+.thread-fox:hover {
+  /* box goes brand-blue on hover: soft fill + blue ring */
+  background: var(--x-blue-soft);
+  border-color: var(--x-blue);
+}
+.thread-fox:hover img,
+[data-theme="white"] .thread-fox:hover img {
+  /* tint black art -> brand blue (#1d9bf0) */
+  filter: invert(48%) sepia(89%) saturate(1300%) hue-rotate(176deg) brightness(95%) contrast(91%);
+}
+
+/* Floating fox orb, pinned bottom-right (X Grok-style). UI only for now. */
+.floating-fox {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 60px;
+  width: 60px;
+  border-radius: 18px;     /* X-style rounded square (squircle), not a circle */
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: var(--bg-card);
+  /* dark mode: white glowing border */
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.45), 0 0 2px rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease, box-shadow 0.15s ease;
+}
+/* While the modal is open the orb sits up high near the modal top (hidden);
+   on close it drops back down to its resting spot with a slight bounce. */
+.floating-fox-hidden {
+  transform: translateY(-240px) scale(0.5);
+  opacity: 0;
+  pointer-events: none;
+}
+[data-theme="white"] .floating-fox {
+  /* light theme: black glowing border */
+  border-color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4), 0 0 2px rgba(0, 0, 0, 0.55);
+}
+.floating-fox img {
+  width: 50px;             /* zoom past the blank margins in the 2400x1309 source */
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: invert(1) opacity(0.9);     /* dark theme: black art -> near-white */
+  transition: filter 0.15s ease;
+}
+[data-theme="white"] .floating-fox img {
+  filter: opacity(0.85);
+}
+.floating-fox:hover {
+  background: var(--bg-hover);
+  transform: scale(1.05);
+  /* dark mode: stronger white glow */
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.7), 0 0 4px rgba(255, 255, 255, 0.85);
+}
+[data-theme="white"] .floating-fox:hover {
+  /* light theme: stronger black glow */
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6), 0 0 4px rgba(0, 0, 0, 0.75);
+}
+.floating-fox:hover img {
+  filter: invert(1) opacity(1);
+}
+[data-theme="white"] .floating-fox:hover img {
+  filter: opacity(1);
+}
+
+/* ── Coming-soon popup — sleeping-fox sprite (theme toggle) ───────────────── */
+
+/* FoxSleepSprite renders both colour variants; show white fox on dark theme,
+   black fox on light theme. */
+.fox-sleep-frame--black { display: none; }
+[data-theme="white"] .fox-sleep-frame--white { display: none; }
+[data-theme="white"] .fox-sleep-frame--black { display: block; }
+
+/* Summary modal header: rainbow gradient flowing left->right while streaming. */
+.summary-shimmer {
+  background: linear-gradient(90deg, #ff004d, #ff8a00, #ffd400, #00d672, #00a3ff, #b14bff, #ff004d);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: summary-shimmer 2s linear infinite;
+}
+@keyframes summary-shimmer {
+  from { background-position: 0% 0; }
+  to   { background-position: 200% 0; }
+}
+
+/* Hover highlight on summary modal content blocks (thread + summary box). */
+.summary-block {
+  border-radius: 12px;
+  transition: background 0.15s ease;
+}
+.summary-block:hover {
+  background: var(--bg-hover);
+}
+.summary-block-subtle {
+  background: var(--bg-subtle);
+  transition: background 0.15s ease;
+}
+.summary-block-subtle:hover {
+  background: var(--bg-hover);
+}
+@media (prefers-reduced-motion: reduce) {
+  .summary-shimmer { animation: none; color: var(--text); }
+}
+
+/* Coming-soon card glow — white halo on dark theme, black halo on light. */
+.fox-soon-card {
+  box-shadow: var(--shadow-dropdown), 0 0 26px rgba(255, 255, 255, 0.38), 0 0 6px rgba(255, 255, 255, 0.55);
+}
+[data-theme="white"] .fox-soon-card {
+  box-shadow: var(--shadow-dropdown), 0 0 26px rgba(0, 0, 0, 0.32), 0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Coming-soon popup — raining, glitching Hermes faces (behind the fox) ─── */
+
+/* Layer fills the card and clips the falling Hermes heads to its rounded box. */
+.hermes-rain {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  z-index: 0;
+  pointer-events: none;
+}
+/* Each drop falls top->bottom; left/size/duration/delay set inline per drop.
+   `top` % is relative to the card height, so the fall spans the whole card. */
+.hermes-drop {
+  position: absolute;
+  top: -15%;
+  animation-name: hermes-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.hermes-drop-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: url('/assets/hermes_agent.png') center / contain no-repeat;
+  opacity: 0.5;
+  animation: hermes-drop-glitch 0.5s steps(2, jump-none) infinite;
+}
+@keyframes hermes-fall {
+  from { top: -15%; }
+  to   { top: 115%; }
+}
+@keyframes hermes-drop-glitch {
+  0%   { transform: translateX(-2px); filter: hue-rotate(0deg) saturate(1.8); }
+  50%  { transform: translateX(2px);  filter: hue-rotate(60deg) saturate(2.2); }
+  100% { transform: translateX(-1px); filter: hue-rotate(-40deg) saturate(1.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hermes-rain { display: none; }
 }
 
 /* Subtle icon / image / overlay buttons */
@@ -367,6 +606,26 @@ body {
 }
 .icon-knock:active:not(:disabled) {
   transform: translateY(0);
+}
+
+/* === Char-count ring (composer) hover === */
+.char-ring {
+  cursor: default;
+}
+.char-ring-svg {
+  transition: transform 0.15s ease;
+}
+.char-ring:hover .char-ring-svg {
+  transform: scale(1.15);
+}
+.char-ring-count {
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.char-ring:hover .char-ring-count {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 /* === Admin polish === */
@@ -1519,5 +1778,28 @@ body {
   text-align: center;
   justify-content: center;
   width: 100%;
+}
+
+/* Sonner success toasts → brand blue (X style). Theme-constant via --x-blue. */
+[data-sonner-toast][data-type="success"] {
+  --normal-bg: var(--x-blue);
+  --normal-border: var(--x-blue);
+  --normal-text: #ffffff;
+  --success-bg: var(--x-blue);
+  --success-border: var(--x-blue);
+  --success-text: #ffffff;
+}
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: #ffffff;
+}
+
+/* Blue X close button */
+[data-sonner-toast] [data-close-button] {
+  background: var(--x-blue);
+  border-color: var(--x-blue);
+  color: #ffffff;
+}
+[data-sonner-toast] [data-close-button]:hover {
+  background: var(--accent-hover);
 }
 

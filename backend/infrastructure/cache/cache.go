@@ -23,8 +23,11 @@ func New() *Cache {
 
 	password := os.Getenv("REDIS_PASSWORD")
 	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
+		Addr:         addr,
+		Password:     password,
+		PoolSize:     20,
+		MinIdleConns: 5,
+		MaxRetries:   2,
 	})
 	return &Cache{client: client}
 }
@@ -338,6 +341,27 @@ func (c *Cache) ZRevRangeWithScores(ctx context.Context, key string, start, stop
 func (c *Cache) IncrWithWindow(ctx context.Context, key string, window time.Duration) (int64, time.Duration, error) {
 	pipe := c.client.Pipeline()
 	incr := pipe.Incr(ctx, key)
+	ttl := pipe.TTL(ctx, key)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return 0, 0, err
+	}
+	count := incr.Val()
+	remaining := ttl.Val()
+	if remaining < 0 {
+		if err := c.client.Expire(ctx, key, window).Err(); err != nil {
+			return count, window, err
+		}
+		remaining = window
+	}
+	return count, remaining, nil
+}
+
+// IncrByWithWindow atomically INCRBYs the key by n and ensures it expires
+// after the given window (sets EXPIRE on first hit). Returns post-increment
+// count + remaining TTL. Used for token-quota accounting.
+func (c *Cache) IncrByWithWindow(ctx context.Context, key string, n int64, window time.Duration) (int64, time.Duration, error) {
+	pipe := c.client.Pipeline()
+	incr := pipe.IncrBy(ctx, key, n)
 	ttl := pipe.TTL(ctx, key)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return 0, 0, err

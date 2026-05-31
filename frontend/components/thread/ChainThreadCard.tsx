@@ -10,19 +10,29 @@ import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
 import { ShareModal } from '@/components/share/ShareModal';
 import { SharePopover } from '@/components/share/SharePopover';
+import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
+import { ThreadFoxButton } from '@/components/thread/ThreadFoxButton';
+import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
+import { ReportPostModal } from '@/components/thread/ReportPostModal';
+import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { useThreadActions } from '@/hooks/useThreadActions';
+import { useThreadManagement } from '@/hooks/useThreadManagement';
 import { useComposeStore } from '@/stores/composeStore';
-import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
+import { useAuthStore } from '@/stores/authStore';
+import { getAuthorAvatarUrl, getThreadAuthor, isOwnThread } from './threadUtils';
 import { ThreadBody } from './ThreadBody';
 import { ThreadPoll } from './ThreadPoll';
 import { ImageDetailModal } from './ImageDetailModal';
-import type { ThreadItem, ThreadMediaResponse } from '@/lib/services/threads';
+import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 
 interface ChainThreadCardProps {
   thread: ThreadItem;
   /** Skip the vertical connector line below this card (use on the last card
    *  in a self-reply chain that has nothing after it). */
   hideConnector?: boolean;
+  /** Draw a bottom divider like normal reply cards (used for belowChain items
+   *  so the reply page reads uniformly). */
+  withDivider?: boolean;
 }
 
 // Layout constants — the absolute-positioned connector line lands on the
@@ -36,13 +46,18 @@ const AVATAR_GAP_BELOW = 4;
 const LINE_WIDTH = 2;
 const LINE_BLEED = 16;
 
-export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCardProps) {
+export function ChainThreadCard({ thread, hideConnector = false, withDivider = false }: ChainThreadCardProps) {
   const router = useRouter();
+  const currentUserId = useAuthStore((state) => state.user?.id);
+  const { updateMutation, deleteMutation } = useThreadManagement(thread.id);
   const { like, repost, bookmark } = useThreadActions(thread);
   const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
   const [hovered, setHovered] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [lightboxState, setLightboxState] = useState<{ media: ThreadMediaResponse[]; index: number } | null>(null);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
   const [shareAnchor, setShareAnchor] = useState<DOMRect | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -51,11 +66,28 @@ export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCa
     ? thread.original_thread_id
     : thread.id;
 
+  const canManage = isOwnThread(thread, currentUserId);
+  const canReport = currentUserId != null && currentUserId !== thread.author.id;
+
   function handleBookmark(e: React.MouseEvent<HTMLButtonElement>) {
     if (bookmark.isPending) return;
     const wasBookmarked = thread.is_bookmarked === true;
     bookmark.mutate();
     if (!wasBookmarked) setBookmarkAnchor(e.currentTarget.getBoundingClientRect());
+  }
+
+  async function handleSave(params: ThreadMutationParams) {
+    await updateMutation.mutateAsync(params);
+    setIsEditing(false);
+  }
+
+  async function handleDeleteConfirm() {
+    try {
+      await deleteMutation.mutateAsync();
+      setDeleteModalOpen(false);
+    } catch {
+      // Mutation state already exposes the error.
+    }
   }
 
   return (
@@ -66,6 +98,7 @@ export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCa
         onMouseLeave={() => setHovered(false)}
         style={{
           position: 'relative',
+          borderBottom: withDivider ? '1px solid var(--border)' : undefined,
           background: hovered ? 'var(--bg-hover)' : 'var(--bg-card)',
           cursor: 'pointer',
           transition: 'background 0.12s ease',
@@ -123,6 +156,19 @@ export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCa
                 @{thread.author.username}
               </Link>
               <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+                <ThreadFoxButton thread={thread} />
+                {(canManage || canReport) && (
+                  <ThreadOptionsMenu
+                    onEdit={canManage ? () => setIsEditing(true) : undefined}
+                    onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
+                    onReport={canReport ? () => setReportModalOpen(true) : undefined}
+                    deleting={deleteMutation.isPending}
+                    disabled={updateMutation.isPending}
+                    compact
+                  />
+                )}
+              </div>
             </div>
 
             {thread.author.faculty && (
@@ -144,11 +190,25 @@ export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCa
               </div>
             )}
 
-            <ThreadBody
-              content={thread.content}
-              media={thread.media}
-              onImageClick={(index) => setLightboxState({ media: thread.media, index })}
-            />
+            {isEditing ? (
+              <div onClick={(e) => e.stopPropagation()}>
+                <ThreadInlineEditor
+                  initialContent={thread.content}
+                  initialMedia={thread.media}
+                  onCancel={() => setIsEditing(false)}
+                  onSave={handleSave}
+                  pending={updateMutation.isPending}
+                  errorMessage={updateMutation.error?.message}
+                  compact
+                />
+              </div>
+            ) : (
+              <ThreadBody
+                content={thread.content}
+                media={thread.media}
+                onImageClick={(index) => setLightboxState({ media: thread.media, index })}
+              />
+            )}
 
             <ThreadPoll
               thread={thread}
@@ -213,6 +273,21 @@ export function ChainThreadCard({ thread, hideConnector = false }: ChainThreadCa
           <ShareModal threadId={bookmarkTargetId} onClose={() => setShareOpen(false)} />
         </div>
       )}
+
+      {reportModalOpen && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <ReportPostModal
+            postId={thread.id}
+            onClose={() => setReportModalOpen(false)}
+          />
+        </div>
+      )}
+      <DeletePostModal
+        open={deleteModalOpen}
+        isPending={deleteMutation.isPending}
+        onConfirm={() => void handleDeleteConfirm()}
+        onCancel={() => setDeleteModalOpen(false)}
+      />
     </>
   );
 }

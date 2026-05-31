@@ -62,6 +62,16 @@ func (r *CacheRepository) Incr(ctx context.Context, key string) (int64, error) {
 	return r.cache.Incr(ctx, key)
 }
 
+func (r *CacheRepository) IncrByWithWindow(ctx context.Context, key string, n int64, window time.Duration) (int64, error) {
+	count, _, err := r.cache.IncrByWithWindow(ctx, key, n, window)
+	return count, err
+}
+
+func (r *CacheRepository) GetCounter(ctx context.Context, key string) (int64, error) {
+	count, _, err := r.cache.CounterTTL(ctx, key)
+	return count, err
+}
+
 func (r *CacheRepository) RegisterCacheKey(ctx context.Context, tag, cacheKey string) error {
 	return r.cache.RegisterCacheKey(ctx, tag, cacheKey)
 }

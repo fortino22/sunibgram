@@ -93,8 +93,12 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 	if err := threadmodel.ValidateEventType(eventType); err != nil {
 		return nil, err
 	}
-	if err := threadmodel.ValidateEventDocumentRequired(len(attachments)); err != nil {
-		return nil, err
+	if eventType == "official" {
+		if err := threadmodel.ValidateEventDocumentRequired(len(attachments)); err != nil {
+			return nil, err
+		}
+	} else if len(attachments) > 1 {
+		return nil, errors.New("only one document is allowed per event")
 	}
 	if err := validateEventDocHeaders(attachments); err != nil {
 		return nil, err

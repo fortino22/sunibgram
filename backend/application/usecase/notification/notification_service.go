@@ -13,6 +13,7 @@ import (
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	notificationrepoiface "github.com/sunibgram/domain/repository/notification"
+	notificationusermuterepoiface "github.com/sunibgram/domain/repository/notification_user_mute"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
 	userprofilerepoiface "github.com/sunibgram/domain/repository/user_profile"
@@ -27,6 +28,7 @@ type NotificationService struct {
 	userFacultyRepo  userfacultyrepoiface.IUserFacultyRepository
 	storageUsecase   *storageuc.StorageUsecase
 	hub              sockethubsvciface.IHub
+	muteRepo         notificationusermuterepoiface.INotificationUserMuteRepository
 }
 
 func NewNotificationService(
@@ -36,6 +38,7 @@ func NewNotificationService(
 	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository,
 	storageUsecase *storageuc.StorageUsecase,
 	hub sockethubsvciface.IHub,
+	muteRepo notificationusermuterepoiface.INotificationUserMuteRepository,
 ) notificationsvciface.INotificationService {
 	return &NotificationService{
 		notificationRepo: notificationRepo,
@@ -44,6 +47,7 @@ func NewNotificationService(
 		userFacultyRepo:  userFacultyRepo,
 		storageUsecase:   storageUsecase,
 		hub:              hub,
+		muteRepo:         muteRepo,
 	}
 }
 
@@ -58,6 +62,11 @@ func (s *NotificationService) SendNotification(input notificationsvciface.Create
 	}
 	if input.SenderUserID == 0 || input.RecipientUserID == 0 {
 		return errors.New("sender_user_id and recipient_user_id are required")
+	}
+	if s.muteRepo != nil {
+		if muted, mErr := s.muteRepo.IsMuted(input.RecipientUserID, input.SenderUserID); mErr == nil && muted {
+			return nil // recipient muted the actor — silently skip
+		}
 	}
 	if _, err := s.userRepo.FindByID(input.RecipientUserID); err != nil {
 		return errors.New("recipient user not found")

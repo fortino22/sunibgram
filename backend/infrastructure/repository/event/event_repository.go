@@ -482,12 +482,12 @@ func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threa
 	}
 
 	var event threadmodel.ThreadEvent
-	if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
+	if err := r.readDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		var thread threadmodel.Thread
-		if err := r.writeDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
+		if err := r.readDB.WithContext(ctx).Select("root_id", "parent_id", "original_thread_id").Where("thread_id = ?", threadID).First(&thread).Error; err != nil {
 			return err
 		}
 		if thread.RootID != nil {
@@ -499,7 +499,7 @@ func (r *eventRepository) PatchEventCounterByThreadID(ctx context.Context, threa
 		} else {
 			return nil
 		}
-		if err := r.writeDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
+		if err := r.readDB.WithContext(ctx).Select("event_id").Where("thread_id = ?", threadID).First(&event).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil
 			}

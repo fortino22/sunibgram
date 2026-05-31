@@ -333,8 +333,10 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		chainIDs[t.ThreadID] = struct{}{}
 	}
 
-	// Fetch unique parent threads that are not already in the chain.
+	// Collect unique parent IDs that are not already part of the chain, then
+	// fetch them all in one batched call instead of one query per parent.
 	parentCache := make(map[uint]*threadmodel.Thread)
+	missingParentIDs := make([]uint, 0)
 	for _, t := range threads {
 		if t.ParentID == nil {
 			continue
@@ -343,11 +345,18 @@ func (c *ThreadController) GetChain(ctx *fiber.Ctx) error {
 		if _, inChain := chainIDs[pid]; inChain {
 			continue
 		}
-		if _, fetched := parentCache[pid]; fetched {
+		if _, queued := parentCache[pid]; queued {
 			continue
 		}
-		if p, fetchErr := c.threadService.GetByID(pid); fetchErr == nil {
-			parentCache[pid] = p
+		parentCache[pid] = nil // mark queued (dedups repeated parents)
+		missingParentIDs = append(missingParentIDs, pid)
+	}
+	if len(missingParentIDs) > 0 {
+		if fetched, err := c.threadService.GetByIDs(missingParentIDs); err == nil {
+			for i := range fetched {
+				p := fetched[i]
+				parentCache[p.ThreadID] = &p
+			}
 		}
 	}
 

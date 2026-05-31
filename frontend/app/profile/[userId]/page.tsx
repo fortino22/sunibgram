@@ -137,6 +137,7 @@ export default function UserProfilePage() {
           avatarUrl: profile.avatar ?? null,
           isPremium: profile.is_premium,
         }}
+        userId={profile.id}
         isOwn={isOwn}
         isFollowing={isFollowing}
         followPending={follow.isPending || unfollow.isPending}

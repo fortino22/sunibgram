@@ -11,6 +11,7 @@ import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useThreadActions } from '@/hooks/useThreadActions';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
+import { ThreadFoxButton } from '@/components/thread/ThreadFoxButton';
 import { ReportPostModal } from '@/components/thread/ReportPostModal';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
@@ -237,16 +238,19 @@ export function ThreadDetailView({ root, ancestors = [], belowChain = [], replie
               </div>
             )}
           </div>
-          {(canManage || canReport) && (
-            <ThreadOptionsMenu
-              onEdit={canManage ? () => setIsEditing(true) : undefined}
-              onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
-              onReport={canReport ? () => setReportModalOpen(true) : undefined}
-              deleting={deleteMutation.isPending}
-              disabled={updateMutation.isPending}
-              compact
-            />
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+            <ThreadFoxButton thread={root} />
+            {(canManage || canReport) && (
+              <ThreadOptionsMenu
+                onEdit={canManage ? () => setIsEditing(true) : undefined}
+                onDelete={canManage ? () => setDeleteModalOpen(true) : undefined}
+                onReport={canReport ? () => setReportModalOpen(true) : undefined}
+                deleting={deleteMutation.isPending}
+                disabled={updateMutation.isPending}
+                compact
+              />
+            )}
+          </div>
         </div>
 
         {/* Content — full width, 12px below author row */}
@@ -314,6 +318,7 @@ export function ThreadDetailView({ root, ancestors = [], belowChain = [], replie
               key={item.id}
               thread={item}
               hideConnector={i === belowChain.length - 1}
+              withDivider
             />
           ))}
         </section>

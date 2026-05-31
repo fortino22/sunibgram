@@ -41,6 +41,10 @@ type IChatRoomRepository interface {
 	UpdateEncryptedKey(roomID uint, encryptedKey string) error
 	RemoveMember(roomID, userID uint) error
 	UpdateGroup(roomID uint, name string, description *string, avatarURL *string) error
+	// MediaObjectNamesByRoom returns the storage object names of all chat media
+	// in a room, so the caller can delete them from object storage before/around
+	// DeleteGroup (which removes only the DB rows).
+	MediaObjectNamesByRoom(roomID uint) ([]string, error)
 	DeleteGroup(roomID uint) error
 	FindPrivateRoom(userA, userB uint) (*chatroommodel.ChatRoom, error)
 	ToggleMute(roomID, userID uint) (bool, error)
