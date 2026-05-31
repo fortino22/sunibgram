@@ -1103,22 +1103,59 @@ body {
 .about-root {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-dm-sans);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+    'Helvetica Neue', Helvetica, Arial, sans-serif;
   width: 100%;
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
 /* Centered content container — every marketing section uses this.
    72rem (1152px) gives obvious horizontal centering on wide viewports. */
+/* The centered column that contains nav, sections, and footer.
+   75% of the viewport on desktop, full width on phones.
+   `border` draws the outer frame; direct children draw the
+   horizontal separators so all sections share edges (no gaps,
+   no double lines). */
+.about-column {
+  width: 75%;
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.about-column > *:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+/* "Above-the-fold" wrapper on the landing page: forces the hero
+   and the next section together to fill the viewport (minus the
+   60px nav and its border), so the footer is always just below
+   the fold on first paint. Sections share the space 1:1 and
+   centre their content vertically when there is slack. */
+.about-fold {
+  min-height: calc(100vh - 61px);
+  display: flex;
+  flex-direction: column;
+}
+.about-fold > section {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.about-fold > section + section {
+  border-top: 1px solid var(--border);
+}
+
 .about-container {
-  max-width: 72rem;
+  width: 100%;
   margin-left: auto;
   margin-right: auto;
   padding-left: 32px;
   padding-right: 32px;
 }
 .about-container-narrow {
+  width: 100%;
   max-width: 56rem;
   margin-left: auto;
   margin-right: auto;
@@ -1126,6 +1163,11 @@ body {
   padding-right: 32px;
 }
 @media (max-width: 640px) {
+  .about-column {
+    width: 100%;
+    border-left: none;
+    border-right: none;
+  }
   .about-container,
   .about-container-narrow {
     padding-left: 20px;
@@ -1145,6 +1187,60 @@ body {
   mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
   -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 30%, transparent 80%);
   pointer-events: none;
+}
+
+/* ============================================================
+   3D "globe of people" used in AboutSplitConnection.
+   The globe itself is a Three.js scene rendered inside the
+   `.about-orbit-stage` container (see AboutGlobe.tsx). The only
+   CSS concern here is the stage size and the chip pill styling
+   that drei's <Html> uses for each label.
+   ============================================================ */
+.about-orbit-stage {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  aspect-ratio: 1 / 1;
+}
+.about-orbit-stage canvas {
+  cursor: grab;
+}
+.about-orbit-stage canvas:active {
+  cursor: grabbing;
+}
+.about-orbit-label-inner {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 3px 10px oklch(0% 0 0 / 0.06) !important;
+  font-size: 13px !important;
+  color: var(--text) !important;
+  font-weight: 500 !important;
+  font-family: inherit;
+  white-space: nowrap;
+  line-height: 1;
+}
+.about-orbit-label-inner > svg {
+  color: var(--accent);
+  width: 14px;
+  height: 14px;
+}
+
+/* Film-grain texture between the canvas and the content.
+   Uses an inline SVG fractalNoise so no extra HTTP request. */
+.about-hero-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.85;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
 }
 
 /* Monospace UI chrome — eyebrow tags, CTA buttons, footer labels */
@@ -1183,7 +1279,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--accent);
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
@@ -1204,7 +1300,7 @@ body {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-radius: 6px;
+  border-radius: 0;
   border: 1px solid var(--border-strong);
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
@@ -1292,11 +1388,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 18px;
+  padding: 10px 12px;
   background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-  box-shadow: 0 4px 12px oklch(0% 0 0 / 0.05);
+  border: 1px solid var(--border);
+  border-radius: 0;
   font-size: 0.5em;
   line-height: 1;
   vertical-align: middle;
@@ -1322,13 +1417,14 @@ body {
    About page — Composio-style navbar
    ============================================================ */
 
-/* Nav bar wrapper — sticky, glass-style */
+/* Nav bar wrapper — sticky, glass-style.
+   Bottom border is provided by the `.about-column > *:not(:last-child)`
+   rule so it shares an edge with the box below it. */
 .about-nav {
   position: sticky;
   top: 0;
   z-index: 100;
   background: var(--bg);
-  border-bottom: 1px solid var(--border);
 }
 
 /* Inner row — logo | links | cta */
@@ -1360,7 +1456,7 @@ body {
 .about-nav-logo-text {
   color: var(--text);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 1.35rem;
   letter-spacing: -0.01em;
 }
 
@@ -1404,7 +1500,7 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 0;
   transition: color 0.15s ease, background-color 0.15s ease;
   white-space: nowrap;
 }
@@ -1513,7 +1609,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border-radius: 8px;
+  border-radius: 0;
   border: 1px solid var(--text);
   text-decoration: none;
   white-space: nowrap;
@@ -1553,7 +1649,7 @@ body {
   height: 40px;
   background: none;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
   padding: 0;
   transition: background-color 0.12s ease;
@@ -1573,7 +1669,7 @@ body {
   width: 18px;
   height: 2px;
   background: var(--text);
-  border-radius: 2px;
+  border-radius: 0;
   transition: transform 0.25s ease, opacity 0.2s ease;
   transform-origin: center;
 }

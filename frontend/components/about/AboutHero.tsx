@@ -5,56 +5,58 @@ export function AboutHero() {
   return (
     <section className="relative overflow-hidden" id="what">
       <AboutHeroBackground />
+      <div className="about-hero-grain" aria-hidden />
       <div
         className="about-container-narrow relative z-10 flex flex-col items-center text-center"
-        style={{ paddingTop: '120px', paddingBottom: '120px' }}
+        style={{ paddingTop: '40px', paddingBottom: '40px' }}
       >
         <h1
           style={{
             color: 'var(--text)',
-            fontWeight: 600,
+            fontWeight: 500,
             lineHeight: 1.08,
             fontSize: 'clamp(2.5rem, 6vw, 5rem)',
             letterSpacing: '-0.025em',
             maxWidth: '52rem',
           }}
         >
-          The social network just for{' '}
+          The{' '}
           <span className="about-inline-chip">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/assets/binus-logo.svg"
               alt="Binus University"
               style={{
-                height: '1.4em',
+                height: '1.12em',
                 width: 'auto',
                 objectFit: 'contain',
                 display: 'block',
               }}
             />
-          </span>
+          </span>{' '}
+          social network.
         </h1>
 
         <p
           style={{
-            color: 'var(--text-muted)',
+            color: 'var(--text)',
             fontSize: '1.0625rem',
             lineHeight: 1.6,
             maxWidth: '38rem',
             marginTop: '28px',
           }}
         >
-          Sunibgram is the campus app for Binus University students.
-          Threads, communities, events, and DMs — one place, one verified
-          identity, zero anonymous noise.
+          The campus app for Binus students. Threads, communities, and events —
+          one verified identity, no anonymous noise.
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-3" style={{ marginTop: '36px' }}>
-          <Link href="/signup" className="about-btn-primary">
-            Sign up with your Binus email
-          </Link>
-          <Link href="/login" className="about-btn-secondary">
-            I already have an account
+        <div className="flex items-center justify-center" style={{ marginTop: '36px' }}>
+          <Link
+            href="/signup"
+            className="about-btn-primary about-btn-primary-inverted"
+            style={{ color: 'var(--text)', borderColor: 'rgba(0, 0, 0, 0.18)' }}
+          >
+            Join with your Binus email
           </Link>
         </div>
       </div>

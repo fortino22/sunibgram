@@ -72,15 +72,15 @@ export function AboutHeroBackground() {
           width: '140%',
           height: '140%',
           background: `
-            radial-gradient(circle 600px at var(--cursor-x, 50%) var(--cursor-y, 50%), rgba(0, 242, 254, 0.15), transparent 70%),
-            radial-gradient(circle 800px at var(--blob1-x, 25%) var(--blob1-y, 40%), rgba(79, 172, 254, 0.15), transparent 70%),
-            radial-gradient(circle 900px at var(--blob2-x, 75%) var(--blob2-y, 60%), rgba(0, 204, 255, 0.12), transparent 70%),
-            radial-gradient(circle 700px at var(--blob3-x, 50%) var(--blob3-y, 20%), rgba(102, 126, 234, 0.12), transparent 70%)
+            radial-gradient(circle 600px at var(--cursor-x, 50%) var(--cursor-y, 50%), rgba(0, 242, 254, 0.85), transparent 70%),
+            radial-gradient(circle 800px at var(--blob1-x, 25%) var(--blob1-y, 40%), rgba(79, 172, 254, 0.9), transparent 70%),
+            radial-gradient(circle 900px at var(--blob2-x, 75%) var(--blob2-y, 60%), rgba(0, 204, 255, 0.85), transparent 70%),
+            radial-gradient(circle 700px at var(--blob3-x, 50%) var(--blob3-y, 20%), rgba(102, 126, 234, 0.8), transparent 70%)
           `,
           transition: 'background 0s',
-          filter: 'blur(60px)',
+          filter: 'blur(40px)',
           transform: 'translateZ(0)',
-          opacity: 0.8,
+          opacity: 1,
         }}
       />
       {/* Grid overlay */}
