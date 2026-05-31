@@ -35,7 +35,7 @@ const DROPDOWNS: NavDropdown[] = [
     label: 'Features',
     columns: [
       {
-        heading: 'Social',
+        heading: 'Connect',
         items: [
           {
             title: 'Threads',
@@ -47,10 +47,15 @@ const DROPDOWNS: NavDropdown[] = [
             description: 'Join groups around shared interests and courses.',
             href: '/about/what',
           },
+          {
+            title: 'Messages',
+            description: 'Real-time private messaging with fellow students.',
+            href: '/about/what',
+          },
         ],
       },
       {
-        heading: 'Tools',
+        heading: 'Discover',
         items: [
           {
             title: 'Events',
@@ -58,9 +63,9 @@ const DROPDOWNS: NavDropdown[] = [
             href: '/about/what',
           },
           {
-            title: 'Messages',
-            description: 'Real-time private messaging with fellow students.',
-            href: '/about/what',
+            title: 'Leaderboard',
+            description: 'See top contributors and rising voices on campus.',
+            href: '/leaderboard',
           },
         ],
       },
@@ -70,7 +75,7 @@ const DROPDOWNS: NavDropdown[] = [
     label: 'About',
     columns: [
       {
-        heading: 'Learn more',
+        heading: 'Mission',
         items: [
           {
             title: 'What it is',
@@ -78,7 +83,7 @@ const DROPDOWNS: NavDropdown[] = [
             href: '/about/what',
           },
           {
-            title: 'The team',
+            title: 'Team',
             description: 'Meet the people building Sunibgram.',
             href: '/about/team',
           },
@@ -96,13 +101,39 @@ const DROPDOWNS: NavDropdown[] = [
       },
     ],
   },
+  {
+    label: 'Resources',
+    columns: [
+      {
+        heading: 'Support',
+        items: [
+          {
+            title: 'Help center',
+            description: 'Guides, FAQs, and answers to common questions.',
+            href: '/about/help',
+          },
+        ],
+      },
+      {
+        heading: 'Legal',
+        items: [
+          {
+            title: 'Privacy center',
+            description: 'How we handle and protect your data.',
+            href: '/about/privacy',
+          },
+          {
+            title: 'Terms and conditions',
+            description: 'Rules and policies for using Sunibgram.',
+            href: '/about/terms',
+          },
+        ],
+      },
+    ],
+  },
 ];
 
-const PLAIN_LINKS: NavLink[] = [
-  { label: 'Use cases', href: '/about/use-cases' },
-  { label: 'Leaderboard', href: '/leaderboard' },
-  { label: 'Sign in', href: '/login' },
-];
+const PLAIN_LINKS: NavLink[] = [];
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */

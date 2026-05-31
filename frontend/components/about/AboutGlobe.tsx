@@ -137,6 +137,7 @@ function PersonLabel({
       center
       occlude={[occluderRef as React.RefObject<THREE.Object3D>]}
       onOcclude={setOccluded}
+      zIndexRange={[100, 0]}
       style={{
         pointerEvents: 'none',
         opacity: occluded ? 0 : 1,

@@ -70,21 +70,6 @@ export function AboutFooter() {
           <span style={{ fontWeight: 700, fontSize: '1.35rem', letterSpacing: '-0.01em' }}>
             Sunibgram
           </span>
-          <span
-            style={{
-              fontSize: '0.6875rem',
-              padding: '3px 8px',
-              border: '1px solid var(--border)',
-              borderRadius: '4px',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              fontWeight: 600,
-              marginLeft: '4px',
-            }}
-          >
-            Binus only
-          </span>
         </div>
 
         <div

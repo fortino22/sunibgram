@@ -1199,6 +1199,11 @@ body {
 .about-orbit-stage canvas:active {
   cursor: grabbing;
 }
+/* Cap Drei's Html wrapper so globe labels never overlap the sticky navbar */
+.about-orbit-stage div[style*="z-index"] {
+  z-index: 100 !important;
+}
+
 .about-orbit-label-inner {
   display: inline-flex !important;
   align-items: center;
@@ -1219,6 +1224,618 @@ body {
   color: var(--accent);
   width: 14px;
   height: 14px;
+}
+
+/* ============================================================
+   "AboutThreadFlow" — third section on the about page.
+   Three panels: animated trending hashtags (left), a mock thread
+   that posts and accumulates interactions (centre — matches the
+   real ProfileThreadCard chrome), animated leaderboard (right).
+   ============================================================ */
+.about-thread-section {
+  padding-top: 32px;
+  padding-bottom: 32px;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.thread-flow-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.thread-flow-title {
+  color: var(--text);
+  font-weight: 600;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  margin-top: 20px;
+}
+.thread-flow-subtitle {
+  color: var(--text-muted);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  margin-top: 20px;
+  max-width: 38rem;
+}
+
+.thread-flow-grid {
+  margin-top: 0;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 1280px;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(360px, 1.8fr) minmax(260px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .thread-flow-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Side cards (trending, leaderboard) — same chrome as the in-app
+   right-panel widgets: white card, thin border, sharp corners. */
+.flow-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.flow-card-header {
+  padding: 14px 16px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.flow-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+/* --- Trending list ---------------------------------------------- */
+.flow-trending-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+.flow-trending-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.flow-trending-row:last-child {
+  border-bottom: none;
+}
+.flow-trending-info {
+  min-width: 0;
+}
+.flow-trending-meta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.flow-trending-tag {
+  margin-top: 1px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.flow-trending-posts {
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.flow-trending-delta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+/* --- Thread card (mirrors ProfileThreadCard styling) ------------- */
+.flow-thread-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+.flow-thread-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.flow-thread-row {
+  display: flex;
+  gap: 12px;
+  padding: 14px 20px 12px;
+}
+.flow-thread-main {
+  flex: 1;
+  min-width: 0;
+}
+.flow-thread-headline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.flow-thread-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.flow-thread-handle {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.flow-thread-dot {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.flow-thread-time {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+.flow-thread-faculty {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  letter-spacing: 0.01em;
+}
+.flow-thread-content {
+  margin-top: 6px;
+  min-height: 24px;
+}
+.flow-thread-text {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.flow-thread-hashtag {
+  color: var(--accent);
+  font-weight: 600;
+}
+.flow-thread-cursor {
+  display: inline-block;
+  width: 2px;
+  margin-left: 1px;
+  color: var(--accent);
+  animation: flow-cursor-blink 0.9s steps(2, start) infinite;
+}
+@keyframes flow-cursor-blink {
+  to { opacity: 0; }
+}
+
+/* Action bar — mirrors ActionBar.tsx (icon + count, spaced apart) */
+.flow-action-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  color: var(--text-tertiary);
+  opacity: 0.45;
+  transition: opacity 0.3s ease;
+}
+.flow-action-bar[data-active='true'] {
+  opacity: 1;
+}
+.flow-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.flow-action-count {
+  font-size: 14px;
+  color: inherit;
+}
+
+/* --- Reply cards (smaller, indented look matching threads) -------- */
+.flow-thread-reply .flow-thread-row {
+  padding: 12px 20px 10px;
+}
+
+/* --- Leaderboard ------------------------------------------------- */
+.flow-leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+}
+.flow-leader-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.flow-leader-row:last-child {
+  border-bottom: none;
+}
+.flow-leader-row[data-rank='1'] .flow-leader-rank {
+  color: var(--amber);
+}
+.flow-leader-row[data-rank='2'] .flow-leader-rank,
+.flow-leader-row[data-rank='3'] .flow-leader-rank {
+  color: var(--text-secondary);
+}
+.flow-leader-rank {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.flow-leader-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.flow-leader-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.flow-leader-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flow-leader-faculty {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flow-leader-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.flow-leader-score-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.flow-leader-arrow {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ============================================================
+   Thread Flow — Fox button, three-dots, reply composer,
+   animated cursor, and AI summary modal
+   ============================================================ */
+
+/* Fox + three-dots action buttons in thread header */
+.flow-thread-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.flow-thread-fox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.3s ease;
+}
+.flow-thread-fox img {
+  width: 27px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+  filter: invert(1) opacity(0.75);
+  transition: filter 0.15s ease;
+}
+[data-theme="white"] .flow-thread-fox img {
+  filter: opacity(0.6);
+}
+.flow-thread-fox-glow {
+  box-shadow: 0 0 16px 6px oklch(65% 0.22 260 / 0.5),
+              0 0 4px 2px oklch(65% 0.22 260 / 0.3);
+  background: var(--x-blue-soft);
+  border-color: var(--x-blue);
+}
+.flow-thread-fox-glow img,
+[data-theme="white"] .flow-thread-fox-glow img {
+  filter: invert(48%) sepia(89%) saturate(1300%) hue-rotate(176deg) brightness(95%) contrast(91%);
+}
+
+.flow-thread-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+/* Full thread composer (initial state) */
+.flow-composer {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 16px 20px 10px;
+}
+.flow-composer-top {
+  display: flex;
+  gap: 12px;
+}
+.flow-composer-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+.flow-composer-audience {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 3px 10px;
+  border: 1px solid var(--x-blue);
+  border-radius: 999px;
+  color: var(--x-blue);
+  font-size: 12.5px;
+  font-weight: 700;
+  background: transparent;
+  letter-spacing: 0.01em;
+}
+.flow-composer-textarea {
+  min-height: 32px;
+  padding: 4px 0 8px;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.flow-composer-textarea .flow-thread-text {
+  font-size: 16px;
+}
+.flow-composer-placeholder {
+  color: var(--text-tertiary);
+  font-size: 16px;
+}
+.flow-composer-reply-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  color: var(--x-blue);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding-top: 2px;
+}
+.flow-composer-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+.flow-composer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 60px;
+}
+.flow-composer-actions {
+  display: flex;
+  gap: 2px;
+  color: var(--x-blue);
+}
+.flow-composer-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+}
+.flow-composer-post {
+  padding: 7px 18px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13.5px;
+  font-weight: 700;
+  border: none;
+  opacity: 0.45;
+  transition: opacity 0.25s ease, background 0.2s ease;
+}
+.flow-composer-post-ready {
+  opacity: 1;
+}
+
+/* Reply composer bar */
+.flow-reply-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.flow-reply-placeholder {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+.flow-reply-btn {
+  padding: 8px 18px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Animated cursor overlay */
+.flow-animated-cursor {
+  position: absolute;
+  z-index: 50;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 6px oklch(0% 0 0 / 0.18));
+}
+.flow-cursor-click-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  pointer-events: none;
+}
+
+/* Summary modal */
+.flow-summary-modal {
+  position: absolute;
+  top: 52px;
+  right: 8px;
+  width: 340px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px oklch(0% 0 0 / 0.12),
+              0 4px 12px oklch(0% 0 0 / 0.08);
+  z-index: 60;
+  overflow: hidden;
+}
+.flow-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.flow-summary-fox-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: invert(1) opacity(0.75);
+}
+[data-theme="white"] .flow-summary-fox-icon {
+  filter: opacity(0.6);
+}
+.flow-summary-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  flex: 1;
+}
+.flow-summary-chevron {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.flow-summary-section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  font-weight: 700;
+  padding: 12px 16px 6px;
+}
+.flow-summary-thread-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 4px 16px 12px;
+}
+.flow-summary-preview-meta {
+  min-width: 0;
+}
+.flow-summary-preview-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text);
+}
+.flow-summary-preview-handle {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+.flow-summary-preview-text {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+.flow-summary-bullets {
+  padding: 4px 16px 16px 32px;
+  margin: 0;
+  list-style: disc;
+}
+.flow-summary-bullet {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.flow-summary-bullet:last-child {
+  margin-bottom: 0;
+}
+.flow-summary-streaming-cursor {
+  font-weight: 700;
+  color: var(--accent);
+  animation: flow-summary-pulse 1s ease-in-out infinite;
+}
+@keyframes flow-summary-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 /* Film-grain texture between the canvas and the content.
@@ -1414,7 +2031,7 @@ body {
 .about-nav {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 9999;
   background: var(--bg);
 }
 
@@ -1686,7 +2303,7 @@ body {
   right: 0;
   bottom: 0;
   background: var(--bg);
-  z-index: 99;
+  z-index: 9998;
   overflow: hidden;
   max-height: 0;
   opacity: 0;

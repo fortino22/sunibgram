@@ -1,7 +1,45 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AboutHeroBackground } from '@/components/about/AboutHeroBackground';
 
+const BINUS_LOGOS = [
+  'binus university.png',
+  'binus international.png',
+  'binus bandung.png',
+  'binus bekasi.png',
+  'binus malang.png',
+  'binus semarang.png',
+  'binus greater jakarta.png',
+  'binus online.png',
+  'binus bussiness.png',
+];
+
+const CYCLE_MS = 2400;
+const LOGO_HEIGHT = '1.6em';
+
 export function AboutHero() {
+  const [index, setIndex] = useState(0);
+
+  /* Preload every logo so the layout animation has real widths from frame 1. */
+  useEffect(() => {
+    BINUS_LOGOS.forEach((filename) => {
+      const img = new window.Image();
+      img.src = `/assets/binus/${encodeURIComponent(filename)}`;
+    });
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setIndex((i) => (i + 1) % BINUS_LOGOS.length);
+    }, CYCLE_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  const currentSrc = `/assets/binus/${encodeURIComponent(BINUS_LOGOS[index])}`;
+
   return (
     <section className="relative overflow-hidden" id="what">
       <AboutHeroBackground />
@@ -21,19 +59,30 @@ export function AboutHero() {
           }}
         >
           The{' '}
-          <span className="about-inline-chip">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/assets/binus-logo.svg"
-              alt="Binus University"
-              style={{
-                height: '1.12em',
-                width: 'auto',
-                objectFit: 'contain',
-                display: 'block',
-              }}
-            />
-          </span>{' '}
+          <motion.span
+            layout
+            className="about-inline-chip"
+            transition={{ layout: { duration: 0.7, ease: [0.22, 0.8, 0.36, 1] } }}
+            style={{ position: 'relative', overflow: 'hidden', padding: '4px 6px' }}
+          >
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.img
+                key={currentSrc}
+                src={currentSrc}
+                alt="Binus University"
+                initial={{ y: '120%', opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: '-120%', opacity: 0 }}
+                transition={{ duration: 0.75, ease: [0.22, 0.8, 0.36, 1] }}
+                style={{
+                  height: LOGO_HEIGHT,
+                  width: 'auto',
+                  objectFit: 'contain',
+                  display: 'block',
+                }}
+              />
+            </AnimatePresence>
+          </motion.span>{' '}
           social network.
         </h1>
 
