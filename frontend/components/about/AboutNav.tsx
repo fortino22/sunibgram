@@ -155,7 +155,7 @@ export function AboutNav() {
         {/* ---- Logo ---- */}
         <div className="about-nav-left">
           <Link href="/about" className="about-nav-logo">
-            <Logo size={26} />
+            <Logo size={35} />
             <span className="about-nav-logo-text">Sunibgram</span>
           </Link>
         </div>

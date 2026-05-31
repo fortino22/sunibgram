@@ -3,10 +3,12 @@ import { AboutFooter } from '@/components/about/AboutFooter';
 
 export default function AboutLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="about-root">
-      <AboutNav />
-      {children}
-      <AboutFooter />
+    <div className="about-root" data-theme="white">
+      <div className="about-column">
+        <AboutNav />
+        {children}
+        <AboutFooter />
+      </div>
     </div>
   );
 }
