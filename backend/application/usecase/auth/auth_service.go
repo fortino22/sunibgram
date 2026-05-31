@@ -6,15 +6,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/sunibgram/application/helper"
+	verificationuc "github.com/sunibgram/application/usecase/verification"
+	storageuc "github.com/sunibgram/application/usecase/storage"
+	mediamodel "github.com/sunibgram/domain/model/media"
 	rolemodel "github.com/sunibgram/domain/model/role"
 	usermodel "github.com/sunibgram/domain/model/user"
-	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	usersettingsmodel "github.com/sunibgram/domain/model/user_settings"
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
 	rolerepoiface "github.com/sunibgram/domain/repository/role"
@@ -22,7 +27,6 @@ import (
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
 	authsvciface "github.com/sunibgram/domain/service/auth"
-	verificationuc "github.com/sunibgram/application/usecase/verification"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
@@ -54,6 +58,7 @@ type AuthService struct {
 	roleRepo         rolerepoiface.IRoleRepository
 	verificationRepo verificationrepoiface.IVerificationRepository
 	userSettingsRepo usersettingsrepoiface.IUserSettingsRepository
+	storageUsecase   *storageuc.StorageUsecase
 	cache            *cache.Cache
 	otpFailLimiter   *ratelimit.RateLimiter
 	refreshLimiter   *ratelimit.RateLimiter
@@ -64,6 +69,7 @@ func NewAuthService(
 	roleRepo rolerepoiface.IRoleRepository,
 	verificationRepo verificationrepoiface.IVerificationRepository,
 	userSettingsRepo usersettingsrepoiface.IUserSettingsRepository,
+	storageUsecase *storageuc.StorageUsecase,
 	c *cache.Cache,
 ) authsvciface.IAuthService {
 	return &AuthService{
@@ -71,6 +77,7 @@ func NewAuthService(
 		roleRepo:         roleRepo,
 		verificationRepo: verificationRepo,
 		userSettingsRepo: userSettingsRepo,
+		storageUsecase:   storageUsecase,
 		cache:            c,
 		otpFailLimiter:   ratelimit.New(c, "auth_otp_fail", 5, 10*time.Minute),
 		refreshLimiter:   ratelimit.New(c, "auth_refresh", 60, time.Minute),
@@ -91,8 +98,31 @@ func userSessionsKey(userID uint) string {
 	return fmt.Sprintf("user_sessions:%d", userID)
 }
 
-func (s *AuthService) Register(user *usermodel.User, profile *userprofilemodel.UserProfile, confirmPassword string) error {
-	if user.Password != confirmPassword {
+// IsUsernameAvailable reports whether a username is free. Public (used by the
+// signup form before the user has a token); reuses the same uniqueness check
+// Register relies on so the two never disagree.
+func (s *AuthService) IsUsernameAvailable(username string) (bool, error) {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return false, errors.New("username is required")
+	}
+	exists, err := s.userRepo.ExistsByUserName(username)
+	if err != nil {
+		return false, err
+	}
+	return !exists, nil
+}
+
+// Register creates an account atomically. All fallible external work (image
+// validation + S3 upload) happens before any DB write, and the user, profile,
+// settings, and faculty assignment are persisted in a single transaction
+// (userRepo.RegisterAccount). A failure at any step leaves nothing behind, so a
+// retry with the same email is not blocked by a half-created orphan row.
+func (s *AuthService) Register(ctx context.Context, input authsvciface.RegisterInput) error {
+	user := input.User
+	profile := input.Profile
+
+	if user.Password != input.ConfirmPassword {
 		return errors.New("password and confirm password do not match")
 	}
 	if err := user.ValidateRegister(); err != nil {
@@ -107,6 +137,18 @@ func (s *AuthService) Register(user *usermodel.User, profile *userprofilemodel.U
 
 	if _, err := s.verificationRepo.FindVerifiedByEmailAndType(user.Email, verificationcodemodel.VerificationTypeRegister); err != nil {
 		return errors.New("email not verified, please verify your otp first")
+	}
+
+	// Fail fast on bad image types before any side effect (S3 upload / DB write).
+	if input.Avatar != nil {
+		if err := mediamodel.ValidateImageExt(input.Avatar.Filename); err != nil {
+			return err
+		}
+	}
+	if input.Banner != nil {
+		if err := mediamodel.ValidateImageExt(input.Banner.Filename); err != nil {
+			return err
+		}
 	}
 
 	emailExists, err := s.userRepo.ExistsByEmail(user.Email)
@@ -137,10 +179,41 @@ func (s *AuthService) Register(user *usermodel.User, profile *userprofilemodel.U
 	}
 	user.Password = string(hashed)
 
-	if err := s.userRepo.SaveWithProfile(user, profile); err != nil {
+	// Upload media before any DB write so a failed/slow upload never orphans an
+	// account. helper.UploadImage re-validates size/ext/content.
+	if input.Avatar != nil {
+		objectName, err := helper.UploadImage(ctx, s.storageUsecase, input.Avatar, "avatar")
+		if err != nil {
+			return err
+		}
+		profile.AvatarObjectName = objectName
+	}
+	if input.Banner != nil {
+		objectName, err := helper.UploadImage(ctx, s.storageUsecase, input.Banner, "banner")
+		if err != nil {
+			return err
+		}
+		profile.BannerObjectName = objectName
+	}
+	if bio := strings.TrimSpace(input.Bio); bio != "" {
+		if utf8.RuneCountInString(bio) > 500 {
+			return errors.New("bio must be 500 characters or less")
+		}
+		profile.Bio = bio
+	}
+
+	if err := s.userRepo.RegisterAccount(user, profile, &usersettingsmodel.UserSettings{}, input.FacultyID); err != nil {
+		// No row landed — best-effort delete the just-uploaded objects so a failed
+		// registration doesn't leak orphaned media in the bucket.
+		if profile.AvatarObjectName != "" {
+			_ = s.storageUsecase.Delete(ctx, profile.AvatarObjectName)
+		}
+		if profile.BannerObjectName != "" {
+			_ = s.storageUsecase.Delete(ctx, profile.BannerObjectName)
+		}
 		return err
 	}
-	return s.userSettingsRepo.Create(context.Background(), &usersettingsmodel.UserSettings{UserID: user.UserID})
+	return nil
 }
 
 // ChangePassword changes a logged-in user's password after an email OTP of type

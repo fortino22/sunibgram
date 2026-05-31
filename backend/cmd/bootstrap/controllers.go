@@ -103,7 +103,7 @@ type Controllers struct {
 func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers {
 	return &Controllers{
 		Cache:               cachectrl.NewCacheController(svcs.Cache),
-		Auth:                authctrl.NewAuthController(svcs.Auth, svcs.UserProfile, svcs.Faculty),
+		Auth:                authctrl.NewAuthController(svcs.Auth, svcs.Faculty),
 		Role:                rolectrl.NewRoleController(svcs.Role),
 		User:                userctrl.NewUserController(svcs.User, svcs.UserProfile),
 		UserSettings:        usersettingsctrl.NewUserSettingsController(svcs.UserSettings),

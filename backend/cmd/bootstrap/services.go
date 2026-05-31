@@ -169,7 +169,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 
 	return &Services{
 		Cache:                cacheuc.NewCacheService(repos.Cache),
-		Auth:                 authuc.NewAuthService(repos.User, repos.Role, repos.Verification, repos.UserSettings, c),
+		Auth:                 authuc.NewAuthService(repos.User, repos.Role, repos.Verification, repos.UserSettings, ext.Storage, c),
 		Role:                 roleuc.NewRoleService(repos.Role),
 		User:                 useruc.NewUserService(repos.User, repos.Follow, repos.UserProfile),
 		UserSettings:         usersettingsuc.NewUserSettingsService(repos.UserSettings, repos.Thread),

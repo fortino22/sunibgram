@@ -23,6 +23,7 @@ interface BackendProfileResponse {
   is_blocked?: boolean;
   is_blocked_by?: boolean;
   is_muted?: boolean;
+  onboarding_completed?: boolean;
 }
 
 // Frontend model — used throughout components
@@ -44,6 +45,7 @@ export interface UserProfile {
   is_blocked?: boolean;
   is_blocked_by?: boolean;
   is_muted?: boolean;
+  onboarding_completed?: boolean;
   created_at?: string;
 }
 
@@ -66,6 +68,7 @@ function mapProfile(raw: BackendProfileResponse): UserProfile {
     is_blocked: raw.is_blocked,
     is_blocked_by: raw.is_blocked_by,
     is_muted: raw.is_muted,
+    onboarding_completed: raw.onboarding_completed ?? false,
     created_at: raw.created_at,
   };
 }
@@ -115,6 +118,12 @@ async function putFormData<T>(path: string, formData: FormData, token: string): 
 export async function getMyProfile(token: string): Promise<UserProfile> {
   const raw = await api.get<BackendProfileResponse>('/api/profile/me', token);
   return mapProfile(raw);
+}
+
+// Clears the first-time onboarding gate. Server rejects unless the caller
+// already follows the required number of people, so this cannot be bypassed.
+export async function completeOnboarding(token: string): Promise<ProfileMessageResponse> {
+  return api.post<ProfileMessageResponse>('/api/profile/me/onboarding/complete', undefined, token);
 }
 
 export async function getProfileByUserId(userId: number | string, token: string): Promise<UserProfile> {

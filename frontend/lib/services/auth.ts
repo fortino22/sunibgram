@@ -126,6 +126,13 @@ export function forgotPassword(params: ForgotPasswordParams): Promise<MessageRes
   });
 }
 
+// Public availability probe for the signup form (no token).
+export function checkUsernameAvailable(username: string): Promise<{ available: boolean }> {
+  return api.get<{ available: boolean }>(
+    `/api/auth/username-available?username=${encodeURIComponent(username)}`
+  );
+}
+
 export function sendVerification(
   email: string,
   type: VerificationType

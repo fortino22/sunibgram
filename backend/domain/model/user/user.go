@@ -17,21 +17,25 @@ type TokenPair struct {
 }
 
 type User struct {
-	UserID      uint           `gorm:"primaryKey;autoIncrement"`
-	Name        string         `gorm:"not null"`
-	UserName    string         `gorm:"uniqueIndex;not null"`
+	UserID   uint   `gorm:"primaryKey;autoIncrement"`
+	Name     string `gorm:"not null"`
+	UserName string `gorm:"uniqueIndex;not null"`
 	// Email is included in (de)serialization so the Redis cache round-trip for
 	// FindByID preserves it. The User struct is never returned raw to clients —
 	// email exposure is gated by DTOs (e.g. UserProfileResponse only sets it on
 	// self-view). Password stays json:"-" — it must never serialize anywhere.
-	Email       string         `gorm:"uniqueIndex;not null" json:"email"`
-	Password    string         `gorm:"not null" json:"-"`
-	RoleID      uint           `gorm:"not null;default:1"`
-	IsPremium   bool           `gorm:"not null;default:false"`
-	Role        rolemodel.Role `gorm:"foreignKey:RoleID;references:RoleID"`
-	UserFaculty *UserFaculty   `gorm:"foreignKey:UserID;references:UserID;<-:false"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	Email     string `gorm:"uniqueIndex;not null" json:"email"`
+	Password  string `gorm:"not null" json:"-"`
+	RoleID    uint   `gorm:"not null;default:1"`
+	IsPremium bool   `gorm:"not null;default:false"`
+	// OnboardingCompleted gates the first-time follow-5-people flow. Permanent
+	// once true (never reset on unfollow). Serialized so the FindByID Redis cache
+	// round-trip preserves it; exposed to clients only on self-view DTOs.
+	OnboardingCompleted bool           `gorm:"not null;default:false" json:"onboarding_completed"`
+	Role                rolemodel.Role `gorm:"foreignKey:RoleID;references:RoleID"`
+	UserFaculty         *UserFaculty   `gorm:"foreignKey:UserID;references:UserID;<-:false"`
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 func (u *User) ValidateRegister() error {

@@ -173,6 +173,79 @@ func (s *ExploreService) GetSuggestedPeoplePreview(ctx context.Context, requeste
 	return []exploremodel.ExploreUserResult{}, nil
 }
 
+// GetSuggestedPeople returns up to `limit` people to follow, accumulating
+// across sources (mutual → faculty → random) with de-duplication. Unlike the
+// preview, it fills from later sources when earlier ones run short — so a brand
+// new user with no mutuals/faculty followers still gets a full random list for
+// the onboarding gate.
+func (s *ExploreService) GetSuggestedPeople(ctx context.Context, requesterID uint, limit int) ([]exploremodel.ExploreUserResult, error) {
+	if limit <= 0 || limit > defaultExploreLimit {
+		limit = defaultExploreLimit
+	}
+	sources := []func(context.Context, uint, int, int) ([]exploremodel.ExploreUserResult, error){
+		s.exploreRepo.FindMutualSuggestions,
+		s.exploreRepo.FindFacultySuggestions,
+		s.exploreRepo.FindRandomSuggestions,
+	}
+	seen := make(map[uint]struct{})
+	result := make([]exploremodel.ExploreUserResult, 0, limit)
+	for _, find := range sources {
+		if len(result) >= limit {
+			break
+		}
+		users, err := find(ctx, requesterID, 1, limit)
+		if err != nil {
+			return nil, err
+		}
+		for _, u := range users {
+			if _, dup := seen[u.UserID]; dup {
+				continue
+			}
+			seen[u.UserID] = struct{}{}
+			result = append(result, u)
+			if len(result) >= limit {
+				break
+			}
+		}
+	}
+	return result, nil
+}
+
+// onboardingPeopleLimit caps the follow-gate list at a small, scannable size.
+const onboardingPeopleLimit = 10
+
+// GetOnboardingPeople backs the first-time follow gate. No query → ranked
+// suggestions (already exclude self, admins, already-followed). With a query →
+// people search filtered down to non-self results. Either way capped at 10 and
+// admin-free, without altering global explore-search behavior.
+func (s *ExploreService) GetOnboardingPeople(ctx context.Context, requesterID uint, q string, limit int) ([]exploremodel.ExploreUserResult, error) {
+	if limit <= 0 || limit > onboardingPeopleLimit {
+		limit = onboardingPeopleLimit
+	}
+
+	q = strings.TrimSpace(q)
+	if q == "" {
+		return s.GetSuggestedPeople(ctx, requesterID, limit)
+	}
+
+	// +1 so dropping self in-memory still leaves room for `limit` results.
+	people, err := s.GetPeople(ctx, q, requesterID, 1, limit+1)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]exploremodel.ExploreUserResult, 0, limit)
+	for _, u := range people {
+		if u.UserID == requesterID {
+			continue
+		}
+		result = append(result, u)
+		if len(result) >= limit {
+			break
+		}
+	}
+	return result, nil
+}
+
 func normalizeExploreQuery(query string) (string, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {

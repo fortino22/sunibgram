@@ -14,6 +14,11 @@ import (
 const DefaultTTL = 5 * time.Minute
 const FacultyTTL = 24 * time.Hour
 
+// OnboardingTTL caches the terminal "onboarding done" fact. Immutable once set,
+// so it can live far longer than DefaultTTL — keeps the first-login gate check
+// off the DB on the hot path.
+const OnboardingTTL = 720 * time.Hour
+
 type Cache struct {
 	client *redis.Client
 }

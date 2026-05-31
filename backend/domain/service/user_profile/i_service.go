@@ -42,6 +42,7 @@ type IUserProfileService interface {
 	UpsertProfile(ctx context.Context, userID uint, input UpsertProfileInput) error
 	UpdateProfile(ctx context.Context, userID uint, input UpdateProfileInput) error
 	GetProfile(userID uint, viewerID *uint) (*FullProfile, error)
+	CompleteOnboarding(userID uint) error
 	GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error)
 	GetUsers(userIDs []uint) ([]usermodel.User, error)
 	GetUserFaculties(userIDs []uint) ([]usermodel.UserFaculty, error)
