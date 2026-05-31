@@ -608,6 +608,26 @@ body {
   transform: translateY(0);
 }
 
+/* === Char-count ring (composer) hover === */
+.char-ring {
+  cursor: default;
+}
+.char-ring-svg {
+  transition: transform 0.15s ease;
+}
+.char-ring:hover .char-ring-svg {
+  transform: scale(1.15);
+}
+.char-ring-count {
+  opacity: 0;
+  transform: translateX(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.char-ring:hover .char-ring-count {
+  opacity: 1;
+  transform: translateX(0);
+}
+
 /* === Admin polish === */
 
 @keyframes page-header-in {

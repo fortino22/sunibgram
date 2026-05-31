@@ -171,7 +171,19 @@ function CharCountRing({ count, max }: { count: number; max: number }) {
   const ringColor = isOver ? 'var(--coral)' : isNear ? 'var(--amber)' : 'var(--accent)';
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <div className="char-ring" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      {/* Hover-revealed full ratio (used/max), shown even when not near the limit */}
+      <span
+        className="char-ring-count"
+        style={{
+          fontSize: 13,
+          fontVariantNumeric: 'tabular-nums',
+          color: isOver ? 'var(--coral)' : 'var(--text-secondary)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {count}/{max}
+      </span>
       {isNear && (
         <span
           style={{
@@ -183,19 +195,21 @@ function CharCountRing({ count, max }: { count: number; max: number }) {
           {remaining}
         </span>
       )}
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }} aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border)" strokeWidth={strokeWidth} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={ringColor}
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={`${circumference * fraction} ${circumference}`}
-        />
-      </svg>
+      <div className="char-ring-svg" style={{ display: 'inline-flex', flexShrink: 0 }}>
+        <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }} aria-hidden>
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border)" strokeWidth={strokeWidth} />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={ringColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={`${circumference * fraction} ${circumference}`}
+          />
+        </svg>
+      </div>
     </div>
   );
 }
