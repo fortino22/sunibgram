@@ -40,17 +40,17 @@ const DROPDOWNS: NavDropdown[] = [
           {
             title: 'Threads',
             description: 'Share thoughts and updates with the campus community.',
-            href: '/about/what',
+            href: '/about/threads',
           },
           {
             title: 'Communities',
             description: 'Join groups around shared interests and courses.',
-            href: '/about/what',
+            href: '/about/communities',
           },
           {
             title: 'Messages',
             description: 'Real-time private messaging with fellow students.',
-            href: '/about/what',
+            href: '/about/messages',
           },
         ],
       },
@@ -60,12 +60,12 @@ const DROPDOWNS: NavDropdown[] = [
           {
             title: 'Events',
             description: 'Discover and organize campus events and meetups.',
-            href: '/about/what',
+            href: '/about/events',
           },
           {
             title: 'Leaderboard',
             description: 'See top contributors and rising voices on campus.',
-            href: '/leaderboard',
+            href: '/about/leaderboard',
           },
         ],
       },

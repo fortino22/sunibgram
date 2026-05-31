@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { AboutSplitValue } from '@/components/about/AboutSplitValue';
-import { AboutSplitConnection } from '@/components/about/AboutSplitConnection';
 
 export const metadata: Metadata = {
   title: 'What is Sunibgram — The social network for Binus',
@@ -9,10 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function WhatPage() {
-  return (
-    <>
-      <AboutSplitValue />
-      <AboutSplitConnection />
-    </>
-  );
+  return <AboutSplitValue />;
 }

@@ -84,11 +84,10 @@ function Globe() {
   }, []);
 
   return (
-    /* Push the globe down inside the camera frustum so the bottom of
-       the sphere falls past the canvas edge — combined with the
-       section's `overflow: hidden`, this gives the bottom-clipped
-       look from the reference. */
-    <group position={[0, -0.85, 0]}>
+    /* Sphere centred on world origin so OrbitControls orbits around
+       its true centre — drag rotates it in place rather than swinging
+       it around an off-axis pivot. */
+    <group position={[0, 0, 0]}>
       {/* Invisible occluder. drei's <Html occlude> raycasts against this
           mesh — labels swinging behind it fade out. Material writes
           neither colour nor depth, so the dots behind the back of the
@@ -154,25 +153,27 @@ function PersonLabel({
 
 export function AboutGlobe() {
   return (
-    <Canvas
-      dpr={[1, 2]}
-      camera={{ position: [0, 0, 4.5], fov: 45 }}
-      gl={{ antialias: true, alpha: true }}
-      style={{ width: '100%', height: '100%', cursor: 'grab' }}
-    >
-      <Suspense fallback={null}>
-        <Globe />
-      </Suspense>
-      {/* Drag to rotate in any direction; autoRotate keeps it spinning when idle. */}
-      <OrbitControls
-        enableZoom={false}
-        enablePan={false}
-        autoRotate
-        autoRotateSpeed={0.6}
-        enableDamping
-        dampingFactor={0.08}
-        rotateSpeed={0.8}
-      />
-    </Canvas>
+    <div className="about-orbit-canvas-wrap">
+      <Canvas
+        dpr={[1, 2]}
+        camera={{ position: [0, 0, 4.5], fov: 45 }}
+        gl={{ antialias: true, alpha: true }}
+        style={{ width: '100%', height: '100%', cursor: 'grab' }}
+      >
+        <Suspense fallback={null}>
+          <Globe />
+        </Suspense>
+        {/* Drag to rotate in any direction; autoRotate keeps it spinning when idle. */}
+        <OrbitControls
+          enableZoom={false}
+          enablePan={false}
+          autoRotate
+          autoRotateSpeed={0.6}
+          enableDamping
+          dampingFactor={0.08}
+          rotateSpeed={0.8}
+        />
+      </Canvas>
+    </div>
   );
 }
