@@ -634,7 +634,7 @@ function ThreadStage({
                 {/* Static action bar on replies */}
                 <ReplyActionBar 
                   isLiked={r.user === 'nadya' && replyLiked}
-                  likeRef={r.user === 'nadya' ? replyLikeRef : null} 
+                  likeRef={r.user === 'nadya' ? replyLikeRef : undefined}
                 />
               </div>
             </div>
