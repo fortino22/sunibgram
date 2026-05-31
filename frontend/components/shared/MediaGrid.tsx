@@ -51,6 +51,7 @@ export function MediaGrid({ threads }: MediaGridProps) {
         return (
           <div
             key={thread.id}
+            className="media-grid-item"
             onClick={() => router.push(`/thread/${thread.id}`)}
             style={{
               position: 'relative',

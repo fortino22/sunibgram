@@ -548,6 +548,17 @@ body {
   filter: brightness(0.85);
 }
 
+/* Media grid thumbnail — zoom + dim on hover */
+.media-grid-item img,
+.media-grid-item video {
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+.media-grid-item:hover img,
+.media-grid-item:hover video {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+
 /* Onboarding follow-list row — subtle rounded hover, no border. */
 .onboarding-row {
   border-radius: 12px;
