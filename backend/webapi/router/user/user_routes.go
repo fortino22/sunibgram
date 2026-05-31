@@ -14,6 +14,8 @@ func RegisterUserRoutes(api fiber.Router, followCtrl *followctrl.FollowControlle
 	users.Get("/suggestions/faculty", auth, exploreCtrl.GetFacultySuggestions)
 	users.Get("/suggestions/mutual", auth, exploreCtrl.GetMutualSuggestions)
 	users.Get("/suggested/preview", auth, exploreCtrl.GetSuggestedPeoplePreview)
+	users.Get("/suggested", auth, exploreCtrl.GetSuggestedPeople)
+	users.Get("/onboarding/suggestions", auth, exploreCtrl.GetOnboardingSuggestions)
 	users.Post("/:id/follow", auth, followCtrl.Follow)
 	users.Delete("/:id/unfollow", auth, followCtrl.Unfollow)
 	users.Get("/me/blocks", auth, blockCtrl.GetMyBlockedUsers)

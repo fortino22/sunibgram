@@ -169,6 +169,40 @@ func (c *ExploreController) GetMutualSuggestions(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toPeopleResponses(users)})
 }
 
+// GetOnboardingSuggestions backs the first-time follow gate: no `q` → ranked
+// suggestions, `q` → people search; either way ≤10, self- and admin-excluded.
+func (c *ExploreController) GetOnboardingSuggestions(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	limit := ctx.QueryInt("limit", 10)
+
+	users, err := c.exploreService.GetOnboardingPeople(ctx.Context(), claims.UserID, ctx.Query("q"), limit)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toPeopleResponses(users)})
+}
+
+// GetSuggestedPeople returns up to `limit` people (mutual → faculty → random),
+// used by the onboarding follow gate. Defaults/caps limit in the service.
+func (c *ExploreController) GetSuggestedPeople(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+
+	limit := ctx.QueryInt("limit", 10)
+
+	users, err := c.exploreService.GetSuggestedPeople(ctx.Context(), claims.UserID, limit)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"data": c.toPeopleResponses(users)})
+}
+
 // GetSuggestedPeoplePreview returns up to 3 people (mutual → faculty → random).
 func (c *ExploreController) GetSuggestedPeoplePreview(ctx *fiber.Ctx) error {
 	claims, ok := ctrlshared.RequireAuth(ctx)

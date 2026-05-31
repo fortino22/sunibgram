@@ -6,24 +6,25 @@ import (
 )
 
 type UserProfileResponse struct {
-	UserID         uint                         `json:"user_id"`
-	Name           string                       `json:"name"`
-	Username       string                       `json:"username"`
-	Email          string                       `json:"email"`
-	IsPremium      bool                         `json:"is_premium"`
-	Gender         string                       `json:"gender"`
-	BirthdayDate   string                       `json:"birthday_date"`
-	Bio            string                       `json:"bio"`
-	AvatarURL      string                       `json:"avatar_url"`
-	BannerURL      string                       `json:"banner_url"`
-	FollowerCount  int                          `json:"follower_count"`
-	FollowingCount int                          `json:"following_count"`
-	IsFollowing    bool                         `json:"is_following"`
-	IsBlocked      bool                         `json:"is_blocked"`
-	IsBlockedBy    bool                         `json:"is_blocked_by"`
-	IsMuted        bool                         `json:"is_muted"`
-	Faculty        *threaddto.FeedAuthorFaculty `json:"faculty,omitempty"`
-	CreatedAt      utils.FormattedTime          `json:"created_at"`
+	UserID              uint                         `json:"user_id"`
+	Name                string                       `json:"name"`
+	Username            string                       `json:"username"`
+	Email               string                       `json:"email"`
+	IsPremium           bool                         `json:"is_premium"`
+	Gender              string                       `json:"gender"`
+	BirthdayDate        string                       `json:"birthday_date"`
+	Bio                 string                       `json:"bio"`
+	AvatarURL           string                       `json:"avatar_url"`
+	BannerURL           string                       `json:"banner_url"`
+	FollowerCount       int                          `json:"follower_count"`
+	FollowingCount      int                          `json:"following_count"`
+	IsFollowing         bool                         `json:"is_following"`
+	IsBlocked           bool                         `json:"is_blocked"`
+	IsBlockedBy         bool                         `json:"is_blocked_by"`
+	IsMuted             bool                         `json:"is_muted"`
+	OnboardingCompleted bool                         `json:"onboarding_completed"`
+	Faculty             *threaddto.FeedAuthorFaculty `json:"faculty,omitempty"`
+	CreatedAt           utils.FormattedTime          `json:"created_at"`
 }
 
 type UpdateProfileRequest struct {

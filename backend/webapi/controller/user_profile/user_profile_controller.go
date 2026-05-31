@@ -65,6 +65,19 @@ func (c *UserProfileController) GetMyProfile(ctx *fiber.Ctx) error {
 	return c.fetchAndRespond(ctx, uid, &uid)
 }
 
+// CompleteOnboarding clears the first-time follow-5 gate for the current user.
+// Server validates the follow count, so a tampered client cannot skip it.
+func (c *UserProfileController) CompleteOnboarding(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	if err := c.profileService.CompleteOnboarding(claims.UserID); err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "onboarding completed successfully"})
+}
+
 func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
 	id, ok := ctrlshared.ParseIDParam(ctx, "id", "user")
 	if !ok {
@@ -248,7 +261,9 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 		IsBlocked:      fp.IsBlocked,
 		IsBlockedBy:    fp.IsBlockedBy,
 		IsMuted:        fp.IsMuted,
-		Faculty:        faculty,
-		CreatedAt:      utils.Wrap(fp.User.CreatedAt),
+		// Only meaningful on self-view; the frontend gate reads it off /profile/me.
+		OnboardingCompleted: includeEmail && fp.User.OnboardingCompleted,
+		Faculty:             faculty,
+		CreatedAt:           utils.Wrap(fp.User.CreatedAt),
 	}
 }

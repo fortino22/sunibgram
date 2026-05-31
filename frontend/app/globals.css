@@ -501,6 +501,15 @@ body {
   filter: brightness(0.85);
 }
 
+/* Onboarding follow-list row — subtle rounded hover, no border. */
+.onboarding-row {
+  border-radius: 12px;
+  transition: background-color 0.12s ease;
+}
+.onboarding-row:hover {
+  background: var(--bg-hover);
+}
+
 /* Hide scrollbar but keep overflow scrollable (for arrow-driven sliders). */
 .hide-scrollbar {
   scrollbar-width: none;

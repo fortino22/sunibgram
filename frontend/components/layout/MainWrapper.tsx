@@ -9,7 +9,9 @@ import { ThreadSummaryPanel } from '@/components/thread/ThreadSummaryPanel';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { NewPostModal } from '@/components/shared/NewPostModal';
 import { ReplyModal } from '@/components/shared/ReplyModal';
+import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
+import { useMyProfile } from '@/hooks/useMyProfile';
 import { useAuthStore } from '@/stores/authStore';
 
 const AUTH_PATHS = ['/login', '/signup', '/forgot-password', '/about'];
@@ -19,6 +21,13 @@ function NotificationSocketMount() {
   const token = useAuthStore((s) => s.token);
   useNotificationSocket({ accessToken: token });
   return null;
+}
+
+// First-time gate: blocks the app until the user follows enough people. Mounted
+// only inside AuthGuard, so the profile query is always authenticated here.
+function OnboardingGate() {
+  const { data: profile } = useMyProfile();
+  return <OnboardingModal open={!!profile && profile.onboarding_completed === false} />;
 }
 
 interface MainWrapperProps {
@@ -37,6 +46,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
   return (
     <AuthGuard>
       <NotificationSocketMount />
+      <OnboardingGate />
       <NewPostModal />
       <ReplyModal />
       <div
