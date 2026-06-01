@@ -20,7 +20,7 @@ export interface RegisterParams {
   password: string;
   confirmPassword: string;
   gender: string;
-  birthdayDate: string;
+  birthdayDate?: string;
   facultyId: number | string;
   avatar?: File | null;
   banner?: File | null;
@@ -63,7 +63,7 @@ export function register(params: RegisterParams): Promise<MessageResponse> {
   formData.append('password', params.password);
   formData.append('confirm_password', params.confirmPassword);
   formData.append('gender', params.gender);
-  formData.append('birthday_date', params.birthdayDate);
+  appendOptionalString(formData, 'birthday_date', params.birthdayDate);
   formData.append('faculty_id', String(params.facultyId));
   appendOptionalString(formData, 'bio', params.bio);
 

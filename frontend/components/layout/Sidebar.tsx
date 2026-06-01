@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'communities',   href: '/communities',   icon: 'users',    label: 'Communities'},
   { id: 'events',        href: '/events',        icon: 'calendar', label: 'Events' },
   { id: 'leaderboard',   href: '/leaderboard',   icon: 'trophy',   label: 'Leaderboard' },
+  { id: 'summaries',     href: '/summaries',     icon: 'fox',      label: 'Fox Agent' },
   { id: 'profile',       href: '/profile',       icon: 'user',     label: 'Profile' },
 ];
 
@@ -94,13 +95,27 @@ function SidebarItem({ item, active, collapsed }: SidebarItemProps) {
           }}
         />
       )}
-      <Icon name={item.icon} size={24} color={iconColor} strokeWidth={active ? 2 : 1.7} />
+      {item.icon === 'fox' ? (
+        // Fox is a raster logo, not a lucide glyph. Plain (theme-aware) art —
+        // the rainbow goes on the label text, not the icon.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          className="sidebar-fox-icon"
+          src="/assets/fox.png"
+          alt=""
+          width={24}
+          height={24}
+          style={{ display: 'block', opacity: active || hovered ? 1 : 0.75 }}
+        />
+      ) : (
+        <Icon name={item.icon} size={24} color={iconColor} strokeWidth={active ? 2 : 1.7} />
+      )}
       <span
-        className="sidebar-label"
+        className={`sidebar-label${item.icon === 'fox' ? ' summary-shimmer' : ''}`}
         style={{
           fontWeight: active ? 700 : 500,
           fontSize: 18,
-          color: iconColor,
+          color: item.icon === 'fox' ? undefined : iconColor,
           letterSpacing: '-0.01em',
           lineHeight: 1,
         }}
@@ -143,7 +158,7 @@ export function Sidebar() {
   const [moreHovered, setMoreHovered] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const avatarSrc = profile?.avatar ?? null;
-  const isCollapsed = pathname.startsWith('/messages') || pathname.startsWith('/admin') || pathname === '/events';
+  const isCollapsed = pathname.startsWith('/messages') || pathname.startsWith('/admin') || pathname.startsWith('/summaries') || pathname.startsWith('/leaderboard') || pathname === '/events';
   const moreItems = user?.roleName === 'admin' ? [...MORE_NAV_ITEMS, ADMIN_NAV_ITEM] : MORE_NAV_ITEMS;
   const moreActive = moreItems.some((item) => pathname.startsWith(item.href));
 

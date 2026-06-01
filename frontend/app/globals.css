@@ -425,6 +425,53 @@ body {
   to   { background-position: 200% 0; }
 }
 
+/* Rainbow-recolored fox: the same flowing 7-colour gradient as
+   .summary-shimmer, but clipped to a fox silhouette via `mask` instead of
+   text. Set the mask image inline (sidebar logo, or a sleep-sprite frame).
+   Theme-independent (no invert), so it also fixes the white-theme sidebar fox.
+   The element's background is the gradient; the mask reveals only the fox. */
+.fox-rainbow {
+  background: linear-gradient(90deg, #ff004d, #ff8a00, #ffd400, #00d672, #00a3ff, #b14bff, #ff004d);
+  background-size: 200% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  animation: summary-shimmer 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fox-rainbow { animation: none; }
+}
+
+/* Sidebar fox logo: plain art (not rainbow). Dark theme inverts the black art
+   to white so it reads on the dark rail; white theme keeps it black. */
+.sidebar-fox-icon { filter: invert(1); }
+[data-theme="white"] .sidebar-fox-icon { filter: none; }
+
+/* "Fox" title (sidebar label + page header): rainbow shimmer + gentle wobble.
+   Separate from .summary-shimmer so the streaming header stays still. */
+.fox-rainbow-title {
+  display: inline-block;
+  background: linear-gradient(90deg, #ff004d, #ff8a00, #ffd400, #00d672, #00a3ff, #b14bff, #ff004d);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transform-origin: center bottom;
+  animation: summary-shimmer 2s linear infinite, fox-bubble 2.6s ease-in-out infinite;
+}
+/* Soft floating "bubble" bob + breathe — like a thinking cloud. */
+@keyframes fox-bubble {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30%      { transform: translateY(-3px) scale(1.05); }
+  60%      { transform: translateY(1px) scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fox-rainbow-title { animation: none; color: var(--text); }
+}
+
 /* Hover highlight on summary modal content blocks (thread + summary box). */
 .summary-block {
   border-radius: 12px;
@@ -499,6 +546,17 @@ body {
 }
 .hover-dim:hover {
   filter: brightness(0.85);
+}
+
+/* Media grid thumbnail — zoom + dim on hover */
+.media-grid-item img,
+.media-grid-item video {
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+.media-grid-item:hover img,
+.media-grid-item:hover video {
+  transform: scale(1.05);
+  filter: brightness(0.9);
 }
 
 /* Onboarding follow-list row — subtle rounded hover, no border. */

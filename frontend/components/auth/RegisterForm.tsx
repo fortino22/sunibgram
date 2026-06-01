@@ -243,7 +243,7 @@ export function RegisterForm({
               </SelectShell>
             </FormField>
 
-            <FormField label="Birthday" error={errors.birthdayDate?.message}>
+            <FormField label="Birthday (optional)" error={errors.birthdayDate?.message}>
               <input
                 {...register('birthdayDate')}
                 type="date"

@@ -3,6 +3,7 @@ package authctrl
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -43,9 +44,14 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 		Gender:          ctx.FormValue("gender"),
 		BirthdayDate:    ctx.FormValue("birthday_date"),
 	}
-	birthdayDate, err := ctrlshared.ParseDateField(req.BirthdayDate, "birthday_date")
-	if err != nil {
-		return ctrlshared.HandleServiceError(ctx, err)
+	// Birthday is optional. Parse only when provided; a malformed value still errors.
+	var birthdayDate time.Time
+	if req.BirthdayDate != "" {
+		parsed, err := ctrlshared.ParseDateField(req.BirthdayDate, "birthday_date")
+		if err != nil {
+			return ctrlshared.HandleServiceError(ctx, err)
+		}
+		birthdayDate = parsed
 	}
 
 	raw := ctx.FormValue("faculty_id")

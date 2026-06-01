@@ -21,9 +21,13 @@ import { MentionAutocomplete } from '@/components/thread/MentionAutocomplete';
 
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 
+// Mirrors backend MaxThreadMediaItems (thread_media.go).
+const MAX_MEDIA = 4;
+
 type PreviewKind = 'image' | 'video' | 'file';
 
 interface FilePreview {
+  id: string;
   file: File;
   kind: PreviewKind;
   url: string;
@@ -49,14 +53,6 @@ function getRemoteMediaKind(url: string): PreviewKind {
   return 'image';
 }
 
-function isSameFile(left: File, right: File): boolean {
-  return (
-    left.name === right.name &&
-    left.lastModified === right.lastModified &&
-    left.size === right.size
-  );
-}
-
 interface ThreadInlineEditorProps {
   initialContent: string;
   initialMedia: ThreadMediaResponse[];
@@ -79,6 +75,7 @@ export function ThreadInlineEditor({
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previewsRef = useRef<FilePreview[]>([]);
+  const previewIdRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [textareaEl, setTextareaEl] = useState<HTMLTextAreaElement | null>(null);
   const decoded = useMemo(() => decodeMentionsForEditing(initialContent), [initialContent]);
@@ -123,26 +120,13 @@ export function ThreadInlineEditor({
   const selectedFiles = previews.map((preview) => preview.file);
   const keptExistingMedia = initialMedia.filter((item) => !removedMediaIds.includes(item.media_id));
   const hasExistingMedia = initialMedia.length > 0;
-  const removedAllExistingMedia = hasExistingMedia && keptExistingMedia.length === 0;
-  const removedSomeExistingMedia = keptExistingMedia.length > 0 && keptExistingMedia.length < initialMedia.length;
 
-  // The current API only supports either keeping the whole existing media set,
-  // clearing it entirely via clear_media=true, or replacing it completely by
-  // sending a new files[] set. It cannot persist a partial subset of existing media.
-  const hasUnsupportedMediaState =
-    removedSomeExistingMedia ||
-    (selectedFiles.length > 0 && keptExistingMedia.length > 0);
+  // Backend supports granular media edits: keep some existing (keep_media_ids),
+  // delete the rest, append new files — up to MAX_MEDIA total.
+  const totalMedia = keptExistingMedia.length + selectedFiles.length;
+  const atMediaLimit = totalMedia >= MAX_MEDIA;
 
-  const mediaMessage =
-    selectedFiles.length > 0 && keptExistingMedia.length > 0
-      ? 'New uploads replace the full current media set. Remove the remaining current media first.'
-      : removedSomeExistingMedia
-        ? 'The current API cannot remove only some existing media. Restore all current media or remove the rest.'
-        : selectedFiles.length > 0 && removedAllExistingMedia
-          ? 'Saving will replace the current media with the new uploads.'
-          : undefined;
-
-  const canSave = normalizedContent.length > 0 && !pending && !gifFetching && !hasUnsupportedMediaState;
+  const canSave = normalizedContent.length > 0 && !pending && !gifFetching && totalMedia <= MAX_MEDIA;
 
   function stopEvent(event: MouseEvent<HTMLElement>) {
     event.preventDefault();
@@ -255,13 +239,16 @@ export function ThreadInlineEditor({
 
   async function handleGifSelect(gifUrl: string) {
     setShowGifPicker(false);
+    if (atMediaLimit) {
+      return;
+    }
     setGifFetching(true);
     try {
       const res = await fetch(gifUrl);
       const blob = await res.blob();
       const file = new File([blob], `gif-${gifUrl.length}-${blob.size}.gif`, { type: blob.type || 'image/gif' });
       const url = URL.createObjectURL(file);
-      setPreviews((cur) => [...cur, { file, kind: 'image', url }]);
+      setPreviews((cur) => [...cur, { id: `pv-${previewIdRef.current++}`, file, kind: 'image', url }]);
     } catch {
       // silently ignore if CORS blocks
     } finally {
@@ -276,25 +263,31 @@ export function ThreadInlineEditor({
       return;
     }
 
-    setPreviews((current) => [
-      ...current,
-      ...incoming.map((file) => ({
-        file,
-        kind: getPreviewKind(file),
-        url: URL.createObjectURL(file),
-      })),
-    ]);
+    // Cap total media at MAX_MEDIA — drop overflow so multi-select can't overshoot.
+    const remaining = MAX_MEDIA - keptExistingMedia.length - previews.length;
+    const accepted = remaining > 0 ? incoming.slice(0, remaining) : [];
+    if (accepted.length > 0) {
+      setPreviews((current) => [
+        ...current,
+        ...accepted.map((file) => ({
+          id: `pv-${previewIdRef.current++}`,
+          file,
+          kind: getPreviewKind(file),
+          url: URL.createObjectURL(file),
+        })),
+      ]);
+    }
     event.target.value = '';
   }
 
-  function removeSelectedFile(target: File) {
+  function removeSelectedFile(id: string) {
     setPreviews((current) => {
-      const previewToRemove = current.find((preview) => isSameFile(preview.file, target));
+      const previewToRemove = current.find((preview) => preview.id === id);
       if (previewToRemove !== undefined) {
         URL.revokeObjectURL(previewToRemove.url);
       }
 
-      return current.filter((preview) => !isSameFile(preview.file, target));
+      return current.filter((preview) => preview.id !== id);
     });
   }
 
@@ -317,11 +310,17 @@ export function ThreadInlineEditor({
         content: encodeMentions(normalizedContent, mentionMapRef.current),
       };
 
-      if (selectedFiles.length > 0) {
-        params.files = selectedFiles;
-      } else if (removedAllExistingMedia) {
-        params.clearMedia = true;
+      const mediaTouched = removedMediaIds.length > 0 || selectedFiles.length > 0;
+      if (mediaTouched) {
+        if (hasExistingMedia) {
+          // Present even if empty → backend deletes everything not listed.
+          params.keepMediaIds = keptExistingMedia.map((item) => item.media_id);
+        }
+        if (selectedFiles.length > 0) {
+          params.files = selectedFiles;
+        }
       }
+      // Untouched media → send neither field → backend keeps all.
 
       await onSave(params);
     } catch {
@@ -402,160 +401,111 @@ export function ThreadInlineEditor({
           />
         )}
 
-        {initialMedia.length > 0 && (
-          <div className="mt-3">
-            <div
-              className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              Current media
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {initialMedia.map((item) => {
-                const removed = removedMediaIds.includes(item.media_id);
-                const kind = getRemoteMediaKind(item.url);
+        {(initialMedia.length > 0 || previews.length > 0) && (
+          <div
+            className={`mt-3 grid gap-2 ${
+              initialMedia.length + previews.length > 2 ? 'grid-cols-3' : 'grid-cols-2'
+            }`}
+          >
+            {initialMedia.map((item) => {
+              const removed = removedMediaIds.includes(item.media_id);
+              const kind = getRemoteMediaKind(item.url);
 
-                return (
-                  <div
-                    key={item.media_id}
-                    className="relative overflow-hidden rounded-2xl border"
-                    style={{
-                      borderColor: 'var(--border)',
-                      background: 'var(--bg-subtle)',
-                      opacity: removed ? 0.55 : 1,
-                    }}
-                  >
-                    {kind === 'video' ? (
-                      <video
-                        src={item.url}
-                        controls
-                        muted
-                        playsInline
-                        className="block max-h-55 min-h-35 w-full object-cover"
-                      />
-                    ) : (
-                      <img
-                        src={item.url}
-                        alt=""
-                        className="block max-h-55 min-h-35 w-full object-cover"
-                      />
-                    )}
-
-                    {removed && (
-                      <div
-                        className="absolute inset-x-0 bottom-0 px-3 py-2 text-xs font-medium"
-                        style={{
-                          background: 'rgba(15, 20, 25, 0.72)',
-                          color: '#fff',
-                        }}
-                      >
-                        Removed from this edit
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        stopEvent(event);
-                        toggleExistingMedia(item.media_id);
-                      }}
-                      aria-label={removed ? 'Keep current media' : 'Remove current media'}
-                      className="absolute right-2 top-2 inline-flex h-8 min-w-8 items-center justify-center rounded-full px-2"
-                      onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
-                      style={{
-                        border: '1px solid rgba(255,255,255,0.22)',
-                        background: removed ? 'rgba(15,20,25,0.78)' : 'rgba(0,0,0,0.55)',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        transition: 'filter 0.12s ease',
-                      }}
-                    >
-                      {removed ? 'Undo' : <X size={14} />}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {previews.length > 0 && (
-          <div className="mt-3">
-            <div
-              className="mb-3 text-xs font-semibold uppercase tracking-[0.18em]"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              New uploads
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {previews.map((preview) => (
+              return (
                 <div
-                  key={`${preview.file.name}-${preview.file.lastModified}-${preview.file.size}`}
-                  className="relative overflow-hidden rounded-2xl border"
+                  key={`existing-${item.media_id}`}
+                  className="relative aspect-square overflow-hidden rounded-2xl border"
                   style={{
                     borderColor: 'var(--border)',
                     background: 'var(--bg-subtle)',
+                    opacity: removed ? 0.5 : 1,
+                    transition: 'opacity 0.12s ease',
                   }}
                 >
-                  {preview.kind === 'video' ? (
-                    <video
-                      src={preview.url}
-                      controls
-                      muted
-                      playsInline
-                      className="block max-h-55 min-h-35 w-full object-cover"
-                    />
-                  ) : preview.kind === 'image' ? (
-                    <img
-                      src={preview.url}
-                      alt={preview.file.name}
-                      className="block max-h-55 min-h-35 w-full object-cover"
-                    />
+                  {kind === 'video' ? (
+                    <video src={item.url} muted playsInline className="h-full w-full object-cover" />
                   ) : (
-                    <div
-                      className="flex min-h-35 items-center justify-center px-4 text-center text-sm"
-                      style={{ color: 'var(--text-tertiary)' }}
-                    >
-                      {preview.file.name}
-                    </div>
+                    <img src={item.url} alt="" className="h-full w-full object-cover" />
                   )}
 
                   <button
                     type="button"
                     onClick={(event) => {
                       stopEvent(event);
-                      removeSelectedFile(preview.file);
+                      toggleExistingMedia(item.media_id);
                     }}
-                    aria-label={`Remove ${preview.file.name}`}
-                    className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full"
-                    onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
+                    aria-label={removed ? 'Keep this media' : 'Remove this media'}
+                    className={`absolute right-1.5 top-1.5 inline-flex h-7 items-center justify-center rounded-full ${removed ? 'px-2.5 text-xs font-semibold' : 'w-7'}`}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.85)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = removed ? 'rgba(15,20,25,0.7)' : 'rgba(0,0,0,0.65)'; e.currentTarget.style.transform = 'scale(1)'; }}
                     style={{
-                      border: '1px solid rgba(255,255,255,0.22)',
-                      background: 'rgba(0,0,0,0.55)',
+                      border: '1px solid rgba(255,255,255,0.18)',
+                      background: removed ? 'rgba(15,20,25,0.7)' : 'rgba(0,0,0,0.65)',
                       color: '#fff',
                       cursor: 'pointer',
-                      transition: 'filter 0.12s ease',
+                      backdropFilter: 'blur(6px)',
+                      WebkitBackdropFilter: 'blur(6px)',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                      transition: 'background 0.12s ease, transform 0.12s ease',
                     }}
                   >
-                    <X size={14} />
+                    {removed ? 'Undo' : <X size={15} strokeWidth={2.5} />}
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              );
+            })}
 
-        {mediaMessage && (
-          <div
-            className="mt-3 rounded-xl px-3 py-2 text-[13px]"
-            style={{
-              background: hasUnsupportedMediaState ? 'var(--amber-soft)' : 'var(--bg-subtle)',
-              color: hasUnsupportedMediaState ? 'var(--amber)' : 'var(--text-tertiary)',
-            }}
-          >
-            {mediaMessage}
+            {previews.map((preview) => (
+              <div
+                key={preview.id}
+                className="relative aspect-square overflow-hidden rounded-2xl border"
+                style={{ borderColor: 'var(--border)', background: 'var(--bg-subtle)' }}
+              >
+                {preview.kind === 'video' ? (
+                  <video src={preview.url} muted playsInline className="h-full w-full object-cover" />
+                ) : preview.kind === 'image' ? (
+                  <img src={preview.url} alt={preview.file.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div
+                    className="flex h-full items-center justify-center px-4 text-center text-sm"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
+                    {preview.file.name}
+                  </div>
+                )}
+
+                <span
+                  className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide"
+                  style={{ background: 'var(--text)', color: 'var(--bg)' }}
+                >
+                  New
+                </span>
+
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    stopEvent(event);
+                    removeSelectedFile(preview.id);
+                  }}
+                  aria-label={`Remove ${preview.file.name}`}
+                  className="absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full"
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.85)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.65)'; e.currentTarget.style.transform = 'scale(1)'; }}
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    background: 'rgba(0,0,0,0.65)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(6px)',
+                    WebkitBackdropFilter: 'blur(6px)',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+                    transition: 'background 0.12s ease, transform 0.12s ease',
+                  }}
+                >
+                  <X size={15} strokeWidth={2.5} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -604,12 +554,12 @@ export function ThreadInlineEditor({
             style={{ display: 'none' }}
           />
           <label
-            htmlFor={inputId}
-            title="Add image or video"
+            htmlFor={atMediaLimit || pending ? undefined : inputId}
+            title={atMediaLimit ? `Maximum ${MAX_MEDIA} media` : 'Add image or video'}
             className="icon-knock"
             style={{
-              ...iconBtnStyle(false, pending),
-              pointerEvents: pending ? 'none' : undefined,
+              ...iconBtnStyle(false, pending || atMediaLimit),
+              pointerEvents: pending || atMediaLimit ? 'none' : undefined,
             }}
           >
             <ImagePlus size={18} />
@@ -617,10 +567,11 @@ export function ThreadInlineEditor({
 
           <button
             type="button"
-            title="Add GIF"
+            title={atMediaLimit ? `Maximum ${MAX_MEDIA} media` : 'Add GIF'}
             className="icon-knock"
+            disabled={atMediaLimit || gifFetching}
             onClick={() => { setShowGifPicker((v) => !v); setShowEmojiPicker(false); }}
-            style={iconBtnStyle(showGifPicker, gifFetching)}
+            style={iconBtnStyle(showGifPicker, gifFetching || atMediaLimit)}
           >
             {gifFetching ? <Loader2 size={18} className="animate-spin" /> : <Film size={18} />}
           </button>
@@ -635,9 +586,13 @@ export function ThreadInlineEditor({
             <Smile size={18} />
           </button>
 
-          {(keptExistingMedia.length > 0 || selectedFiles.length > 0) && (
-            <span className="text-sm" style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>
-              {keptExistingMedia.length} current · {selectedFiles.length} new
+          {totalMedia > 0 && (
+            <span
+              className="text-sm"
+              style={{ color: atMediaLimit ? 'var(--text-secondary)' : 'var(--text-tertiary)', marginLeft: 4 }}
+            >
+              {totalMedia} / {MAX_MEDIA}
+              {atMediaLimit ? ' · Max' : ''}
             </span>
           )}
           {gifFetching && (

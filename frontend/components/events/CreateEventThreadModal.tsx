@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { LoaderCircle } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createEventThread } from '@/lib/services/threads';
 import { useMyProfile } from '@/hooks/useMyProfile';
@@ -160,7 +161,7 @@ export function CreateEventThreadModal({
           {previews.length > 0 && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {previews.map((src, i) => (
-                <div key={i} style={{ position: 'relative' }}>
+                <div key={src} style={{ position: 'relative' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={src}
@@ -245,9 +246,14 @@ export function CreateEventThreadModal({
               fontWeight: 700,
               cursor: isPending || !content.trim() ? 'default' : 'pointer',
               opacity: isPending || !content.trim() ? 0.5 : 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            {isPending ? 'Posting…' : 'Post'}
+            {isPending && <LoaderCircle size={16} className="animate-spin" />}
+            <span>{isPending ? 'Posting…' : 'Post'}</span>
           </button>
         </form>
       </div>

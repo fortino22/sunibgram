@@ -43,9 +43,12 @@ func ValidateGender(g Gender) error {
 	}
 }
 
+// ValidateBirthdayDate validates a birthday when one is provided. Birthday is
+// optional (zero time = not provided), so a zero value passes; only a malformed
+// future date is rejected.
 func ValidateBirthdayDate(t time.Time) error {
 	if t.IsZero() {
-		return errors.New("birthday_date is required")
+		return nil
 	}
 	now := time.Now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)

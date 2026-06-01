@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { LoaderCircle } from 'lucide-react';
 import { useCreateCommunityThread } from '@/hooks/useCommunityMutations';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { Avatar } from '@/components/shared/Avatar';
@@ -122,7 +123,7 @@ export function CreateCommunityThreadModal({
               {previews.length > 0 && (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                   {previews.map((src, i) => (
-                    <div key={i} style={{ position: 'relative' }}>
+                    <div key={src} style={{ position: 'relative' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={src}
@@ -211,9 +212,14 @@ export function CreateCommunityThreadModal({
                 fontWeight: 700,
                 cursor: isPending || !content.trim() ? 'default' : 'pointer',
                 opacity: isPending || !content.trim() ? 0.5 : 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
               }}
             >
-              {isPending ? 'Posting…' : 'Post'}
+              {isPending && <LoaderCircle size={16} className="animate-spin" />}
+              <span>{isPending ? 'Posting…' : 'Post'}</span>
             </button>
           </div>
         </form>
