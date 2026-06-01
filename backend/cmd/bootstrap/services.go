@@ -42,6 +42,7 @@ import (
 	threadpolluc "github.com/sunibgram/application/usecase/thread_poll"
 	threadsummaryuc "github.com/sunibgram/application/usecase/thread_summary"
 	trendreportuc "github.com/sunibgram/application/usecase/trend_report"
+	trendingthreaduc "github.com/sunibgram/application/usecase/trending_thread"
 	trendinguseruc "github.com/sunibgram/application/usecase/trending_user"
 	useruc "github.com/sunibgram/application/usecase/user"
 	userblockuc "github.com/sunibgram/application/usecase/user_block"
@@ -89,6 +90,7 @@ import (
 	threadpollsvciface "github.com/sunibgram/domain/service/thread_poll"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 	trendreportsvciface "github.com/sunibgram/domain/service/trend_report"
+	trendingthreadsvciface "github.com/sunibgram/domain/service/trending_thread"
 	trendingusersvciface "github.com/sunibgram/domain/service/trending_user"
 	usersvciface "github.com/sunibgram/domain/service/user"
 	userblocksvciface "github.com/sunibgram/domain/service/user_block"
@@ -146,6 +148,7 @@ type Services struct {
 	ThreadPoll                  threadpollsvciface.IThreadPollService
 	EventThreadPin              eventthreadpinsvciface.IEventThreadPinService
 	TrendingUser                trendingusersvciface.ITrendingUserService
+	TrendingThread              trendingthreadsvciface.ITrendingThreadService
 	TrendReport                 trendreportsvciface.ITrendReportService
 }
 
@@ -213,6 +216,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		ThreadPoll:                  threadpolluc.NewThreadPollService(repos.Thread, repos.ThreadPoll, repos.UserBlock, ext.Storage),
 		EventThreadPin:              eventthreadpinuc.NewEventThreadPinService(repos.EventThreadPin, repos.Event, repos.Thread),
 		TrendingUser:                trendinguseruc.NewTrendingUserService(repos.TrendingUser, repos.TrendingUserSnapshot, repos.Follow),
+		TrendingThread:              trendingthreaduc.NewTrendingThreadService(repos.TrendingThread),
 		TrendReport:                 trendreportuc.NewTrendReportService(repos.TrendReport, hashtag),
 	}
 }

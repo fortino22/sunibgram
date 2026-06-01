@@ -39,6 +39,7 @@ import (
 	threadpollctrl "github.com/sunibgram/webapi/controller/thread_poll"
 	threadsummaryctrl "github.com/sunibgram/webapi/controller/thread_summary"
 	trendreportctrl "github.com/sunibgram/webapi/controller/trend_report"
+	trendingthreadctrl "github.com/sunibgram/webapi/controller/trending_thread"
 	trendinguserctrl "github.com/sunibgram/webapi/controller/trending_user"
 	userctrl "github.com/sunibgram/webapi/controller/user"
 	userblockctrl "github.com/sunibgram/webapi/controller/user_block"
@@ -96,6 +97,7 @@ type Controllers struct {
 	Notification        *notificationctrl.NotificationController
 	ThreadPoll          *threadpollctrl.ThreadPollController
 	TrendingUser        *trendinguserctrl.TrendingUserController
+	TrendingThread      *trendingthreadctrl.TrendingThreadController
 	TrendReport         *trendreportctrl.TrendReportController
 	NotificationHandler *webapisocket.NotificationHandler
 }
@@ -126,7 +128,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary, svcs.ThreadMedia),
 		Category:            categoryctrl.NewCategoryController(svcs.Category),
 		Violation:           violationctrl.NewViolationController(svcs.Violation),
-		Report:              reportctrl.NewReportController(svcs.Report),
+		Report:              reportctrl.NewReportController(svcs.Report, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.Thread, svcs.ThreadPoll, svcs.UserProfile),
 		Community:           communityctrl.NewCommunityController(svcs.Community, svcs.CommunityRule, svcs.UserProfile),
 		CommunityMember:     communityctrl.NewCommunityMemberController(svcs.CommunityMember, svcs.UserProfile),
 		CommunityRequest:    communityrequestctrl.NewCommunityRequestController(svcs.CommunityRequest, svcs.UserProfile),
@@ -147,6 +149,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		Notification:        notificationctrl.NewNotificationController(svcs.Notification),
 		ThreadPoll:          threadpollctrl.NewThreadPollController(svcs.ThreadPoll),
 		TrendingUser:        trendinguserctrl.NewTrendingUserController(svcs.TrendingUser, svcs.UserProfile),
+		TrendingThread:      trendingthreadctrl.NewTrendingThreadController(svcs.TrendingThread, svcs.UserProfile),
 		TrendReport:         trendreportctrl.NewTrendReportController(svcs.TrendReport),
 		NotificationHandler: webapisocket.NewNotificationHandler(ext.SocketHub, svcs.Notification),
 	}
