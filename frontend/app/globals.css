@@ -1146,9 +1146,25 @@ body {
 .about-fold > section + section {
   border-top: 1px solid var(--border);
 }
+/* On mobile the ThreadFlow panel stacks vertically and gets very tall.
+   Equal-flex-share would force the hero to compress under the parent's
+   min-height: 100vh + overflow: hidden, hiding it. Fall back to normal
+   block flow so each section claims its natural height. */
+@media (max-width: 880px) {
+  .about-fold {
+    min-height: 0;
+    display: block;
+  }
+  .about-fold > section {
+    flex: none;
+    display: block;
+    justify-content: initial;
+  }
+}
 
 .about-container {
   width: 100%;
+  max-width: 64rem;
   margin-left: auto;
   margin-right: auto;
   padding-left: 32px;
@@ -2016,7 +2032,7 @@ body {
   padding: 10px 12px;
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: 12px;
   font-size: 0.5em;
   line-height: 1;
   vertical-align: middle;
@@ -2436,4 +2452,570 @@ body {
 [data-sonner-toast] [data-close-button]:hover {
   background: var(--accent-hover);
 }
+
+/* ============================================================
+   About — feature page quick navigate (section 2)
+   ============================================================ */
+.about-feature-quicknav {
+  max-width: 64rem;
+  margin: 0 auto;
+}
+.about-feature-quicknav-head {
+  text-align: center;
+  margin-bottom: 36px;
+}
+.about-feature-quicknav-title {
+  color: var(--text);
+  font-weight: 500;
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-top: 16px;
+}
+.about-feature-quicknav-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.about-feature-quicknav-item {
+  display: flex;
+}
+.about-feature-quicknav-link {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.about-feature-quicknav-link:hover {
+  transform: translateY(-2px);
+  border-color: var(--text);
+  background: color-mix(in oklab, var(--text) 4%, transparent);
+}
+.about-feature-quicknav-num {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.about-feature-quicknav-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.about-feature-quicknav-name {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  letter-spacing: -0.005em;
+}
+.about-feature-quicknav-desc {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.about-feature-quicknav-arrow {
+  font-size: 1rem;
+  color: var(--text-tertiary);
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+.about-feature-quicknav-link:hover .about-feature-quicknav-arrow {
+  transform: translateY(3px);
+  color: var(--text);
+}
+
+/* ============================================================
+   About — feature explanation sections (section 3+)
+   ============================================================ */
+.about-feature-section {
+  padding-top: 56px;
+  padding-bottom: 56px;
+  scroll-margin-top: 80px;
+  /* Static height so the page does not jump as demos animate in/out. */
+  min-height: 640px;
+  display: flex;
+  align-items: center;
+}
+.about-feature-section + .about-feature-section {
+  border-top: 1px solid var(--border);
+}
+.about-feature-section-grid {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 48px;
+  align-items: center;
+}
+.about-feature-section-demo {
+  height: 480px;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+.about-feature-section-demo > * {
+  flex: 1;
+  height: 100%;
+}
+@media (max-width: 880px) {
+  /* Stack to single column; let height grow with content again. */
+  .about-feature-section {
+    min-height: 0;
+    padding-top: 40px;
+    padding-bottom: 40px;
+  }
+  .about-feature-section-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .about-feature-section-demo {
+    height: auto;
+    min-height: 420px;
+  }
+}
+.about-feature-section-copy {
+  max-width: 32rem;
+}
+.about-feature-section-num {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--text-tertiary);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.about-feature-section-title {
+  color: var(--text);
+  font-weight: 500;
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-top: 18px;
+}
+.about-feature-section-desc {
+  color: var(--text-muted);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  margin-top: 16px;
+}
+.about-feature-section-bullets {
+  list-style: none;
+  padding: 0;
+  margin: 22px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.about-feature-section-bullets li {
+  position: relative;
+  padding-left: 22px;
+  color: var(--text);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+.about-feature-section-bullets li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* ============================================================
+   About — demo shell. Just a slice of the real Sunibgram feed.
+   No custom card/avatar/action tokens — demos use inline styles
+   that match the real components (var(--bg-card), --border, etc).
+   ============================================================ */
+.sg-demo-shell {
+  width: 100%;
+  min-height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-card);
+  overflow: hidden;
+  position: relative;
+}
+.sg-demo-shell-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.005em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.sg-demo-shell-body {
+  display: flex;
+  flex-direction: column;
+}
+@keyframes sg-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.sg-caret {
+  display: inline-block;
+  width: 2px;
+  background: var(--accent);
+  margin-left: 1px;
+  height: 1em;
+  vertical-align: middle;
+  animation: sg-blink 1s steps(1) infinite;
+}
+@keyframes sg-spin { to { transform: rotate(360deg); } }
+.sg-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  animation: sg-spin 0.8s linear infinite;
+}
+@keyframes sg-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============================================================
+   About — content page primitives (mission / team / use-cases /
+   help / privacy / terms). Reused across the non-feature pages.
+   ============================================================ */
+.about-content-section {
+  padding-top: 72px;
+  padding-bottom: 72px;
+  border-top: 1px solid var(--border);
+}
+.about-content-section-narrow {
+  max-width: 56rem;
+  margin: 0 auto;
+}
+.about-content-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.about-content-eyebrow::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+}
+.about-content-h2 {
+  color: var(--text);
+  font-weight: 500;
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  margin-top: 16px;
+  max-width: 36rem;
+}
+.about-content-lede {
+  color: var(--text-muted);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  margin-top: 18px;
+  max-width: 36rem;
+}
+
+/* Card grids used by mission/principles/use-cases */
+.about-card-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-top: 36px;
+}
+.about-info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-card);
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.about-info-card:hover {
+  border-color: var(--text);
+  transform: translateY(-2px);
+}
+.about-info-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.about-info-card-title {
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: -0.01em;
+}
+.about-info-card-desc {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* Two-column info block (left copy + right list/visual) */
+.about-content-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+@media (max-width: 880px) {
+  .about-content-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+}
+
+/* Legal document layout (privacy / terms) */
+.about-legal-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 56px;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+@media (max-width: 880px) {
+  .about-legal-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+.about-legal-toc {
+  position: sticky;
+  top: 80px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+@media (max-width: 880px) {
+  .about-legal-toc {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+}
+.about-legal-toc-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+@media (max-width: 880px) {
+  .about-legal-toc-heading {
+    flex-basis: 100%;
+    margin-bottom: 0;
+  }
+}
+.about-legal-toc a {
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color 0.12s ease;
+}
+.about-legal-toc a:hover {
+  color: var(--text);
+}
+.about-legal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  min-width: 0;
+}
+.about-legal-section {
+  scroll-margin-top: 80px;
+}
+.about-legal-section-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+.about-legal-section-title {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: -0.015em;
+  margin-top: 4px;
+}
+.about-legal-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+.about-legal-section-body p,
+.about-legal-section-body li {
+  color: var(--text);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+}
+.about-legal-section-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.about-legal-section-body ul > li {
+  position: relative;
+  padding-left: 20px;
+}
+.about-legal-section-body ul > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--text-tertiary);
+}
+.about-legal-section-body strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Help center — categories + FAQ */
+.about-help-cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+.about-help-cat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-card);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.about-help-cat:hover {
+  border-color: var(--text);
+  transform: translateY(-2px);
+}
+.about-help-cat-icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  align-items: center;
+  justify-content: center;
+}
+.about-help-cat-title {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.005em;
+}
+.about-help-cat-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.about-faq-list {
+  max-width: 56rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+.about-faq-item {
+  border-bottom: 1px solid var(--border);
+}
+.about-faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 0;
+  background: transparent;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  letter-spacing: -0.005em;
+}
+.about-faq-question:hover {
+  color: var(--accent);
+}
+.about-faq-answer {
+  padding: 0 0 20px 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  max-width: 48rem;
+}
+.about-faq-icon {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--text-tertiary);
+}
+.about-faq-icon[data-open='true'] {
+  transform: rotate(45deg);
+  color: var(--accent);
+}
+
 
