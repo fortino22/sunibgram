@@ -1,29 +1,35 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AboutHeroBackground } from '@/components/about/AboutHeroBackground';
+import { AboutFeatureQuickNav } from '@/components/about/AboutFeatureQuickNav';
+import { AboutFeatureSection } from '@/components/about/AboutFeatureSection';
 
-export type FeatureHighlight = {
+export type FeatureSection = {
+  id: string;
   title: string;
   description: string;
+  bullets?: string[];
+  demo: ReactNode;
 };
 
 export function AboutFeaturePage({
   eyebrow,
   title,
   description,
-  highlights,
+  sections,
   ctaLabel = 'Join with your Binus email',
   ctaHref = '/signup',
 }: {
   eyebrow: string;
   title: ReactNode;
   description: string;
-  highlights: FeatureHighlight[];
+  sections: FeatureSection[];
   ctaLabel?: string;
   ctaHref?: string;
 }) {
   return (
     <>
+      {/* Section 1 — Hero */}
       <section className="relative overflow-hidden">
         <AboutHeroBackground />
         <div className="about-hero-grain" aria-hidden />
@@ -68,51 +74,17 @@ export function AboutFeaturePage({
         </div>
       </section>
 
-      <section
-        className="about-container"
-        style={{ paddingTop: '64px', paddingBottom: '96px' }}
-      >
-        <div
-          className="grid gap-8"
-          style={{
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            maxWidth: '64rem',
-            marginLeft: 'auto',
-            marginRight: 'auto',
-          }}
-        >
-          {highlights.map((h) => (
-            <div
-              key={h.title}
-              style={{
-                borderTop: '1px solid var(--border)',
-                paddingTop: '20px',
-              }}
-            >
-              <h3
-                style={{
-                  color: 'var(--text)',
-                  fontSize: '1.0625rem',
-                  fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                {h.title}
-              </h3>
-              <p
-                style={{
-                  color: 'var(--text-muted)',
-                  fontSize: '0.9375rem',
-                  lineHeight: 1.6,
-                  marginTop: '8px',
-                }}
-              >
-                {h.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* Section 2 — Quick navigate */}
+      <AboutFeatureQuickNav sections={sections} />
+
+      {/* Section 3+ — Explanation sections (left text · right demo) */}
+      {sections.map((section, i) => (
+        <AboutFeatureSection
+          key={section.id}
+          index={i}
+          section={section}
+        />
+      ))}
     </>
   );
 }

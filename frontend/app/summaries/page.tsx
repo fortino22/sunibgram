@@ -78,7 +78,7 @@ function SummariesPageInner() {
         }}
       >
         <div
-          className="summary-shimmer"
+          className="fox-blue-title"
           style={{ display: 'inline-block', fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em', marginBottom: 12 }}
         >
           Fox Agent

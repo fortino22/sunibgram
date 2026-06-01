@@ -1,43 +1,40 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { MessageSquare, Users, Calendar, Bookmark, Check, Heart } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 type ActivityRow = {
-  done: boolean;
   icons: ReactNode;
   label: string;
 };
 
 const ACTIVITY: ActivityRow[] = [
   {
-    done: true,
     icons: <IconStack icons={[<MessageSquare key="m" size={12} />, <Heart key="h" size={12} />]} />,
     label: 'Replied to a thread in @design-binus',
   },
   {
-    done: true,
     icons: <IconStack icons={[<Users key="u" size={12} />, <Check key="c" size={12} />]} />,
     label: 'Joined the BNPC community',
   },
   {
-    done: false,
     icons: <IconStack icons={[<Calendar key="c" size={12} />, <MessageSquare key="m" size={12} />]} />,
     label: 'RSVP to BINUS Job Fair 2026',
   },
   {
-    done: false,
     icons: <IconStack icons={[<Bookmark key="b" size={12} />, <MessageSquare key="m" size={12} />]} />,
-    label: 'Save 3 posts to my “Finals prep” collection',
+    label: 'Saved 3 posts to my "Finals prep" collection',
   },
   {
-    done: false,
     icons: <IconStack icons={[<Users key="u" size={12} />, <MessageSquare key="m" size={12} />]} />,
-    label: 'Follow back the people I matched with',
+    label: 'Followed back the people I matched with',
   },
   {
-    done: false,
     icons: <IconStack icons={[<Calendar key="c" size={12} />, <Users key="u" size={12} />]} />,
-    label: 'Post the rundown for next club meeting',
+    label: 'Posted the rundown for next club meeting',
   },
 ];
 
@@ -68,6 +65,27 @@ function IconStack({ icons }: { icons: ReactNode[] }) {
 }
 
 export function AboutSplitValue() {
+  /* Cycle through checking off items one by one, pause, then reset. */
+  const [checked, setChecked] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    function cycle() {
+      if (!mounted) return;
+      setChecked(0);
+      for (let i = 1; i <= ACTIVITY.length; i++) {
+        timeouts.push(setTimeout(() => setChecked(i), 800 + i * 700));
+      }
+      timeouts.push(setTimeout(cycle, 800 + (ACTIVITY.length + 1) * 700 + 1800));
+    }
+    cycle();
+    return () => {
+      mounted = false;
+      timeouts.forEach(clearTimeout);
+    };
+  }, []);
+
   return (
     <section
       className="about-container"
@@ -137,56 +155,83 @@ export function AboutSplitValue() {
             >
               ☑ Today on campus
             </span>
-            <span
+            <motion.span
+              key={checked}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
               style={{
                 fontSize: '0.6875rem',
                 color: 'var(--text-tertiary)',
                 fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
               }}
             >
-              02 / 06
-            </span>
+              {String(checked).padStart(2, '0')} / {String(ACTIVITY.length).padStart(2, '0')}
+            </motion.span>
           </div>
 
           <ul style={{ marginTop: '12px', display: 'flex', flexDirection: 'column' }}>
-            {ACTIVITY.map((row, i) => (
-              <li
-                key={i}
-                className="flex items-center gap-3"
-                style={{
-                  padding: '10px 0',
-                  borderBottom: i < ACTIVITY.length - 1 ? '1px solid var(--border)' : 'none',
-                }}
-              >
-                <span
+            {ACTIVITY.map((row, i) => {
+              const done = i < checked;
+              return (
+                <li
+                  key={i}
+                  className="flex items-center gap-3"
                   style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: '50%',
-                    background: row.done ? 'var(--green)' : 'transparent',
-                    border: row.done ? 'none' : '1.5px solid var(--border-strong)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
+                    padding: '10px 0',
+                    borderBottom: i < ACTIVITY.length - 1 ? '1px solid var(--border)' : 'none',
                   }}
                 >
-                  {row.done && <Check size={11} color="#fff" strokeWidth={3} />}
-                </span>
-                {row.icons}
-                <span
-                  style={{
-                    fontSize: '0.875rem',
-                    color: row.done ? 'var(--text-tertiary)' : 'var(--text)',
-                    textDecoration: row.done ? 'line-through' : 'none',
-                    flex: 1,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {row.label}
-                </span>
-              </li>
-            ))}
+                  <motion.span
+                    animate={{
+                      background: done ? 'var(--green)' : 'transparent',
+                      borderColor: done ? 'transparent' : 'var(--border-strong)',
+                    }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      border: '1.5px solid var(--border-strong)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <AnimatePresence>
+                      {done && (
+                        <motion.span
+                          key="check"
+                          initial={{ scale: 0, rotate: -90 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+                          style={{ display: 'inline-flex' }}
+                        >
+                          <Check size={11} color="#fff" strokeWidth={3} />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.span>
+                  {row.icons}
+                  <motion.span
+                    animate={{
+                      color: done ? 'var(--text-tertiary)' : 'var(--text)',
+                    }}
+                    transition={{ duration: 0.3 }}
+                    style={{
+                      fontSize: '0.875rem',
+                      textDecoration: done ? 'line-through' : 'none',
+                      flex: 1,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {row.label}
+                  </motion.span>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>

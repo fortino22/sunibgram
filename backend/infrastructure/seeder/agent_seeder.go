@@ -30,9 +30,18 @@ func SeedAgent(db *gorm.DB) {
 	name := strings.TrimSpace(os.Getenv("AGENT_NAME"))
 	username := strings.TrimSpace(os.Getenv("AGENT_USERNAME"))
 
-	if email == "" || password == "" || name == "" || username == "" {
-		log.Println("agent seeder: AGENT_* env not set, skipping")
-		return
+	// Hardcoded fallbacks so the agent always seeds even without env vars set.
+	if email == "" {
+		email = "fox@binus.ac.id"
+	}
+	if password == "" {
+		password = "Fox@Agent123"
+	}
+	if name == "" {
+		name = "Fox"
+	}
+	if username == "" {
+		username = "Fox.hi"
 	}
 
 	var existing usermodel.User

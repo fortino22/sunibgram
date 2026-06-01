@@ -138,7 +138,7 @@ func AutoMigrate(db *gorm.DB) {
 	seeder.SeedTrendReportReason(db)
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
-	// seeder.SeedAgent(db)
+	seeder.SeedAgent(db)
 	seeder.SeedDummy(db)
 	seeder.SeedThreadWithReplies(db)
 	seeder.SeedTrendingUserSnapshot(db)
