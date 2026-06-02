@@ -10,6 +10,7 @@ type RegisterRequest struct {
 	ConfirmPassword string `json:"confirm_password"`
 	Gender          string `json:"gender" validate:"required"`
 	BirthdayDate    string `json:"birthday_date"`
+	TermsAccepted   bool   `json:"terms_accepted"`
 }
 
 type ChangePasswordRequest struct {

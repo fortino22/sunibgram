@@ -226,6 +226,23 @@ export function RegisterForm({
                 </button>
               </div>
             </FormField>
+
+            <div>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                <input
+                  {...register('agreeToTerms')}
+                  type="checkbox"
+                  style={{ marginTop: 2, width: 16, height: 16, accentColor: 'var(--accent)', cursor: 'pointer', flex: '0 0 auto' }}
+                />
+                <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  I agree to the{' '}
+                  <a href="/about/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>Terms and Conditions</a>
+                  {' '}and{' '}
+                  <a href="/about/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>Privacy Policy</a>.
+                </span>
+              </label>
+              {errors.agreeToTerms && <p style={{ fontSize: 12, color: 'var(--coral)', marginTop: 5 }}>{errors.agreeToTerms.message}</p>}
+            </div>
           </>
         )}
 
@@ -255,7 +272,7 @@ export function RegisterForm({
             <FormField label="Faculty" error={errors.facultyId?.message}>
               <SelectShell>
                 <select {...register('facultyId')} disabled={facultiesLoading} style={{ ...selectStyle(!!errors.facultyId), opacity: facultiesLoading ? 0.6 : 1 }}>
-                  <option value="">{facultiesLoading ? 'Loading faculties…' : 'Select faculty'}</option>
+                  <option value="" disabled hidden>{facultiesLoading ? 'Loading faculties…' : 'Select faculty'}</option>
                   {faculties.map((f) => (
                     <option key={f.faculty_id} value={String(f.faculty_id)}>{f.faculty_name}</option>
                   ))}

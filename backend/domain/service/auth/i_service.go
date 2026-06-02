@@ -32,6 +32,7 @@ type IAuthService interface {
 	Register(ctx context.Context, input RegisterInput) error
 	IsUsernameAvailable(username string) (bool, error)
 	Login(email, password string) (usermodel.TokenPair, error)
+	VerifyCredentials(email, password string) error
 	LoginWithOTP(email, password, otp string) (usermodel.TokenPair, error)
 	LoginProd(email, password string) (*usermodel.User, usermodel.TokenPair, error)
 	RefreshToken(ctx context.Context, sid string) (usermodel.TokenPair, error)

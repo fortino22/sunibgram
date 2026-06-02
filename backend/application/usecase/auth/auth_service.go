@@ -293,6 +293,20 @@ func (s *AuthService) revokeAllSessions(ctx context.Context, userID uint) {
 	_ = s.cache.Delete(ctx, userSessionsKey(userID))
 }
 
+// VerifyCredentials checks email + password without issuing a session. Used by
+// the login-OTP send path so a wrong password is rejected up front instead of
+// emailing a code and only failing at the final /login step.
+func (s *AuthService) VerifyCredentials(email, password string) error {
+	user, err := s.userRepo.FindByEmail(email)
+	if err != nil {
+		return errors.New("invalid email or password")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return errors.New("invalid email or password")
+	}
+	return nil
+}
+
 func (s *AuthService) LoginWithOTP(email, password, otp string) (usermodel.TokenPair, error) {
 	if err := s.otpFailLimiter.Check(email); err != nil {
 		return usermodel.TokenPair{}, err
