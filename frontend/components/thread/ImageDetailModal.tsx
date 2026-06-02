@@ -149,7 +149,7 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
   const [showPanel, setShowPanel] = useState(false);
   const [bookmarkAnchor, setBookmarkAnchor] = useState<DOMRect | null>(null);
 
-  const { replies, isLoading: repliesLoading } = useThreadChain(thread.id);
+  const { belowChain, replies, isLoading: repliesLoading } = useThreadChain(thread.id);
   const { like, repost, bookmark } = useThreadActions(thread);
   const openReply = useComposeStore((s) => s.openReply);
   const author = getThreadAuthor(thread);
@@ -336,12 +336,15 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
               <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
                 Loading replies…
               </div>
-            ) : replies.length === 0 ? (
+            ) : belowChain.length === 0 && replies.length === 0 ? (
               <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 14, color: 'var(--text-tertiary)' }}>
                 No replies yet.
               </div>
             ) : (
-              replies.map((reply) => <ModalReply key={reply.id} thread={reply} />)
+              <>
+                {belowChain.map((reply) => <ModalReply key={reply.id} thread={reply} />)}
+                {replies.map((reply) => <ModalReply key={reply.id} thread={reply} />)}
+              </>
             )}
 
           </div>
