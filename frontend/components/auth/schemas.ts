@@ -30,6 +30,7 @@ export const signupSchema = z
       }, 'Must be a valid past date'),
     facultyId: z.string().min(1, 'Faculty ID is required'),
     bio: z.string().max(500, 'Bio too long').optional(),
+    agreeToTerms: z.literal(true, { message: 'You must accept the Terms and Conditions' }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

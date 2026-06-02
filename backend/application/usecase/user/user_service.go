@@ -45,3 +45,7 @@ func (s *UserService) GetProfile(userID uint) (*usermodel.User, *userstatmodel.U
 	}
 	return user, stat, profile, nil
 }
+
+func (s *UserService) CountUsersByRole(roleName string) (int64, error) {
+	return s.userRepo.CountByRoleName(roleName)
+}

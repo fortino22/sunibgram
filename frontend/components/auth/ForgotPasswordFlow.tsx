@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { useState, type FormEventHandler, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -159,6 +159,7 @@ export function ForgotPasswordFlow({
   });
   const resetForm = useForm<ForgotPasswordResetInput>({
     resolver: zodResolver(forgotPasswordResetSchema),
+    mode: 'onChange',
     defaultValues: {
       newPassword: '',
       confirmPassword: '',
@@ -294,30 +295,6 @@ export function ForgotPasswordFlow({
 
     return (
       <>
-        <button
-          type="button"
-          onClick={() => {
-            setServerError('');
-            setStep('email');
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-tertiary)',
-            fontSize: 14,
-            margin: '0 auto 16px',
-            fontFamily: 'inherit',
-            padding: 0,
-          }}
-        >
-          <ArrowLeft size={14} />
-          Back
-        </button>
-
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <h1
             style={{
@@ -333,6 +310,9 @@ export function ForgotPasswordFlow({
           <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
             We sent a 6-digit code to{' '}
             <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{email}</span>
+          </p>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 6 }}>
+            Don&apos;t see it? Please check your <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>spam</span> or junk folder.
           </p>
         </div>
 
@@ -382,30 +362,6 @@ export function ForgotPasswordFlow({
   if (step === 'reset') {
     return (
       <>
-        <button
-          type="button"
-          onClick={() => {
-            setServerError('');
-            setStep('otp');
-          }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--text-tertiary)',
-            fontSize: 14,
-            margin: '0 auto 16px',
-            fontFamily: 'inherit',
-            padding: 0,
-          }}
-        >
-          <ArrowLeft size={14} />
-          Back
-        </button>
-
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <h1
             style={{
@@ -436,7 +392,7 @@ export function ForgotPasswordFlow({
           >
             <div style={{ position: 'relative' }}>
               <input
-                {...resetForm.register('newPassword')}
+                {...resetForm.register('newPassword', { deps: 'confirmPassword' })}
                 type={showNewPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 autoComplete="new-password"
@@ -503,7 +459,7 @@ export function ForgotPasswordFlow({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-          <CheckCircle2 size={52} color="var(--accent)" strokeWidth={1.5} />
+          <CheckCircle2 size={52} color="var(--text)" strokeWidth={1.5} />
         </div>
         <h2
           style={{

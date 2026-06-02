@@ -111,7 +111,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		UserSettings:        usersettingsctrl.NewUserSettingsController(svcs.UserSettings),
 		UserProfile:         userprofilectrl.NewUserProfileController(svcs.UserProfile, svcs.Faculty, ext.SocketHub, svcs.ChatRoom),
 		Email:               emailctrl.NewEmailController(ext.Email),
-		Verification:        verificationctrl.NewVerificationController(svcs.Verification, c),
+		Verification:        verificationctrl.NewVerificationController(svcs.Verification, svcs.Auth, c),
 		Follow:              followctrl.NewFollowController(svcs.Follow, svcs.UserProfile),
 		UserBlock:            userblockctrl.NewUserBlockController(svcs.UserBlock, svcs.UserProfile),
 		NotificationUserMute: notificationusermutectrl.NewNotificationUserMuteController(svcs.NotificationUserMute, svcs.UserProfile),

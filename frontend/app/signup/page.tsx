@@ -29,6 +29,7 @@ function mapServerError(msg: string): { field?: keyof SignupInput; step?: Signup
   if (m.includes('gender')) return { field: 'gender', step: 2 };
   if (m.includes('birthday')) return { field: 'birthdayDate', step: 2 };
   if (m.includes('faculty')) return { field: 'facultyId', step: 2 };
+  if (m.includes('terms')) return { field: 'agreeToTerms', step: 1 };
   return {};
 }
 
@@ -54,7 +55,7 @@ export default function SignupPage() {
   const { register, handleSubmit, watch, trigger, setError, getValues, reset, formState: { errors } } =
     useForm<SignupInput>({
       resolver: zodResolver(signupSchema),
-      mode: 'onTouched',
+      mode: 'onChange',
       defaultValues: {},
     });
 
@@ -131,7 +132,7 @@ export default function SignupPage() {
 
   const onStep1: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
-    const valid = await trigger(['name', 'username', 'email', 'password', 'confirmPassword']);
+    const valid = await trigger(['name', 'username', 'email', 'password', 'confirmPassword', 'agreeToTerms']);
     if (valid) {
       setServerError('');
       setStep(2);

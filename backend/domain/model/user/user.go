@@ -32,7 +32,11 @@ type User struct {
 	// once true (never reset on unfollow). Serialized so the FindByID Redis cache
 	// round-trip preserves it; exposed to clients only on self-view DTOs.
 	OnboardingCompleted bool           `gorm:"not null;default:false" json:"onboarding_completed"`
-	Role                rolemodel.Role `gorm:"foreignKey:RoleID;references:RoleID"`
+	// TermsAccepted records the user agreed to the Terms and Privacy Policy at
+	// registration. Required true to register; serialized so the FindByID Redis
+	// cache round-trip preserves it.
+	TermsAccepted bool           `gorm:"not null;default:false" json:"terms_accepted"`
+	Role          rolemodel.Role `gorm:"foreignKey:RoleID;references:RoleID"`
 	UserFaculty         *UserFaculty   `gorm:"foreignKey:UserID;references:UserID;<-:false"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
@@ -53,6 +57,9 @@ func (u *User) ValidateRegister() error {
 	}
 	if err := ValidatePassword(u.Password); err != nil {
 		return err
+	}
+	if !u.TermsAccepted {
+		return errors.New("you must accept the terms and conditions")
 	}
 	return nil
 }

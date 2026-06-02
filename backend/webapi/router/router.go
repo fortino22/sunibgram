@@ -143,7 +143,7 @@ func Register(
 	bookmarkcollectionroute.RegisterBookmarkCollectionRoutes(api, bookmarkCollectionCtrl, auth)
 	eventroute.RegisterEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, eventThreadPinCtrl, auth)
 	emailroute.RegisterEmailRoutes(api, emailCtrl, auth)
-	userroute.RegisterUserRoutes(api, followCtrl, exploreCtrl, userBlockCtrl, muteCtrl, auth)
+	userroute.RegisterUserRoutes(api, followCtrl, exploreCtrl, userBlockCtrl, muteCtrl, userCtrl, auth)
 	adminroute.RegisterAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
 	communityroute.RegisterCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, communityRuleCtrl, communityThreadPinCtrl, communityPinCtrl, auth)
 	categoryroute.RegisterCategoryRoutes(api, categoryCtrl)

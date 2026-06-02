@@ -1,8 +1,9 @@
 package verificationdto
 
 type SendVerificationRequest struct {
-	Email string `json:"email"`
-	Type  string `json:"type"`
+	Email    string `json:"email"`
+	Type     string `json:"type"`
+	Password string `json:"password"`
 }
 
 type VerifyCodeRequest struct {

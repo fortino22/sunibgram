@@ -25,6 +25,7 @@ export interface RegisterParams {
   avatar?: File | null;
   banner?: File | null;
   bio?: string;
+  agreeToTerms: boolean;
 }
 
 export interface LoginParams {
@@ -66,6 +67,7 @@ export function register(params: RegisterParams): Promise<MessageResponse> {
   appendOptionalString(formData, 'birthday_date', params.birthdayDate);
   formData.append('faculty_id', String(params.facultyId));
   appendOptionalString(formData, 'bio', params.bio);
+  formData.append('terms_accepted', params.agreeToTerms ? 'true' : 'false');
 
   if (params.avatar) {
     formData.append('avatar', params.avatar);

@@ -139,6 +139,11 @@ export default function LoginPage() {
           <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
             {step === 'credentials' ? 'Campus discourse for Binus students' : <>We sent a 6-digit code to <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{formData?.email}</span></>}
           </p>
+          {step === 'otp' && (
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 6 }}>
+              Don&apos;t see it? Please check your <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>spam</span> or junk folder.
+            </p>
+          )}
         </div>
 
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px' }}>

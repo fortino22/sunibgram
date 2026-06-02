@@ -69,10 +69,11 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	facultyID := &v
 
 	user := &usermodel.User{
-		Name:     req.Name,
-		UserName: req.UserName,
-		Email:    req.Email,
-		Password: req.Password,
+		Name:          req.Name,
+		UserName:      req.UserName,
+		Email:         req.Email,
+		Password:      req.Password,
+		TermsAccepted: ctx.FormValue("terms_accepted") == "true",
 	}
 	profile := &userprofilemodel.UserProfile{
 		Gender:       userprofilemodel.ParseGender(req.Gender),
