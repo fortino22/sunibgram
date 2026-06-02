@@ -18,7 +18,7 @@ env:
   ECR_REGISTRY: 422661068405.dkr.ecr.ap-southeast-3.amazonaws.com
   BACKEND_REPO: sunibgram-backend
   FRONTEND_REPO: sunibgram-frontend
-  INSTANCE_ID: i-02b184ff7bc60f16f
+  INSTANCE_ID: i-0af9852da4efd7338
   ROLE_ARN: arn:aws:iam::422661068405:role/sunibgram-prod-gha-deployer
 
 permissions:
