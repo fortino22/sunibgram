@@ -28,9 +28,9 @@ type RegisterInput struct {
 	FacultyID       *uint
 }
 
-// LoginMeta carries request context used to build and populate the post-login
-// security-alert email (device shown to the user, IP, and the base URL the
-// confirm/deny links point back to).
+// LoginMeta carries request context for the post-login security-alert email:
+// the device + IP shown to the user, and the backend base URL the confirm/deny
+// links point at (the endpoint then redirects to the frontend).
 type LoginMeta struct {
 	UserAgent string
 	IP        string

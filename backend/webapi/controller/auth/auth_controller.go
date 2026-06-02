@@ -2,8 +2,9 @@ package authctrl
 
 import (
 	"errors"
-	"fmt"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -164,65 +165,32 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	})
 }
 
-// ConfirmLogin handles the yes/no links from the post-login alert email. It is a
-// public endpoint — the one-time token in the query string is the only credential,
-// so it works from any device. It always renders a friendly HTML page (even for an
-// expired/unknown token) rather than a JSON error.
+// ConfirmLogin handles the yes/no links from the post-login alert email. Public
+// endpoint — the one-time token in the query string is the only credential, so it
+// works from any device. It performs the action, then redirects into the app:
+// "No, it isn't me" (session already revoked) → forgot-password to secure the
+// account; everything else (confirmed, or an expired/invalid link) → login.
 func (c *AuthController) ConfirmLogin(ctx *fiber.Ctx) error {
-	token := ctx.Query("token")
-	action := ctx.Query("action")
+	status, err := c.authService.ConfirmLogin(ctx.Context(), ctx.Query("token"), ctx.Query("action"))
 
-	status, err := c.authService.ConfirmLogin(ctx.Context(), token, action)
-	if err != nil {
-		return ctx.Type("html").SendString(loginConfirmPage(
-			"Link expired",
-			"This confirmation link is no longer valid. If you're worried about your account, change your password.",
-		))
+	var target string
+	switch {
+	case err != nil:
+		target = frontendURL("/login/expired")
+	case status == "denied":
+		target = frontendURL("/forgot-password")
+	default:
+		target = frontendURL("/login")
 	}
-
-	if status == "denied" {
-		return ctx.Type("html").SendString(loginConfirmPage(
-			"Signed out",
-			"That device has been logged out of your account. We recommend changing your password now.",
-		))
-	}
-	return ctx.Type("html").SendString(loginConfirmPage(
-		"Thanks!",
-		"Glad it was you. No further action is needed — you can close this tab.",
-	))
+	return ctx.Redirect(target, fiber.StatusFound)
 }
 
-// logoBoltSVG is the Sunibgram bolt mark (from frontend/components/ui/Logo.tsx),
-// flattened to a plain inline SVG so it can be embedded in raw HTML/email without
-// the React component. fill="currentColor" lets it follow the surrounding text
-// color (auto-flips in dark mode).
-const logoBoltSVG = `<svg width="26" height="26" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true" style="display:block"><path d="M236 0 L40 300 L190 300 L150 512 L344 224 L190 224 Z"/></svg>`
-
-func loginConfirmPage(title, message string) string {
-	return fmt.Sprintf(`<!doctype html><html lang="en"><head><meta charset="utf-8">`+
-		`<meta name="viewport" content="width=device-width,initial-scale=1"><title>%[1]s · Sunibgram</title>`+
-		`<style>`+
-		`:root{color-scheme:light dark}`+
-		`*{box-sizing:border-box}`+
-		`body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;`+
-		`background:#ffffff;color:#0f1419;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}`+
-		`.card{width:100%%;max-width:400px;background:#ffffff;border:1px solid #eff3f4;border-radius:16px;padding:40px 32px;text-align:center}`+
-		`.brand{display:flex;align-items:center;justify-content:center;gap:8px;font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-bottom:28px}`+
-		`h1{font-size:23px;font-weight:800;letter-spacing:-0.02em;margin:0 0 10px 0}`+
-		`p{font-size:15px;color:#536471;line-height:1.5;margin:0 0 28px 0}`+
-		`.btn{display:inline-block;padding:12px 28px;background:#0f1419;color:#ffffff;text-decoration:none;`+
-		`border-radius:9999px;font-size:15px;font-weight:700;transition:background .2s ease}`+
-		`.btn:hover{background:#272c30}`+
-		`@media(prefers-color-scheme:dark){`+
-		`body{background:#000000;color:#e7e9ea}`+
-		`.card{background:#000000;border-color:#2f3336}`+
-		`p{color:#71767b}`+
-		`.btn{background:#eff3f4;color:#0f1419}`+
-		`.btn:hover{background:#d7dbdc}}`+
-		`</style></head>`+
-		`<body><div class="card"><div class="brand">%[3]s<span>Sunibgram</span></div>`+
-		`<h1>%[1]s</h1><p>%[2]s</p>`+
-		`<a class="btn" href="/">Back to Sunibgram</a></div></body></html>`, title, message, logoBoltSVG)
+// frontendURL joins the Next.js app base (FRONTEND_BASE_URL, default local dev)
+// with a path, for redirecting the email-link flow back into the app.
+func frontendURL(path string) string {
+	base := strings.TrimRight(os.Getenv("FRONTEND_BASE_URL"), "/")
+	
+	return base + path
 }
 
 func (c *AuthController) Refresh(ctx *fiber.Ctx) error {
