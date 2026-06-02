@@ -153,7 +153,7 @@ type Services struct {
 }
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
-	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.NotificationUserMute, repos.UserProfile, repos.UserFaculty, repos.Cache, ext.Storage)
+	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.NotificationUserMute, repos.UserProfile, repos.ProfileFieldChange, repos.UserFaculty, repos.Cache, ext.Storage)
 	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub, repos.NotificationUserMute)
 	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.UserBlock, repos.Cache, notification)
 	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
@@ -172,7 +172,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 
 	return &Services{
 		Cache:                       cacheuc.NewCacheService(repos.Cache),
-		Auth:                        authuc.NewAuthService(repos.User, repos.Role, repos.Verification, repos.UserSettings, ext.Storage, c),
+		Auth:                        authuc.NewAuthService(repos.User, repos.Role, repos.Verification, repos.UserSettings, ext.Storage, ext.Email, c),
 		Role:                        roleuc.NewRoleService(repos.Role),
 		User:                        useruc.NewUserService(repos.User, repos.Follow, repos.UserProfile),
 		UserSettings:                usersettingsuc.NewUserSettingsService(repos.UserSettings, repos.Thread),

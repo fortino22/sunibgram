@@ -126,7 +126,12 @@ const toggleStyle = {
   padding: 0,
 };
 
-const today = new Date().toISOString().split('T')[0];
+// Latest birthday allowed for a 17-year-old (caps the date picker).
+const maxBirthday = (() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 17);
+  return d.toISOString().split('T')[0];
+})();
 
 export function RegisterForm({
   register,
@@ -264,7 +269,7 @@ export function RegisterForm({
               <input
                 {...register('birthdayDate')}
                 type="date"
-                max={today}
+                max={maxBirthday}
                 style={inputStyle(!!errors.birthdayDate)}
               />
             </FormField>

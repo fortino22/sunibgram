@@ -14,4 +14,5 @@ func RegisterProfileRoutes(api fiber.Router, ctrl *userprofilectrl.UserProfileCo
 	profile.Get("/me/onboarding/status", auth, ctrl.GetOnboardingStatus)
 	profile.Post("/me/onboarding/complete", auth, ctrl.CompleteOnboarding)
 	profile.Get("/:id", middleware.OptionalAuth(), ctrl.GetProfile)
+	profile.Get("/:id/username-history", middleware.OptionalAuth(), ctrl.GetUsernameHistory)
 }

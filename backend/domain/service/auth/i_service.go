@@ -28,13 +28,20 @@ type RegisterInput struct {
 	FacultyID       *uint
 }
 
+// LoginMeta carries request context for the post-login security-alert email:
+// the device + IP shown to the user, and the backend base URL the confirm/deny
+// links point at (the endpoint then redirects to the frontend).
+type LoginMeta struct {
+	UserAgent string
+	IP        string
+	BaseURL   string
+}
+
 type IAuthService interface {
 	Register(ctx context.Context, input RegisterInput) error
 	IsUsernameAvailable(username string) (bool, error)
-	Login(email, password string) (usermodel.TokenPair, error)
-	VerifyCredentials(email, password string) error
-	LoginWithOTP(email, password, otp string) (usermodel.TokenPair, error)
-	LoginProd(email, password string) (*usermodel.User, usermodel.TokenPair, error)
+	Login(email, password string, meta LoginMeta) (usermodel.TokenPair, error)
+	ConfirmLogin(ctx context.Context, token, action string) (string, error)
 	RefreshToken(ctx context.Context, sid string) (usermodel.TokenPair, error)
 	Logout(ctx context.Context, sid string) error
 	ChangePassword(userID uint, email, newPassword string) error

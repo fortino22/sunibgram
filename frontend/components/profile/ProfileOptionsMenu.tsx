@@ -1,7 +1,8 @@
 'use client';
 
-import { MoreHorizontal, Flag, Ban, VolumeX, Link2 } from 'lucide-react';
+import { MoreHorizontal, Flag, Ban, VolumeX, Link2, Info } from 'lucide-react';
 import { type CSSProperties, type MouseEvent as ReactMouseEvent, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { buildProfileShareUrl } from '@/lib/shareUrl';
 
@@ -38,6 +39,7 @@ const ICON_SIZE = 17;
 export function ProfileOptionsMenu({ username, userId, isBlocked, isMuted, onBlock, onMute, onReport }: ProfileOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!open) return undefined;
@@ -111,6 +113,17 @@ export function ProfileOptionsMenu({ username, userId, isBlocked, isMuted, onBlo
             overflow: 'hidden',
           }}
         >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={run(() => router.push(`/about-profile/${userId}`))}
+            onMouseEnter={onItemEnter}
+            onMouseLeave={onItemLeave}
+            style={ITEM_BASE}
+          >
+            <Info size={ICON_SIZE} strokeWidth={2} />
+            About this account
+          </button>
           <button
             type="button"
             role="menuitem"

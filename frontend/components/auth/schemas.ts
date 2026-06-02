@@ -26,8 +26,11 @@ export const signupSchema = z
       .refine((val) => {
         if (!val) return true;
         const d = new Date(val);
-        return !isNaN(d.getTime()) && d <= new Date();
-      }, 'Must be a valid past date'),
+        if (isNaN(d.getTime())) return false;
+        const cutoff = new Date();
+        cutoff.setFullYear(cutoff.getFullYear() - 17);
+        return d <= cutoff;
+      }, 'You must be at least 17 years old'),
     facultyId: z.string().min(1, 'Faculty ID is required'),
     bio: z.string().max(500, 'Bio too long').optional(),
     agreeToTerms: z.literal(true, { message: 'You must accept the Terms and Conditions' }),
@@ -79,5 +82,4 @@ export type VerificationCodeInput = z.infer<typeof verificationCodeSchema>;
 export type ForgotPasswordEmailInput = z.infer<typeof forgotPasswordEmailSchema>;
 export type ForgotPasswordResetInput = z.infer<typeof forgotPasswordResetSchema>;
 export type SignupStep = 1 | 2 | 3;
-export type LoginStep = 'credentials' | 'otp';
 export type ForgotPasswordStep = 'email' | 'otp' | 'reset' | 'done';

@@ -56,6 +56,10 @@ func ValidateBirthdayDate(t time.Time) error {
 	if birthday.After(today) {
 		return errors.New("birthday_date cannot be in the future")
 	}
+	minBirthday := today.AddDate(-17, 0, 0)
+	if birthday.After(minBirthday) {
+		return errors.New("you must be at least 17 years old")
+	}
 	return nil
 }
 
