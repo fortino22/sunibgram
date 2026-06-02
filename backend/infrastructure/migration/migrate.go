@@ -139,11 +139,11 @@ func AutoMigrate(db *gorm.DB) {
 	seeder.SeedFaculty(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedAgent(db)
-	seeder.SeedDummy(db)
-	seeder.SeedThreadWithReplies(db)
-	seeder.SeedTrendingUserSnapshot(db)
-	seeder.SeedMutualFollows(db)
-	seeder.SeedTrendingActivity(db)
+	// seeder.SeedDummy(db)
+	// seeder.SeedThreadWithReplies(db)
+	// seeder.SeedTrendingUserSnapshot(db)
+	// seeder.SeedMutualFollows(db)
+	// seeder.SeedTrendingActivity(db)
 }
 
 func createIndexes(db *gorm.DB) {

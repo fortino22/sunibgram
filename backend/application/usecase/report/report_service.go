@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	reportmodel "github.com/sunibgram/domain/model/report"
+	threadmodel "github.com/sunibgram/domain/model/thread"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
@@ -117,6 +118,105 @@ func (s *ReportService) GetAll() ([]reportmodel.ReportDetail, error) {
 		_ = s.cacheRepo.Set(ctx, key, details, reportCacheTTL)
 	}
 	return details, nil
+}
+
+// GetReportedEntities groups reports by the reported thread and reported user.
+// Full thread models are batch-loaded via the thread repo (per-thread cache +
+// preload); full user hydration is done in the controller. status "" = all.
+func (s *ReportService) GetReportedEntities(status string) (reportmodel.ReportedEntities, error) {
+	postReports, err := s.reportRepo.FindReportedPosts(status)
+	if err != nil {
+		return reportmodel.ReportedEntities{}, err
+	}
+	userReports, err := s.reportRepo.FindReportedUsers(status)
+	if err != nil {
+		return reportmodel.ReportedEntities{}, err
+	}
+
+	postDetails, err := s.enrichReports(postReports)
+	if err != nil {
+		return reportmodel.ReportedEntities{}, err
+	}
+	userDetails, err := s.enrichReports(userReports)
+	if err != nil {
+		return reportmodel.ReportedEntities{}, err
+	}
+
+	return reportmodel.ReportedEntities{
+		Threads: s.groupReportedThreads(postDetails),
+		Users:   groupReportedUsers(userDetails),
+	}, nil
+}
+
+// groupReportedThreads collapses per-report rows into one group per thread
+// (first-seen order preserved), then attaches the full thread model. Threads
+// that no longer exist (deleted → reported_post_id nulled) are dropped.
+func (s *ReportService) groupReportedThreads(details []reportmodel.ReportDetail) []reportmodel.ReportedThreadGroup {
+	order := make([]uint, 0)
+	byThread := make(map[uint][]reportmodel.ReportDetail)
+	for _, d := range details {
+		if d.Report.ReportedPostID == nil {
+			continue
+		}
+		tid := *d.Report.ReportedPostID
+		if _, ok := byThread[tid]; !ok {
+			order = append(order, tid)
+		}
+		byThread[tid] = append(byThread[tid], d)
+	}
+	if len(order) == 0 {
+		return []reportmodel.ReportedThreadGroup{}
+	}
+
+	threads, _ := s.threadRepo.FindByIDs(order)
+	threadByID := make(map[uint]threadmodel.Thread, len(threads))
+	for _, t := range threads {
+		threadByID[t.ThreadID] = t
+	}
+
+	groups := make([]reportmodel.ReportedThreadGroup, 0, len(order))
+	for _, tid := range order {
+		t, ok := threadByID[tid]
+		if !ok {
+			continue
+		}
+		reports := byThread[tid]
+		groups = append(groups, reportmodel.ReportedThreadGroup{
+			ThreadID:    tid,
+			Thread:      t,
+			ReportCount: len(reports),
+			Reports:     reports,
+		})
+	}
+	return groups
+}
+
+// groupReportedUsers collapses per-report rows into one group per reported user
+// (first-seen order preserved).
+func groupReportedUsers(details []reportmodel.ReportDetail) []reportmodel.ReportedUserGroup {
+	order := make([]uint, 0)
+	byUser := make(map[uint][]reportmodel.ReportDetail)
+	for _, d := range details {
+		if d.Report.ReportedUserID == nil {
+			continue
+		}
+		uid := *d.Report.ReportedUserID
+		if _, ok := byUser[uid]; !ok {
+			order = append(order, uid)
+		}
+		byUser[uid] = append(byUser[uid], d)
+	}
+
+	groups := make([]reportmodel.ReportedUserGroup, 0, len(order))
+	for _, uid := range order {
+		reports := byUser[uid]
+		groups = append(groups, reportmodel.ReportedUserGroup{
+			UserID:      uid,
+			ReportCount: len(reports),
+			Reports:     reports,
+		})
+	}
+	return groups
 }
 
 func (s *ReportService) GetByID(id uuid.UUID) (*reportmodel.ReportDetail, error) {

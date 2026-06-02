@@ -34,6 +34,30 @@ func (r *reportRepository) FindAll() ([]reportmodel.Report, error) {
 	return reports, nil
 }
 
+func (r *reportRepository) FindReportedPosts(status string) ([]reportmodel.Report, error) {
+	var reports []reportmodel.Report
+	q := r.readDB.Preload("Violation").Where("reported_post_id IS NOT NULL")
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if err := q.Order("created_at DESC").Find(&reports).Error; err != nil {
+		return nil, err
+	}
+	return reports, nil
+}
+
+func (r *reportRepository) FindReportedUsers(status string) ([]reportmodel.Report, error) {
+	var reports []reportmodel.Report
+	q := r.readDB.Preload("Violation").Where("reported_user_id IS NOT NULL")
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	if err := q.Order("created_at DESC").Find(&reports).Error; err != nil {
+		return nil, err
+	}
+	return reports, nil
+}
+
 func (r *reportRepository) FindByID(id uuid.UUID) (*reportmodel.Report, error) {
 	var report reportmodel.Report
 	if err := r.readDB.

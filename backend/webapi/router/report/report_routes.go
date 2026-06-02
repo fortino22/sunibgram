@@ -12,6 +12,8 @@ func RegisterReportRoutes(api fiber.Router, reportCtrl *reportctrl.ReportControl
 
 	reports := api.Group("/reports", auth, middleware.AdminOnly())
 	reports.Get("", reportCtrl.GetAll)
+	// Static route registered before "/:id" so it isn't captured as an id.
+	reports.Get("/reported", reportCtrl.GetReported)
 	reports.Get("/:id", reportCtrl.GetByID)
 	reports.Put("/:id/status", reportCtrl.UpdateStatus)
 	reports.Delete("/:id", reportCtrl.Delete)

@@ -435,6 +435,43 @@ func (r *threadCached) CountNewSinceID(ctx context.Context, userID, sinceID uint
 	return count, nil
 }
 
+func forYouMaxIDKey(userID uint, version int64) string {
+	return fmt.Sprintf("feed:foryou:user:%d:maxid:v%d", userID, version)
+}
+
+// MaxForYouThreadID returns the highest feed-eligible thread_id the viewer can see,
+// using the SAME visibility/type/reply-interaction filter set as CountNewSinceID so
+// the "new posts" watermark and the count query never disagree. Powers the banner's
+// "0 on fresh load" behaviour: the client freezes this as sinceID, then the count of
+// thread_id > sinceID is 0 until a genuinely newer post arrives. Returns 0 when no
+// rows match. Cached per (userID, forYouVersion) with a 15 s TTL, mirroring the
+// new-count cache — version INCR on any visible mutation orphans it atomically.
+func (r *threadCached) MaxForYouThreadID(ctx context.Context, userID uint) (uint, error) {
+	version := infrarepoShared.ReadForYouVersion(ctx, r.cache, userID)
+	key := forYouMaxIDKey(userID, version)
+	var cached uint
+	if err := r.cache.Get(ctx, key, &cached); err == nil {
+		return cached, nil
+	}
+	requester := userID
+	query := ApplyThreadVisibility(r.db.readDB.WithContext(ctx).Model(&threadmodel.Thread{}), &requester).
+		Joins("LEFT JOIN communities ON communities.community_id = threads.community_id").
+		Joins("LEFT JOIN community_members max_new_members ON max_new_members.community_id = threads.community_id AND max_new_members.user_id = ?", userID).
+		Where("threads.type IN ?", forYouFeedTypes(true)).
+		Where("threads.community_id IS NULL OR communities.visibility = ? OR max_new_members.user_id = ?", communitymodel.CommunityVisibilityPublic, userID)
+	query = applyMainFeedReplyInteractionFilter(query)
+	var ids []uint
+	if err := query.Order("threads.thread_id DESC").Limit(1).Pluck("threads.thread_id", &ids).Error; err != nil {
+		return 0, err
+	}
+	var maxID uint
+	if len(ids) > 0 {
+		maxID = ids[0]
+	}
+	_ = r.cache.Set(ctx, key, maxID, 15*time.Second)
+	return maxID, nil
+}
+
 // FindNewSinceID returns visible feed-eligible threads created after sinceID,
 // newest-first by thread_id, capped at `limit`. Powers the "Show N new posts"
 // banner click — frontend prepends these onto the existing feed instead of

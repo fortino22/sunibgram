@@ -13,6 +13,9 @@ import { useAuthStore } from '@/stores/authStore';
 interface ShowNewPostsResult {
   fetched: number;
   prepended: number;
+  // Highest thread id among the fetched new posts (0 if none). The page uses this to
+  // advance the "new posts" watermark past the just-shown posts.
+  maxId: number;
 }
 
 // Backs the "Show N new posts" banner. Fetches threads with thread_id > sinceId
@@ -61,7 +64,8 @@ export function useShowNewPosts() {
       );
       // Hide the banner immediately — banner is rendered off the cached count.
       queryClient.setQueryData(['threads', 'feed', 'new-count', sinceId], { count: 0 });
-      return { fetched: result.data.length, prepended };
+      const maxId = result.data.length ? Math.max(...result.data.map((t) => t.id)) : 0;
+      return { fetched: result.data.length, prepended, maxId };
     },
     onError: (err) => {
       // Log to console; banner stays visible so user can retry. Without this,

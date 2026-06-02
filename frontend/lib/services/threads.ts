@@ -153,6 +153,12 @@ export interface FeedMeta {
   total: number;
   page: number;
   limit: number;
+  /**
+   * Highest feed-eligible thread id at request time. Sent only on the For You
+   * feed's page 1. The client freezes it as the "new posts" watermark so the
+   * banner count starts at 0 on a fresh load. Absent on other feeds / pages.
+   */
+  max_thread_id?: number;
 }
 
 export interface PaginatedFeedResponse {
