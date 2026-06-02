@@ -3,6 +3,7 @@
 import { useRef, useEffect, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar } from '@/components/shared/Avatar';
+import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useFollowers } from '@/hooks/useFollowers';
 import { useFollowing } from '@/hooks/useFollowing';
@@ -68,18 +69,21 @@ export function FollowUserCard({ user, initialIsFollowing }: FollowUserCardProps
       <Avatar username={user.username} avatarUrl={user.avatar_url} size="md" />
 
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: 'var(--text)',
-            letterSpacing: '-0.02em',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {user.name ?? user.username}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--text)',
+              letterSpacing: '-0.02em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {user.name ?? user.username}
+          </div>
+          {user.is_premium && <VerifiedBadge size={15} />}
         </div>
         <div
           style={{
