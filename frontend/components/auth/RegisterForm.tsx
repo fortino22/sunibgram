@@ -210,7 +210,7 @@ export function RegisterForm({
 
             <FormField label="Password" error={errors.password?.message}>
               <div style={{ position: 'relative' }}>
-                <input {...register('password')} type={showPass ? 'text' : 'password'} placeholder="••••••••" autoComplete="new-password" style={{ ...inputStyle(!!errors.password), paddingRight: 42 }} />
+                <input {...register('password', { deps: 'confirmPassword' })} type={showPass ? 'text' : 'password'} placeholder="••••••••" autoComplete="new-password" style={{ ...inputStyle(!!errors.password), paddingRight: 42 }} />
                 <button type="button" onClick={onTogglePass} style={toggleStyle}>
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
