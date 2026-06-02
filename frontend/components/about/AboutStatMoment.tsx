@@ -1,6 +1,12 @@
+'use client';
+
 import Link from 'next/link';
+import { useUserCount } from '@/hooks/useUserCount';
 
 export function AboutStatMoment() {
+  const { data } = useUserCount();
+  const display =
+    typeof data === 'number' ? new Intl.NumberFormat('id-ID').format(data) : null;
   return (
     <section
       className="about-container"
@@ -79,8 +85,37 @@ export function AboutStatMoment() {
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            1.000<span style={{ color: 'var(--text-muted)' }}>+</span>
+            {display === null ? (
+              <span
+                aria-label="Loading data"
+                style={{
+                  display: 'inline-block',
+                  fontSize: 'clamp(1.5rem, 3vw, 2.25rem)',
+                  fontWeight: 600,
+                  letterSpacing: '0.01em',
+                  background:
+                    'linear-gradient(90deg, var(--text-muted) 25%, var(--text) 50%, var(--text-muted) 75%)',
+                  backgroundSize: '200% 100%',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  animation:
+                    'statShimmer 1.6s linear infinite, statWobble 2.2s ease-in-out infinite',
+                }}
+              >
+                Loading data…
+              </span>
+            ) : (
+              <>
+                {display}
+                <span style={{ color: 'var(--text-muted)' }}>+</span>
+              </>
+            )}
           </div>
+          <style>{`
+            @keyframes statShimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+            @keyframes statWobble { 0%,100% { transform: rotate(-1.5deg) translateY(0) } 50% { transform: rotate(1.5deg) translateY(-2px) } }
+          `}</style>
           <p
             style={{
               marginTop: '20px',

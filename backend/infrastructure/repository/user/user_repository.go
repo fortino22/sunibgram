@@ -292,6 +292,20 @@ func (r *UserRepository) CountFollowablePeers(excludeUserID uint) (int64, error)
 	return total, nil
 }
 
+// CountByRoleName counts users whose role name equals roleName.
+func (r *UserRepository) CountByRoleName(roleName string) (int64, error) {
+	var total int64
+	err := r.readDB.
+		Table("users").
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Where("roles.name = ?", roleName).
+		Count(&total).Error
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 // CompleteOnboarding marks first-time onboarding done. Invalidates the user
 // cache so the next profile read reflects it, and primes the long-lived
 // onboarding marker.

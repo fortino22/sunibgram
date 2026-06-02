@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
+	rolemodel "github.com/sunibgram/domain/model/role"
 	usersvciface "github.com/sunibgram/domain/service/user"
 	userprofilesvciface "github.com/sunibgram/domain/service/user_profile"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
@@ -53,6 +54,16 @@ func (c *UserController) GetAll(ctx *fiber.Ctx) error {
 		Limit:      limit,
 		TotalPages: totalPages,
 	})
+}
+
+// CountRegularUsers returns the total number of users with the default "user"
+// role. Public endpoint — no auth required.
+func (c *UserController) CountRegularUsers(ctx *fiber.Ctx) error {
+	total, err := c.userService.CountUsersByRole(rolemodel.DefaultRoleName)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "internal server error"})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"total": total})
 }
 
 func (c *UserController) GetByID(ctx *fiber.Ctx) error {
