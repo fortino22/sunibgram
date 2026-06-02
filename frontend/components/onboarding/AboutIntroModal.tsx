@@ -71,7 +71,7 @@ export function AboutIntroModal({ open, onClose }: AboutIntroModalProps) {
           Welcome to Sunibgram
         </h2>
         <p className="text-[13.5px]" style={{ marginTop: 6, lineHeight: 1.5, color: 'var(--text-tertiary)' }}>
-          The university-exclusive space for Binus students. Share threads, join
+          The university exclusive space for Binus students. Share threads, join
           communities, and connect across campus.
         </p>
 
