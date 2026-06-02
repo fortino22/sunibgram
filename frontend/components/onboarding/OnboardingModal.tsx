@@ -5,18 +5,20 @@ import { Search } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useOnboardingPeople } from '@/hooks/useExplore';
+import { useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 import { useFollowUser } from '@/hooks/useFollowUser';
-import { useCompleteOnboarding } from '@/hooks/useCompleteOnboarding';
 import type { ExplorePerson } from '@/lib/services/explore';
 
-// Number of people a first-time user must follow before continuing. Mirrors the
-// server-side onboardingMinFollows guard — the backend re-validates, so this is
-// only the UX gate.
-const MIN_FOLLOWS = 5;
+// Fallback target while the dynamic requirement loads. The backend
+// re-validates the real (pool-capped) requirement, so this is only the UX gate.
+const TARGET_FOLLOWS = 5;
 
 interface OnboardingModalProps {
   /** Controlled by the profile gate in MainWrapper. */
   open: boolean;
+  /** Called when the follow step is cleared — the gate advances to the About
+   *  intro, which is what actually completes onboarding server-side. */
+  onFollowStepDone: () => void;
 }
 
 function PersonRow({
@@ -85,20 +87,22 @@ function PersonRow({
   );
 }
 
-export function OnboardingModal({ open }: OnboardingModalProps) {
+export function OnboardingModal({ open, onFollowStepDone }: OnboardingModalProps) {
   const [query, setQuery] = useState('');
   const [followedIds, setFollowedIds] = useState<Set<number>>(new Set());
 
   const trimmed = query.trim();
   const activeQuery = useOnboardingPeople(trimmed);
-  const complete = useCompleteOnboarding();
+  const status = useOnboardingStatus();
 
   const isSearching = trimmed.length > 0;
   const people = activeQuery.data ?? [];
 
+  // Dynamic requirement: 5 capped at the followable pool. 0 → gate is skippable.
+  const required = status.data?.requiredFollows ?? TARGET_FOLLOWS;
   const followedCount = followedIds.size;
-  const remaining = Math.max(0, MIN_FOLLOWS - followedCount);
-  const canContinue = followedCount >= MIN_FOLLOWS;
+  const remaining = Math.max(0, required - followedCount);
+  const canContinue = followedCount >= required;
 
   function handleToggle(userId: number, following: boolean) {
     setFollowedIds((prev) => {
@@ -158,26 +162,30 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
             Find people to follow
           </h2>
           <p className="text-[14px]" style={{ marginTop: 4, color: 'var(--text-tertiary)' }}>
-            Follow at least {MIN_FOLLOWS} people to personalize your feed.
+            {required === 0
+              ? 'There is no one to follow yet — you can continue.'
+              : `Follow at least ${required} ${required === 1 ? 'person' : 'people'} to personalize your feed.`}
           </p>
 
-          {/* Progress — slim borderless bar + count */}
-          <div className="flex items-center gap-3" style={{ marginTop: 14 }}>
-            <div style={{ flex: 1, height: 4, borderRadius: 999, background: 'var(--bg-subtle)', overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '100%',
-                  borderRadius: 999,
-                  background: 'var(--text)',
-                  width: `${Math.min(followedCount / MIN_FOLLOWS, 1) * 100}%`,
-                  transition: 'width 0.2s ease',
-                }}
-              />
+          {/* Progress — slim borderless bar + count (hidden when nothing to follow) */}
+          {required > 0 && (
+            <div className="flex items-center gap-3" style={{ marginTop: 14 }}>
+              <div style={{ flex: 1, height: 4, borderRadius: 999, background: 'var(--bg-subtle)', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    borderRadius: 999,
+                    background: 'var(--text)',
+                    width: `${Math.min(followedCount / required, 1) * 100}%`,
+                    transition: 'width 0.2s ease',
+                  }}
+                />
+              </div>
+              <span className="text-[13px] font-semibold tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
+                {Math.min(followedCount, required)}/{required}
+              </span>
             </div>
-            <span className="text-[13px] font-semibold tabular-nums" style={{ color: 'var(--text-tertiary)' }}>
-              {Math.min(followedCount, MIN_FOLLOWS)}/{MIN_FOLLOWS}
-            </span>
-          </div>
+          )}
 
           <div
             className="flex items-center gap-2"
@@ -217,28 +225,19 @@ export function OnboardingModal({ open }: OnboardingModalProps) {
         <div style={{ padding: '12px 24px 24px', flexShrink: 0 }}>
           <button
             type="button"
-            disabled={!canContinue || complete.isPending}
-            onClick={() => complete.mutate()}
+            disabled={!canContinue}
+            onClick={onFollowStepDone}
             className="w-full rounded-full text-[15px] font-bold transition-opacity"
             style={{
               padding: '12px 16px',
               background: 'var(--text)',
               color: 'var(--bg)',
-              opacity: canContinue && !complete.isPending ? 1 : 0.5,
-              cursor: canContinue && !complete.isPending ? 'pointer' : 'not-allowed',
+              opacity: canContinue ? 1 : 0.5,
+              cursor: canContinue ? 'pointer' : 'not-allowed',
             }}
           >
-            {complete.isPending
-              ? 'Setting up…'
-              : canContinue
-                ? 'Continue'
-                : `Follow ${remaining} more`}
+            {canContinue ? 'Continue' : `Follow ${remaining} more`}
           </button>
-          {complete.isError && (
-            <p className="text-[13px]" style={{ marginTop: 8, textAlign: 'center', color: '#f4212e' }}>
-              {complete.error instanceof Error ? complete.error.message : 'Something went wrong'}
-            </p>
-          )}
         </div>
       </div>
     </div>

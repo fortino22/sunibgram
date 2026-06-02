@@ -126,6 +126,27 @@ export async function completeOnboarding(token: string): Promise<ProfileMessageR
   return api.post<ProfileMessageResponse>('/api/profile/me/onboarding/complete', undefined, token);
 }
 
+export interface OnboardingStatus {
+  requiredFollows: number;
+  followingCount: number;
+}
+
+interface BackendOnboardingStatus {
+  required_follows: number;
+  following_count: number;
+}
+
+// Dynamic onboarding gate sizing. `requiredFollows` is the target (5) capped at
+// the number of followable users on the app — 0 when there is no one to follow,
+// so the gate can be skipped.
+export async function getOnboardingStatus(token: string): Promise<OnboardingStatus> {
+  const raw = await api.get<BackendOnboardingStatus>('/api/profile/me/onboarding/status', token);
+  return {
+    requiredFollows: raw.required_follows ?? 0,
+    followingCount: raw.following_count ?? 0,
+  };
+}
+
 export async function getProfileByUserId(userId: number | string, token: string): Promise<UserProfile> {
   const raw = await api.get<BackendProfileResponse>(`/api/profile/${userId}`, token);
   return mapProfile(raw);

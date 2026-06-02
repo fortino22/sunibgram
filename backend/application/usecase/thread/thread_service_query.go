@@ -58,6 +58,10 @@ func (s *ThreadService) CountNewForYouSinceID(ctx context.Context, userID, since
 	return s.threadRepo.CountNewSinceID(ctx, userID, sinceID)
 }
 
+func (s *ThreadService) GetMaxForYouThreadID(ctx context.Context, userID uint) (uint, error) {
+	return s.threadRepo.MaxForYouThreadID(ctx, userID)
+}
+
 func (s *ThreadService) GetNewForYouSinceID(ctx context.Context, userID, sinceID uint, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, error) {
 	if limit <= 0 {
 		limit = 50

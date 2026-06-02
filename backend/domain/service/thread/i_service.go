@@ -44,6 +44,7 @@ type IThreadService interface {
 	GetForYouFeed(ctx context.Context, userID uint, page, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, int64, error)
 	RefreshForYouFeed(ctx context.Context, userID uint)
 	CountNewForYouSinceID(ctx context.Context, userID, sinceID uint) (int64, error)
+	GetMaxForYouThreadID(ctx context.Context, userID uint) (uint, error)
 	GetNewForYouSinceID(ctx context.Context, userID, sinceID uint, limit int) ([]threadmodel.Thread, []*threadmodel.Thread, error)
 	GetFacultyThreads(facultyID, requesterID uint, page, limit int) ([]threadmodel.Thread, int64, error)
 }

@@ -43,6 +43,9 @@ type IUserProfileService interface {
 	UpdateProfile(ctx context.Context, userID uint, input UpdateProfileInput) error
 	GetProfile(userID uint, viewerID *uint) (*FullProfile, error)
 	CompleteOnboarding(userID uint) error
+	// OnboardingStatus reports the dynamic follow requirement (required) and the
+	// user's current following count for the first-time onboarding gate.
+	OnboardingStatus(userID uint) (required int, following int, err error)
 	GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error)
 	GetUsers(userIDs []uint) ([]usermodel.User, error)
 	GetUserFaculties(userIDs []uint) ([]usermodel.UserFaculty, error)

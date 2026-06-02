@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightPanel } from './RightPanel';
 import { FloatingFoxButton } from './FloatingFoxButton';
@@ -10,7 +10,9 @@ import { AuthGuard } from '@/components/auth/AuthGuard';
 import { NewPostModal } from '@/components/shared/NewPostModal';
 import { ReplyModal } from '@/components/shared/ReplyModal';
 import { OnboardingModal } from '@/components/onboarding/OnboardingModal';
+import { AboutIntroModal } from '@/components/onboarding/AboutIntroModal';
 import { useNotificationSocket } from '@/hooks/useNotificationSocket';
+import { useCompleteOnboarding } from '@/hooks/useCompleteOnboarding';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -23,11 +25,27 @@ function NotificationSocketMount() {
   return null;
 }
 
-// First-time gate: blocks the app until the user follows enough people. Mounted
+// First-time gate, server-driven by `onboarding_completed`. Two steps while the
+// flag is false: (1) the hard follow gate, then (2) a closable About intro. The
+// flag flips true only after About is dismissed — so the intro is the final
+// onboarding step and never reshows once complete (no localStorage). Mounted
 // only inside AuthGuard, so the profile query is always authenticated here.
 function OnboardingGate() {
   const { data: profile } = useMyProfile();
-  return <OnboardingModal open={!!profile && profile.onboarding_completed === false} />;
+  const complete = useCompleteOnboarding();
+  // In-memory only: the follow step is "done" for this session once the user
+  // clears the gate. On reload the follow gate reappears but is instantly
+  // satisfied (follow relationships persist), so no progress is lost.
+  const [followStepDone, setFollowStepDone] = useState(false);
+
+  if (!profile || profile.onboarding_completed !== false) return null;
+
+  if (!followStepDone) {
+    return <OnboardingModal open onFollowStepDone={() => setFollowStepDone(true)} />;
+  }
+
+  // About is the final step — dismissing it completes onboarding server-side.
+  return <AboutIntroModal open onClose={() => complete.mutate()} />;
 }
 
 interface MainWrapperProps {

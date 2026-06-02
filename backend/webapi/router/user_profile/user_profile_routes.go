@@ -11,6 +11,7 @@ func RegisterProfileRoutes(api fiber.Router, ctrl *userprofilectrl.UserProfileCo
 	profile := api.Group("/profile")
 	profile.Get("/me", auth, ctrl.GetMyProfile)
 	profile.Put("/me", auth, ctrl.UpdateProfile)
+	profile.Get("/me/onboarding/status", auth, ctrl.GetOnboardingStatus)
 	profile.Post("/me/onboarding/complete", auth, ctrl.CompleteOnboarding)
 	profile.Get("/:id", middleware.OptionalAuth(), ctrl.GetProfile)
 }

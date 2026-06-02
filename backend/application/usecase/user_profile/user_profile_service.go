@@ -332,23 +332,59 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 	}, nil
 }
 
-// onboardingMinFollows is the number of people a first-time user must follow
-// before the onboarding gate is cleared.
-const onboardingMinFollows = 5
+// onboardingTargetFollows is the upper bound on how many people a first-time
+// user is asked to follow. The effective requirement is capped at the number of
+// followable (non-admin) users on the app, so small/empty deployments stay
+// clearable: required = min(onboardingTargetFollows, followablePool).
+const onboardingTargetFollows = 5
+
+// requiredFollows is the dynamic follow requirement for the onboarding gate:
+// the target (5) capped at the addressable pool. Pool 0 → 0 (gate is skippable).
+func (s *UserProfileService) requiredFollows(userID uint) (int, error) {
+	pool, err := s.userRepo.CountFollowablePeers(userID)
+	if err != nil {
+		return 0, err
+	}
+	required := onboardingTargetFollows
+	if int64(required) > pool {
+		required = int(pool)
+	}
+	return required, nil
+}
+
+// OnboardingStatus returns the dynamic follow requirement and the user's current
+// following count, used by the frontend to size the onboarding gate.
+func (s *UserProfileService) OnboardingStatus(userID uint) (int, int, error) {
+	required, err := s.requiredFollows(userID)
+	if err != nil {
+		return 0, 0, err
+	}
+	following := 0
+	if stat, err := s.followRepo.GetStat(userID); err == nil && stat != nil {
+		following = stat.FollowingCount
+	}
+	return required, following, nil
+}
 
 // CompleteOnboarding clears the first-time follow gate. Idempotent (no-op if
 // already done) and server-authoritative: rejects unless the user follows at
-// least onboardingMinFollows people, so the UI check cannot be bypassed.
+// least the dynamic requirement, so the UI check cannot be bypassed. When the
+// app has fewer than the target followable users (including zero), the
+// requirement shrinks accordingly so the gate stays clearable.
 func (s *UserProfileService) CompleteOnboarding(userID uint) error {
 	if done, err := s.userRepo.IsOnboarded(userID); err == nil && done {
 		return nil
 	}
-	stat, err := s.followRepo.GetStat(userID)
+	required, err := s.requiredFollows(userID)
 	if err != nil {
 		return err
 	}
-	if stat == nil || stat.FollowingCount < onboardingMinFollows {
-		return fmt.Errorf("must follow at least %d people to continue", onboardingMinFollows)
+	following := 0
+	if stat, err := s.followRepo.GetStat(userID); err == nil && stat != nil {
+		following = stat.FollowingCount
+	}
+	if following < required {
+		return fmt.Errorf("must follow at least %d people to continue", required)
 	}
 	return s.userRepo.CompleteOnboarding(userID)
 }

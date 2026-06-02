@@ -275,6 +275,23 @@ func (r *UserRepository) IsOnboarded(userID uint) (bool, error) {
 	return user.OnboardingCompleted, nil
 }
 
+// CountFollowablePeers counts non-admin users excluding the requester — the
+// addressable pool for the onboarding follow gate. Mirrors the admin-exclusion
+// convention used by the explore suggestion queries.
+func (r *UserRepository) CountFollowablePeers(excludeUserID uint) (int64, error) {
+	var total int64
+	err := r.readDB.
+		Table("users").
+		Joins("JOIN roles ON roles.role_id = users.role_id").
+		Where("roles.name <> ?", "admin").
+		Where("users.user_id <> ?", excludeUserID).
+		Count(&total).Error
+	if err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 // CompleteOnboarding marks first-time onboarding done. Invalidates the user
 // cache so the next profile read reflects it, and primes the long-lived
 // onboarding marker.
