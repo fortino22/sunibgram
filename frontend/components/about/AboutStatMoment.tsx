@@ -19,9 +19,9 @@ export function AboutStatMoment() {
           <h2
             style={{
               color: 'var(--text)',
-              fontWeight: 600,
-              fontSize: 'clamp(2rem, 4vw, 3rem)',
-              lineHeight: 1.1,
+              fontWeight: 500,
+              fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)',
+              lineHeight: 1.12,
               letterSpacing: '-0.02em',
               marginTop: '20px',
             }}

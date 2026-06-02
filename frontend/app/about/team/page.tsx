@@ -12,10 +12,11 @@ export default function TeamPage() {
     <>
       <AboutPageHero
         eyebrow="The team"
-        title="Made for Binus. Built by Binus."
+        title={<>Made for Binus<br />Built by Binusian</>}
         description="Sunibgram is a student project — built independently in Jakarta, not officially affiliated with Binus University. We work small, ship in the open, and listen to the campus that uses it."
         primaryCta={{ label: 'Talk to the team', href: 'mailto:support@sunibgram.com' }}
         secondaryCta={{ label: 'Read our principles', href: '/about/what' }}
+        secondaryCtaDark
       />
 
       <section className="about-content-section">
@@ -79,7 +80,7 @@ export default function TeamPage() {
                   WHERE WE BUILD
                 </div>
                 <div style={{ marginTop: 8, color: 'var(--text)', fontSize: 15, lineHeight: 1.55 }}>
-                  Made in Jakarta. Hosted on commodity cloud. Coffee provided by campus kantin.
+                  Made in Jakarta. 
                 </div>
               </div>
             </div>

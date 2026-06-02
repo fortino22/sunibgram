@@ -101,9 +101,9 @@ export function AboutSplitValue() {
           <h2
             style={{
               color: 'var(--text)',
-              fontWeight: 600,
-              fontSize: 'clamp(2rem, 4vw, 3rem)',
-              lineHeight: 1.1,
+              fontWeight: 500,
+              fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)',
+              lineHeight: 1.12,
               letterSpacing: '-0.02em',
               marginTop: '20px',
             }}
@@ -124,7 +124,7 @@ export function AboutSplitValue() {
             all from people you actually share a campus with.
           </p>
           <div style={{ marginTop: '28px' }}>
-            <Link href="/signup" className="about-link-mono">
+            <Link href="/signup" className="about-btn-dark">
               See what&apos;s happening on campus →
             </Link>
           </div>
@@ -184,8 +184,8 @@ export function AboutSplitValue() {
                 >
                   <motion.span
                     animate={{
-                      background: done ? 'var(--green)' : 'transparent',
-                      borderColor: done ? 'transparent' : 'var(--border-strong)',
+                      background: done ? 'var(--green)' : 'rgba(0,0,0,0)',
+                      borderColor: done ? 'rgba(0,0,0,0)' : 'var(--border-strong)',
                     }}
                     transition={{ duration: 0.3 }}
                     style={{

@@ -1222,7 +1222,7 @@ body {
 
 .about-container {
   width: 100%;
-  max-width: 64rem;
+  max-width: 80rem;
   margin-left: auto;
   margin-right: auto;
   padding-left: 32px;
@@ -1326,9 +1326,6 @@ body {
 .about-thread-section {
   padding-top: 32px;
   padding-bottom: 32px;
-  max-width: 1280px;
-  margin-left: auto;
-  margin-right: auto;
 }
 .thread-flow-header {
   display: flex;
@@ -1993,7 +1990,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 11px 20px;
-  background: transparent;
+  background: var(--bg-card);
   color: var(--text);
   font-size: 0.8125rem;
   font-weight: 600;
@@ -2028,20 +2025,23 @@ body {
   border-color: #ffffff;
 }
 
-/* Inline mono link with arrow — used as in-section CTA */
+/* Filled in-section CTA button with arrow */
 .about-link-mono {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 11px 20px;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text);
-  border-bottom: 1px solid var(--border-strong);
-  padding-bottom: 2px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .about-link-mono:hover {
+  background: var(--bg-hover);
   color: var(--accent);
   border-color: var(--accent);
 }
@@ -2515,7 +2515,7 @@ body {
    About — feature page quick navigate (section 2)
    ============================================================ */
 .about-feature-quicknav {
-  max-width: 64rem;
+  width: 100%;
   margin: 0 auto;
 }
 .about-feature-quicknav-head {
@@ -2615,7 +2615,6 @@ body {
 }
 .about-feature-section-grid {
   width: 100%;
-  max-width: 64rem;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);

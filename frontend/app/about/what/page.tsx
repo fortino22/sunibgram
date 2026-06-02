@@ -20,6 +20,7 @@ export default function WhatPage() {
         description="Sunibgram is a verified-only platform for Binus students. Threads, communities, events, and DMs — all from people who actually share a campus with you."
         primaryCta={{ label: 'Join with your Binus email', href: '/signup' }}
         secondaryCta={{ label: 'See how it works', href: '/about/threads' }}
+        secondaryCtaDark
       />
 
       <AboutSplitValue />
@@ -27,7 +28,7 @@ export default function WhatPage() {
       {/* Why it exists */}
       <section className="about-content-section">
         <div className="about-container">
-          <div className="about-content-split">
+          <div className="about-content-split" style={{ maxWidth: 'none' }}>
             <div>
               <span className="about-content-eyebrow">Why we built it</span>
               <h2 className="about-content-h2">

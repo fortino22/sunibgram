@@ -1,29 +1,84 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  MessageCircle,
-  Users,
-  CalendarDays,
-  Send,
-  Trophy,
-  AtSign,
-} from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 
-/* Positions in percent of container (0–100). The hub sits dead-center.
-   Six surrounding nodes arranged in a balanced radial layout. */
-const HUB = { x: 50, y: 50 };
-const NODES = [
-  { Icon: MessageCircle, label: 'Threads',     x: 18, y: 18 },
-  { Icon: Users,         label: 'Communities', x: 82, y: 18 },
-  { Icon: AtSign,        label: '@binus.ac.id', x: 6,  y: 50 },
-  { Icon: Send,          label: 'Messages',    x: 94, y: 50 },
-  { Icon: Trophy,        label: 'Leaderboard', x: 18, y: 82 },
-  { Icon: CalendarDays,  label: 'Events',      x: 82, y: 82 },
-] as const;
+/* ------------------------------------------------------------------ *
+ *  Editorial echo of one question that the campus keeps asking and    *
+ *  re-asking, in different words, across different channels, because  *
+ *  no canonical place exists. Below a thin rule, a single Sunibgram   *
+ *  surface gathers all of them into one answered post.                *
+ * ------------------------------------------------------------------ */
+
+type Echo = {
+  id: string;
+  text: string;
+  x: number;          // left, % of canvas
+  y: number;          // top, % of canvas
+  size: number;       // px
+  weight: 300 | 400 | 500 | 600;
+  italic?: boolean;
+  rotation: number;   // deg
+  baseOpacity: number;
+  ts: string;
+};
+
+const ECHOES: Echo[] = [
+  { id: 'e1', text: 'Did the lab notes get posted?', x: 5,  y: 6,  size: 22, weight: 600, rotation: -0.6, baseOpacity: 0.92, ts: '3 days ago' },
+  { id: 'e2', text: 'ada yg punya lab notes ga?',    x: 52, y: 14, size: 14, weight: 400, italic: true,  rotation:  1.1, baseOpacity: 0.72, ts: '2 days ago' },
+  { id: 'e3', text: 'anyone got the lab notes?',     x: 12, y: 22, size: 17, weight: 300, rotation: -1.0, baseOpacity: 0.82, ts: 'yesterday' },
+  { id: 'e4', text: 'laprak udah keluar blm?',       x: 55, y: 29, size: 15, weight: 400, italic: true,  rotation:  0.8, baseOpacity: 0.65, ts: '22h ago' },
+  { id: 'e5', text: 'lab notes uploaded?',           x: 8,  y: 37, size: 18, weight: 400, rotation: -0.6, baseOpacity: 0.58, ts: '14h ago' },
+  { id: 'e6', text: 'yo, lab notes?',                x: 60, y: 44, size: 13, weight: 300, italic: true,  rotation:  1.4, baseOpacity: 0.52, ts: '6h ago' },
+  { id: 'e7', text: 'ada link lab notes?',           x: 14, y: 51, size: 16, weight: 400, rotation: -0.5, baseOpacity: 0.46, ts: '47 min' },
+  { id: 'e8', text: 'tau di mana lab notes?',        x: 50, y: 58, size: 14, weight: 300, italic: true,  rotation:  0.7, baseOpacity: 0.42, ts: '12 min' },
+];
+
+const N = ECHOES.length;
 
 export function AboutWhatDiagram() {
+  /* step
+   *   0           empty
+   *   1..N        echo i appears
+   *   N + 1       horizontal rule draws
+   *   N + 2       resolution appears
+   *   N + 3       echoes dim, resolution settles
+   */
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    function cycle() {
+      if (!mounted) return;
+      setStep(0);
+
+      ECHOES.forEach((_, i) => {
+        timeouts.push(setTimeout(() => {
+          if (mounted) setStep(i + 1);
+        }, 350 * i + 250));
+      });
+
+      const lastEcho = 350 * (N - 1) + 250;
+      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 1); }, lastEcho + 800));
+      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 2); }, lastEcho + 1200));
+      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 3); }, lastEcho + 1500));
+      timeouts.push(setTimeout(cycle, 9000));
+    }
+
+    cycle();
+    return () => {
+      mounted = false;
+      timeouts.forEach(clearTimeout);
+    };
+  }, []);
+
+  const ruleVisible    = step >= N + 1;
+  const answerVisible  = step >= N + 2;
+  const echoesDim      = step >= N + 3;
+
   return (
     <div
       style={{
@@ -38,193 +93,135 @@ export function AboutWhatDiagram() {
         overflow: 'hidden',
       }}
     >
-      {/* Grid background — subtle, fades toward center */}
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage:
-            'linear-gradient(to right, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-          maskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black 40%, transparent 80%)',
-          WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black 40%, transparent 80%)',
-        }}
-      />
-
-      {/* Soft accent glow behind the hub */}
-      <motion.div
-        aria-hidden
-        animate={{ opacity: [0.45, 0.7, 0.45] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          width: 280,
-          height: 280,
-          transform: 'translate(-50%, -50%)',
-          background:
-            'radial-gradient(circle, color-mix(in oklab, var(--accent) 22%, transparent) 0%, transparent 60%)',
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Connection lines — SVG, drawn from the hub to each node */}
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-      >
-        <defs>
-          <linearGradient id="what-line" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"  stopColor="var(--accent)"  stopOpacity="0.7" />
-            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.15" />
-          </linearGradient>
-        </defs>
-
-        {NODES.map((n, i) => (
-          <motion.line
-            key={`line-${n.label}`}
-            x1={HUB.x}
-            y1={HUB.y}
-            x2={n.x}
-            y2={n.y}
-            stroke="url(#what-line)"
-            strokeWidth="0.4"
-            vectorEffect="non-scaling-stroke"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ delay: 0.4 + i * 0.08, duration: 0.8, ease: 'easeOut' }}
-          />
-        ))}
-
-        {/* Travelling dots — one per line, looping along the path */}
-        {NODES.map((n, i) => (
-          <motion.circle
-            key={`dot-${n.label}`}
-            r="0.6"
-            fill="var(--accent)"
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0, 1, 1, 0],
-              cx: [HUB.x, n.x],
-              cy: [HUB.y, n.y],
-            }}
-            transition={{
-              duration: 2.2,
-              repeat: Infinity,
-              repeatDelay: 1.8,
-              delay: 1.6 + i * 0.35,
-              ease: 'easeInOut',
-              times: [0, 0.1, 0.9, 1],
-            }}
-          />
-        ))}
-      </svg>
-
-      {/* Hub — Sunibgram logo */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1, duration: 0.5, ease: [0.22, 0.8, 0.36, 1] }}
-        style={{
-          position: 'absolute',
-          left: `${HUB.x}%`,
-          top: `${HUB.y}%`,
-          transform: 'translate(-50%, -50%)',
-          zIndex: 2,
-        }}
-      >
-        <motion.div
-          animate={{ scale: [1, 1.04, 1] }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-          style={{
-            width: 88,
-            height: 88,
-            borderRadius: 24,
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            boxShadow: '0 12px 32px -8px color-mix(in oklab, var(--accent) 35%, transparent)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Logo size={44} bg="var(--bg-card)" />
-        </motion.div>
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: 'calc(100% + 10px)',
-            transform: 'translateX(-50%)',
-            fontSize: 12,
-            fontWeight: 700,
-            color: 'var(--text)',
-            letterSpacing: '0.04em',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Sunibgram
-        </div>
-      </motion.div>
-
-      {/* Surrounding nodes — chip with icon + label */}
-      {NODES.map((n, i) => (
-        <motion.div
-          key={n.label}
-          initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.55 + i * 0.08, duration: 0.45, ease: [0.22, 0.8, 0.36, 1] }}
-          style={{
-            position: 'absolute',
-            left: `${n.x}%`,
-            top: `${n.y}%`,
-            transform: 'translate(-50%, -50%)',
-            zIndex: 2,
-          }}
-        >
-          <motion.div
-            animate={{ y: [0, -3, 0] }}
-            transition={{
-              duration: 4 + (i % 3) * 0.6,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: i * 0.2,
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 12px',
-              borderRadius: 999,
-              border: '1px solid var(--border)',
-              background: 'var(--bg-card)',
-              boxShadow: '0 4px 12px -6px color-mix(in oklab, var(--text) 18%, transparent)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <span
+      {/* Echoes — scattered across upper canvas */}
+      <div style={{ position: 'absolute', inset: 0, padding: '14px 18px' }}>
+        {ECHOES.map((e, i) => {
+          const shown = step > i;
+          const targetOpacity = shown
+            ? echoesDim
+              ? e.baseOpacity * 0.18
+              : e.baseOpacity
+            : 0;
+          return (
+            <motion.div
+              key={e.id}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: targetOpacity, y: shown ? 0 : 4 }}
+              transition={{ duration: 0.55, ease: [0.22, 0.8, 0.36, 1] }}
               style={{
+                position: 'absolute',
+                left: `${e.x}%`,
+                top: `${e.y}%`,
+                color: 'var(--text)',
+                fontSize: e.size,
+                fontWeight: e.weight,
+                fontStyle: e.italic ? 'italic' : 'normal',
+                letterSpacing: '-0.012em',
+                lineHeight: 1.2,
+                transform: `rotate(${e.rotation}deg)`,
+                transformOrigin: 'left center',
+                whiteSpace: 'nowrap',
+                userSelect: 'none',
                 display: 'inline-flex',
-                width: 24,
-                height: 24,
-                borderRadius: 8,
-                background: 'var(--accent-soft)',
-                color: 'var(--accent)',
-                alignItems: 'center',
-                justifyContent: 'center',
+                alignItems: 'baseline',
+                gap: 8,
               }}
             >
-              <n.Icon size={13} strokeWidth={2.4} />
-            </span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.005em' }}>
-              {n.label}
-            </span>
-          </motion.div>
-        </motion.div>
-      ))}
+              <span>{e.text}</span>
+              <span
+                style={{
+                  fontSize: Math.max(10, Math.round(e.size * 0.55)),
+                  fontWeight: 400,
+                  fontStyle: 'normal',
+                  color: 'var(--text-tertiary)',
+                  letterSpacing: 0,
+                }}
+              >
+                {e.ts}
+              </span>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Thin rule across the middle — draws left to right */}
+      <motion.div
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: ruleVisible ? 1 : 0 }}
+        transition={{ duration: 0.75, ease: [0.22, 0.8, 0.36, 1] }}
+        style={{
+          position: 'absolute',
+          left: '18px',
+          right: '18px',
+          top: '68%',
+          height: 1,
+          background: 'var(--text)',
+          transformOrigin: 'left center',
+          opacity: 0.85,
+        }}
+      />
+
+      {/* Resolution — one canonical place */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: answerVisible ? 1 : 0, y: answerVisible ? 0 : 10 }}
+        transition={{ duration: 0.5, ease: [0.22, 0.8, 0.36, 1] }}
+        style={{
+          position: 'absolute',
+          left: 22,
+          right: 22,
+          top: '73%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 7,
+            fontSize: 11,
+            fontWeight: 600,
+            color: 'var(--text-tertiary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+          }}
+        >
+          <span style={{ color: 'var(--text)', display: 'inline-flex', alignItems: 'center' }}>
+            <Logo size={13} bg="var(--bg-card)" />
+          </span>
+          <span style={{ color: 'var(--text)' }}>Sunibgram</span>
+        </div>
+
+        <div
+          style={{
+            fontSize: 17,
+            fontWeight: 500,
+            color: 'var(--text)',
+            letterSpacing: '-0.012em',
+            lineHeight: 1.3,
+          }}
+        >
+          Did the lab notes get posted?
+        </div>
+
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            fontSize: 12,
+            fontWeight: 500,
+            color: 'var(--text-tertiary)',
+            letterSpacing: '-0.005em',
+          }}
+        >
+          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>12 verified answers</span>
+          <span aria-hidden style={{ opacity: 0.5 }}>·</span>
+          <span>pinned · 2h ago</span>
+        </div>
+      </motion.div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ export function AboutPageHero({
   description,
   primaryCta,
   secondaryCta,
+  secondaryCtaDark = false,
   align = 'center',
   meta,
 }: {
@@ -18,6 +19,7 @@ export function AboutPageHero({
   description?: ReactNode;
   primaryCta?: CTA;
   secondaryCta?: CTA;
+  secondaryCtaDark?: boolean;
   align?: 'center' | 'left';
   meta?: ReactNode;
 }) {
@@ -83,8 +85,12 @@ export function AboutPageHero({
             {secondaryCta && (
               <Link
                 href={secondaryCta.href}
-                className="about-btn-secondary about-btn-secondary-inverted"
-                style={{ color: 'var(--text)' }}
+                className={
+                  secondaryCtaDark
+                    ? 'about-btn-dark'
+                    : 'about-btn-secondary about-btn-secondary-inverted'
+                }
+                style={secondaryCtaDark ? undefined : { color: 'var(--text)' }}
               >
                 {secondaryCta.label}
               </Link>
