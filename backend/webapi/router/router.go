@@ -133,7 +133,7 @@ func Register(
 	api := app.Group("/api")
 	auth := middleware.Auth()
 
-	authroute.RegisterAuthRoutes(api, authCtrl, verificationCtrl, auth, c)
+	authroute.RegisterAuthRoutes(api, authCtrl, auth, c)
 	verificationroute.RegisterVerificationRoutes(api, verificationCtrl, c)
 	usersettingsroute.RegisterUserSettingsRoutes(api, userSettingsCtrl, auth)
 	userprofileroute.RegisterProfileRoutes(api, profileCtrl, auth)

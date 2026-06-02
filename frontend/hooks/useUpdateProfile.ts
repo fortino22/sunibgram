@@ -11,7 +11,10 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: (params: UpdateProfileParams) => updateMyProfile(params, token!),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
+      // Prefix-match invalidation covers ['profile','me'], ['profile', <id>]
+      // (own /profile/:id + /about-profile/:id), and the About history list.
+      void queryClient.invalidateQueries({ queryKey: ['profile'] });
+      void queryClient.invalidateQueries({ queryKey: ['username-history'] });
       // Refetch all thread feeds so embedded author avatars update immediately.
       void queryClient.invalidateQueries({ queryKey: ['threads'] });
     },

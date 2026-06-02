@@ -574,6 +574,15 @@ body {
   filter: brightness(0.85);
 }
 
+/* Icon/overlay buttons on dark backgrounds — brighten on hover.
+   Uses filter so it works even when the element sets `background` inline. */
+.hover-brighten {
+  transition: filter 0.12s ease;
+}
+.hover-brighten:hover {
+  filter: brightness(1.35);
+}
+
 /* Media grid thumbnail — zoom + dim on hover */
 .media-grid-item img,
 .media-grid-item video {

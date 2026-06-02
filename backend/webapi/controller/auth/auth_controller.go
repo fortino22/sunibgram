@@ -2,6 +2,7 @@ package authctrl
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	authsvciface "github.com/sunibgram/domain/service/auth"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
-	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
@@ -146,7 +146,13 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	pair, err := c.authService.Login(req.Email, req.Password)
+	meta := authsvciface.LoginMeta{
+		UserAgent: ctx.Get("User-Agent"),
+		IP:        ctx.IP(),
+		BaseURL:   ctx.BaseURL(),
+	}
+
+	pair, err := c.authService.Login(req.Email, req.Password, meta)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
@@ -158,41 +164,65 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *AuthController) LoginWithOTP(ctx *fiber.Ctx) error {
-	var req authdto.LoginWithOTPRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
-	}
+// ConfirmLogin handles the yes/no links from the post-login alert email. It is a
+// public endpoint — the one-time token in the query string is the only credential,
+// so it works from any device. It always renders a friendly HTML page (even for an
+// expired/unknown token) rather than a JSON error.
+func (c *AuthController) ConfirmLogin(ctx *fiber.Ctx) error {
+	token := ctx.Query("token")
+	action := ctx.Query("action")
 
-	pair, err := c.authService.LoginWithOTP(req.Email, req.Password, req.OTP)
+	status, err := c.authService.ConfirmLogin(ctx.Context(), token, action)
 	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
+		return ctx.Type("html").SendString(loginConfirmPage(
+			"Link expired",
+			"This confirmation link is no longer valid. If you're worried about your account, change your password.",
+		))
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(authdto.LoginResponse{
-		Message:     "login successful",
-		AccessToken: pair.AccessToken,
-		SID:         pair.SID,
-	})
+	if status == "denied" {
+		return ctx.Type("html").SendString(loginConfirmPage(
+			"Signed out",
+			"That device has been logged out of your account. We recommend changing your password now.",
+		))
+	}
+	return ctx.Type("html").SendString(loginConfirmPage(
+		"Thanks!",
+		"Glad it was you. No further action is needed — you can close this tab.",
+	))
 }
 
-func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {
-	var req authdto.LoginRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
-	}
+// logoBoltSVG is the Sunibgram bolt mark (from frontend/components/ui/Logo.tsx),
+// flattened to a plain inline SVG so it can be embedded in raw HTML/email without
+// the React component. fill="currentColor" lets it follow the surrounding text
+// color (auto-flips in dark mode).
+const logoBoltSVG = `<svg width="26" height="26" viewBox="0 0 384 512" fill="currentColor" aria-hidden="true" style="display:block"><path d="M236 0 L40 300 L190 300 L150 512 L344 224 L190 224 Z"/></svg>`
 
-	_, pair, err := c.authService.LoginProd(req.Email, req.Password)
-	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(authdto.LoginProdResponse{
-		Message:              "login successful",
-		AccessToken:          pair.AccessToken,
-		SID:                  pair.SID,
-		AccessTokenExpiresAt: utils.Wrap(pair.AccessTokenExpiresAt),
-	})
+func loginConfirmPage(title, message string) string {
+	return fmt.Sprintf(`<!doctype html><html lang="en"><head><meta charset="utf-8">`+
+		`<meta name="viewport" content="width=device-width,initial-scale=1"><title>%[1]s · Sunibgram</title>`+
+		`<style>`+
+		`:root{color-scheme:light dark}`+
+		`*{box-sizing:border-box}`+
+		`body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;`+
+		`background:#ffffff;color:#0f1419;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}`+
+		`.card{width:100%%;max-width:400px;background:#ffffff;border:1px solid #eff3f4;border-radius:16px;padding:40px 32px;text-align:center}`+
+		`.brand{display:flex;align-items:center;justify-content:center;gap:8px;font-size:20px;font-weight:800;letter-spacing:-0.02em;margin-bottom:28px}`+
+		`h1{font-size:23px;font-weight:800;letter-spacing:-0.02em;margin:0 0 10px 0}`+
+		`p{font-size:15px;color:#536471;line-height:1.5;margin:0 0 28px 0}`+
+		`.btn{display:inline-block;padding:12px 28px;background:#0f1419;color:#ffffff;text-decoration:none;`+
+		`border-radius:9999px;font-size:15px;font-weight:700;transition:background .2s ease}`+
+		`.btn:hover{background:#272c30}`+
+		`@media(prefers-color-scheme:dark){`+
+		`body{background:#000000;color:#e7e9ea}`+
+		`.card{background:#000000;border-color:#2f3336}`+
+		`p{color:#71767b}`+
+		`.btn{background:#eff3f4;color:#0f1419}`+
+		`.btn:hover{background:#d7dbdc}}`+
+		`</style></head>`+
+		`<body><div class="card"><div class="brand">%[3]s<span>Sunibgram</span></div>`+
+		`<h1>%[1]s</h1><p>%[2]s</p>`+
+		`<a class="btn" href="/">Back to Sunibgram</a></div></body></html>`, title, message, logoBoltSVG)
 }
 
 func (c *AuthController) Refresh(ctx *fiber.Ctx) error {

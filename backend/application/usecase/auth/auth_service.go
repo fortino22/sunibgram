@@ -15,7 +15,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/sunibgram/application/helper"
-	verificationuc "github.com/sunibgram/application/usecase/verification"
 	storageuc "github.com/sunibgram/application/usecase/storage"
 	mediamodel "github.com/sunibgram/domain/model/media"
 	rolemodel "github.com/sunibgram/domain/model/role"
@@ -27,6 +26,7 @@ import (
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	verificationrepoiface "github.com/sunibgram/domain/repository/verification"
 	authsvciface "github.com/sunibgram/domain/service/auth"
+	emailsvciface "github.com/sunibgram/domain/service/email"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
 )
@@ -59,8 +59,8 @@ type AuthService struct {
 	verificationRepo verificationrepoiface.IVerificationRepository
 	userSettingsRepo usersettingsrepoiface.IUserSettingsRepository
 	storageUsecase   *storageuc.StorageUsecase
+	emailService     emailsvciface.IEmailService
 	cache            *cache.Cache
-	otpFailLimiter   *ratelimit.RateLimiter
 	refreshLimiter   *ratelimit.RateLimiter
 }
 
@@ -70,6 +70,7 @@ func NewAuthService(
 	verificationRepo verificationrepoiface.IVerificationRepository,
 	userSettingsRepo usersettingsrepoiface.IUserSettingsRepository,
 	storageUsecase *storageuc.StorageUsecase,
+	emailService emailsvciface.IEmailService,
 	c *cache.Cache,
 ) authsvciface.IAuthService {
 	return &AuthService{
@@ -78,8 +79,8 @@ func NewAuthService(
 		verificationRepo: verificationRepo,
 		userSettingsRepo: userSettingsRepo,
 		storageUsecase:   storageUsecase,
+		emailService:     emailService,
 		cache:            c,
-		otpFailLimiter:   ratelimit.New(c, "auth_otp_fail", 5, 10*time.Minute),
 		refreshLimiter:   ratelimit.New(c, "auth_refresh", 60, time.Minute),
 	}
 }
@@ -96,6 +97,13 @@ func sessionKey(sid string) string {
 
 func userSessionsKey(userID uint) string {
 	return fmt.Sprintf("user_sessions:%d", userID)
+}
+
+const loginConfirmTTL = 24 * time.Hour
+
+// loginConfirmKey maps a one-time login-alert token to the session id it can revoke.
+func loginConfirmKey(token string) string {
+	return fmt.Sprintf("login_confirm:%s", token)
 }
 
 // IsUsernameAvailable reports whether a username is free. Public (used by the
@@ -293,60 +301,12 @@ func (s *AuthService) revokeAllSessions(ctx context.Context, userID uint) {
 	_ = s.cache.Delete(ctx, userSessionsKey(userID))
 }
 
-// VerifyCredentials checks email + password without issuing a session. Used by
-// the login-OTP send path so a wrong password is rejected up front instead of
-// emailing a code and only failing at the final /login step.
-func (s *AuthService) VerifyCredentials(email, password string) error {
-	user, err := s.userRepo.FindByEmail(email)
-	if err != nil {
-		return errors.New("invalid email or password")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return errors.New("invalid email or password")
-	}
-	return nil
-}
-
-func (s *AuthService) LoginWithOTP(email, password, otp string) (usermodel.TokenPair, error) {
-	if err := s.otpFailLimiter.Check(email); err != nil {
-		return usermodel.TokenPair{}, err
-	}
-
-	user, err := s.userRepo.FindByEmail(email)
-	if err != nil {
-		return usermodel.TokenPair{}, errors.New("invalid email or password")
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return usermodel.TokenPair{}, errors.New("invalid email or password")
-	}
-
-	record, err := s.verificationRepo.FindLatestByEmailAndType(email, verificationcodemodel.VerificationTypeLogin)
-	if err != nil {
-		s.otpFailLimiter.Fail(email)
-		return usermodel.TokenPair{}, errors.New("otp not found, please request a new one")
-	}
-	if time.Now().After(record.ExpiresAt) {
-		s.otpFailLimiter.Fail(email)
-		return usermodel.TokenPair{}, errors.New("otp has expired")
-	}
-	if !verificationuc.VerifyOTPHash(record.Code, otp) {
-		s.otpFailLimiter.Fail(email)
-		return usermodel.TokenPair{}, errors.New("invalid otp")
-	}
-	_ = s.verificationRepo.DeleteByEmailAndType(email, verificationcodemodel.VerificationTypeLogin)
-
-	sid := uuid.NewString()
-	ctx := context.Background()
-	dur := sessionDuration()
-	if err := s.cache.Set(ctx, sessionKey(sid), user.UserID, dur); err != nil {
-		return usermodel.TokenPair{}, errors.New("failed to create session")
-	}
-	_ = s.cache.SAdd(ctx, userSessionsKey(user.UserID), sid, dur)
-
-	return generateTokenPair(user, sid)
-}
-
-func (s *AuthService) Login(email, password string) (usermodel.TokenPair, error) {
+// Login validates credentials, opens a session, and fires a "was this you?"
+// security-alert email. The login succeeds immediately; the email lets the owner
+// disavow it (see ConfirmLogin), which revokes the session created here. meta
+// carries the request's User-Agent, IP, and base URL so the email can show the
+// device and build the confirm/deny links.
+func (s *AuthService) Login(email, password string, meta authsvciface.LoginMeta) (usermodel.TokenPair, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
 		return usermodel.TokenPair{}, errors.New("invalid email or password")
@@ -363,37 +323,58 @@ func (s *AuthService) Login(email, password string) (usermodel.TokenPair, error)
 	}
 	_ = s.cache.SAdd(ctx, userSessionsKey(user.UserID), sid, dur)
 
+	s.sendLoginAlert(ctx, user.Email, sid, meta)
+
 	return generateTokenPair(user, sid)
 }
 
-func (s *AuthService) LoginProd(email, password string) (*usermodel.User, usermodel.TokenPair, error) {
-	user, err := s.userRepo.FindByEmail(email)
-	if err != nil {
-		return nil, usermodel.TokenPair{}, errors.New("invalid email or password")
+// sendLoginAlert stores a one-time confirm token mapped to the session and queues
+// the alert email. Best-effort: a failure here never blocks a successful login.
+func (s *AuthService) sendLoginAlert(ctx context.Context, email, sid string, meta authsvciface.LoginMeta) {
+	token := uuid.NewString()
+	if err := s.cache.Set(ctx, loginConfirmKey(token), sid, loginConfirmTTL); err != nil {
+		log.Printf("login alert: failed to store confirm token: %v", err)
+		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return nil, usermodel.TokenPair{}, errors.New("invalid email or password")
+	base := strings.TrimRight(meta.BaseURL, "/")
+	yesURL := fmt.Sprintf("%s/api/auth/login/verify?token=%s&action=yes", base, token)
+	noURL := fmt.Sprintf("%s/api/auth/login/verify?token=%s&action=no", base, token)
+
+	device := meta.UserAgent
+	if strings.TrimSpace(device) == "" {
+		device = "Unknown device"
+	}
+	ip := meta.IP
+	if strings.TrimSpace(ip) == "" {
+		ip = "Unknown"
 	}
 
-	// if user.Role.Name != "admin" {
-	// 	return nil, usermodel.TokenPair{}, errors.New("admin access required")
-	// }
-
-	sid := uuid.NewString()
-	ctx := context.Background()
-	dur := sessionDuration()
-	if err := s.cache.Set(ctx, sessionKey(sid), user.UserID, dur); err != nil {
-		return nil, usermodel.TokenPair{}, errors.New("failed to create session")
+	if err := s.emailService.SendLoginAlert(email, yesURL, noURL, device, ip); err != nil {
+		log.Printf("login alert: failed to queue email: %v", err)
 	}
-	_ = s.cache.SAdd(ctx, userSessionsKey(user.UserID), sid, dur)
+}
 
-	pair, err := generateTokenPair(user, sid)
-	if err != nil {
-		return nil, usermodel.TokenPair{}, err
+// ConfirmLogin resolves a confirm token to its session. "no" revokes that session
+// (logging the new device out); "yes" just acknowledges. The token is one-time:
+// it is consumed regardless of the action. Returns "denied"/"confirmed".
+func (s *AuthService) ConfirmLogin(ctx context.Context, token, action string) (string, error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return "", errors.New("invalid or expired link")
 	}
 
-	return user, pair, nil
+	var sid string
+	if err := s.cache.Get(ctx, loginConfirmKey(token), &sid); err != nil {
+		return "", errors.New("invalid or expired link")
+	}
+	_ = s.cache.Delete(ctx, loginConfirmKey(token))
+
+	if action == "no" {
+		_ = s.Logout(ctx, sid)
+		return "denied", nil
+	}
+	return "confirmed", nil
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, sid string) (usermodel.TokenPair, error) {

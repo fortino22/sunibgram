@@ -5,6 +5,7 @@ import (
 	"mime/multipart"
 	"time"
 
+	profilefieldchangemodel "github.com/sunibgram/domain/model/profile_field_change"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	userstatmodel "github.com/sunibgram/domain/model/user_stat"
@@ -19,6 +20,11 @@ type FullProfile struct {
 	IsBlocked   bool
 	IsBlockedBy bool
 	IsMuted     bool
+	// *ChangeAvailableAt are pre-computed earliest-next-change times for the
+	// rate-limited profile fields, set only while still within the cooldown.
+	// Rendered self-view only by the controller.
+	NameChangeAvailableAt     *time.Time
+	UsernameChangeAvailableAt *time.Time
 }
 
 type UpsertProfileInput struct {
@@ -42,6 +48,8 @@ type IUserProfileService interface {
 	UpsertProfile(ctx context.Context, userID uint, input UpsertProfileInput) error
 	UpdateProfile(ctx context.Context, userID uint, input UpdateProfileInput) error
 	GetProfile(userID uint, viewerID *uint) (*FullProfile, error)
+	// UsernameHistory returns the user's username-change log, newest first.
+	UsernameHistory(userID uint) ([]profilefieldchangemodel.ProfileFieldChange, error)
 	CompleteOnboarding(userID uint) error
 	// OnboardingStatus reports the dynamic follow requirement (required) and the
 	// user's current following count for the first-time onboarding gate.

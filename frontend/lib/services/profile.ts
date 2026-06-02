@@ -24,6 +24,8 @@ interface BackendProfileResponse {
   is_blocked_by?: boolean;
   is_muted?: boolean;
   onboarding_completed?: boolean;
+  name_change_available_at?: string | null;
+  username_change_available_at?: string | null;
 }
 
 // Frontend model — used throughout components
@@ -47,6 +49,8 @@ export interface UserProfile {
   is_muted?: boolean;
   onboarding_completed?: boolean;
   created_at?: string;
+  name_change_available_at?: string | null;
+  username_change_available_at?: string | null;
 }
 
 function mapProfile(raw: BackendProfileResponse): UserProfile {
@@ -70,6 +74,8 @@ function mapProfile(raw: BackendProfileResponse): UserProfile {
     is_muted: raw.is_muted,
     onboarding_completed: raw.onboarding_completed ?? false,
     created_at: raw.created_at,
+    name_change_available_at: raw.name_change_available_at ?? null,
+    username_change_available_at: raw.username_change_available_at ?? null,
   };
 }
 
@@ -153,6 +159,28 @@ export async function getProfileByUserId(userId: number | string, token: string)
 }
 
 export const getProfile = getProfileByUserId;
+
+export interface UsernameChange {
+  old_username: string;
+  new_username: string;
+  changed_at: string;
+}
+
+export interface UsernameHistory {
+  count: number;
+  changes: UsernameChange[];
+}
+
+export async function getUsernameHistory(
+  userId: number | string,
+  token: string
+): Promise<UsernameHistory> {
+  const raw = await api.get<{ count?: number; changes?: UsernameChange[] }>(
+    `/api/profile/${userId}/username-history`,
+    token
+  );
+  return { count: raw.count ?? 0, changes: raw.changes ?? [] };
+}
 
 export async function updateMyProfile(
   params: UpdateProfileParams,

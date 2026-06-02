@@ -8,6 +8,6 @@ type IEmailService interface {
 	StartWorker(ctx context.Context)
 	SendWelcomeOTP(to, code string) error
 	SendPasswordResetOTP(to, code string) error
-	SendLoginOTP(to, code string) error
+	SendLoginAlert(to, yesURL, noURL, device, ip string) error
 	SendChangePasswordOTP(to, code string) error
 }

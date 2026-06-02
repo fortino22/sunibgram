@@ -142,8 +142,8 @@ All routes prefixed with the group name (no `/api/` prefix).
 | Method | Endpoint | Notes |
 |---|---|---|
 | POST | /auth/register | multipart/form-data |
-| POST | /auth/login | JSON: `{email, password, otp}` |
-| POST | /auth/login/otp/send | JSON: `{email}` — sends OTP before login |
+| POST | /auth/login | JSON: `{email, password}` — issues tokens, fires "was this you?" alert email |
+| GET | /auth/login/verify | public; `?token=&action=yes\|no` from alert email — `no` revokes that session |
 | POST | /auth/refresh | JSON: `{sid}` — uses httpOnly sid cookie |
 | POST | /auth/logout | |
 | PUT | /auth/change-password | JSON: `{old_password, new_password, confirm_password}` |

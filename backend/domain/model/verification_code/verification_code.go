@@ -13,7 +13,6 @@ type VerificationType string
 const (
 	VerificationTypeRegister       VerificationType = "REGISTER"
 	VerificationTypeForgotPassword VerificationType = "FORGOT_PASSWORD"
-	VerificationTypeLogin          VerificationType = "LOGIN"
 	VerificationTypeChangePassword VerificationType = "CHANGE_PASSWORD"
 )
 
@@ -39,9 +38,9 @@ func ValidateVerificationEmail(email string) error {
 
 func ValidateVerificationType(t VerificationType) error {
 	switch t {
-	case VerificationTypeRegister, VerificationTypeForgotPassword, VerificationTypeLogin, VerificationTypeChangePassword:
+	case VerificationTypeRegister, VerificationTypeForgotPassword, VerificationTypeChangePassword:
 		return nil
 	default:
-		return errors.New("type must be REGISTER, FORGOT_PASSWORD, LOGIN, or CHANGE_PASSWORD")
+		return errors.New("type must be REGISTER, FORGOT_PASSWORD, or CHANGE_PASSWORD")
 	}
 }

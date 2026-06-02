@@ -54,8 +54,10 @@ interface MainWrapperProps {
 
 export function MainWrapper({ children }: MainWrapperProps) {
   const pathname = usePathname();
-  const isAuthPath = AUTH_PATHS.some((p) => pathname.startsWith(p));
-  const hideRightPanel = NO_RIGHT_PANEL_PATHS.some((p) => pathname.startsWith(p));
+  // Match exact path or a sub-path boundary so e.g. "/about" does not swallow
+  // "/about-profile" (an in-app page that needs the full shell).
+  const isAuthPath = AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  const hideRightPanel = NO_RIGHT_PANEL_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
   if (isAuthPath) {
     return <>{children}</>;

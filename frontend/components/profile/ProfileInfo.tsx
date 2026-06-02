@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { BookOpen, Calendar } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
@@ -215,10 +216,10 @@ export function ProfileInfo({
             </span>
           )}
           {user.joinedMonth && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-tertiary)' }}>
+            <Link href={`/about-profile/${userId}`} className="hover-underline" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-tertiary)', textDecoration: 'none' }}>
               <Calendar size={15} strokeWidth={1.6} />
               Joined {user.joinedMonth}
-            </span>
+            </Link>
           )}
         </div>
 

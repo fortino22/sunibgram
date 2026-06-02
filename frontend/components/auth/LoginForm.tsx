@@ -71,7 +71,7 @@ export function LoginForm({
             <input
               {...register('password')}
               type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
+              placeholder="••••••••••"
               autoComplete="current-password"
               style={{ width: '100%', padding: '10px 42px 10px 14px', background: 'var(--bg-subtle)', border: `1.5px solid ${errors.password ? 'var(--coral)' : 'var(--border)'}`, borderRadius: 10, fontSize: 14, color: 'var(--text)', outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.15s ease' }}
               onFocus={(event) => {

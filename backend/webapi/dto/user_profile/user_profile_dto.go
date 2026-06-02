@@ -25,10 +25,26 @@ type UserProfileResponse struct {
 	OnboardingCompleted bool                         `json:"onboarding_completed"`
 	Faculty             *threaddto.FeedAuthorFaculty `json:"faculty,omitempty"`
 	CreatedAt           utils.FormattedTime          `json:"created_at"`
+	// *ChangeAvailableAt are set only on self-view, and only while the field is
+	// within its change cooldown — the edit UI uses them to disable the field
+	// and show when the next change is allowed. Omitted otherwise.
+	NameChangeAvailableAt     *utils.FormattedTime `json:"name_change_available_at,omitempty"`
+	UsernameChangeAvailableAt *utils.FormattedTime `json:"username_change_available_at,omitempty"`
 }
 
 // OnboardingStatusResponse tells the frontend how many people the first-time
 // user must follow (capped at the followable pool) and how many they already do.
+type UsernameChangeItem struct {
+	OldUsername string              `json:"old_username"`
+	NewUsername string              `json:"new_username"`
+	ChangedAt   utils.FormattedTime `json:"changed_at"`
+}
+
+type UsernameHistoryResponse struct {
+	Count   int                  `json:"count"`
+	Changes []UsernameChangeItem `json:"changes"`
+}
+
 type OnboardingStatusResponse struct {
 	RequiredFollows int `json:"required_follows"`
 	FollowingCount  int `json:"following_count"`

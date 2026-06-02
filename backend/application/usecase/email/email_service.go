@@ -14,6 +14,11 @@ import (
 
 const emailQueueKey = "email:queue"
 
+// loginLogoSVG is the Sunibgram bolt mark (from frontend/components/ui/Logo.tsx)
+// flattened to a plain inline SVG. Rendered in supporting mail clients
+// (Apple Mail etc.); Gmail strips inline SVG, leaving the wordmark as fallback.
+const loginLogoSVG = `<svg width="24" height="24" viewBox="0 0 384 512" fill="#0f1419" style="display:block"><path d="M236 0 L40 300 L190 300 L150 512 L344 224 L190 224 Z"/></svg>`
+
 type emailJob struct {
 	To      string `json:"to"`
 	Subject string `json:"subject"`
@@ -72,15 +77,41 @@ func (s *EmailService) SendWelcomeOTP(to, code string) error {
 	return s.QueueMail(context.Background(), to, subject, body)
 }
 
-func (s *EmailService) SendLoginOTP(to, code string) error {
-	subject := "Sunibgram — Login Verification Code"
+// SendLoginAlert notifies the account owner that a new sign-in just happened and
+// lets them disavow it. The two links carry a one-time token (no auth required, so
+// they work from any device); "No" revokes the session that was just created.
+func (s *EmailService) SendLoginAlert(to, yesURL, noURL, device, ip string) error {
+	subject := "Sunibgram — New Sign-In to Your Account"
+	const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 	body := fmt.Sprintf(`
-		<div style="font-family:sans-serif;max-width:480px;margin:auto">
-			<h2>Login Verification</h2>
-			<p>Use the code below to complete your login. It expires in <strong>10 minutes</strong>.</p>
-			<div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#f4f4f4;text-align:center;border-radius:8px">%s</div>
-			<p style="color:#888;font-size:12px;margin-top:16px">If you didn't attempt to log in, please change your password immediately.</p>
-		</div>`, code)
+		<style>a.btn-yes:hover{background:#272c30 !important}a.btn-no:hover{background:#f7f9f9 !important}</style>
+		<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#ffffff;margin:0;padding:24px 0">
+		<tr><td align="center">
+		<table role="presentation" width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%%;background:#ffffff;border:1px solid #eff3f4;border-radius:16px">
+		<tr><td style="padding:32px 32px 28px 32px;font-family:%[1]s">
+			<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:24px"><tr>
+				<td style="vertical-align:middle;padding-right:8px;line-height:0;color:#0f1419">%[6]s</td>
+				<td style="vertical-align:middle;font-size:20px;font-weight:800;color:#0f1419;letter-spacing:-0.02em">Sunibgram</td>
+			</tr></table>
+			<div style="font-size:23px;font-weight:800;color:#0f1419;letter-spacing:-0.02em;line-height:1.3;margin-bottom:8px">New sign-in detected</div>
+			<p style="font-size:15px;color:#536471;line-height:1.5;margin:0 0 20px 0">Someone just signed in to your Sunibgram account. If this was you, no action is needed.</p>
+			<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#f7f9f9;border-radius:12px;margin:0 0 24px 0">
+			<tr><td style="padding:14px 16px;font-family:%[1]s;font-size:14px;color:#0f1419;line-height:1.6">
+				<span style="color:#536471">Device</span><br>%[2]s<br>
+				<span style="color:#536471">IP address</span><br>%[3]s
+			</td></tr></table>
+			<p style="font-size:15px;font-weight:700;color:#0f1419;margin:0 0 16px 0">Was this you?</p>
+			<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+				<td style="padding-right:10px">
+					<a class="btn-yes" href="%[4]s" style="display:inline-block;padding:11px 24px;background:#0f1419;color:#ffffff;text-decoration:none;border-radius:9999px;font-family:%[1]s;font-size:15px;font-weight:700">Yes, it's me</a>
+				</td>
+				<td>
+					<a class="btn-no" href="%[5]s" style="display:inline-block;padding:11px 24px;background:#ffffff;color:#0f1419;text-decoration:none;border:1px solid #cfd9de;border-radius:9999px;font-family:%[1]s;font-size:15px;font-weight:700">No, it isn't me</a>
+				</td>
+			</tr></table>
+			<p style="font-size:13px;color:#536471;line-height:1.5;margin:24px 0 0 0">If you don't recognize this sign-in, tap <strong style="color:#0f1419">No, it isn't me</strong> to log that device out immediately, then change your password.</p>
+		</td></tr></table>
+		</td></tr></table>`, font, device, ip, yesURL, noURL, loginLogoSVG)
 	return s.QueueMail(context.Background(), to, subject, body)
 }
 
