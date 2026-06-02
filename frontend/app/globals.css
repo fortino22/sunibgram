@@ -425,6 +425,21 @@ body {
   to   { background-position: 200% 0; }
 }
 
+/* "Fox" title (sidebar label + page header): flowing blue gradient,
+   matching the About hero. Separate from .summary-shimmer (rainbow) so the
+   streaming summary header keeps its own colours. */
+.fox-blue-title {
+  background: linear-gradient(90deg, #4facfe, #00f2fe, #00ccff, #667eea, #4facfe);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: summary-shimmer 2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fox-blue-title { animation: none; }
+}
+
 /* Rainbow-recolored fox: the same flowing 7-colour gradient as
    .summary-shimmer, but clipped to a fox silhouette via `mask` instead of
    text. Set the mask image inline (sidebar logo, or a sleep-sprite frame).

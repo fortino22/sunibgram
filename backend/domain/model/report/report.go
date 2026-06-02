@@ -53,6 +53,27 @@ type ReportDetail struct {
 	ReportedUser *ReportUserInfo
 }
 
+// ReportedThreadGroup is one reported thread plus every report filed against it.
+type ReportedThreadGroup struct {
+	ThreadID    uint
+	Thread      threadmodel.Thread
+	ReportCount int
+	Reports     []ReportDetail
+}
+
+// ReportedUserGroup is one reported user plus every report filed against them.
+type ReportedUserGroup struct {
+	UserID      uint
+	ReportCount int
+	Reports     []ReportDetail
+}
+
+// ReportedEntities is the combined moderation view: reported threads + reported users.
+type ReportedEntities struct {
+	Threads []ReportedThreadGroup
+	Users   []ReportedUserGroup
+}
+
 func (r *Report) BeforeCreate(tx *gorm.DB) error {
 	if r.ID == uuid.Nil {
 		r.ID = uuid.New()

@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	verificationcodemodel "github.com/sunibgram/domain/model/verification_code"
+	authsvciface "github.com/sunibgram/domain/service/auth"
 	verificationsvciface "github.com/sunibgram/domain/service/verification"
 	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/infrastructure/ratelimit"
@@ -17,13 +18,15 @@ import (
 
 type VerificationController struct {
 	verificationService verificationsvciface.IVerificationService
+	authService         authsvciface.IAuthService
 	ipSendLimiter       *ratelimit.RateLimiter
 	ipVerifyLimiter     *ratelimit.RateLimiter
 }
 
-func NewVerificationController(verificationService verificationsvciface.IVerificationService, c *cache.Cache) *VerificationController {
+func NewVerificationController(verificationService verificationsvciface.IVerificationService, authService authsvciface.IAuthService, c *cache.Cache) *VerificationController {
 	return &VerificationController{
 		verificationService: verificationService,
+		authService:         authService,
 		ipSendLimiter:       ratelimit.New(c, "verification_send_ip", 30, time.Hour),
 		ipVerifyLimiter:     ratelimit.New(c, "verification_verify_ip", 60, time.Hour),
 	}
@@ -39,6 +42,13 @@ func (c *VerificationController) SendLoginOTP(ctx *fiber.Ctx) error {
 	}
 
 	req.Email = strings.TrimSpace(req.Email)
+
+	// Verify email + password before issuing an OTP. A wrong password must fail
+	// here (so the UI shows "invalid email or password" and stays on the login
+	// step) instead of emailing a code that only fails at the final /login step.
+	if err := c.authService.VerifyCredentials(req.Email, req.Password); err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
+	}
 
 	if err := c.verificationService.SendCode(req.Email, verificationcodemodel.VerificationTypeLogin); err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)

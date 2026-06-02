@@ -27,6 +27,13 @@ type UserProfileResponse struct {
 	CreatedAt           utils.FormattedTime          `json:"created_at"`
 }
 
+// OnboardingStatusResponse tells the frontend how many people the first-time
+// user must follow (capped at the followable pool) and how many they already do.
+type OnboardingStatusResponse struct {
+	RequiredFollows int `json:"required_follows"`
+	FollowingCount  int `json:"following_count"`
+}
+
 type UpdateProfileRequest struct {
 	Name         string `json:"name,omitempty"`
 	Username     string `json:"username,omitempty"`

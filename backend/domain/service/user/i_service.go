@@ -11,4 +11,5 @@ type IUserService interface {
 	GetAllPaginated(page, limit int) ([]usermodel.User, int64, error)
 	GetByID(id uint) (*usermodel.User, error)
 	GetProfile(userID uint) (*usermodel.User, *userstatmodel.UserStat, *userprofilemodel.UserProfile, error)
+	CountUsersByRole(roleName string) (int64, error)
 }

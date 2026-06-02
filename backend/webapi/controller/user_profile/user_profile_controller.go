@@ -78,6 +78,24 @@ func (c *UserProfileController) CompleteOnboarding(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(fiber.Map{"message": "onboarding completed successfully"})
 }
 
+// GetOnboardingStatus reports the dynamic follow requirement (capped at the
+// followable pool) and the caller's current following count, so the frontend
+// gate can size itself and allow skipping when the app has no one to follow.
+func (c *UserProfileController) GetOnboardingStatus(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	required, following, err := c.profileService.OnboardingStatus(claims.UserID)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(userprofiledto.OnboardingStatusResponse{
+		RequiredFollows: required,
+		FollowingCount:  following,
+	})
+}
+
 func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
 	id, ok := ctrlshared.ParseIDParam(ctx, "id", "user")
 	if !ok {

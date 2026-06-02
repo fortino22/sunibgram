@@ -29,5 +29,10 @@ type IUserRepository interface {
 	UpdatePremiumByIDs(userIDs []uint, premium bool) error
 	IsOnboarded(userID uint) (bool, error)
 	CompleteOnboarding(userID uint) error
+	// CountFollowablePeers counts non-admin users excluding the given user — the
+	// pool of people a first-time user can follow to clear the onboarding gate.
+	CountFollowablePeers(excludeUserID uint) (int64, error)
+	// CountByRoleName counts users whose role matches the given role name.
+	CountByRoleName(roleName string) (int64, error)
 	SearchForShare(ctx context.Context, query string, excludeUserID uint) ([]exploremodel.ExploreUserResult, error)
 }

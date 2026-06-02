@@ -41,6 +41,7 @@ import (
 	threadpollrepoiface "github.com/sunibgram/domain/repository/thread_poll"
 	threadsummaryrepoiface "github.com/sunibgram/domain/repository/thread_summary"
 	trendreportrepoiface "github.com/sunibgram/domain/repository/trend_report"
+	trendingthreadrepoiface "github.com/sunibgram/domain/repository/trending_thread"
 	trendinguserrepoiface "github.com/sunibgram/domain/repository/trending_user"
 	trendingusersnapshotrepoiface "github.com/sunibgram/domain/repository/trending_user_snapshot"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
@@ -91,6 +92,7 @@ import (
 	threadpollrepo "github.com/sunibgram/infrastructure/repository/thread_poll"
 	threadsummaryrepo "github.com/sunibgram/infrastructure/repository/thread_summary"
 	trendreportrepo "github.com/sunibgram/infrastructure/repository/trend_report"
+	trendingthreadrepo "github.com/sunibgram/infrastructure/repository/trending_thread"
 	trendinguserrepo "github.com/sunibgram/infrastructure/repository/trending_user"
 	trendingusersnapshotrepo "github.com/sunibgram/infrastructure/repository/trending_user_snapshot"
 	userrepo "github.com/sunibgram/infrastructure/repository/user"
@@ -152,6 +154,7 @@ type Repositories struct {
 	EventThreadPin              eventthreadpinrepoiface.IEventThreadPinRepository
 	TrendingUser                trendinguserrepoiface.ITrendingUserRepository
 	TrendingUserSnapshot        trendingusersnapshotrepoiface.ITrendingUserSnapshotRepository
+	TrendingThread              trendingthreadrepoiface.ITrendingThreadRepository
 	TrendReport                 trendreportrepoiface.ITrendReportRepository
 }
 
@@ -208,6 +211,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		EventThreadPin:              eventthreadpinrepo.NewEventThreadPinRepository(w, r, c),
 		TrendingUser:                trendinguserrepo.NewTrendingUserRepository(r, c),
 		TrendingUserSnapshot:        trendingusersnapshotrepo.NewTrendingUserSnapshotRepository(w, r, c),
+		TrendingThread:              trendingthreadrepo.NewTrendingThreadRepository(r, c),
 		TrendReport:                 trendreportrepo.NewTrendReportRepository(w, r),
 	}
 }

@@ -145,6 +145,10 @@ type FeedMeta struct {
 	Total int64 `json:"total"`
 	Page  int   `json:"page"`
 	Limit int   `json:"limit"`
+	// MaxThreadID is the highest feed-eligible thread id at request time. Sent only
+	// on the For You feed's page 1 so the client can freeze a "new posts" watermark
+	// that starts the banner count at 0 on a fresh load. Omitted (0) elsewhere.
+	MaxThreadID uint `json:"max_thread_id,omitempty"`
 }
 
 type PaginatedFeedResponse struct {

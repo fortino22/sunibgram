@@ -196,9 +196,19 @@ func (c *ThreadController) GetRoots(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
+	meta := threaddto.FeedMeta{Total: total, Page: page, Limit: limit}
+	// Page 1 only: hand the client the true highest feed-eligible thread id so it can
+	// freeze a "new posts" watermark. Page-1 ordering is fresh/feed_score, not id, so
+	// the client cannot derive this from the returned threads. Skipped on scroll pages.
+	if page == 1 {
+		if maxID, err := c.threadService.GetMaxForYouThreadID(ctx.Context(), claims.UserID); err == nil {
+			meta.MaxThreadID = maxID
+		}
+	}
+
 	return ctx.Status(fiber.StatusOK).JSON(threaddto.PaginatedFeedResponse{
 		Data: c.BuildUserFeedItemsNoPin(threads, parents, &claims.UserID),
-		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
+		Meta: meta,
 	})
 }
 

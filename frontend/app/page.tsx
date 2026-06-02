@@ -161,24 +161,42 @@ export default function HomePage() {
   const activeThreads = dedupeThreads(activeQuery.data?.pages.flatMap((p) => p.data) ?? []);
   const pinnedCommunities = pinnedCommunitiesQuery.data?.data ?? [];
 
-  // For You "new posts" banner.
-  // sinceId must be MONOTONIC across the session — never decrease. The /feed/refresh
-  // endpoint reshuffles the per-user seed, so the new page 1 can contain a random
-  // subset of older threads with a lower max-id. If sinceId dropped, the next
-  // new-count poll would return all threads above the lower id and the banner would
-  // re-appear immediately after the user just clicked it (infinite re-trigger).
+  // For You "new posts" banner watermark.
+  // sinceId is the highest feed-eligible thread id that existed when the feed first
+  // loaded, captured ONCE from page 1's meta.max_thread_id (the backend computes the
+  // true global max — page-1 ordering is fresh/feed_score, not id, so we cannot derive
+  // it from the visible threads). Frozen for the session and only ever advanced, never
+  // decreased: the count of thread_id > sinceId is therefore 0 on a fresh load and grows
+  // only for posts created afterward. Advancing on banner click (below) prevents the just-
+  // prepended posts from re-triggering the banner.
   const forYouThreads = dedupeThreads(threadsQuery.data?.pages.flatMap((p) => p.data) ?? []);
   const sessionMaxIdRef = useRef(0);
-  const currentMaxId = forYouThreads.length ? Math.max(...forYouThreads.map((t) => t.id)) : 0;
-  if (currentMaxId > sessionMaxIdRef.current) sessionMaxIdRef.current = currentMaxId;
-  const sinceId = sessionMaxIdRef.current;
+  const [sinceId, setSinceId] = useState(0);
+  const feedMaxThreadId = threadsQuery.data?.pages[0]?.meta.max_thread_id ?? 0;
+  useEffect(() => {
+    // Seed the watermark from page 1 once. Guard on ref so a later refetch with a
+    // higher max_thread_id (e.g. background poll) does not silently swallow new posts.
+    if (feedMaxThreadId > 0 && sessionMaxIdRef.current === 0) {
+      sessionMaxIdRef.current = feedMaxThreadId;
+      setSinceId(feedMaxThreadId);
+    }
+  }, [feedMaxThreadId]);
 
   const newCount = useFeedNewCount(sinceId, isForYou);
   const showNewPosts = useShowNewPosts();
 
   function handleShowNew() {
     if (showNewPosts.isPending) return;
-    showNewPosts.mutate(sinceId);
+    showNewPosts.mutate(sinceId, {
+      onSuccess: (result) => {
+        // Advance the watermark past the just-prepended posts so the next poll counts
+        // only threads newer than these. Never decrease.
+        if (result.maxId > sessionMaxIdRef.current) {
+          sessionMaxIdRef.current = result.maxId;
+          setSinceId(result.maxId);
+        }
+      },
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

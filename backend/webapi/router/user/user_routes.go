@@ -6,11 +6,13 @@ import (
 	explorectrl "github.com/sunibgram/webapi/controller/explore"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
 	notificationusermutectrl "github.com/sunibgram/webapi/controller/notification_user_mute"
+	userctrl "github.com/sunibgram/webapi/controller/user"
 	userblockctrl "github.com/sunibgram/webapi/controller/user_block"
 )
 
-func RegisterUserRoutes(api fiber.Router, followCtrl *followctrl.FollowController, exploreCtrl *explorectrl.ExploreController, blockCtrl *userblockctrl.UserBlockController, muteCtrl *notificationusermutectrl.NotificationUserMuteController, auth fiber.Handler) {
+func RegisterUserRoutes(api fiber.Router, followCtrl *followctrl.FollowController, exploreCtrl *explorectrl.ExploreController, blockCtrl *userblockctrl.UserBlockController, muteCtrl *notificationusermutectrl.NotificationUserMuteController, userCtrl *userctrl.UserController, auth fiber.Handler) {
 	users := api.Group("/users")
+	users.Get("/count", userCtrl.CountRegularUsers) // public — no auth
 	users.Get("/suggestions/faculty", auth, exploreCtrl.GetFacultySuggestions)
 	users.Get("/suggestions/mutual", auth, exploreCtrl.GetMutualSuggestions)
 	users.Get("/suggested/preview", auth, exploreCtrl.GetSuggestedPeoplePreview)

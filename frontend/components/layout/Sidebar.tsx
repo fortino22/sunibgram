@@ -111,7 +111,7 @@ function SidebarItem({ item, active, collapsed }: SidebarItemProps) {
         <Icon name={item.icon} size={24} color={iconColor} strokeWidth={active ? 2 : 1.7} />
       )}
       <span
-        className={`sidebar-label${item.icon === 'fox' ? ' summary-shimmer' : ''}`}
+        className={`sidebar-label${item.icon === 'fox' ? ' fox-blue-title' : ''}`}
         style={{
           fontWeight: active ? 700 : 500,
           fontSize: 18,

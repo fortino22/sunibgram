@@ -26,7 +26,12 @@ type Step = 'form' | 'otp' | 'done';
 
 const passwordSchema = z
   .object({
-    newPassword: z.string().min(8, 'Min 8 characters').max(64, 'Max 64 characters'),
+    newPassword: z
+      .string()
+      .min(10, 'Password must be at least 10 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number'),
     confirmPassword: z.string().min(1, 'Confirm your new password'),
   })
   .refine((v) => v.newPassword === v.confirmPassword, {
@@ -53,6 +58,7 @@ export default function PasswordSettingsPage() {
     formState: { errors },
   } = useForm<PasswordValues>({
     resolver: zodResolver(passwordSchema),
+    mode: 'onChange',
     defaultValues: { newPassword: '', confirmPassword: '' },
   });
 
@@ -172,13 +178,13 @@ export default function PasswordSettingsPage() {
               label="New password"
               htmlFor="newPassword"
               error={errors.newPassword?.message}
-              hint="Use at least 8 characters."
+              hint="At least 10 characters, with an uppercase, lowercase, and number."
             >
               <input
                 id="newPassword"
                 type="password"
                 autoComplete="new-password"
-                {...register('newPassword')}
+                {...register('newPassword', { deps: 'confirmPassword' })}
                 style={settingsInputStyle(!!errors.newPassword)}
               />
             </SettingsField>
@@ -205,10 +211,13 @@ export default function PasswordSettingsPage() {
           </form>
         ) : step === 'otp' ? (
           <div>
-            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 18 }}>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>
               We sent a 6-digit code to{' '}
               <strong style={{ color: 'var(--text)' }}>{email}</strong>. Enter it below to
               confirm the password change.
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.5, marginBottom: 18 }}>
+              Don&apos;t see it? Please check your <strong style={{ color: 'var(--text-secondary)' }}>spam</strong> or junk folder.
             </p>
 
             <div style={{ marginBottom: 18 }}>
