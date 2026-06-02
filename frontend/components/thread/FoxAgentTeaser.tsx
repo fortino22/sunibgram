@@ -28,6 +28,7 @@ export function FoxAgentTeaser() {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
+        width: '100%',
         height: '100%',
         minHeight: 440,
         padding: '48px 24px',
