@@ -4,6 +4,7 @@ import { useCallback, useRef, useState, type CSSProperties, type ReactNode } fro
 import { createPortal } from 'react-dom';
 import { Calendar, MapPin, AtSign, Globe } from 'lucide-react';
 import { useUsernameHistory } from '@/hooks/useUsernameHistory';
+import { useProfile } from '@/hooks/useProfile';
 
 const OPEN_DELAY = 350;
 const CLOSE_DELAY = 200;
@@ -49,6 +50,7 @@ export function JoinedHoverCard({ userId, joinedMonth, children, style }: Joined
 
   // Lazy: only fetch the count once the card is opening.
   const { data: history } = useUsernameHistory(open ? userId : null);
+  const { data: profile } = useProfile(open ? userId : undefined);
   const count = history?.count ?? 0;
 
   const computePos = useCallback(() => {
@@ -108,7 +110,7 @@ export function JoinedHoverCard({ userId, joinedMonth, children, style }: Joined
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <Row icon={<Calendar size={16} strokeWidth={1.8} />} label="Date joined" value={joinedMonth} />
-              <Row icon={<MapPin size={16} strokeWidth={1.8} />} label="Account based in" value="Indonesia" />
+              <Row icon={<MapPin size={16} strokeWidth={1.8} />} label="Account based in" value={profile?.faculty_location?.name ?? 'Indonesia'} />
               <Row
                 icon={<AtSign size={16} strokeWidth={1.8} />}
                 label={`${count} username ${count === 1 ? 'change' : 'changes'}`}

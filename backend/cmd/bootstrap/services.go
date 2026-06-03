@@ -14,6 +14,7 @@ import (
 	chatroomuc "github.com/sunibgram/application/usecase/chat_room"
 	communityuc "github.com/sunibgram/application/usecase/community"
 	communityactionconfirmationuc "github.com/sunibgram/application/usecase/community_action_confirmation"
+	communityeventuc "github.com/sunibgram/application/usecase/community_event"
 	communitypinuc "github.com/sunibgram/application/usecase/community_pin"
 	communityrequestuc "github.com/sunibgram/application/usecase/community_request"
 	communityruleuc "github.com/sunibgram/application/usecase/community_rule"
@@ -25,10 +26,12 @@ import (
 	eventthreadpinuc "github.com/sunibgram/application/usecase/event_thread_pin"
 	exploreuc "github.com/sunibgram/application/usecase/explore"
 	facultyuc "github.com/sunibgram/application/usecase/faculty"
+	facultylocationuc "github.com/sunibgram/application/usecase/faculty_location"
 	feedbackuc "github.com/sunibgram/application/usecase/feedback"
 	feedbackmediauc "github.com/sunibgram/application/usecase/feedback_media"
 	followuc "github.com/sunibgram/application/usecase/follow"
 	foxchatuc "github.com/sunibgram/application/usecase/fox_chat"
+	foxsessionuc "github.com/sunibgram/application/usecase/fox_session"
 	hashtaguc "github.com/sunibgram/application/usecase/hashtag"
 	likeuc "github.com/sunibgram/application/usecase/like"
 	notificationuc "github.com/sunibgram/application/usecase/notification"
@@ -63,6 +66,7 @@ import (
 	chatroomsvciface "github.com/sunibgram/domain/service/chat_room"
 	communitysvciface "github.com/sunibgram/domain/service/community"
 	communityactionconfirmationsvciface "github.com/sunibgram/domain/service/community_action_confirmation"
+	communityeventsvciface "github.com/sunibgram/domain/service/community_event"
 	communitymembersvciface "github.com/sunibgram/domain/service/community_member"
 	communitypinsvciface "github.com/sunibgram/domain/service/community_pin"
 	communityrequestsvciface "github.com/sunibgram/domain/service/community_request"
@@ -75,10 +79,12 @@ import (
 	eventthreadpinsvciface "github.com/sunibgram/domain/service/event_thread_pin"
 	exploresvciface "github.com/sunibgram/domain/service/explore"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
+	facultylocationsvciface "github.com/sunibgram/domain/service/faculty_location"
 	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
 	feedbackmediasvciface "github.com/sunibgram/domain/service/feedback_media"
 	followsvciface "github.com/sunibgram/domain/service/follow"
 	foxchatsvciface "github.com/sunibgram/domain/service/fox_chat"
+	foxsessionsvciface "github.com/sunibgram/domain/service/fox_session"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -120,6 +126,7 @@ type Services struct {
 	Hashtag                     hashtagsvciface.IHashtagService
 	ThreadSummary               threadsummarysvciface.IThreadSummaryService
 	FoxChat                     foxchatsvciface.IFoxChatService
+	FoxSession                  foxsessionsvciface.IFoxSessionService
 	Thread                      threadsvciface.IThreadService
 	Event                       eventsvciface.IEventService
 	Explore                     exploresvciface.IExploreService
@@ -133,6 +140,7 @@ type Services struct {
 	Report                      reportsvciface.IReportService
 	Community                   communitysvciface.ICommunityService
 	CommunityActionConfirmation communityactionconfirmationsvciface.ICommunityActionConfirmationService
+	CommunityEvent              communityeventsvciface.ICommunityEventService
 	CommunityMember             communitymembersvciface.ICommunityMemberService
 	CommunityRequest            communityrequestsvciface.ICommunityRequestService
 	CommunityRule               communityrulesvciface.ICommunityRuleService
@@ -142,6 +150,7 @@ type Services struct {
 	EventParticipant            eventparticipantsvciface.IEventParticipantService
 	EventActionConfirmation     eventactionconfirmationsvciface.IEventActionConfirmationService
 	Faculty                     facultysvciface.IFacultyService
+	FacultyLocation             facultylocationsvciface.IFacultyLocationService
 	Feedback                    feedbacksvciface.IFeedbackService
 	FeedbackMedia               feedbackmediasvciface.IFeedbackMediaService
 	Order                       ordersvciface.IOrderService
@@ -159,13 +168,13 @@ type Services struct {
 }
 
 func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
-	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.NotificationUserMute, repos.UserProfile, repos.ProfileFieldChange, repos.UserFaculty, repos.Cache, ext.Storage)
+	profile := userprofileuc.NewUserProfileService(repos.User, repos.Follow, repos.UserBlock, repos.NotificationUserMute, repos.UserProfile, repos.ProfileFieldChange, repos.UserFaculty, repos.FacultyLocation, repos.Cache, ext.Storage)
 	notification := notificationuc.NewNotificationService(repos.Notification, repos.User, repos.UserProfile, repos.UserFaculty, ext.Storage, ext.SocketHub, repos.NotificationUserMute)
 	follow := followuc.NewFollowService(repos.Follow, repos.User, repos.UserBlock, repos.Cache, notification)
 	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
 	notificationUserMute := notificationusermuteuc.NewNotificationUserMuteService(repos.NotificationUserMute, repos.User)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
-	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, repos.ThreadSummary, repos.FoxHistory, ext.OpenAI)
+	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, repos.ThreadSummary, repos.FoxSession, ext.OpenAI)
 	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, repos.NotificationUserMute, notification, summary, repos.User)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, repos.BookmarkCollection)
@@ -190,9 +199,10 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		NotificationUserMute:        notificationUserMute,
 		Hashtag:                     hashtag,
 		ThreadSummary:               summary,
-		FoxChat:                     foxchatuc.NewFoxChatService(repos.FoxHistory, ext.DeepSeek),
+		FoxChat:                     foxchatuc.NewFoxChatService(repos.FoxSession, ext.DeepSeek),
+		FoxSession:                  foxsessionuc.NewFoxSessionService(repos.FoxSession),
 		Thread:                      thread,
-		Event:                       eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread, eventActionConfirmation),
+		Event:                       eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread, eventActionConfirmation, repos.FacultyLocation),
 		Explore:                     exploreuc.NewExploreService(repos.Explore, repos.Thread, repos.UserSettings, repos.Follow),
 		ThreadMedia:                 threadmediauc.NewThreadMediaService(repos.Thread, repos.ThreadMedia, ext.Storage),
 		Like:                        like,
@@ -204,6 +214,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Report:                      reportuc.NewReportService(repos.Report, repos.Violation, repos.User, repos.Thread, profile, repos.Cache),
 		Community:                   communityuc.NewCommunityService(repos.Community, repos.CommunityMember, repos.User, repos.UserProfile, repos.Follow, repos.UserBlock, repos.Category, repos.CommunityRule, repos.CommunityPin, repos.Cache, ext.Storage, communityActionConfirmation),
 		CommunityActionConfirmation: communityActionConfirmation,
+		CommunityEvent:              communityeventuc.NewCommunityEventService(repos.CommunityEvent, repos.CommunityMember, repos.Community, repos.User, repos.Follow, ext.Storage, notification, repos.UserBlock, repos.NotificationUserMute),
 		CommunityMember:             communityuc.NewCommunityMemberService(repos.Community, repos.CommunityMember, repos.Follow, repos.UserBlock, repos.Cache, communityActionConfirmation),
 		CommunityRequest:            communityrequestuc.NewCommunityRequestService(repos.Community, repos.CommunityMember, repos.CommunityRequest, repos.UserBlock, repos.Cache),
 		CommunityRule:               communityruleuc.NewCommunityRuleService(repos.Community, repos.CommunityRule),
@@ -212,6 +223,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		EventPin:                    eventpinuc.NewEventPinService(repos.EventPin, repos.Event),
 		EventParticipant:            eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event, repos.UserBlock),
 		Faculty:                     facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
+		FacultyLocation:             facultylocationuc.NewFacultyLocationService(repos.FacultyLocation),
 		Feedback:                    feedbackuc.NewFeedbackService(repos.Feedback),
 		FeedbackMedia:               feedbackmediauc.NewFeedbackMediaService(repos.FeedbackMedia, ext.Storage),
 		Order:                       orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),

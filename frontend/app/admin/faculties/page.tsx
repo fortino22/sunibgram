@@ -48,14 +48,15 @@ export default function AdminFacultiesPage() {
   });
 
   const columns: Column<Faculty>[] = [
-    { key: 'id',    header: 'ID',    render: (r) => r.faculty_id, width: 80 },
-    { key: 'name',  header: 'Name',  render: (r) => <span style={{ fontWeight: 600 }}>{r.faculty_name}</span> },
-    { key: 'users', header: 'Users', render: (r) => r.total_users ?? 0 },
+    { key: 'id',    header: 'ID',    width: 80, sortValue: (r) => r.faculty_id, render: (r) => <code style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>#{r.faculty_id}</code> },
+    { key: 'name',  header: 'Name',  sortValue: (r) => r.faculty_name?.toLowerCase(), render: (r) => <span style={{ fontWeight: 600 }}>{r.faculty_name}</span> },
+    { key: 'users', header: 'Users', align: 'right', sortValue: (r) => r.total_users ?? 0, render: (r) => (r.total_users ?? 0).toLocaleString() },
     {
       key: 'actions',
       header: '',
+      align: 'right',
       render: (r) => (
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
           <button
             type="button"
             onClick={() => { setEditing(r); setName(r.faculty_name); }}
@@ -90,11 +91,18 @@ export default function AdminFacultiesPage() {
         </button>
       }
     >
-      {q.isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+      {q.isError ? (
+        <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : (
         <>
-          <DataTable<Faculty> columns={columns} rows={q.data?.data ?? []} rowKey={(r) => r.faculty_id} />
+          <DataTable<Faculty>
+            columns={columns}
+            rows={q.data?.data ?? []}
+            rowKey={(r) => r.faculty_id}
+            loading={q.isLoading}
+            empty="No faculties yet"
+            emptyIcon={<GraduationCap size={28} strokeWidth={1.6} style={{ color: 'var(--text-tertiary)' }} />}
+          />
           <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}

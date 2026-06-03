@@ -1,7 +1,29 @@
 import { api } from '../../api';
-import type { AdminEvent, MessageResponse, PaginatedResponse } from './types';
+import type { AdminEvent, AdminEventAudience, MessageResponse, PaginatedResponse } from './types';
 
-export function listAdminEvents(
+// Backend returns audience entries in snake_case (is_all_regions); normalise to
+// the camelCase shape the shared <AudienceBadges /> component expects.
+interface RawAudience {
+  id: number;
+  name: string;
+  region: string;
+  is_all_regions: boolean;
+}
+
+function mapAudience(raw?: RawAudience[]): AdminEventAudience[] {
+  return (raw ?? []).map((a) => ({
+    id: a.id,
+    name: a.name,
+    region: a.region,
+    isAllRegions: a.is_all_regions,
+  }));
+}
+
+function mapEvent(raw: AdminEvent & { audience?: RawAudience[] }): AdminEvent {
+  return { ...raw, audience: mapAudience(raw.audience as RawAudience[] | undefined) };
+}
+
+export async function listAdminEvents(
   token: string,
   params: { status?: string; name?: string; page?: number; limit?: number } = {}
 ): Promise<PaginatedResponse<AdminEvent>> {
@@ -10,11 +32,16 @@ export function listAdminEvents(
   if (params.name) qs.set('name', params.name);
   qs.set('page', String(params.page ?? 1));
   qs.set('limit', String(params.limit ?? 20));
-  return api.get<PaginatedResponse<AdminEvent>>(`/api/events/admin?${qs.toString()}`, token);
+  const res = await api.get<PaginatedResponse<AdminEvent & { audience?: RawAudience[] }>>(
+    `/api/events/admin?${qs.toString()}`,
+    token,
+  );
+  return { ...res, data: res.data.map(mapEvent) };
 }
 
-export function getEvent(token: string, id: string): Promise<AdminEvent> {
-  return api.get<AdminEvent>(`/api/events/${id}`, token);
+export async function getEvent(token: string, id: string): Promise<AdminEvent> {
+  const res = await api.get<AdminEvent & { audience?: RawAudience[] }>(`/api/events/${id}`, token);
+  return mapEvent(res);
 }
 
 export function approveEvent(token: string, id: string): Promise<MessageResponse> {

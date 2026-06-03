@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { type AuthUser, useAuthStore } from '@/stores/authStore';
 import { refreshOnce } from '@/lib/auth/refreshClient';
 
@@ -53,6 +54,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const isAuthenticated = useAuthStore((s: { isAuthenticated: boolean }) => s.isAuthenticated);
   const initialized = useAuthStore((s: { initialized: boolean }) => s.initialized);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const attemptedRef = useRef(false);
 
   useEffect(() => {
@@ -84,6 +86,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
         if (result.status === 'revoked') {
           logout();
+          queryClient.clear(); // revoked session: drop stale cache so re-login is clean
           setInitialized(true);
           router.replace('/login');
           return;
@@ -109,7 +112,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
       cancelled = true;
       attemptedRef.current = false; // allow remount to retry a cancelled attempt
     };
-  }, [router]);
+  }, [router, queryClient]);
 
   useEffect(() => {
     if (initialized && !isAuthenticated) {

@@ -83,13 +83,25 @@ func (r *UserProfileRepository) FindByUserID(userID uint) (*userprofilemodel.Use
 			return &profile, nil
 		}
 	}
-	if err := r.readDB.Where("user_id = ?", userID).First(&profile).Error; err != nil {
+	if err := r.readDB.Preload("FacultyLocation").Where("user_id = ?", userID).First(&profile).Error; err != nil {
 		return nil, err
 	}
 	if r.cache != nil {
 		r.cache.Set(ctx, key, profile, cache.DefaultTTL)
 	}
 	return &profile, nil
+}
+
+// UpdateFacultyLocation sets the user's home campus and invalidates the profile
+// cache. Separate from Upsert because Upsert writes a fixed column list.
+func (r *UserProfileRepository) UpdateFacultyLocation(userID uint, locationID *uint) error {
+	if err := r.writeDB.Model(&userprofilemodel.UserProfile{}).
+		Where("user_id = ?", userID).
+		UpdateColumn("faculty_location_id", locationID).Error; err != nil {
+		return err
+	}
+	r.invalidateUser(userID)
+	return nil
 }
 
 func (r *UserProfileRepository) FindByUserIDs(ids []uint) ([]userprofilemodel.UserProfile, error) {

@@ -183,6 +183,14 @@ func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	if bio := ctx.FormValue("bio"); bio != "" {
 		input.Bio = &bio
 	}
+	if raw := ctx.FormValue("faculty_location_id"); raw != "" {
+		lid, err := strconv.ParseUint(raw, 10, 64)
+		if err != nil {
+			return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid faculty_location_id"})
+		}
+		v := uint(lid)
+		input.FacultyLocationID = &v
+	}
 	if raw := ctx.FormValue("birthday_date"); raw != "" {
 		birthdayDate, err := ctrlshared.ParseDateField(raw, "birthday_date")
 		if err != nil {
@@ -283,10 +291,18 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 			FacultyName: fp.UserFaculty.Faculty.FacultyName,
 		}
 	}
+	var facultyLocation *userprofiledto.FacultyLocationMini
+	if fp.Profile != nil && fp.Profile.FacultyLocation != nil {
+		facultyLocation = &userprofiledto.FacultyLocationMini{
+			ID:     fp.Profile.FacultyLocation.ID,
+			Name:   fp.Profile.FacultyLocation.Name,
+			Region: fp.Profile.FacultyLocation.Region,
+		}
+	}
 	email := ""
 	// Self-view only: surface the per-field change cooldown (pre-computed by the
 	// service) so the edit UI can disable the field and show the next-allowed date.
-	var nameChangeAvailableAt, usernameChangeAvailableAt *utils.FormattedTime
+	var nameChangeAvailableAt, usernameChangeAvailableAt, facultyLocationChangeAvailableAt *utils.FormattedTime
 	if includeEmail {
 		email = fp.User.Email
 		if fp.NameChangeAvailableAt != nil {
@@ -296,6 +312,10 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 		if fp.UsernameChangeAvailableAt != nil {
 			w := utils.Wrap(*fp.UsernameChangeAvailableAt)
 			usernameChangeAvailableAt = &w
+		}
+		if fp.FacultyLocationChangeAvailableAt != nil {
+			w := utils.Wrap(*fp.FacultyLocationChangeAvailableAt)
+			facultyLocationChangeAvailableAt = &w
 		}
 	}
 	return userprofiledto.UserProfileResponse{
@@ -316,10 +336,12 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 		IsBlockedBy:    fp.IsBlockedBy,
 		IsMuted:        fp.IsMuted,
 		// Only meaningful on self-view; the frontend gate reads it off /profile/me.
-		OnboardingCompleted: includeEmail && fp.User.OnboardingCompleted,
-		Faculty:             faculty,
-		CreatedAt:           utils.Wrap(fp.User.CreatedAt),
-		NameChangeAvailableAt:     nameChangeAvailableAt,
-		UsernameChangeAvailableAt: usernameChangeAvailableAt,
+		OnboardingCompleted:              includeEmail && fp.User.OnboardingCompleted,
+		Faculty:                          faculty,
+		FacultyLocation:                  facultyLocation,
+		CreatedAt:                        utils.Wrap(fp.User.CreatedAt),
+		NameChangeAvailableAt:            nameChangeAvailableAt,
+		UsernameChangeAvailableAt:        usernameChangeAvailableAt,
+		FacultyLocationChangeAvailableAt: facultyLocationChangeAvailableAt,
 	}
 }

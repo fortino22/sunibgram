@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -17,6 +18,7 @@ import (
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
+	facultylocationrepoiface "github.com/sunibgram/domain/repository/faculty_location"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	notificationusermuterepoiface "github.com/sunibgram/domain/repository/notification_user_mute"
 	profilefieldchangerepoiface "github.com/sunibgram/domain/repository/profile_field_change"
@@ -32,15 +34,16 @@ func userAvatarCacheKey(userID uint) string {
 }
 
 type UserProfileService struct {
-	userRepo        userrepoiface.IUserRepository
-	followRepo      followrepoiface.IFollowRepository
-	blockRepo       userblockrepoiface.IUserBlockRepository
-	muteRepo        notificationusermuterepoiface.INotificationUserMuteRepository
-	profileRepo     userprofilerepoiface.IUserProfileRepository
-	pfcRepo         profilefieldchangerepoiface.IProfileFieldChangeRepository
-	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository
-	cacheRepo       cacherepoiface.ICacheRepository
-	storageUsecase  *storageuc.StorageUsecase
+	userRepo            userrepoiface.IUserRepository
+	followRepo          followrepoiface.IFollowRepository
+	blockRepo           userblockrepoiface.IUserBlockRepository
+	muteRepo            notificationusermuterepoiface.INotificationUserMuteRepository
+	profileRepo         userprofilerepoiface.IUserProfileRepository
+	pfcRepo             profilefieldchangerepoiface.IProfileFieldChangeRepository
+	userFacultyRepo     userfacultyrepoiface.IUserFacultyRepository
+	facultyLocationRepo facultylocationrepoiface.IFacultyLocationRepository
+	cacheRepo           cacherepoiface.ICacheRepository
+	storageUsecase      *storageuc.StorageUsecase
 }
 
 func NewUserProfileService(
@@ -51,19 +54,21 @@ func NewUserProfileService(
 	profileRepo userprofilerepoiface.IUserProfileRepository,
 	pfcRepo profilefieldchangerepoiface.IProfileFieldChangeRepository,
 	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository,
+	facultyLocationRepo facultylocationrepoiface.IFacultyLocationRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
 	storageUsecase *storageuc.StorageUsecase,
 ) userprofilesvciface.IUserProfileService {
 	return &UserProfileService{
-		userRepo:        userRepo,
-		followRepo:      followRepo,
-		blockRepo:       blockRepo,
-		muteRepo:        muteRepo,
-		profileRepo:     profileRepo,
-		pfcRepo:         pfcRepo,
-		userFacultyRepo: userFacultyRepo,
-		cacheRepo:       cacheRepo,
-		storageUsecase:  storageUsecase,
+		userRepo:            userRepo,
+		followRepo:          followRepo,
+		blockRepo:           blockRepo,
+		muteRepo:            muteRepo,
+		profileRepo:         profileRepo,
+		pfcRepo:             pfcRepo,
+		userFacultyRepo:     userFacultyRepo,
+		facultyLocationRepo: facultyLocationRepo,
+		cacheRepo:           cacheRepo,
+		storageUsecase:      storageUsecase,
 	}
 }
 
@@ -168,12 +173,12 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		nameChanged := input.Name != nil && name != user.Name
 		usernameChanged := input.Username != nil && username != user.UserName
 		if nameChanged {
-			if next := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldName]); next.After(now) {
+			if next := profilefieldchangemodel.NextChangeAt(profilefieldchangemodel.FieldName, latest[profilefieldchangemodel.FieldName]); next.After(now) {
 				return fmt.Errorf("display name can only be changed once every 7 days; try again on %s", next.Format("Jan 2, 2006"))
 			}
 		}
 		if usernameChanged {
-			if next := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldUsername]); next.After(now) {
+			if next := profilefieldchangemodel.NextChangeAt(profilefieldchangemodel.FieldUsername, latest[profilefieldchangemodel.FieldUsername]); next.After(now) {
 				return fmt.Errorf("username can only be changed once every 7 days; try again on %s", next.Format("Jan 2, 2006"))
 			}
 		}
@@ -199,6 +204,39 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 			_ = s.cacheRepo.Delete(ctx, "feed:trending:global")
 		}
 		s.invalidateUserProfileCaches(ctx, userID)
+	}
+
+	if input.FacultyLocationID != nil {
+		existing, err := s.profileRepo.FindByUserID(userID)
+		if err != nil || existing == nil {
+			return errors.New("profile not found")
+		}
+		newLoc := *input.FacultyLocationID
+		var curLoc uint
+		if existing.FacultyLocationID != nil {
+			curLoc = *existing.FacultyLocationID
+		}
+		if newLoc != curLoc {
+			// Must be a real campus the user may pick (not the "All Regions" sentinel).
+			ok, err := s.facultyLocationRepo.ExistsSelectable(newLoc)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return errors.New("faculty location not found")
+			}
+			now := time.Now()
+			latest, _ := s.pfcRepo.LatestByUser(userID)
+			if next := profilefieldchangemodel.NextChangeAt(profilefieldchangemodel.FieldFacultyLocation, latest[profilefieldchangemodel.FieldFacultyLocation]); next.After(now) {
+				return fmt.Errorf("campus can only be changed once every 6 months; try again on %s", next.Format("Jan 2, 2006"))
+			}
+			if err := s.profileRepo.UpdateFacultyLocation(userID, &newLoc); err != nil {
+				return err
+			}
+			_ = s.pfcRepo.Record(userID, profilefieldchangemodel.FieldFacultyLocation, now,
+				strconv.FormatUint(uint64(curLoc), 10), strconv.FormatUint(uint64(newLoc), 10))
+			s.invalidateUserProfileCaches(ctx, userID)
+		}
 	}
 
 	if input.ClearAvatar || input.ClearBanner {
@@ -359,11 +397,14 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 	// the controller renders these self-view only.
 	if latest, lerr := s.pfcRepo.LatestByUser(userID); lerr == nil {
 		now := time.Now()
-		if n := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldName]); n.After(now) {
+		if n := profilefieldchangemodel.NextChangeAt(profilefieldchangemodel.FieldName, latest[profilefieldchangemodel.FieldName]); n.After(now) {
 			fp.NameChangeAvailableAt = &n
 		}
-		if n := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldUsername]); n.After(now) {
+		if n := profilefieldchangemodel.NextChangeAt(profilefieldchangemodel.FieldUsername, latest[profilefieldchangemodel.FieldUsername]); n.After(now) {
 			fp.UsernameChangeAvailableAt = &n
+		}
+		if n := profilefieldchangemodel.NextChangeAt(profilefieldchangemodel.FieldFacultyLocation, latest[profilefieldchangemodel.FieldFacultyLocation]); n.After(now) {
+			fp.FacultyLocationChangeAvailableAt = &n
 		}
 	}
 	return fp, nil

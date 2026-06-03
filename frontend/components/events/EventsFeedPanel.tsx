@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { CreateEventDialog } from '@/components/events/CreateEventDialog';
 import { EventCardSkeleton } from '@/components/events/EventCardSkeleton';
 import { EventGridCard } from '@/components/events/EventGridCard';
+import { AudienceBadges } from '@/components/events/AudienceBadges';
 import { MyEventCardActions } from '@/components/events/MyEventCardActions';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useEventsFeed } from '@/hooks/useEventsFeed';
 import { useMyEvents } from '@/hooks/useMyEvents';
 import { useMyJoinedEventItems } from '@/hooks/useMyJoinedEventItems';
+import { useFacultyLocations } from '@/hooks/useFacultyLocations';
 import type { EventItem, MyEventItem } from '@/lib/services/events';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -380,6 +382,8 @@ function EventListRow({ event, live = false, badge }: ListRowProps) {
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.location}</span>
           </span>
         )}
+
+        <AudienceBadges audience={event.audience} />
       </div>
 
       {/* Badge */}
@@ -423,9 +427,14 @@ export function EventsFeedPanel({ active }: PanelProps) {
   const [datePreset, setDatePreset] = useState<DatePreset>(initial.datePreset);
   const [dateOpen, setDateOpen] = useState(false);
   const [customRange, setCustomRange] = useState<{ from: string; to: string }>(initial.customRange);
+  // Region/campus filter — '' = all; otherwise 'region:<area>' or 'campus:<id>'.
+  const [regionSel, setRegionSel] = useState('');
+  const [regionOpen, setRegionOpen] = useState(false);
 
   const scopeRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
+  const regionRef = useRef<HTMLDivElement>(null);
+  const { data: facultyLocations = [] } = useFacultyLocations(false);
 
   const query = useEventsFeed(active);
   const joinedQuery = useMyJoinedEventItems();
@@ -454,16 +463,27 @@ export function EventsFeedPanel({ active }: PanelProps) {
     function handler(e: MouseEvent) {
       if (scopeRef.current && !scopeRef.current.contains(e.target as Node)) setScopeOpen(false);
       if (dateRef.current  && !dateRef.current.contains(e.target as Node))  setDateOpen(false);
+      if (regionRef.current && !regionRef.current.contains(e.target as Node)) setRegionOpen(false);
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const now = useMemo(() => new Date(), []);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30_000); // tick so status/badge stay live
+    return () => clearInterval(id);
+  }, []);
   const range = useMemo(() => presetRange(datePreset, customRange), [datePreset, customRange]);
 
   const passDate = (e: EventItem) => inDateRange(e, range);
   const passSearch = (e: EventItem) => matchesSearch(e, searchQuery);
+  // Campus audience filter — "All Regions" events always pass.
+  const passRegion = (e: EventItem) => {
+    if (!regionSel) return true;
+    const id = Number(regionSel.slice(regionSel.indexOf(':') + 1));
+    return (e.audience ?? []).some((a) => a.isAllRegions || a.id === id);
+  };
 
   const tabOfTime = (e: EventItem): Tab => {
     const st = timeStateOf(e, now);
@@ -525,25 +545,37 @@ export function EventsFeedPanel({ active }: PanelProps) {
     const d = query.data;
     if (!d) return [];
     if (effectiveTab === 'trending') return d.trending;
-    if (effectiveTab === 'running')  return d.running;
-    if (effectiveTab === 'past')     return d.past;
-    return d.future;
-  }, [query.data, effectiveTab]);
+    // Re-bucket client-side from live time so tab placement matches the card badge,
+    // instead of trusting the backend's (Redis-cached, lagging) server-side grouping.
+    const seen = new Set<EventItem['id']>();
+    const union = [...d.running, ...d.future, ...d.past].filter((e) => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
+    return union.filter((e) => timeStateOf(e, now) === effectiveTab);
+  }, [query.data, effectiveTab, now]);
 
-  const allList = baseAllEffective.filter(passDate).filter(passSearch);
+  const allList = baseAllEffective.filter(passDate).filter(passSearch).filter(passRegion);
 
   const joinedList = (joinedQuery.data ?? [])
     .filter((e) => (effectiveTab === 'trending' ? true : tabOfTime(e) === effectiveTab))
     .filter(passDate)
-    .filter(passSearch);
+    .filter(passSearch)
+    .filter(passRegion);
 
   const myList: MyEventItem[] = (
     effectiveStatusTab === statusTab
       ? (myEventsQuery.data ?? [])
       : (myProbeQuery.data ?? []).filter((e) => effectiveStatusTab === 'all' ? true : e.status === effectiveStatusTab)
-  ).filter(passDate);
+  ).filter(passDate).filter(passRegion);
 
   const currentScopeLabel = SCOPE_OPTIONS.find((o) => o.key === scope)?.label ?? 'All Events';
+  const currentRegionLabel = (() => {
+    if (!regionSel) return 'All campuses';
+    const id = Number(regionSel.slice(regionSel.indexOf(':') + 1));
+    return facultyLocations.find((l) => l.id === id)?.name ?? 'Campus';
+  })();
   const currentDateLabel = (() => {
     if (datePreset === 'custom' && (customRange.from || customRange.to)) {
       const f = customRange.from ? new Date(customRange.from).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '…';
@@ -778,8 +810,62 @@ export function EventsFeedPanel({ active }: PanelProps) {
                 })}
           </div>
 
-          {/* Right cluster: date + scope + view toggle */}
+          {/* Right cluster: region + date + scope + view toggle */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Region / campus filter */}
+            <div style={{ position: 'relative' }} ref={regionRef}>
+              <button
+                type="button"
+                onClick={() => setRegionOpen((o) => !o)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  height: 38, padding: '0 14px', borderRadius: 999,
+                  border: `1px solid ${regionOpen ? 'var(--text)' : 'var(--border)'}`,
+                  background: regionOpen || regionSel ? 'var(--bg-subtle)' : 'transparent',
+                  color: 'var(--text)', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', transition: 'background 0.15s, border-color 0.15s',
+                }}
+                onMouseEnter={(e) => { if (!regionOpen) (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
+                onMouseLeave={(e) => { if (!regionOpen && !regionSel) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+              >
+                <MapPin size={14} />
+                {currentRegionLabel}
+                <ChevronDown size={14} style={{ transition: 'transform 0.15s', transform: regionOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+              </button>
+
+              {regionOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+                  background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 16,
+                  padding: 8, minWidth: 260, maxHeight: 360, overflowY: 'auto',
+                  boxShadow: '0 16px 40px oklch(0% 0 0 / 0.65)',
+                }}>
+                  {[{ id: 0, name: 'All campuses' }, ...facultyLocations].map((loc) => {
+                    const key = loc.id === 0 ? '' : `campus:${loc.id}`;
+                    const isActive = regionSel === key;
+                    return (
+                      <button
+                        key={loc.id}
+                        type="button"
+                        onClick={() => { setRegionSel(key); setRegionOpen(false); }}
+                        style={{
+                          display: 'flex', width: '100%', textAlign: 'left', padding: '10px 12px',
+                          borderRadius: 10, border: 'none',
+                          background: isActive ? 'var(--bg-subtle)' : 'transparent',
+                          color: isActive ? 'var(--text)' : 'var(--text-secondary)',
+                          fontSize: 13, fontWeight: isActive ? 700 : 500, cursor: 'pointer',
+                        }}
+                        onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
+                        onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                      >
+                        {loc.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Date filter */}
             <div style={{ position: 'relative' }} ref={dateRef}>
               <button
@@ -985,7 +1071,7 @@ export function EventsFeedPanel({ active }: PanelProps) {
         </div>
       </div>
 
-      {dialogOpen && <CreateEventDialog open={dialogOpen} onOpenChange={setDialogOpen} />}
+      <CreateEventDialog open={dialogOpen} onOpenChange={setDialogOpen} />
 
       {/* ── Content ─────────────────────────────────────────────── */}
       <div style={{ padding: '24px 32px 48px' }}>

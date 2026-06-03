@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,6 +47,14 @@ func (c *FoxChatController) Ask(ctx *fiber.Ctx) error {
 	// the handler returns, so ctx.Context() would already be released.
 	reqCtx := context.Background()
 
+	// Resolve the session before streaming: once SetBodyStreamWriter runs the
+	// status + headers lock, so the new session id must be set on the response
+	// header now (X-Fox-Session-Id) for the client to attach the next turn.
+	sessionID, err := c.chatService.ResolveChatSession(reqCtx, userID, req.SessionID, question)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
+	}
+
 	history := make([]foxchatsvciface.QAPair, 0, len(req.History))
 	for _, h := range req.History {
 		history = append(history, foxchatsvciface.QAPair{Question: h.Question, Answer: h.Answer})
@@ -54,9 +63,10 @@ func (c *FoxChatController) Ask(ctx *fiber.Ctx) error {
 	ctx.Set("Content-Type", "text/plain; charset=utf-8")
 	ctx.Set("Cache-Control", "no-cache")
 	ctx.Set("X-Accel-Buffering", "no")
+	ctx.Set("X-Fox-Session-Id", strconv.FormatUint(uint64(sessionID), 10))
 
 	ctx.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
-		if err := c.chatService.StreamAsk(reqCtx, userID, question, history, w); err != nil {
+		if err := c.chatService.StreamAsk(reqCtx, userID, sessionID, question, history, w); err != nil {
 			log.Printf("fox chat stream failed for user %d: %v", userID, err)
 		}
 		_ = w.Flush()

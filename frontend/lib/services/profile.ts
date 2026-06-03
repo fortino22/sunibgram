@@ -17,6 +17,7 @@ interface BackendProfileResponse {
   follower_count?: number;
   following_count?: number;
   faculty?: { faculty_id: number; faculty_name: string } | null;
+  faculty_location?: { id: number; name: string; region: string } | null;
   birthday_date?: string;
   created_at?: string;
   is_following?: boolean;
@@ -26,6 +27,7 @@ interface BackendProfileResponse {
   onboarding_completed?: boolean;
   name_change_available_at?: string | null;
   username_change_available_at?: string | null;
+  faculty_location_change_available_at?: string | null;
 }
 
 // Frontend model — used throughout components
@@ -40,6 +42,7 @@ export interface UserProfile {
   bio?: string | null;
   faculty_id?: number | null;
   faculty?: { faculty_id: number; faculty_name: string } | null;
+  faculty_location?: { id: number; name: string; region: string } | null;
   birthday_date?: string | null;
   followers_count?: number;
   following_count?: number;
@@ -51,6 +54,7 @@ export interface UserProfile {
   created_at?: string;
   name_change_available_at?: string | null;
   username_change_available_at?: string | null;
+  faculty_location_change_available_at?: string | null;
 }
 
 function mapProfile(raw: BackendProfileResponse): UserProfile {
@@ -65,6 +69,7 @@ function mapProfile(raw: BackendProfileResponse): UserProfile {
     bio: raw.bio ?? null,
     faculty_id: raw.faculty?.faculty_id ?? null,
     faculty: raw.faculty ?? null,
+    faculty_location: raw.faculty_location ?? null,
     birthday_date: raw.birthday_date ?? null,
     followers_count: raw.follower_count ?? 0,
     following_count: raw.following_count ?? 0,
@@ -76,6 +81,7 @@ function mapProfile(raw: BackendProfileResponse): UserProfile {
     created_at: raw.created_at,
     name_change_available_at: raw.name_change_available_at ?? null,
     username_change_available_at: raw.username_change_available_at ?? null,
+    faculty_location_change_available_at: raw.faculty_location_change_available_at ?? null,
   };
 }
 
@@ -86,6 +92,7 @@ export interface UpdateProfileParams {
   banner?: File | null;
   bio?: string;
   facultyId?: number | string;
+  facultyLocationId?: number | string;
   clearAvatar?: boolean;
   clearBanner?: boolean;
   birthdayDate?: string;
@@ -191,6 +198,7 @@ export async function updateMyProfile(
   appendOptionalString(formData, 'username', params.username);
   appendOptionalString(formData, 'bio', params.bio);
   appendOptionalString(formData, 'faculty_id', params.facultyId);
+  appendOptionalString(formData, 'faculty_location_id', params.facultyLocationId);
   appendOptionalString(formData, 'clear_avatar', params.clearAvatar);
   appendOptionalString(formData, 'clear_banner', params.clearBanner);
   appendOptionalString(formData, 'birthday_date', params.birthdayDate);

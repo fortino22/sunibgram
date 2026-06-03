@@ -9,6 +9,7 @@ import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
 import type { SignupInput } from '@/components/auth/schemas';
 import type { Faculty } from '@/lib/services/faculties';
+import type { FacultyLocation } from '@/lib/services/facultyLocations';
 import type { UsernameStatus } from '@/app/signup/page';
 
 interface RegisterFormProps {
@@ -20,8 +21,10 @@ interface RegisterFormProps {
   showConfirm: boolean;
   faculties: Faculty[];
   facultiesLoading?: boolean;
+  facultyLocations: FacultyLocation[];
+  facultyLocationsLoading?: boolean;
   usernameStatus: UsernameStatus;
-  currentStep: 1 | 2;
+  currentStep: 1 | 2 | 3;
   passwordValue?: string;
   onSubmit: FormEventHandler<HTMLFormElement>;
   onBack?: () => void;
@@ -142,6 +145,8 @@ export function RegisterForm({
   showConfirm,
   faculties,
   facultiesLoading = false,
+  facultyLocations,
+  facultyLocationsLoading = false,
   usernameStatus,
   currentStep,
   passwordValue = '',
@@ -291,6 +296,24 @@ export function RegisterForm({
               </p>
             </FormField>
 
+            <FormField label="Campus" error={errors.facultyLocationId?.message}>
+              <SelectShell>
+                <select {...register('facultyLocationId')} disabled={facultyLocationsLoading} style={{ ...selectStyle(!!errors.facultyLocationId), opacity: facultyLocationsLoading ? 0.6 : 1 }}>
+                  <option value="" disabled hidden>{facultyLocationsLoading ? 'Loading campuses…' : 'Select your campus'}</option>
+                  {facultyLocations.map((loc) => (
+                    <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+                  ))}
+                </select>
+              </SelectShell>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 1.4 }}>
+                Your home campus. You can change this later, but only <span style={{ fontWeight: 500 }}>once every 6 months</span>.
+              </p>
+            </FormField>
+          </>
+        )}
+
+        {currentStep === 3 && (
+          <>
             <FormField label="Bio (optional)" error={errors.bio?.message}>
               <textarea
                 {...register('bio')}
@@ -387,7 +410,7 @@ export function RegisterForm({
         )}
 
         <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-          {currentStep === 2 && onBack && (
+          {(currentStep === 2 || currentStep === 3) && onBack && (
             <button
               type="button"
               onClick={onBack}
@@ -409,7 +432,7 @@ export function RegisterForm({
                 <span style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} />
                 Please wait…
               </>
-            ) : currentStep === 1 ? 'Continue' : 'Send verification code'}
+            ) : currentStep === 1 ? 'Continue' : currentStep === 2 ? 'Continue' : 'Send verification code'}
           </button>
         </div>
       </form>

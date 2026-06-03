@@ -264,10 +264,10 @@ func EventPinsUserTag(userID uint) string {
 	return fmt.Sprintf("tag:event:pins:user:%d", userID)
 }
 
-// FoxHistoryUserTag covers fox_history:user:<uid>:* — every cached page of one
-// user's Fox history (summaries + chats) across query/type/page/limit variants.
-func FoxHistoryUserTag(userID uint) string {
-	return fmt.Sprintf("tag:fox-history:user:%d", userID)
+// FoxSessionUserTag covers fox_session:user:<uid>:* — every cached page of one
+// user's Fox session history (chats + summaries) across query/page/limit variants.
+func FoxSessionUserTag(userID uint) string {
+	return fmt.Sprintf("tag:fox-session:user:%d", userID)
 }
 
 // FeedbackListTag covers feedback:list:* (paginated feedback list cache across

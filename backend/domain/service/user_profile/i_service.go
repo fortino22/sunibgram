@@ -23,8 +23,9 @@ type FullProfile struct {
 	// *ChangeAvailableAt are pre-computed earliest-next-change times for the
 	// rate-limited profile fields, set only while still within the cooldown.
 	// Rendered self-view only by the controller.
-	NameChangeAvailableAt     *time.Time
-	UsernameChangeAvailableAt *time.Time
+	NameChangeAvailableAt            *time.Time
+	UsernameChangeAvailableAt        *time.Time
+	FacultyLocationChangeAvailableAt *time.Time
 }
 
 type UpsertProfileInput struct {
@@ -34,14 +35,15 @@ type UpsertProfileInput struct {
 }
 
 type UpdateProfileInput struct {
-	Name         *string
-	Username     *string
-	Avatar       *multipart.FileHeader
-	Banner       *multipart.FileHeader
-	Bio          *string
-	BirthdayDate *time.Time
-	ClearAvatar  bool
-	ClearBanner  bool
+	Name              *string
+	Username          *string
+	Avatar            *multipart.FileHeader
+	Banner            *multipart.FileHeader
+	Bio               *string
+	BirthdayDate      *time.Time
+	FacultyLocationID *uint
+	ClearAvatar       bool
+	ClearBanner       bool
 }
 
 type IUserProfileService interface {

@@ -7,4 +7,7 @@ type IUserProfileRepository interface {
 	FindByUserID(userID uint) (*userprofilemodel.UserProfile, error)
 	FindByUserIDs(ids []uint) ([]userprofilemodel.UserProfile, error)
 	ExistsByUserID(userID uint) (bool, error)
+	// UpdateFacultyLocation sets the user's home campus (Upsert's fixed column
+	// list doesn't cover it) and invalidates the profile cache.
+	UpdateFacultyLocation(userID uint, locationID *uint) error
 }

@@ -23,7 +23,6 @@ func RegisterThreadRoutes(
 ) {
 	api.Get("/likes", auth, likeCtrl.GetMyLikes)
 	api.Get("/bookmarks", auth, bookmarkCtrl.GetMyBookmarks)
-	api.Get("/summaries/history", auth, summaryCtrl.GetHistory)
 
 	threads := api.Group("/threads")
 	threads.Get("/mention", auth, threadCtrl.Mention)

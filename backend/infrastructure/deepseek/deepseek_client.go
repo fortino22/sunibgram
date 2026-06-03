@@ -20,10 +20,20 @@ type Client struct {
 	model  shared.ChatModel
 }
 
+// defaultBaseURL is used when DEEPSEEK_BASE_URL is unset. This client is
+// DeepSeek-specific, so defaulting to the public API host is safe and avoids a
+// silent misconfiguration where an empty base URL sends requests nowhere (the
+// answer never streams).
+const defaultBaseURL = "https://api.deepseek.com"
+
 func NewClient() *Client {
+	baseURL := os.Getenv("DEEPSEEK_BASE_URL")
+	if baseURL == "" {
+		baseURL = defaultBaseURL
+	}
 	c := openai.NewClient(
 		option.WithAPIKey(os.Getenv("DEEPSEEK_API_KEY")),
-		option.WithBaseURL(os.Getenv("DEEPSEEK_BASE_URL")),
+		option.WithBaseURL(baseURL),
 	)
 	return &Client{
 		client: c,

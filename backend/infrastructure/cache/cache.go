@@ -14,6 +14,11 @@ import (
 const DefaultTTL = 5 * time.Minute
 const FacultyTTL = 24 * time.Hour
 
+// FacultyLocationTTL caches the near-static campus reference list. It changes
+// only via an admin entity mutation, so it can live far longer than DefaultTTL;
+// the repo direct-deletes both list keys on any such mutation.
+const FacultyLocationTTL = 720 * time.Hour
+
 // OnboardingTTL caches the terminal "onboarding done" fact. Immutable once set,
 // so it can live far longer than DefaultTTL — keeps the first-login gate check
 // off the DB on the hot path.

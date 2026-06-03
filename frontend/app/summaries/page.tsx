@@ -3,15 +3,15 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Search } from 'lucide-react';
-import { useSummaryHistoryInfinite } from '@/hooks/thread/useSummaryHistoryInfinite';
+import { useFoxSessionsInfinite } from '@/hooks/fox/useFoxSessionsInfinite';
 import { SummaryHistoryList } from '@/components/thread/SummaryHistoryList';
 import { SummaryDetail } from '@/components/thread/SummaryDetail';
 import { FoxAgentTeaser } from '@/components/thread/FoxAgentTeaser';
 
-type Tab = 'summaries' | 'agent';
+type Tab = 'history' | 'agent';
 
 /**
- * Full summary-history page reached via the sidebar fox tab and the fox card's
+ * Full Fox history page reached via the sidebar fox tab and the fox card's
  * "Show more" link. Two-pane (list + detail) like the fox card, but with
  * server-side search and infinite scroll over the user's entire history.
  */
@@ -26,13 +26,13 @@ export default function SummariesPage() {
 function SummariesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // "Show more" deep-links to ?tab=summaries; otherwise default to Your Agent.
+  // "Show more" deep-links to ?tab=history; otherwise default to Your Agent.
   // URL is the source of truth so the tab survives refresh / back-forward.
-  const activeTab: Tab = searchParams.get('tab') === 'summaries' ? 'summaries' : 'agent';
+  const activeTab: Tab = searchParams.get('tab') === 'history' ? 'history' : 'agent';
 
   function setTab(tab: Tab) {
     const url = new URLSearchParams(searchParams.toString());
-    if (tab === 'summaries') url.set('tab', 'summaries');
+    if (tab === 'history') url.set('tab', 'history');
     else url.delete('tab'); // keep clean default URL = /summaries
     router.replace(url.toString() ? `/summaries?${url.toString()}` : '/summaries');
   }
@@ -45,7 +45,7 @@ function SummariesPageInner() {
     return () => clearTimeout(t);
   }, [input]);
 
-  const query = useSummaryHistoryInfinite(q);
+  const query = useFoxSessionsInfinite(q);
   const items = query.data?.pages.flatMap((p) => p.data) ?? [];
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -94,7 +94,7 @@ function SummariesPageInner() {
         </div>
         <div role="tablist" style={{ display: 'flex', gap: 0 }}>
           <TabButton label="Your Agent" active={activeTab === 'agent'} onClick={() => setTab('agent')} />
-          <TabButton label="Summaries" active={activeTab === 'summaries'} onClick={() => setTab('summaries')} />
+          <TabButton label="History" active={activeTab === 'history'} onClick={() => setTab('history')} />
         </div>
       </div>
 
@@ -118,7 +118,7 @@ function SummariesPageInner() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Search summaries"
+                placeholder="Search history"
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
@@ -137,10 +137,10 @@ function SummariesPageInner() {
             {query.isLoading ? (
               <ListSkeleton />
             ) : query.isError ? (
-              <ListMessage text="Couldn't load your summaries." />
+              <ListMessage text="Couldn't load your history." />
             ) : items.length === 0 ? (
               <ListMessage
-                text={searching ? 'No matches.' : 'No summaries yet — tap the fox on any thread to summarize it.'}
+                text={searching ? 'No matches.' : 'No history yet — ask Fox a question or tap the fox on any thread to summarize it.'}
               />
             ) : (
               <>

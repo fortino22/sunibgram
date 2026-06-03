@@ -131,6 +131,7 @@ export default function UserProfilePage() {
           username: profile.username,
           bio: profile.bio,
           faculty: profile.faculty?.faculty_name ?? null,
+          facultyLocation: profile.faculty_location ? { name: profile.faculty_location.name, region: profile.faculty_location.region } : null,
           joinedMonth,
           following: profile.following_count ?? 0,
           followers: profile.followers_count ?? 0,

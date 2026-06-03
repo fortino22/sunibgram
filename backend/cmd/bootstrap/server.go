@@ -55,13 +55,13 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 		AllowOrigins:     corsAllowOrigins(),
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowMethods:     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+		ExposeHeaders:    "X-Fox-Session-Id",
 		AllowCredentials: true,
 	}))
 	webapisocket.Mount(app, ext.SocketHub, svcs.ChatRoom, ctrls.NotificationHandler, c)
 	registerRoutes(app, ctrls, c)
 	return app
 }
-
 
 func corsAllowOrigins() string {
 	raw := strings.TrimSpace(os.Getenv("CORS_ALLOW_ORIGINS"))
@@ -73,7 +73,6 @@ func corsAllowOrigins() string {
 	}
 	return raw
 }
-
 
 func StartVerificationCodePurge(svc verificationsvciface.IVerificationService) {
 	go scheduler.RunVerificationCodePurge(context.Background(), svc)
@@ -99,6 +98,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.Repost,
 		ctrls.ThreadSummary,
 		ctrls.FoxChat,
+		ctrls.FoxSession,
 		ctrls.Email,
 		ctrls.Verification,
 		ctrls.Follow,
@@ -106,6 +106,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.NotificationUserMute,
 		ctrls.Community,
 		ctrls.CommunityMember,
+		ctrls.CommunityEvent,
 		ctrls.CommunityRequest,
 		ctrls.CommunityThread,
 		ctrls.CommunityRule,
@@ -118,6 +119,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.Violation,
 		ctrls.Report,
 		ctrls.Faculty,
+		ctrls.FacultyLocation,
 		ctrls.Feedback,
 		ctrls.Order,
 		ctrls.PremiumSubscription,

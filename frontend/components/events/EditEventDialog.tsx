@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useUpdateEvent } from '@/hooks/useUpdateEvent';
+import { useFacultyLocations } from '@/hooks/useFacultyLocations';
 import { toast } from 'sonner';
 import { IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import type { EventDetail } from '@/lib/services/events';
@@ -23,6 +24,7 @@ const schema = z
     end_time: z.string().min(1, 'End time is required.'),
     banner: z.custom<File | undefined>((v) => v === undefined || v instanceof File),
     document: z.custom<File | undefined>((v) => v === undefined || v instanceof File),
+    facultyLocationIds: z.array(z.number()).min(1, 'Pick at least one audience region.'),
   })
   .superRefine((v, ctx) => {
     if (v.start_date && v.start_time && v.end_date && v.end_time) {
@@ -63,6 +65,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
   const [bannerPreview, setBannerPreview] = useState<string | null>(event.banner ?? null);
   const [bannerIsNew, setBannerIsNew] = useState(false);
   const [pendingCrop, setPendingCrop] = useState<{ src: string; filename: string } | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -77,12 +80,28 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
       end_time: end.time,
       banner: undefined,
       document: undefined,
+      facultyLocationIds: (event.audience ?? []).map((a) => a.id),
     },
   });
+
+  const { data: facultyLocations = [], isLoading: locationsLoading } = useFacultyLocations(true);
+  const allRegionsId = facultyLocations.find((l) => l.isAllRegions)?.id ?? null;
 
   const type = useWatch({ control: form.control, name: 'type', defaultValue: event.type });
   const startDate = useWatch({ control: form.control, name: 'start_date', defaultValue: start.date });
   const docFile = useWatch({ control: form.control, name: 'document', defaultValue: undefined });
+  const selectedAudience = useWatch({ control: form.control, name: 'facultyLocationIds', defaultValue: [] });
+
+  function toggleAudience(id: number) {
+    const current = form.getValues('facultyLocationIds') ?? [];
+    if (allRegionsId !== null && id === allRegionsId) {
+      form.setValue('facultyLocationIds', current.includes(id) ? [] : [id], { shouldValidate: true });
+      return;
+    }
+    const withoutAll = current.filter((x) => x !== allRegionsId);
+    const next = withoutAll.includes(id) ? withoutAll.filter((x) => x !== id) : [...withoutAll, id];
+    form.setValue('facultyLocationIds', next, { shouldValidate: true });
+  }
 
   useEffect(() => {
     if (startDate && !form.getValues('end_date')) {
@@ -95,6 +114,10 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
       if (bannerIsNew && bannerPreview) URL.revokeObjectURL(bannerPreview);
     };
   }, [bannerIsNew, bannerPreview]);
+
+  function handleClose() {
+    onOpenChange(false);
+  }
 
   function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -132,8 +155,23 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
       type: values.type,
       banner: values.banner,
       document: values.document,
+      facultyLocationIds: values.facultyLocationIds,
     });
+    form.reset();
+    if (bannerIsNew && bannerPreview) URL.revokeObjectURL(bannerPreview);
+    setBannerPreview(event.banner ?? null);
+    setBannerIsNew(false);
+    setStep(1);
     onOpenChange(false);
+  }
+
+  const submit = form.handleSubmit((v) => void onSubmit(v));
+
+  async function goToStep2() {
+    const ok = await form.trigger(['type', 'title', 'description', 'banner']);
+    if (!ok) return;
+    form.clearErrors(['location', 'start_date', 'start_time', 'end_date', 'end_time', 'facultyLocationIds', 'document']);
+    setStep(2);
   }
 
   if (!open) return null;
@@ -175,7 +213,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
         zIndex: 100,
         padding: 16,
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div
         style={{
@@ -207,12 +245,12 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
               Edit Event
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-              Saving resubmits for admin review.
+              STEP {step} OF 2 · {step === 1 ? 'Details' : 'Logistics'} · Saving resubmits for admin review.
             </span>
           </div>
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleClose()}
             style={{
               background: 'none',
               border: 'none',
@@ -227,6 +265,7 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
         </div>
 
         {/* Banner */}
+        {step === 1 && (
         <div
           onClick={() => bannerInputRef.current?.click()}
           style={{
@@ -282,11 +321,14 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
             onChange={handleBannerChange}
           />
         </div>
+        )}
 
         <form
-          onSubmit={form.handleSubmit((v) => void onSubmit(v))}
+          onSubmit={(e) => { e.preventDefault(); if (step === 2) submit(); }}
           style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}
         >
+          {step === 1 && (
+          <>
           {/* Type toggle */}
           <div>
             <label style={labelStyle}>Event type</label>
@@ -336,7 +378,11 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
               <p style={errorStyle}>{form.formState.errors.description.message}</p>
             )}
           </div>
+          </>
+          )}
 
+          {step === 2 && (
+          <>
           {/* Location */}
           <div>
             <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -388,6 +434,39 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
             </div>
           </div>
 
+          {/* Audience regions */}
+          <div>
+            <label style={labelStyle}>Audience regions *</label>
+            {locationsLoading ? (
+              <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Loading campuses…</div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {facultyLocations.map((loc) => {
+                  const selected = selectedAudience.includes(loc.id);
+                  return (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      onClick={() => toggleAudience(loc.id)}
+                      style={{
+                        padding: '7px 14px', borderRadius: 999,
+                        border: `1px solid ${selected ? 'var(--text)' : 'var(--border)'}`,
+                        background: selected ? 'var(--text)' : 'transparent',
+                        color: selected ? 'var(--bg)' : 'var(--text)',
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      {loc.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {form.formState.errors.facultyLocationIds && (
+              <p style={errorStyle}>{form.formState.errors.facultyLocationIds.message}</p>
+            )}
+          </div>
+
           {/* Docs */}
           <div>
             <label style={labelStyle}>Docs <span style={{ fontWeight: 400, color: 'var(--text-tertiary)' }}>(.doc / .docx)</span></label>
@@ -430,30 +509,74 @@ export function EditEventDialog({ open, onOpenChange, event }: Props) {
               {mutation.error.message}
             </div>
           )}
+          </>
+          )}
 
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            style={{
-              width: '100%',
-              padding: '12px',
-              borderRadius: 999,
-              border: 'none',
-              background: 'var(--text)',
-              color: 'var(--bg)',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: mutation.isPending ? 'default' : 'pointer',
-              opacity: mutation.isPending ? 0.5 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            {mutation.isPending && <LoaderCircle size={15} className="animate-spin" />}
-            {mutation.isPending ? 'Saving…' : 'Save Changes'}
-          </button>
+          {/* Footer nav */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {step === 2 && (
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                style={{
+                  flex: '0 0 auto',
+                  padding: '12px 18px',
+                  borderRadius: 999,
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                ← Back
+              </button>
+            )}
+            {step === 1 ? (
+              <button
+                type="button"
+                onClick={() => void goToStep2()}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--text)',
+                  color: 'var(--bg)',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Next →
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={mutation.isPending}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--text)',
+                  color: 'var(--bg)',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: mutation.isPending ? 'default' : 'pointer',
+                  opacity: mutation.isPending ? 0.5 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {mutation.isPending && <LoaderCircle size={15} className="animate-spin" />}
+                {mutation.isPending ? 'Saving…' : 'Save Changes'}
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>

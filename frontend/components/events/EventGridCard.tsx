@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { CalendarDays, MapPin } from 'lucide-react';
+import { AudienceBadges } from '@/components/events/AudienceBadges';
 import type { EventItem } from '@/lib/services/events';
 
 function parseEventDate(iso: string | null): Date | null {
@@ -233,6 +234,7 @@ export function EventGridCard({ event, live = false, badge }: Props) {
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.location}</span>
           </div>
         )}
+        <AudienceBadges audience={event.audience} />
       </div>
     </Link>
   );

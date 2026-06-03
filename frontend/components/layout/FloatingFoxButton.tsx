@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSummaryStore } from '@/stores/summaryStore';
+import { useAuthStore } from '@/stores/authStore';
+import { useFoxAsk } from '@/hooks/fox/useFoxAsk';
+import { getFoxSession } from '@/lib/services/fox';
 import { FoxHistoryPanel } from '@/components/thread/FoxHistoryPanel';
 import { FoxAskPanel } from '@/components/thread/FoxAskPanel';
 
@@ -19,9 +23,34 @@ type FoxTab = 'summaries' | 'ask';
  */
 export function FloatingFoxButton() {
   const summaryOpen = useSummaryStore((s) => s.summaryThread !== null);
+  const token = useAuthStore((s) => s.token);
+  const queryClient = useQueryClient();
   const [showSoon, setShowSoon] = useState(false);
   const [closing, setClosing] = useState(false);
   const [tab, setTab] = useState<FoxTab>('ask');
+
+  // Chat state lives here (not in FoxAskPanel) so the History tab can hand a
+  // session's turns to the Ask Fox panel and switch to it.
+  const { messages, ask, busy, loadSession } = useFoxAsk();
+
+  // Continue a past chat session: load its turns into the Ask panel, jump tabs.
+  const continueSession = useCallback(
+    async (sessionId: number) => {
+      setTab('ask');
+      if (typeof token !== 'string' || token.length === 0) return;
+      try {
+        const detail = await queryClient.fetchQuery({
+          queryKey: ['fox', 'session', sessionId],
+          queryFn: () => getFoxSession(sessionId, token),
+          staleTime: 30_000,
+        });
+        loadSession(sessionId, detail.turns);
+      } catch {
+        // Leave the Ask panel as-is if the session can't be loaded.
+      }
+    },
+    [queryClient, token, loadSession],
+  );
 
   const requestClose = useCallback(() => setClosing(true), []);
   const orbHidden = summaryOpen || showSoon;
@@ -110,10 +139,19 @@ export function FloatingFoxButton() {
                 display:none) so the Ask Fox chat + draft survive tab switches —
                 conditional rendering would unmount and wipe their state. */}
             <div style={{ flex: 1, minHeight: 0, display: tab === 'summaries' ? 'block' : 'none' }}>
-              <FoxHistoryPanel active={showSoon && !closing && tab === 'summaries'} onNavigate={requestClose} />
+              <FoxHistoryPanel
+                active={showSoon && !closing && tab === 'summaries'}
+                onNavigate={requestClose}
+                onContinueSession={continueSession}
+              />
             </div>
             <div style={{ flex: 1, minHeight: 0, display: tab === 'ask' ? 'block' : 'none' }}>
-              <FoxAskPanel onNavigate={requestClose} />
+              <FoxAskPanel
+                messages={messages}
+                ask={ask}
+                busy={busy}
+                onNavigate={requestClose}
+              />
             </div>
           </div>
         </>

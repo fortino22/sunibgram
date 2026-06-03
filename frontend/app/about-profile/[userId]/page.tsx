@@ -93,7 +93,7 @@ export default function AboutAccountPage() {
           {/* Rows */}
           <div>
             <Row icon={<Calendar size={20} strokeWidth={1.8} />} label="Date joined" value={monthYear(profile.created_at)} />
-            <Row icon={<MapPin size={20} strokeWidth={1.8} />} label="Account based in" value="Indonesia" />
+            <Row icon={<MapPin size={20} strokeWidth={1.8} />} label="Account based in" value={profile.faculty_location?.name ?? 'Indonesia'} />
             {profile.is_premium && (
               <Row icon={<BadgeCheck size={20} strokeWidth={1.8} />} label="Verified" value="This account is verified" />
             )}

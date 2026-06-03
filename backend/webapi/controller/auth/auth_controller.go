@@ -13,17 +13,34 @@ import (
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	authsvciface "github.com/sunibgram/domain/service/auth"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
+	facultylocationsvciface "github.com/sunibgram/domain/service/faculty_location"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
 type AuthController struct {
-	authService    authsvciface.IAuthService
-	facultyService facultysvciface.IFacultyService
+	authService        authsvciface.IAuthService
+	facultyService     facultysvciface.IFacultyService
+	facultyLocationSvc facultylocationsvciface.IFacultyLocationService
 }
 
-func NewAuthController(authService authsvciface.IAuthService, facultyService facultysvciface.IFacultyService) *AuthController {
-	return &AuthController{authService: authService, facultyService: facultyService}
+func NewAuthController(authService authsvciface.IAuthService, facultyService facultysvciface.IFacultyService, facultyLocationSvc facultylocationsvciface.IFacultyLocationService) *AuthController {
+	return &AuthController{authService: authService, facultyService: facultyService, facultyLocationSvc: facultyLocationSvc}
+}
+
+// isSelectableLocation reports whether id is a real campus a user may register
+// with (excludes the "All Regions" sentinel). Reads the cached selectable list.
+func (c *AuthController) isSelectableLocation(id uint) bool {
+	locations, err := c.facultyLocationSvc.List(false)
+	if err != nil {
+		return false
+	}
+	for _, loc := range locations {
+		if loc.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // CheckUsername is a public availability probe for the signup form (pre-auth).
@@ -69,6 +86,19 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 	facultyID := &v
 
+	rawLoc := ctx.FormValue("faculty_location_id")
+	if rawLoc == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "faculty_location_id is required"})
+	}
+	lid, err := strconv.ParseUint(rawLoc, 10, 64)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid faculty_location_id"})
+	}
+	locID := uint(lid)
+	if !c.isSelectableLocation(locID) {
+		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "faculty location not found"})
+	}
+
 	user := &usermodel.User{
 		Name:          req.Name,
 		UserName:      req.UserName,
@@ -82,11 +112,12 @@ func (c *AuthController) Register(ctx *fiber.Ctx) error {
 	}
 
 	input := authsvciface.RegisterInput{
-		User:            user,
-		Profile:         profile,
-		ConfirmPassword: req.ConfirmPassword,
-		Bio:             ctx.FormValue("bio"),
-		FacultyID:       facultyID,
+		User:              user,
+		Profile:           profile,
+		ConfirmPassword:   req.ConfirmPassword,
+		Bio:               ctx.FormValue("bio"),
+		FacultyID:         facultyID,
+		FacultyLocationID: &locID,
 	}
 	if avatar, err := ctx.FormFile("avatar"); err == nil {
 		input.Avatar = avatar
@@ -189,7 +220,7 @@ func (c *AuthController) ConfirmLogin(ctx *fiber.Ctx) error {
 // with a path, for redirecting the email-link flow back into the app.
 func frontendURL(path string) string {
 	base := strings.TrimRight(os.Getenv("FRONTEND_BASE_URL"), "/")
-	
+
 	return base + path
 }
 

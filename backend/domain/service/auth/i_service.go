@@ -19,13 +19,14 @@ var (
 // uploaded and all rows (user, profile, settings, faculty) are persisted as one
 // unit so a partial failure never leaves an orphaned account behind.
 type RegisterInput struct {
-	User            *usermodel.User
-	Profile         *userprofilemodel.UserProfile
-	ConfirmPassword string
-	Avatar          *multipart.FileHeader
-	Banner          *multipart.FileHeader
-	Bio             string
-	FacultyID       *uint
+	User              *usermodel.User
+	Profile           *userprofilemodel.UserProfile
+	ConfirmPassword   string
+	Avatar            *multipart.FileHeader
+	Banner            *multipart.FileHeader
+	Bio               string
+	FacultyID         *uint
+	FacultyLocationID *uint
 }
 
 // LoginMeta carries request context for the post-login security-alert email:

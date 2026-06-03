@@ -32,6 +32,7 @@ export const signupSchema = z
         return d <= cutoff;
       }, 'You must be at least 17 years old'),
     facultyId: z.string().min(1, 'Faculty ID is required'),
+    facultyLocationId: z.string().min(1, 'Campus is required'),
     bio: z.string().max(500, 'Bio too long').optional(),
     agreeToTerms: z.literal(true, { message: 'You must accept the Terms and Conditions' }),
   })
@@ -81,5 +82,5 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type VerificationCodeInput = z.infer<typeof verificationCodeSchema>;
 export type ForgotPasswordEmailInput = z.infer<typeof forgotPasswordEmailSchema>;
 export type ForgotPasswordResetInput = z.infer<typeof forgotPasswordResetSchema>;
-export type SignupStep = 1 | 2 | 3;
+export type SignupStep = 1 | 2 | 3 | 4;
 export type ForgotPasswordStep = 'email' | 'otp' | 'reset' | 'done';

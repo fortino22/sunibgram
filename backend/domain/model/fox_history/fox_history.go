@@ -8,30 +8,29 @@ const (
 	TypeChat    = "chat"
 )
 
-// FoxHistory is the unified per-user history of Fox-agent activity: thread
-// summaries the user generated and guide-chat asks they made. One table, two
-// kinds, discriminated by Type.
+// FoxHistory is one entry within a Fox session (see foxsessionmodel.FoxSession,
+// linked by SessionID). Two kinds, discriminated by Type:
 //
-//   - summary rows: ThreadID set, Snapshot = root-post content at generation
-//     time, Body = the generated summary text, Question empty. One row per
-//     (user, thread) — re-summarizing the same thread touches UpdatedAt and
-//     refreshes Body/Snapshot (partial unique index enforces this).
-//   - chat rows: ThreadID nil, Question = the user's question, Body = the Fox
-//     answer, Snapshot empty. Always appended (no dedupe).
+//   - chat entries: one conversation turn. Question = the user's question, Body =
+//     the Fox answer, ThreadID/Snapshot empty. Many per chat session, ordered by
+//     ID — the session is re-openable to continue.
+//   - summary entries: ThreadID set, Snapshot = root-post content at generation
+//     time, Body = the generated summary text, Question empty. Exactly one per
+//     summary session; re-summarizing refreshes Body/Snapshot.
 //
-// The list is self-contained (no JOIN to thread_summaries needed) so summary
-// snapshots survive thread edits/deletes, same as the old UserThreadSummary +
-// ThreadSummary.ContentSnapshot pairing.
+// Entries are self-contained (no JOIN to thread_summaries needed) so summary
+// snapshots survive thread edits/deletes.
 type FoxHistory struct {
-	ID       uint   `gorm:"primaryKey;autoIncrement"`
-	UserID   uint   `gorm:"not null;index:idx_fox_history_user_updated,priority:1"`
-	Type     string `gorm:"type:varchar(16);not null"`
-	ThreadID *uint  `gorm:""`
+	ID        uint   `gorm:"primaryKey;autoIncrement"`
+	SessionID uint   `gorm:"not null;index:idx_fox_history_session,priority:1"`
+	UserID    uint   `gorm:"not null;index:idx_fox_history_user_updated,priority:1"`
+	Type      string `gorm:"type:varchar(16);not null"`
+	ThreadID  *uint  `gorm:""`
 
 	Question string `gorm:"type:text"`
 	Body     string `gorm:"type:text"`
 	Snapshot string `gorm:"type:text"`
 
 	CreatedAt time.Time
-	UpdatedAt time.Time `gorm:"index:idx_fox_history_user_updated,priority:2,sort:desc"`
+	UpdatedAt time.Time `gorm:"index:idx_fox_history_user_updated,priority:2,sort:desc;index:idx_fox_history_session,priority:2,sort:desc"`
 }

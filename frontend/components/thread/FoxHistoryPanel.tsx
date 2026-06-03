@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSummaryHistory } from '@/hooks/thread/useSummaryHistory';
+import { useFoxSessions } from '@/hooks/fox/useFoxSessions';
 import { SummaryHistoryList } from '@/components/thread/SummaryHistoryList';
 import { SummaryDetail } from '@/components/thread/SummaryDetail';
 
@@ -11,35 +11,41 @@ interface FoxHistoryPanelProps {
   active: boolean;
   /** Closes the fox card (used when navigating to a thread). */
   onNavigate: () => void;
+  /** Re-open a chat session: load its turns into Ask Fox and switch tabs. */
+  onContinueSession: (sessionId: number) => void;
 }
 
 /**
- * Two-pane "history chat" body for the fox card: a clickable summary list on the
- * left, and the selected summary's content on the right.
+ * Two-pane history body for the fox card: a clickable session list on the left,
+ * and the selected session's content on the right. Clicking an "Ask" session
+ * re-opens it in the Ask Fox tab to continue; a "Summary" session shows its
+ * summary in the detail pane (read-only).
  */
-export function FoxHistoryPanel({ active, onNavigate }: FoxHistoryPanelProps) {
+export function FoxHistoryPanel({ active, onNavigate, onContinueSession }: FoxHistoryPanelProps) {
   const router = useRouter();
-  const { data, isLoading, isError, refetch } = useSummaryHistory(active);
+  const { data, isLoading, isError, refetch } = useFoxSessions(active);
   const items = data?.data ?? [];
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [query, setQuery] = useState('');
 
-  // "Show more" → full history page, Summaries tab; close the card as we navigate.
+  // "Show more" → full history page, History tab; close the card as we navigate.
   const handleShowMore = () => {
-    router.push('/summaries?tab=summaries');
+    router.push('/summaries?tab=history');
     onNavigate();
   };
 
-  // Client-side search over content + question + summary (history is capped).
+  // Both kinds preview in the detail pane on click; a chat session is only
+  // continued via the explicit "Continue in Ask Fox" link in that pane.
+  const handleSelect = (id: number) => setSelectedId(id);
+
+  // Client-side search over title + content + summary + preview (history is capped).
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? items.filter((i) => `${i.content} ${i.question ?? ''} ${i.summary}`.toLowerCase().includes(q))
+    ? items.filter((i) => `${i.title} ${i.content} ${i.summary} ${i.preview}`.toLowerCase().includes(q))
     : items;
 
-  // Derive the effective selection at render (no effect needed): the clicked item
-  // if it's still in the filtered list, otherwise fall back to the top match. This
-  // keeps the right pane populated and re-points it as the filter changes.
-  const selected = filtered.find((i) => i.id === selectedId) ?? filtered[0] ?? null;
+  // No auto-pick — the pane stays a placeholder until a row is clicked.
+  const selected = selectedId !== null ? filtered.find((i) => i.id === selectedId) ?? null : null;
   const effectiveSelectedId = selected?.id ?? null;
 
   return (
@@ -77,7 +83,7 @@ export function FoxHistoryPanel({ active, onNavigate }: FoxHistoryPanelProps) {
           ) : filtered.length === 0 ? (
             <p style={emptyStyle}>No matches.</p>
           ) : (
-            <SummaryHistoryList items={filtered} selectedId={effectiveSelectedId} onSelect={setSelectedId} />
+            <SummaryHistoryList items={filtered} selectedId={effectiveSelectedId} onSelect={handleSelect} />
           )}
         </div>
         {items.length >= MODAL_HISTORY_LIMIT && (
@@ -90,7 +96,7 @@ export function FoxHistoryPanel({ active, onNavigate }: FoxHistoryPanelProps) {
       {/* Right column — selected summary detail */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
         <div style={{ flex: 1, overflowY: 'auto', padding: 14 }}>
-          <SummaryDetail item={selected} onNavigate={onNavigate} />
+          <SummaryDetail item={selected} onNavigate={onNavigate} onContinue={onContinueSession} />
         </div>
       </div>
     </div>
@@ -107,7 +113,7 @@ const sidebarHeaderStyle = {
 } as const;
 
 // Modal fetches the 6 most recent; a full page means more likely exist, so
-// only then is "Show more" worth showing. Keep in sync with useSummaryHistory.
+// only then is "Show more" worth showing. Keep in sync with useFoxSessions.
 const MODAL_HISTORY_LIMIT = 6;
 
 // No inline `background` — that would beat the `.btn-ghost:hover` rule on
@@ -165,7 +171,7 @@ function SidebarSkeleton() {
 function SidebarError({ onRetry }: { onRetry: () => void }) {
   return (
     <div style={{ textAlign: 'center', padding: '16px 8px' }}>
-      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>Couldn&apos;t load your summaries.</p>
+      <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px' }}>Couldn&apos;t load your history.</p>
       <button
         type="button"
         className="btn-ghost"

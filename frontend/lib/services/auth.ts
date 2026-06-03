@@ -22,6 +22,7 @@ export interface RegisterParams {
   gender: string;
   birthdayDate?: string;
   facultyId: number | string;
+  facultyLocationId: number | string;
   avatar?: File | null;
   banner?: File | null;
   bio?: string;
@@ -60,6 +61,7 @@ export function register(params: RegisterParams): Promise<MessageResponse> {
   formData.append('gender', params.gender);
   appendOptionalString(formData, 'birthday_date', params.birthdayDate);
   formData.append('faculty_id', String(params.facultyId));
+  formData.append('faculty_location_id', String(params.facultyLocationId));
   appendOptionalString(formData, 'bio', params.bio);
   formData.append('terms_accepted', params.agreeToTerms ? 'true' : 'false');
 

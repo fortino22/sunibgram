@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, MapPin, Search } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { DataTable, Column } from '@/components/admin/DataTable';
 import { Pager } from '@/components/admin/Pager';
 import { StatusBadge } from '@/components/admin/StatusBadge';
+import { fmtDateTime } from '@/components/admin/format';
+import { AudienceBadges } from '@/components/events/AudienceBadges';
 import { listAdminEvents } from '@/lib/services/admin/events';
 import type { AdminEvent } from '@/lib/services/admin/types';
 
@@ -30,52 +32,57 @@ export default function AdminEventsPage() {
     {
       key: 'event',
       header: 'Event',
+      sortValue: (e) => e.title?.toLowerCase(),
       render: (e) => (
-        <div>
+        <div style={{ minWidth: 0 }}>
           <Link href={`/admin/events/${e.id}`} style={{ fontWeight: 600, color: 'var(--text)', textDecoration: 'none' }}>
             {e.title}
           </Link>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{e.location || '—'}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+            <MapPin size={11} strokeWidth={2} />
+            {e.location || 'No venue'}
+          </div>
         </div>
       ),
     },
     {
+      key: 'audience',
+      header: 'Region',
+      render: (e) =>
+        e.audience && e.audience.length > 0 ? (
+          <AudienceBadges audience={e.audience} max={2} />
+        ) : (
+          <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+        ),
+    },
+    {
       key: 'type',
       header: 'Type',
+      sortValue: (e) => e.type,
+      render: (e) => <span className="admin-pill-outline">{e.type}</span>,
+    },
+    {
+      key: 'when',
+      header: 'When',
+      sortValue: (e) => (e.start_time ? new Date(e.start_time).getTime() : 0),
       render: (e) => (
-        <span
-          style={{
-            display: 'inline-block',
-            padding: '2px 10px',
-            borderRadius: 9999,
-            background: e.type === 'official' ? 'var(--bg-subtle)' : 'transparent',
-            color: 'var(--text)',
-            border: '1px solid var(--border)',
-            fontSize: 12,
-            fontWeight: e.type === 'official' ? 700 : 500,
-            textTransform: 'capitalize',
-          }}
-        >
-          {e.type}
-        </span>
+        <div style={{ fontSize: 13 }}>
+          <div style={{ color: 'var(--text)' }}>{fmtDateTime(e.start_time)}</div>
+          <div style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>→ {fmtDateTime(e.end_time)}</div>
+        </div>
       ),
     },
-    { key: 'start', header: 'Start', render: (e) => new Date(e.start_time).toLocaleString() },
-    { key: 'end',   header: 'End',   render: (e) => new Date(e.end_time).toLocaleString() },
     {
       key: 'status',
       header: 'Status',
+      sortValue: (e) => e.status,
       render: (e) => <StatusBadge status={e.status} />,
     },
     {
       key: 'actions',
       header: '',
       render: (e) => (
-        <Link
-          href={`/admin/events/${e.id}`}
-          className="admin-btn admin-btn-outline admin-btn-sm"
-          style={{ textDecoration: 'none' }}
-        >
+        <Link href={`/admin/events/${e.id}`} className="admin-btn admin-btn-outline admin-btn-sm" style={{ textDecoration: 'none' }}>
           Review
         </Link>
       ),
@@ -91,34 +98,47 @@ export default function AdminEventsPage() {
       icon={CalendarDays}
       title="Events"
       description="Review event submissions and manage approvals."
-      actions={
-        <div style={{ display: 'flex', gap: 8 }}>
+    >
+      <div className="admin-toolbar">
+        <div className="admin-search">
+          <Search size={16} strokeWidth={2} />
           <input
             value={name}
             onChange={(e) => { setName(e.target.value); setPage(1); }}
             placeholder="Search by title"
             className="admin-input admin-input-pill"
-            style={{ minWidth: 220 }}
+            aria-label="Search events by title"
           />
-          <select
-            value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            className="admin-select admin-select-pill"
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>{s ? s : 'All'}</option>
-            ))}
-          </select>
         </div>
-      }
-    >
-      {q.isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
-      ) : q.isError ? (
+        <div className="admin-segmented" role="tablist" aria-label="Filter by status">
+          {STATUS_OPTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={status === s}
+              data-active={status === s}
+              onClick={() => { setStatus(s); setPage(1); }}
+              className="admin-segmented-btn"
+            >
+              {s || 'All'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {q.isError ? (
         <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : (
         <>
-          <DataTable<AdminEvent> columns={columns} rows={q.data?.data ?? []} rowKey={(e) => e.id} empty="No events match" />
+          <DataTable<AdminEvent>
+            columns={columns}
+            rows={q.data?.data ?? []}
+            rowKey={(e) => e.id}
+            loading={q.isLoading}
+            empty="No events match"
+            emptyIcon={<CalendarDays size={28} strokeWidth={1.6} style={{ color: 'var(--text-tertiary)' }} />}
+          />
           <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}
