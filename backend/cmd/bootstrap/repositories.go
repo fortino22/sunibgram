@@ -219,7 +219,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		Notification:                notificationrepo.NewNotificationRepository(w, r, c),
 		ThreadPoll:                  threadpollrepo.NewThreadPollRepository(w, r, c),
 		ThreadSummary:               threadsummaryrepo.NewThreadSummaryRepository(w, r),
-		FoxHistory:                  foxhistoryrepo.NewFoxHistoryRepository(w, r),
+		FoxHistory:                  foxhistoryrepo.NewFoxHistoryRepository(w, r, c),
 		EventThreadPin:              eventthreadpinrepo.NewEventThreadPinRepository(w, r, c),
 		TrendingUser:                trendinguserrepo.NewTrendingUserRepository(r, c),
 		TrendingUserSnapshot:        trendingusersnapshotrepo.NewTrendingUserSnapshotRepository(w, r, c),

@@ -141,20 +141,14 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 		username := user.UserName
 		if input.Name != nil {
 			name = strings.TrimSpace(*input.Name)
-			if name == "" {
-				return errors.New("name cannot be empty")
-			}
-			if utf8.RuneCountInString(name) > 100 {
-				return errors.New("name must be 100 characters or less")
+			if err := usermodel.ValidateName(name); err != nil {
+				return err
 			}
 		}
 		if input.Username != nil {
 			username = strings.TrimSpace(*input.Username)
-			if username == "" {
-				return errors.New("username cannot be empty")
-			}
-			if utf8.RuneCountInString(username) > 50 {
-				return errors.New("username must be 50 characters or less")
+			if err := usermodel.ValidateUsername(username); err != nil {
+				return err
 			}
 			if username != user.UserName {
 				taken, err := s.userRepo.ExistsByUserName(username)

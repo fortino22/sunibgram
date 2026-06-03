@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { useSummaryHistoryInfinite } from '@/hooks/thread/useSummaryHistoryInfinite';
 import { SummaryHistoryList } from '@/components/thread/SummaryHistoryList';
@@ -24,9 +24,18 @@ export default function SummariesPage() {
 }
 
 function SummariesPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   // "Show more" deep-links to ?tab=summaries; otherwise default to Your Agent.
-  const initialTab: Tab = useSearchParams().get('tab') === 'summaries' ? 'summaries' : 'agent';
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  // URL is the source of truth so the tab survives refresh / back-forward.
+  const activeTab: Tab = searchParams.get('tab') === 'summaries' ? 'summaries' : 'agent';
+
+  function setTab(tab: Tab) {
+    const url = new URLSearchParams(searchParams.toString());
+    if (tab === 'summaries') url.set('tab', 'summaries');
+    else url.delete('tab'); // keep clean default URL = /summaries
+    router.replace(url.toString() ? `/summaries?${url.toString()}` : '/summaries');
+  }
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
 
@@ -84,8 +93,8 @@ function SummariesPageInner() {
           Fox Agent
         </div>
         <div role="tablist" style={{ display: 'flex', gap: 0 }}>
-          <TabButton label="Your Agent" active={activeTab === 'agent'} onClick={() => setActiveTab('agent')} />
-          <TabButton label="Summaries" active={activeTab === 'summaries'} onClick={() => setActiveTab('summaries')} />
+          <TabButton label="Your Agent" active={activeTab === 'agent'} onClick={() => setTab('agent')} />
+          <TabButton label="Summaries" active={activeTab === 'summaries'} onClick={() => setTab('summaries')} />
         </div>
       </div>
 
