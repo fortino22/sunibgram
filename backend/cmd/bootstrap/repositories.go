@@ -26,6 +26,7 @@ import (
 	explorerepoiface "github.com/sunibgram/domain/repository/explore"
 	facultyrepoiface "github.com/sunibgram/domain/repository/faculty"
 	feedbackrepoiface "github.com/sunibgram/domain/repository/feedback"
+	feedbackmediarepoiface "github.com/sunibgram/domain/repository/feedback_media"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
 	likerepoiface "github.com/sunibgram/domain/repository/like"
@@ -78,6 +79,7 @@ import (
 	explorerepo "github.com/sunibgram/infrastructure/repository/explore"
 	facultyrepo "github.com/sunibgram/infrastructure/repository/faculty"
 	feedbackrepo "github.com/sunibgram/infrastructure/repository/feedback"
+	feedbackmediarepo "github.com/sunibgram/infrastructure/repository/feedback_media"
 	followrepo "github.com/sunibgram/infrastructure/repository/follow"
 	hashtagrepo "github.com/sunibgram/infrastructure/repository/hashtag"
 	likerepo "github.com/sunibgram/infrastructure/repository/like"
@@ -143,6 +145,7 @@ type Repositories struct {
 	EventActionConfirmation     eventactionconfirmationrepoiface.IEventActionConfirmationRepository
 	Faculty                     facultyrepoiface.IFacultyRepository
 	Feedback                    feedbackrepoiface.IFeedbackRepository
+	FeedbackMedia               feedbackmediarepoiface.IFeedbackMediaRepository
 	UserFaculty                 userfacultyrepoiface.IUserFacultyRepository
 	Order                       orderrepoiface.IOrderRepository
 	PremiumSubscription         premiumsubscriptionrepoiface.IPremiumSubscriptionRepository
@@ -201,6 +204,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		EventActionConfirmation:     eventactionconfirmationrepo.NewEventActionConfirmationRepository(w, r),
 		Faculty:                     facultyrepo.NewFacultyRepository(w, r, c),
 		Feedback:                    feedbackrepo.NewFeedbackRepository(w, r, c),
+		FeedbackMedia:               feedbackmediarepo.NewFeedbackMediaRepository(w, r),
 		UserFaculty:                 userfacultyrepo.NewUserFacultyRepository(w, r, c),
 		Order:                       orderrepo.NewOrderRepository(w, r),
 		PremiumSubscription:         premiumsubscriptionrepo.NewPremiumSubscriptionRepository(w, r),

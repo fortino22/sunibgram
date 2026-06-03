@@ -187,6 +187,35 @@ export function FeedbackCard({ feedback, view = 'grid' }: FeedbackCardProps) {
           {feedback.body}
         </p>
 
+        {feedback.images.length > 0 && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns:
+                feedback.images.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+              gap: 6,
+            }}
+          >
+            {feedback.images.map((src) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={src}
+                src={src}
+                alt="Feedback attachment"
+                loading="lazy"
+                style={{
+                  width: '100%',
+                  aspectRatio: '1 / 1',
+                  objectFit: 'cover',
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  display: 'block',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
         <div
           style={{
             display: 'flex',

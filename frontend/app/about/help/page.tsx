@@ -150,7 +150,7 @@ export default function HelpAboutPage() {
         eyebrow="Help center"
         title="How can we help?"
         description="Guides, FAQs, and direct answers — written for the questions Binus students actually ask. If you can&apos;t find what you need, write to us."
-        primaryCta={{ label: 'Email support', href: 'mailto:support@sunibgram.com' }}
+        primaryCta={{ label: 'Email support', href: 'mailto:sunibgram@gmail.com' }}
         secondaryCta={{ label: 'Privacy center', href: '/about/privacy' }}
       />
 
@@ -230,12 +230,12 @@ export default function HelpAboutPage() {
                 Still stuck?
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.5, marginTop: 4 }}>
-                Email us at <span style={{ color: 'var(--text)', fontWeight: 600 }}>support@sunibgram.com</span>.
+                Email us at <span style={{ color: 'var(--text)', fontWeight: 600 }}>sunibgram@gmail.com</span>.
                 We read everything — usually within a couple of working days.
               </div>
             </div>
             <Link
-              href="mailto:support@sunibgram.com"
+              href="mailto:sunibgram@gmail.com"
               className="about-btn-primary about-btn-primary-inverted"
               style={{ color: 'var(--text)', borderColor: 'rgba(0, 0, 0, 0.18)' }}
             >

@@ -139,7 +139,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		EventPin:            eventpinctrl.NewEventPinController(svcs.EventPin, svcs.Event),
 		EventParticipant:    eventparticipantctrl.NewEventParticipantController(svcs.EventParticipant, svcs.Event),
 		Faculty:             facultyctrl.NewFacultyController(svcs.Faculty),
-		Feedback:            feedbackctrl.NewFeedbackController(svcs.Feedback, svcs.UserProfile, c),
+		Feedback:            feedbackctrl.NewFeedbackController(svcs.Feedback, svcs.FeedbackMedia, svcs.UserProfile, c),
 		Order:               orderctrl.NewOrderController(svcs.Order, os.Getenv("MIDTRANS_SERVER_KEY")),
 		PremiumSubscription: premiumsubscriptionctrl.NewPremiumSubscriptionController(svcs.PremiumSubscription),
 		DevSubscription:     premiumsubscriptionctrl.NewDevSubscriptionController(svcs.PremiumSubscription),

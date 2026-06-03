@@ -20,20 +20,20 @@ func NewFeedbackService(repo feedbackrepoiface.IFeedbackRepository) feedbacksvci
 	return &FeedbackService{repo: repo}
 }
 
-func (s *FeedbackService) Create(userID uint, fType, title, body string) error {
+func (s *FeedbackService) Create(userID uint, fType, title, body string) (uuid.UUID, error) {
 	if userID == 0 {
-		return errors.New("unauthorized")
+		return uuid.Nil, errors.New("unauthorized")
 	}
 	if err := feedbackmodel.ValidateType(fType); err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	cleanTitle, err := feedbackmodel.ValidateTitle(title)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	cleanBody, err := feedbackmodel.ValidateBody(body)
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 	f := &feedbackmodel.Feedback{
 		UserID: userID,
@@ -42,7 +42,10 @@ func (s *FeedbackService) Create(userID uint, fType, title, body string) error {
 		Body:   cleanBody,
 		Status: feedbackmodel.StatusOpen,
 	}
-	return s.repo.Save(f)
+	if err := s.repo.Save(f); err != nil {
+		return uuid.Nil, err
+	}
+	return f.ID, nil
 }
 
 func (s *FeedbackService) GetByID(viewerID uint, id uuid.UUID) (*feedbacksvciface.FeedbackView, error) {

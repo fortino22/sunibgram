@@ -26,6 +26,7 @@ type FeedbackResponse struct {
 	Title     string              `json:"title"`
 	Body      string              `json:"body"`
 	Status    string              `json:"status"`
+	Images    []string            `json:"images"`
 	Author    FeedbackAuthor      `json:"author"`
 	Likes     int64               `json:"likes"`
 	Dislikes  int64               `json:"dislikes"`

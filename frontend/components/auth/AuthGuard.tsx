@@ -107,6 +107,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
 
     return () => {
       cancelled = true;
+      attemptedRef.current = false; // allow remount to retry a cancelled attempt
     };
   }, [router]);
 

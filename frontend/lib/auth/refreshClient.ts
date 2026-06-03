@@ -1,15 +1,15 @@
 export interface RefreshOk {
-  status: 'ok';
+  status: "ok";
   accessToken: string;
   sid: string;
 }
 
 export interface RefreshRevoked {
-  status: 'revoked';
+  status: "revoked";
 }
 
 export interface RefreshTransient {
-  status: 'transient';
+  status: "transient";
   retryAfterMs?: number;
 }
 
@@ -25,7 +25,7 @@ interface RefreshPayload {
 }
 
 function isRefreshPayload(value: unknown): value is RefreshPayload {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 let inflight: Promise<RefreshResult> | null = null;
@@ -33,46 +33,54 @@ let inflight: Promise<RefreshResult> | null = null;
 async function doRefresh(): Promise<RefreshResult> {
   let response: Response;
   try {
-    response = await fetch('/auth/refresh', { cache: 'no-store' });
+    response = await fetch("/auth/refresh", { cache: "no-store" });
   } catch {
-    return { status: 'transient' };
+    return { status: "transient" };
   }
 
   let data: unknown = null;
   try {
     data = await response.json();
   } catch {
-    return { status: 'transient' };
+    return { status: "transient" };
   }
 
   if (!isRefreshPayload(data)) {
-    return { status: 'transient' };
+    return { status: "transient" };
   }
 
-  if (data.authenticated && typeof data.access_token === 'string' && typeof data.sid === 'string') {
-    return { status: 'ok', accessToken: data.access_token, sid: data.sid };
+  if (
+    data.authenticated &&
+    typeof data.access_token === "string" &&
+    typeof data.sid === "string"
+  ) {
+    return { status: "ok", accessToken: data.access_token, sid: data.sid };
   }
 
   if (data.revoked === true) {
-    return { status: 'revoked' };
+    return { status: "revoked" };
   }
 
   if (response.status === 429) {
-    const retryAfterSec = typeof data.retry_after === 'number'
-      ? data.retry_after
-      : Number(response.headers.get('retry-after') ?? '1') || 1;
-    return { status: 'transient', retryAfterMs: Math.max(100, retryAfterSec * 1000) };
+    const retryAfterSec =
+      typeof data.retry_after === "number"
+        ? data.retry_after
+        : Number(response.headers.get("retry-after") ?? "1") || 1;
+    return {
+      status: "transient",
+      retryAfterMs: Math.max(100, retryAfterSec * 1000),
+    };
   }
 
   if (data.transient === true || response.status >= 500) {
-    return { status: 'transient' };
+    return { status: "transient" };
   }
 
   if (response.status === 401 || response.status === 403) {
-    return { status: 'revoked' };
+    return { status: "revoked" };
   }
 
-  return { status: 'transient' };
+  return { status: "transient" };
 }
 
 export function refreshOnce(): Promise<RefreshResult> {

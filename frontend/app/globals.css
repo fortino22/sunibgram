@@ -1226,15 +1226,23 @@ body {
    the fold on first paint. Sections share the space 1:1 and
    centre their content vertically when there is slack. */
 .about-fold {
-  min-height: calc(100vh - 61px);
   display: flex;
   flex-direction: column;
 }
 .about-fold > section {
-  flex: 1 1 0;
   display: flex;
   flex-direction: column;
+}
+/* Hero fills at least the first screen on tall displays, but grows with
+   its content on short ones — never shorter than its content, never clipped. */
+.about-fold > #what {
+  flex: 0 0 auto;
+  min-height: min(calc(100vh - 61px), max-content);
   justify-content: center;
+}
+/* Thread demo: natural height below the fold. */
+.about-fold > section:not(#what) {
+  flex: 0 0 auto;
 }
 .about-fold > section + section {
   border-top: 1px solid var(--border);
