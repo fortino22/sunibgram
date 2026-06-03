@@ -126,6 +126,7 @@ export interface FeedbackAuthor {
   username: string;
   name?: string;
   avatar?: string | null;
+  user_avatar?: string | null;
   is_premium?: boolean;
 }
 
@@ -135,6 +136,7 @@ export interface Feedback {
   title: string;
   body: string;
   status: string;
+  images?: string[];
   author?: FeedbackAuthor;
   likes?: number;
   dislikes?: number;

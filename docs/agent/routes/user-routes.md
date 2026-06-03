@@ -40,6 +40,13 @@ name, bio, avatar, banner) from here.
 `following`, and `verified`.
 **Suggest when:** "who follows me", "see who I'm following", "<someone>'s followers".
 
+### `/about-profile/:userId`
+**Public profile card.** A read-only, shareable view of a user — display name, bio,
+faculty, join date, and username history — separate from the interactive in-app
+`/profile/:userId`. Use this when sharing a profile as a link rather than opening the
+app view.
+**Suggest when:** "share <someone>'s profile", "public link to a profile", "their bio / faculty".
+
 ---
 
 ## Threads
