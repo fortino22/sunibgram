@@ -1,7 +1,15 @@
+---
+summary: Most-asked questions and answers — sign-up eligibility, OTP, usernames, public vs private communities, official events, leaderboard, reporting, account deletion.
+last_synced: 2026-06-03
+source:
+  - frontend/app/about/help/page.tsx
+tags: [source, faq, support]
+---
+
 # FAQ
 
 Most-asked questions and answers. Source: `/about/help`
-(`frontend/app/about/help/page.tsx`). Full help page: [`/about/help`](../routes/public-routes.md).
+(`frontend/app/about/help/page.tsx`). Full help page: `/about/help` (see [[public-routes]]).
 
 ---
 
@@ -40,14 +48,14 @@ post volume. Bots and self-engagement are filtered out.
 ### How do I report a thread, message, or user?
 Use the three-dot menu on any thread or profile and pick **Report**. You'll select a
 violation category and add a short explanation. Reports go to the moderation queue and
-are usually reviewed within a couple of days. See [rules.md](./rules.md) for the
-report categories.
+are usually reviewed within a couple of days. See [[moderation-and-reports]] for the
+report categories, and [[rules]] for acceptable use.
 
 ### Can I delete my account?
 Yes — open account settings (`/settings/account`) and choose **Delete account**. Your
 threads, replies, communities, and messages are removed permanently from the active
 app. Some logs may be retained for a short period for safety and legal reasons, as
-described in the [Privacy Center](./privacy.md).
+described in the Privacy Center ([[privacy]]).
 
 ---
 

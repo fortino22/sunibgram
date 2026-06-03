@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     'Why Sunibgram exists — a campus-only social network built by Binus students, for Binus students.',
 };
 
-export default function OurStoryPage() {
+export default function StoryPage() {
   return (
     <>
       <AboutPageHero

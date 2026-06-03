@@ -1,10 +1,19 @@
+---
+summary: Plain-language terms — acceptance, eligibility, account responsibility, content ownership/licence, acceptable use, IP, termination, liability, governing law.
+last_synced: 2026-06-03
+source:
+  - frontend/app/about/terms/page.tsx
+tags: [source, terms, legal]
+---
+
 # Terms & Conditions
 
 Plain-language summary for the agent. Source: `/about/terms`
 (`frontend/app/about/terms/page.tsx`). **Last updated · January 2026.** Sunibgram is
-operated by a team of students, **independently of Binus University**.
+operated by a team of students, **independently of Binus University** (see
+[[independence]]).
 
-> For the binding, full text, point users to [`/about/terms`](../routes/public-routes.md).
+> For the binding, full text, point users to `/about/terms` (see [[public-routes]]).
 
 ---
 
@@ -34,7 +43,7 @@ to the audience you intended (followers, the community you posted in, the people
 sent it to). You confirm you have the right to post your Content.
 
 ## Acceptable use
-See [rules.md](./rules.md) for the full prohibited-conduct list. In short: no
+See [[rules]] for the full prohibited-conduct list. In short: no
 harassment/doxxing/impersonation, no illegal/explicit/violent/hateful content, no
 academic-dishonesty material, no spam/scraping/automation without permission, no
 circumventing moderation, no unauthorized probing/stress-testing, no unlabeled

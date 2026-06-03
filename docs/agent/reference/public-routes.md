@@ -1,9 +1,19 @@
+---
+summary: Catalog of no-login routes — auth pages (/login, /signup, /forgot-password) and the public /about info section, with "suggest when" cues.
+last_synced: 2026-06-03
+source:
+  - frontend/app/login/page.tsx
+  - frontend/app/signup/page.tsx
+  - frontend/app/about/page.tsx
+tags: [reference, routes, public]
+---
+
 # Public Routes (no login)
 
 Routes reachable without signing in: authentication pages and the `/about` info
 section. Safe to share with anyone, including prospective students.
 
-> Signed-in, user-facing routes are in [user-routes.md](./user-routes.md).
+> Signed-in, user-facing routes are in [[user-routes]].
 
 ---
 
@@ -54,5 +64,6 @@ The `/about` section explains the product and policies. All pages are public.
 | `/about/privacy` | Privacy Center | "privacy policy", "how is my data used" |
 | `/about/terms` | Terms & Conditions | "terms", "rules for using the app" |
 
-For the policy text itself (so the agent can answer without sending the user away),
-see [policies/](../policies/).
+For the policy text itself (so the agent can answer without sending the user away), see
+the source pages [[terms]], [[privacy]], [[faq]], and [[rules]]. Feature behaviour lives
+in the [[about|entities and concepts]].

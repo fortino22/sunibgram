@@ -1,8 +1,22 @@
+---
+summary: The single canonical table of every numeric/format cap — post/poll/media, uploads, bookmarks, communities, group chats, feedback, account/security, premium.
+last_synced: 2026-06-03
+source:
+  - backend/domain/model/thread_poll/thread_poll.go
+  - backend/domain/model/media/media.go
+  - backend/domain/model/user/user.go
+  - frontend/lib/services/threads.ts
+  - frontend/lib/services/bookmarkCollections.ts
+  - frontend/lib/services/feedback.ts
+tags: [reference, limits]
+---
+
 # Limits & Restrictions
 
-Concrete numeric limits and format rules the agent can quote when users ask "how
-long / how big / how many / what file types?". Values verified against source code —
-see the source path next to each group.
+The **single canonical table** of every numeric limit and format rule — quote it when
+users ask "how long / how big / how many / what file types?". Other pages ([[threads]],
+[[communities]], [[premium]], …) link here instead of restating caps. Values verified
+against source code — see the source path next to each group.
 
 > Sizes are server-enforced maximums. The frontend also compresses images before
 > upload, so the file that actually lands is usually well under the cap.
@@ -75,5 +89,4 @@ Source: `backend/application/usecase/order/order_service.go`,
   (item "Sunibgram Premium").
 - **Free trial:** **1 month**, activatable **once per account** (a second attempt is
   rejected).
-- **Premium unlocks:** creating communities and creating events (see
-  [features.md](./features.md)).
+- **Premium unlocks:** creating communities and creating events (see [[premium]]).

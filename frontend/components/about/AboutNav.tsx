@@ -33,101 +33,135 @@ type NavLink = {
 
 const DROPDOWNS: NavDropdown[] = [
   {
-    label: 'Features',
+    label: "Features",
     columns: [
       {
-        heading: 'Connect',
+        heading: "Connect",
         items: [
           {
-            title: 'Threads',
-            description: 'Share thoughts and updates with the campus community.',
-            href: '/about/threads',
+            title: "Threads",
+            description:
+              "Share thoughts and updates with the campus community.",
+            href: "/about/threads",
           },
           {
-            title: 'Communities',
-            description: 'Join groups around shared interests and courses.',
-            href: '/about/communities',
+            title: "Communities",
+            description: "Join groups around shared interests and courses.",
+            href: "/about/communities",
           },
           {
-            title: 'Messages',
-            description: 'Real-time private messaging with fellow students.',
-            href: '/about/messages',
+            title: "Messages",
+            description: "Real-time private messaging with fellow students.",
+            href: "/about/messages",
           },
         ],
       },
       {
-        heading: 'Discover',
+        heading: "Discover",
         items: [
           {
-            title: 'Events',
-            description: 'Discover and organize campus events and meetups.',
-            href: '/about/events',
+            title: "Events",
+            description: "Discover and organize campus events and meetups.",
+            href: "/about/events",
           },
           {
-            title: 'Leaderboard',
-            description: 'See top contributors and rising voices on campus.',
-            href: '/about/leaderboard',
+            title: "Leaderboard",
+            description: "See top contributors and rising voices on campus.",
+            href: "/about/leaderboard",
           },
         ],
       },
       {
-        heading: 'Intelligence',
+        heading: "Intelligence",
         items: [
           {
-            title: 'Fox AI',
-            description: 'The on-platform analyst that reviews events and writes daily and weekly reports.',
-            href: '/about/fox',
-            badge: 'Developer',
+            title: "Fox AI",
+            description:
+              "The on-platform analyst that reviews events and writes daily and weekly reports.",
+            href: "/about/fox",
+            badge: "Developer",
           },
         ],
       },
     ],
   },
   {
-    label: 'Resources',
+    label: "Resources",
     columns: [
       {
-        heading: 'Support',
+        heading: "Support",
         items: [
           {
-            title: 'Help center',
-            description: 'Guides, FAQs, and answers to common questions.',
-            href: '/about/help',
+            title: "Help center",
+            description: "Guides, FAQs, and answers to common questions.",
+            href: "/about/help",
           },
         ],
       },
       {
-        heading: 'Transparency',
+        heading: "Transparency",
         items: [
           {
-            title: 'Algorithm',
-            description: 'How we rank threads and surface content on your feed.',
-            href: '/about/algorithm',
+            title: "Algorithm",
+            description:
+              "How we rank threads and surface content on your feed.",
+            href: "/about/algorithm",
           },
           {
-            title: 'How we operate',
-            description: 'Hermes — the operational toolset that keeps Sunibgram running.',
-            href: '/about/hermes',
+            title: "How we operate",
+            description:
+              "Hermes — the operational toolset that keeps Sunibgram running.",
+            href: "/about/hermes",
           },
         ],
       },
     ],
   },
   {
-    label: 'Safety',
+    label: "Safety",
     columns: [
       {
-        heading: 'Legal',
+        heading: "Legal",
         items: [
           {
-            title: 'Privacy center',
-            description: 'How we handle and protect your data.',
-            href: '/about/privacy',
+            title: "Privacy center",
+            description: "How we handle and protect your data.",
+            href: "/about/privacy",
           },
           {
-            title: 'Terms and conditions',
-            description: 'Rules and policies for using Sunibgram.',
-            href: '/about/terms',
+            title: "Terms and conditions",
+            description: "Rules and policies for using Sunibgram.",
+            href: "/about/terms",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Our story",
+    columns: [
+      {
+        heading: "Background",
+        items: [
+          {
+            title: "Story",
+            description: "How Sunibgram started and where it is heading.",
+            href: "/about/story",
+          },
+          {
+            title: "Mission",
+            description: "What we are building toward and why it matters.",
+            href: "/about/mission",
+          },
+        ],
+      },
+      {
+        heading: "In practice",
+        items: [
+          {
+            title: "Use cases",
+            description: "The ways students actually use Sunibgram day to day.",
+            href: "/about/use-cases",
           },
         ],
       },
@@ -136,7 +170,6 @@ const DROPDOWNS: NavDropdown[] = [
 ];
 
 const PLAIN_LINKS: NavLink[] = [
-  { label: 'Our story', href: '/about/our-story' },
   { label: 'News', href: '/about/news' },
 ];
 
