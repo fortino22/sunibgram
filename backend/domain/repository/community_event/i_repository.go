@@ -27,6 +27,7 @@ type ICommunityEventRepository interface {
 
 	// Comments
 	SaveComment(comment *communityeventmodel.CommunityEventComment) error
+	UpdateComment(comment *communityeventmodel.CommunityEventComment) error
 	FindComments(eventID uint, page, limit int) ([]communityeventmodel.CommunityEventComment, int64, error)
 	FindCommentByID(commentID uint) (*communityeventmodel.CommunityEventComment, error)
 	DeleteComment(commentID uint) error

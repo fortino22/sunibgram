@@ -24,6 +24,7 @@ func RegisterCommunityEventRoutes(
 	events.Delete("/:eventId", ctrl.Delete)
 	events.Get("/:eventId/comments", ctrl.GetComments)
 	events.Post("/:eventId/comments", ctrl.AddComment)
+	events.Put("/:eventId/comments/:commentId", ctrl.UpdateComment)
 	events.Delete("/:eventId/comments/:commentId", ctrl.DeleteComment)
 	events.Post("/:eventId/comments/:commentId/pin", ctrl.PinComment)
 	events.Delete("/:eventId/comments/:commentId/pin", ctrl.UnpinComment)

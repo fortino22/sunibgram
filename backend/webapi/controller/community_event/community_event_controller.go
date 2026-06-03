@@ -373,6 +373,30 @@ func (c *CommunityEventController) AddComment(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusCreated).JSON(c.toCommentResponse(comment, nil))
 }
 
+func (c *CommunityEventController) UpdateComment(ctx *fiber.Ctx) error {
+	claims, ok := ctrlshared.RequireAuth(ctx)
+	if !ok {
+		return nil
+	}
+	eventID, ok := ctrlshared.ParseIDParam(ctx, "eventId", "event")
+	if !ok {
+		return nil
+	}
+	commentID, ok := ctrlshared.ParseIDParam(ctx, "commentId", "comment")
+	if !ok {
+		return nil
+	}
+	var req communityeventdto.UpdateCommentRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctrlshared.HandleServiceError(ctx, errors.New("invalid request body"))
+	}
+	comment, err := c.svc.UpdateComment(ctx.Context(), eventID, commentID, claims.UserID, req.Content)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	return ctx.Status(fiber.StatusOK).JSON(c.toCommentResponse(comment, nil))
+}
+
 func (c *CommunityEventController) DeleteComment(ctx *fiber.Ctx) error {
 	claims, ok := ctrlshared.RequireAuth(ctx)
 	if !ok {

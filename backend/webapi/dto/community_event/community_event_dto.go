@@ -81,6 +81,10 @@ type AddCommentRequest struct {
 	Content string `json:"content"`
 }
 
+type UpdateCommentRequest struct {
+	Content string `json:"content"`
+}
+
 type SetReactionRequest struct {
 	Emoji string `json:"emoji"`
 }

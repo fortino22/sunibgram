@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, ChevronDown, MapPin, Pencil, Pin, PinOff, Plus, Trash2, Users } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ChevronDown, MapPin, MoreHorizontal, Pencil, Pin, PinOff, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar } from '@/components/shared/Avatar';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { DangerConfirmModal } from '@/components/shared/DangerConfirmModal';
 import { renderRichContent } from '@/components/thread/MentionText';
@@ -18,13 +18,14 @@ const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 import { useCommunityEvent, useCommunityEventComments } from '@/hooks/useCommunityEvents';
 import {
   useAddCommunityEventComment,
+  useEditCommunityEventComment,
   useDeleteCommunityEventComment,
   usePinCommunityEventComment,
   useSetCommunityEventReaction,
   useDeleteCommunityEvent,
 } from '@/hooks/useCommunityEventMutations';
 import type { MentionUser } from '@/lib/services/threads';
-import { encodeMentions } from '@/lib/mentions';
+import { encodeMentions, decodeMentionsForEditing } from '@/lib/mentions';
 import { useAuthStore } from '@/stores/authStore';
 import type {
   CommunityEventCommentData,
@@ -140,6 +141,45 @@ function ReactionBar({ event, eventId }: { event: CommunityEventDetailData; even
   );
 }
 
+function MenuItem({
+  icon,
+  label,
+  onClick,
+  danger,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '9px 14px',
+        border: 'none',
+        background: 'transparent',
+        cursor: 'pointer',
+        fontSize: 14,
+        fontWeight: 500,
+        textAlign: 'left',
+        color: danger ? 'var(--coral)' : 'var(--text)',
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
 function CommentRow({
   comment,
   eventId,
@@ -153,8 +193,28 @@ function CommentRow({
 }) {
   const pinMutation = usePinCommunityEventComment(eventId);
   const deleteMutation = useDeleteCommunityEventComment(eventId);
-  const canDelete = isAdmin || comment.author.user_id === currentUserId;
+  const isAuthor = comment.author.user_id === currentUserId;
+  const canEdit = isAdmin || isAuthor;
+  const canDelete = isAdmin || isAuthor;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    function onDown(e: MouseEvent | TouchEvent) {
+      const target = e.target;
+      if (!(target instanceof Node) || menuRef.current?.contains(target)) return;
+      setMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+    };
+  }, [menuOpen]);
 
   return (
     <div
@@ -184,30 +244,64 @@ function CommentRow({
           {renderRichContent(comment.content)}
         </p>
       </div>
-      <div className="ce-actions" style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-        {isAdmin && (
+      {canEdit && (
+        <div className="ce-actions" ref={menuRef} style={{ position: 'relative', flexShrink: 0, opacity: menuOpen ? 1 : undefined }}>
           <button
             className="ce-icon-btn"
-            onClick={() => pinMutation.mutate({ commentId: comment.id, pinned: comment.is_pinned })}
-            disabled={pinMutation.isPending}
-            aria-label={comment.is_pinned ? 'Unpin comment' : 'Pin comment'}
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label="Comment actions"
+            aria-expanded={menuOpen}
             style={{ border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 6, borderRadius: 8 }}
           >
-            {comment.is_pinned ? <PinOff size={15} /> : <Pin size={15} />}
+            <MoreHorizontal size={16} />
           </button>
-        )}
-        {canDelete && (
-          <button
-            className="ce-icon-btn danger"
-            onClick={() => setConfirmDelete(true)}
-            disabled={deleteMutation.isPending}
-            aria-label="Delete comment"
-            style={{ border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 6, borderRadius: 8 }}
-          >
-            <Trash2 size={15} />
-          </button>
-        )}
-      </div>
+          {menuOpen && (
+            <div
+              role="menu"
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: '100%',
+                zIndex: 50,
+                marginTop: 4,
+                minWidth: 170,
+                borderRadius: 12,
+                border: '1px solid var(--border)',
+                background: 'var(--bg-card)',
+                boxShadow: '0 10px 28px rgba(0,0,0,0.32)',
+                padding: '6px 0',
+                overflow: 'hidden',
+              }}
+            >
+              {isAdmin && (
+                <MenuItem
+                  icon={comment.is_pinned ? <PinOff size={16} /> : <Pin size={16} />}
+                  label={comment.is_pinned ? 'Unpin' : 'Pin'}
+                  onClick={() => {
+                    pinMutation.mutate({ commentId: comment.id, pinned: comment.is_pinned });
+                    setMenuOpen(false);
+                  }}
+                />
+              )}
+              {canEdit && (
+                <MenuItem
+                  icon={<Pencil size={16} />}
+                  label="Update"
+                  onClick={() => { setEditOpen(true); setMenuOpen(false); }}
+                />
+              )}
+              {canDelete && (
+                <MenuItem
+                  icon={<Trash2 size={16} />}
+                  label="Delete"
+                  danger
+                  onClick={() => { setConfirmDelete(true); setMenuOpen(false); }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <DangerConfirmModal
         open={confirmDelete}
@@ -218,6 +312,7 @@ function CommentRow({
         busy={deleteMutation.isPending}
         onConfirm={() => deleteMutation.mutate(comment.id, { onSuccess: () => setConfirmDelete(false) })}
       />
+      <EditCommentModal eventId={eventId} comment={comment} open={editOpen} onClose={() => setEditOpen(false)} />
     </div>
   );
 }
@@ -241,15 +336,41 @@ function EveryoneRow({ onSelect }: { onSelect: () => void }) {
   );
 }
 
-function Composer({ eventId }: { eventId: number }) {
-  const [text, setText] = useState('');
+// Reusable mention-aware comment editor. Used both for adding a new comment and
+// for editing an existing one (inside the edit modal) so the mention/caret logic
+// lives in one place.
+function CommentField({
+  initial,
+  submitLabel = 'Comment',
+  pending,
+  onSubmit,
+  onCancel,
+  resetAfterSubmit,
+  autoFocus,
+}: {
+  initial?: { text: string; mentionMap: Map<string, number> };
+  submitLabel?: string;
+  pending: boolean;
+  onSubmit: (content: string) => Promise<void>;
+  onCancel?: () => void;
+  resetAfterSubmit?: boolean;
+  autoFocus?: boolean;
+}) {
+  const [text, setText] = useState(initial?.text ?? '');
   const [mentionState, setMentionState] = useState<{ query: string; start: number; end: number } | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
-  const mentionMap = useRef<Map<string, number>>(new Map());
+  const mentionMap = useRef<Map<string, number>>(new Map(initial?.mentionMap ?? []));
   const mentionResultsRef = useRef<MentionUser[]>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [taEl, setTaEl] = useState<HTMLTextAreaElement | null>(null);
-  const addComment = useAddCommunityEventComment(eventId);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+    const el = taRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [autoFocus]);
 
   // Caret-based @mention detection — same rule as the thread composer.
   function detectMentionAt(value: string, caret: number) {
@@ -331,13 +452,17 @@ function Composer({ eventId }: { eventId: number }) {
     const content = encodeMentions(text, mentionMap.current).trim();
     if (!content) return;
     try {
-      await addComment.mutateAsync(content);
-      setText('');
-      mentionMap.current.clear();
+      await onSubmit(content);
+      if (resetAfterSubmit) {
+        setText('');
+        mentionMap.current.clear();
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to post comment.');
+      toast.error(err instanceof Error ? err.message : 'Failed to save comment.');
     }
   }
+
+  const disabled = pending || !text.trim();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -376,12 +501,33 @@ function Composer({ eventId }: { eventId: number }) {
           topSlot={showEveryone ? <EveryoneRow onSelect={insertAll} /> : undefined}
         />
       )}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
+        {onCancel && (
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={onCancel}
+            disabled={pending}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 999,
+              border: '1px solid var(--border)',
+              background: 'transparent',
+              color: 'var(--text)',
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: pending ? 'default' : 'pointer',
+              opacity: pending ? 0.5 : 1,
+            }}
+          >
+            Cancel
+          </button>
+        )}
         <button
           type="button"
           className="btn-solid"
           onClick={submit}
-          disabled={addComment.isPending || !text.trim()}
+          disabled={disabled}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -392,14 +538,68 @@ function Composer({ eventId }: { eventId: number }) {
             color: 'var(--bg)',
             fontSize: 14,
             fontWeight: 700,
-            cursor: addComment.isPending || !text.trim() ? 'default' : 'pointer',
-            opacity: addComment.isPending || !text.trim() ? 0.5 : 1,
+            cursor: disabled ? 'default' : 'pointer',
+            opacity: disabled ? 0.5 : 1,
           }}
         >
-          Comment
+          {submitLabel}
         </button>
       </div>
     </div>
+  );
+}
+
+function Composer({ eventId }: { eventId: number }) {
+  const addComment = useAddCommunityEventComment(eventId);
+  return (
+    <CommentField
+      pending={addComment.isPending}
+      resetAfterSubmit
+      onSubmit={async (content) => {
+        await addComment.mutateAsync(content);
+      }}
+    />
+  );
+}
+
+function EditCommentModal({
+  eventId,
+  comment,
+  open,
+  onClose,
+}: {
+  eventId: number;
+  comment: CommunityEventCommentData;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const editComment = useEditCommunityEventComment(eventId);
+  const initial = decodeMentionsForEditing(comment.content);
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v && !editComment.isPending) onClose(); }}>
+      <DialogContent className="max-w-[520px] !p-0 !rounded-2xl overflow-hidden">
+        <div style={{ padding: '20px 22px' }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.01em' }}>
+            Edit comment
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', margin: '4px 0 16px' }}>
+            Mention people with @, or @all for everyone.
+          </p>
+          <CommentField
+            key={comment.id}
+            initial={initial}
+            submitLabel="Save"
+            autoFocus
+            pending={editComment.isPending}
+            onCancel={onClose}
+            onSubmit={async (content) => {
+              await editComment.mutateAsync({ commentId: comment.id, content });
+              onClose();
+            }}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -436,9 +636,38 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 0 64px' }}>
-      {/* Banner */}
-      <div style={{ aspectRatio: '16 / 9', background: 'var(--bg-subtle)', borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+    <div style={{ maxWidth: 720, margin: '0 auto', paddingBottom: 64 }}>
+      {/* Sticky top bar — back + title, mirrors the community header */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '10px 12px',
+          background: 'color-mix(in oklab, var(--bg) 82%, transparent)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <button
+          onClick={() => router.back()}
+          aria-label="Back"
+          className="btn-ghost"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 999, border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {event.title}
+        </span>
+      </div>
+
+      {/* Banner (full-bleed) */}
+      <div style={{ height: 220, background: 'var(--bg-subtle)', overflow: 'hidden' }}>
         {event.banner_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={event.banner_url} alt={event.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -449,11 +678,13 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
         )}
       </div>
 
+      {/* Content */}
+      <div style={{ padding: '16px 16px 0' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text)' }}>{event.title}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', marginTop: 6 }}>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{event.title}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-secondary)', marginTop: 8 }}>
             <CalendarDays size={15} />
             {formatRange(event.start_time, event.end_time)}
           </div>
@@ -465,13 +696,23 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
           )}
         </div>
         {event.is_admin && (
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-            <Button variant="outline" size="icon" onClick={() => setEditOpen(true)} aria-label="Edit event">
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => setEditOpen(true)}
+              aria-label="Edit event"
+              className="btn-ghost"
+              style={{ border: '1px solid var(--border)', borderRadius: 999, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}
+            >
               <Pencil size={16} />
-            </Button>
-            <Button variant="outline" size="icon" onClick={() => setConfirmDelete(true)} aria-label="Delete event">
+            </button>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Delete event"
+              className="btn-ghost"
+              style={{ border: '1px solid var(--border)', borderRadius: 999, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', color: 'var(--text)', cursor: 'pointer', flexShrink: 0 }}
+            >
               <Trash2 size={16} />
-            </Button>
+            </button>
           </div>
         )}
       </div>
@@ -500,7 +741,7 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
       </div>
 
       {/* Comments */}
-      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 24, marginTop: 8 }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>
           Comments ({event.comment_count})
         </h2>
@@ -516,32 +757,32 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
         )}
 
         {comments.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 8 }}>
-            <button
-              type="button"
-              className="btn-ghost"
-              onClick={() => setCommentsOpen((v) => !v)}
-              aria-expanded={commentsOpen}
-              aria-label={commentsOpen ? 'Hide comments' : 'Show comments'}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 32,
-                height: 32,
-                border: 'none',
-                borderRadius: 999,
-                background: 'transparent',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              <ChevronDown
-                size={18}
-                style={{ transition: 'transform 0.2s ease', transform: commentsOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-              />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setCommentsOpen((v) => !v)}
+            aria-expanded={commentsOpen}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 8,
+              padding: '6px 12px',
+              border: 'none',
+              borderRadius: 999,
+              background: 'transparent',
+              cursor: 'pointer',
+              color: 'var(--text)',
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            <ChevronDown
+              size={16}
+              style={{ transition: 'transform 0.2s ease', transform: commentsOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+            />
+            {commentsOpen ? 'Hide comments' : 'Show comments'}
+          </button>
         )}
 
         {comments.length === 0 ? (
@@ -549,7 +790,7 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
         ) : (
           <div className={`ce-collapse${commentsOpen ? ' ce-collapse-open' : ''}`}>
             <div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4, paddingBottom: 8 }}>
                 {orderedComments.map((comment) => (
                   <CommentRow
                     key={comment.id}
@@ -563,6 +804,7 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {event.is_admin && (

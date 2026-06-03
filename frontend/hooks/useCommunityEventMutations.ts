@@ -6,6 +6,7 @@ import {
   updateCommunityEvent,
   deleteCommunityEvent,
   addCommunityEventComment,
+  editCommunityEventComment,
   deleteCommunityEventComment,
   pinCommunityEventComment,
   unpinCommunityEventComment,
@@ -54,6 +55,19 @@ export function useAddCommunityEventComment(eventId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (content: string) => addCommunityEventComment(eventId, content, token!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['community-event-comments', eventId] });
+      qc.invalidateQueries({ queryKey: ['community-event', eventId] });
+    },
+  });
+}
+
+export function useEditCommunityEventComment(eventId: number) {
+  const token = useAuthStore((s) => s.token);
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ commentId, content }: { commentId: number; content: string }) =>
+      editCommunityEventComment(eventId, commentId, content, token!),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['community-event-comments', eventId] });
       qc.invalidateQueries({ queryKey: ['community-event', eventId] });

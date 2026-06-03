@@ -127,6 +127,12 @@ func (r *CommunityEventRepository) SaveComment(comment *communityeventmodel.Comm
 	})
 }
 
+func (r *CommunityEventRepository) UpdateComment(comment *communityeventmodel.CommunityEventComment) error {
+	return r.writeDB.Model(&communityeventmodel.CommunityEventComment{}).
+		Where("id = ?", comment.ID).
+		Update("content", comment.Content).Error
+}
+
 func (r *CommunityEventRepository) FindComments(eventID uint, page, limit int) ([]communityeventmodel.CommunityEventComment, int64, error) {
 	q := r.readDB.Model(&communityeventmodel.CommunityEventComment{}).
 		Where("community_event_id = ?", eventID)

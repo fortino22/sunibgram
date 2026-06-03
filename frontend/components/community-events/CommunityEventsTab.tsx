@@ -38,7 +38,6 @@ function EventCard({ event }: { event: CommunityEventListItem }) {
         overflow: 'hidden',
         textDecoration: 'none',
         background: 'var(--bg-card)',
-        transition: 'border-color 0.15s',
       }}
       className="ce-card"
     >

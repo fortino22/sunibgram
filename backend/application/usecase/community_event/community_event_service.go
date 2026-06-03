@@ -383,6 +383,32 @@ func (s *CommunityEventService) AddComment(ctx context.Context, eventID, actorID
 	return saved, nil
 }
 
+func (s *CommunityEventService) UpdateComment(ctx context.Context, eventID, commentID, actorID uint, content string) (*communityeventmodel.CommunityEventComment, error) {
+	if err := communityeventmodel.ValidateCommentContent(content); err != nil {
+		return nil, err
+	}
+	comment, err := s.eventRepo.FindCommentByID(commentID)
+	if err != nil || comment.CommunityEventID != eventID {
+		return nil, errors.New("comment not found")
+	}
+	event, err := s.eventRepo.FindByID(eventID)
+	if err != nil {
+		return nil, errors.New("community event not found")
+	}
+	if !s.isAdmin(event.CommunityID, actorID) && comment.UserID != actorID {
+		return nil, errors.New("forbidden: you cannot edit this comment")
+	}
+	comment.Content = strings.TrimSpace(content)
+	if err := s.eventRepo.UpdateComment(comment); err != nil {
+		return nil, err
+	}
+	saved, err := s.eventRepo.FindCommentByID(comment.ID)
+	if err != nil {
+		return comment, nil
+	}
+	return saved, nil
+}
+
 func (s *CommunityEventService) GetComments(ctx context.Context, eventID, requesterID uint, page, limit int) (*communityeventsvciface.CommentList, error) {
 	event, err := s.eventRepo.FindByID(eventID)
 	if err != nil {

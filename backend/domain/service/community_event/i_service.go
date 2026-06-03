@@ -60,6 +60,7 @@ type ICommunityEventService interface {
 	Delete(ctx context.Context, eventID, actorID uint) error
 
 	AddComment(ctx context.Context, eventID, actorID uint, content string) (*communityeventmodel.CommunityEventComment, error)
+	UpdateComment(ctx context.Context, eventID, commentID, actorID uint, content string) (*communityeventmodel.CommunityEventComment, error)
 	GetComments(ctx context.Context, eventID, requesterID uint, page, limit int) (*CommentList, error)
 	DeleteComment(ctx context.Context, eventID, commentID, actorID uint) error
 	PinComment(ctx context.Context, eventID, commentID, actorID uint) error

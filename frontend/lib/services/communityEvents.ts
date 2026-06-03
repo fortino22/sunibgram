@@ -225,6 +225,19 @@ export function addCommunityEventComment(
   );
 }
 
+export function editCommunityEventComment(
+  eventId: number | string,
+  commentId: number | string,
+  content: string,
+  token: string
+): Promise<CommunityEventCommentData> {
+  return api.put<CommunityEventCommentData>(
+    `/api/community-events/${eventId}/comments/${commentId}`,
+    { content },
+    token
+  );
+}
+
 export function deleteCommunityEventComment(
   eventId: number | string,
   commentId: number | string,
