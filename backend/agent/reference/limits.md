@@ -83,10 +83,8 @@ Source: `backend/domain/model/user/user.go`, `backend/.../verification`, `.../au
   triggers a temporary lockout.
 
 ## Premium
-Source: `backend/application/usecase/order/order_service.go`,
-`.../premium_subscription/premium_subscription_service.go`.
-- **Price:** **Rp 10,000** (IDR), one-off order paid via Midtrans
-  (item "Sunibgram Premium").
+Source: `.../premium_subscription/premium_subscription_service.go`.
+- **Buying premium:** **coming soon** — paid purchase not available yet; do not quote a price.
 - **Free trial:** **1 month**, activatable **once per account** (a second attempt is
-  rejected).
+  rejected) — the only way to get premium right now.
 - **Premium unlocks:** creating communities and creating events (see [[premium]]).

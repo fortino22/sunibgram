@@ -27,13 +27,3 @@ type ThreadSummary struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
-
-// UserThreadSummary records that a user summarized a given thread, forming the
-// per-user history list. UpdatedAt is touched on every (re)summarize so the
-// history orders by most-recently-summarized.
-type UserThreadSummary struct {
-	UserID    uint `gorm:"primaryKey;autoIncrement:false;index:idx_user_summary,priority:1"`
-	ThreadID  uint `gorm:"primaryKey;autoIncrement:false;index:idx_user_summary,priority:2"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}

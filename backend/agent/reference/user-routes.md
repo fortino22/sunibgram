@@ -197,7 +197,7 @@ Settings use a left-sidebar layout. Index: `/settings`.
 | `/settings/password` | Change password (needs current password) | "change my password" |
 | `/settings/blocked-users` | List & unblock blocked accounts | "see who I've blocked", "unblock someone" |
 | `/settings/muted-users` | List & unmute muted accounts | "muted accounts", "unmute someone" |
-| `/settings/subscription` | Premium subscription — view / cancel | "manage premium", "cancel subscription", "go premium" |
+| `/settings/subscription` | Premium — start the 1-month free trial (paid purchase coming soon) | "go premium", "start free trial", "manage premium" |
 
 **Account deletion** lives in account settings (`/settings/account`) — see [[faq]] and
 [[privacy-model]].

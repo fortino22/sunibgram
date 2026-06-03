@@ -16,6 +16,8 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /app/server .
+# LM wiki read at runtime by the Fox guide chat (AGENT_WIKI_DIR=./agent).
+COPY --from=builder /app/agent ./agent
 
 EXPOSE 8080
 

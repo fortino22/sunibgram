@@ -8,6 +8,7 @@ import (
 	emailsvciface "github.com/sunibgram/domain/service/email"
 	sockethubsvciface "github.com/sunibgram/domain/service/socket_hub"
 	"github.com/sunibgram/infrastructure/cache"
+	"github.com/sunibgram/infrastructure/deepseek"
 	infraemail "github.com/sunibgram/infrastructure/email"
 	"github.com/sunibgram/infrastructure/openai"
 	infrasocket "github.com/sunibgram/infrastructure/socket"
@@ -20,6 +21,7 @@ type External struct {
 	Storage   *storageuc.StorageUsecase
 	Email     emailsvciface.IEmailService
 	OpenAI    *openai.Client
+	DeepSeek  *deepseek.Client
 	SocketHub sockethubsvciface.IHub
 }
 
@@ -28,6 +30,7 @@ func NewExternal(c *cache.Cache) *External {
 		Storage:   storageuc.NewStorageUsecase(storage.NewS3Client()),
 		Email:     emailuc.NewEmailService(infraemail.NewSMTPClient(), c),
 		OpenAI:    openai.NewClient(),
+		DeepSeek:  deepseek.NewClient(),
 		SocketHub: infrasocket.NewHub(),
 	}
 }

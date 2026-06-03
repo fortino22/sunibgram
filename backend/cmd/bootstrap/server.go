@@ -44,9 +44,12 @@ func NewServer(ctrls *Controllers, svcs *Services, ext *External, c *cache.Cache
 	}))
 	app.Use(compress.New(compress.Config{
 		Level: compress.LevelBestSpeed,
-		// Never compress the summary stream — gzip buffering would defeat the
+		// Never compress the LLM streams — gzip buffering would defeat the
 		// incremental flush and make the response arrive in one blob.
-		Next: func(c *fiber.Ctx) bool { return strings.HasSuffix(c.Path(), "/summary/stream") },
+		Next: func(c *fiber.Ctx) bool {
+			p := c.Path()
+			return strings.HasSuffix(p, "/summary/stream") || strings.HasSuffix(p, "/fox/ask")
+		},
 	}))
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     corsAllowOrigins(),
@@ -95,6 +98,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.ThreadPin,
 		ctrls.Repost,
 		ctrls.ThreadSummary,
+		ctrls.FoxChat,
 		ctrls.Email,
 		ctrls.Verification,
 		ctrls.Follow,

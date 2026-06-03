@@ -41,8 +41,8 @@ function SummariesPageInner() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   // Derive selection at render: clicked item if still present, else top match.
-  const selected = items.find((i) => i.thread_id === selectedId) ?? items[0] ?? null;
-  const effectiveSelectedId = selected?.thread_id ?? null;
+  const selected = items.find((i) => i.id === selectedId) ?? items[0] ?? null;
+  const effectiveSelectedId = selected?.id ?? null;
 
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
   const sentinelRef = useRef<HTMLDivElement>(null);

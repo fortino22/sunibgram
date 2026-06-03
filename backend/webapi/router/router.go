@@ -24,6 +24,7 @@ import (
 	facultyctrl "github.com/sunibgram/webapi/controller/faculty"
 	feedbackctrl "github.com/sunibgram/webapi/controller/feedback"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
+	foxchatctrl "github.com/sunibgram/webapi/controller/fox_chat"
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
 	notificationctrl "github.com/sunibgram/webapi/controller/notification"
@@ -61,6 +62,7 @@ import (
 	exploreroute "github.com/sunibgram/webapi/router/explore"
 	facultyroute "github.com/sunibgram/webapi/router/faculty"
 	feedbackroute "github.com/sunibgram/webapi/router/feedback"
+	foxchatroute "github.com/sunibgram/webapi/router/fox_chat"
 	hashtagroute "github.com/sunibgram/webapi/router/hashtag"
 	notificationroute "github.com/sunibgram/webapi/router/notification"
 	orderroute "github.com/sunibgram/webapi/router/order"
@@ -97,6 +99,7 @@ func Register(
 	threadPinCtrl *threadpinctrl.ThreadPinController,
 	repostCtrl *repostctrl.RepostController,
 	summaryCtrl *threadsummaryctrl.ThreadSummaryController,
+	foxChatCtrl *foxchatctrl.FoxChatController,
 	emailCtrl *emailctrl.EmailController,
 	verificationCtrl *verificationctrl.VerificationController,
 	followCtrl *followctrl.FollowController,
@@ -140,6 +143,7 @@ func Register(
 	exploreroute.RegisterExploreRoutes(api, exploreCtrl, auth)
 	hashtagroute.RegisterHashtagRoutes(api, hashtagCtrl, auth)
 	threadroute.RegisterThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, summaryCtrl, auth)
+	foxchatroute.RegisterFoxChatRoutes(api, foxChatCtrl, auth)
 	bookmarkcollectionroute.RegisterBookmarkCollectionRoutes(api, bookmarkCollectionCtrl, auth)
 	eventroute.RegisterEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, eventThreadPinCtrl, auth)
 	emailroute.RegisterEmailRoutes(api, emailCtrl, auth)

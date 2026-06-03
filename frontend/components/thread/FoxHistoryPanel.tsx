@@ -30,17 +30,17 @@ export function FoxHistoryPanel({ active, onNavigate }: FoxHistoryPanelProps) {
     onNavigate();
   };
 
-  // Client-side search over content + summary (history is capped, already fetched).
+  // Client-side search over content + question + summary (history is capped).
   const q = query.trim().toLowerCase();
   const filtered = q
-    ? items.filter((i) => `${i.content} ${i.summary}`.toLowerCase().includes(q))
+    ? items.filter((i) => `${i.content} ${i.question ?? ''} ${i.summary}`.toLowerCase().includes(q))
     : items;
 
   // Derive the effective selection at render (no effect needed): the clicked item
   // if it's still in the filtered list, otherwise fall back to the top match. This
   // keeps the right pane populated and re-points it as the filter changes.
-  const selected = filtered.find((i) => i.thread_id === selectedId) ?? filtered[0] ?? null;
-  const effectiveSelectedId = selected?.thread_id ?? null;
+  const selected = filtered.find((i) => i.id === selectedId) ?? filtered[0] ?? null;
+  const effectiveSelectedId = selected?.id ?? null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'row', height: '100%', minHeight: 0 }}>
@@ -55,14 +55,14 @@ export function FoxHistoryPanel({ active, onNavigate }: FoxHistoryPanelProps) {
           minHeight: 0,
         }}
       >
-        <div style={sidebarHeaderStyle}>Recent summaries</div>
+        <div style={sidebarHeaderStyle}>Recent activity</div>
         {items.length > 0 && (
           <div style={{ padding: '0 10px 14px' }}>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search summaries"
+              placeholder="Search activity"
               style={searchInputStyle}
             />
           </div>
@@ -73,7 +73,7 @@ export function FoxHistoryPanel({ active, onNavigate }: FoxHistoryPanelProps) {
           ) : isError ? (
             <SidebarError onRetry={() => refetch()} />
           ) : items.length === 0 ? (
-            <p style={emptyStyle}>No summaries yet — tap the fox on any thread to summarize it.</p>
+            <p style={emptyStyle}>Nothing yet — ask Fox a question or tap the fox on any thread to summarize it.</p>
           ) : filtered.length === 0 ? (
             <p style={emptyStyle}>No matches.</p>
           ) : (

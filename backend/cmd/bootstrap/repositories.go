@@ -28,6 +28,7 @@ import (
 	feedbackrepoiface "github.com/sunibgram/domain/repository/feedback"
 	feedbackmediarepoiface "github.com/sunibgram/domain/repository/feedback_media"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
+	foxhistoryrepoiface "github.com/sunibgram/domain/repository/fox_history"
 	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
 	likerepoiface "github.com/sunibgram/domain/repository/like"
 	notificationrepoiface "github.com/sunibgram/domain/repository/notification"
@@ -81,6 +82,7 @@ import (
 	feedbackrepo "github.com/sunibgram/infrastructure/repository/feedback"
 	feedbackmediarepo "github.com/sunibgram/infrastructure/repository/feedback_media"
 	followrepo "github.com/sunibgram/infrastructure/repository/follow"
+	foxhistoryrepo "github.com/sunibgram/infrastructure/repository/fox_history"
 	hashtagrepo "github.com/sunibgram/infrastructure/repository/hashtag"
 	likerepo "github.com/sunibgram/infrastructure/repository/like"
 	notificationrepo "github.com/sunibgram/infrastructure/repository/notification"
@@ -157,6 +159,7 @@ type Repositories struct {
 	Notification                notificationrepoiface.INotificationRepository
 	ThreadPoll                  threadpollrepoiface.IThreadPollRepository
 	ThreadSummary               threadsummaryrepoiface.IThreadSummaryRepository
+	FoxHistory                  foxhistoryrepoiface.IFoxHistoryRepository
 	EventThreadPin              eventthreadpinrepoiface.IEventThreadPinRepository
 	TrendingUser                trendinguserrepoiface.ITrendingUserRepository
 	TrendingUserSnapshot        trendingusersnapshotrepoiface.ITrendingUserSnapshotRepository
@@ -216,6 +219,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		Notification:                notificationrepo.NewNotificationRepository(w, r, c),
 		ThreadPoll:                  threadpollrepo.NewThreadPollRepository(w, r, c),
 		ThreadSummary:               threadsummaryrepo.NewThreadSummaryRepository(w, r),
+		FoxHistory:                  foxhistoryrepo.NewFoxHistoryRepository(w, r),
 		EventThreadPin:              eventthreadpinrepo.NewEventThreadPinRepository(w, r, c),
 		TrendingUser:                trendinguserrepo.NewTrendingUserRepository(r, c),
 		TrendingUserSnapshot:        trendingusersnapshotrepo.NewTrendingUserSnapshotRepository(w, r, c),
