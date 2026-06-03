@@ -1,7 +1,5 @@
 package authdto
 
-import utils "github.com/sunibgram/webapi/dto/_shared"
-
 type RegisterRequest struct {
 	Name            string `json:"name"`
 	UserName        string `json:"username"`
@@ -29,23 +27,10 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
-type LoginWithOTPRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	OTP      string `json:"otp"`
-}
-
 type LoginResponse struct {
 	Message     string `json:"message"`
 	AccessToken string `json:"access_token"`
 	SID         string `json:"sid"`
-}
-
-type LoginProdResponse struct {
-	Message              string              `json:"message"`
-	AccessToken          string              `json:"access_token"`
-	SID                  string              `json:"sid"`
-	AccessTokenExpiresAt utils.FormattedTime `json:"access_token_expires_at"`
 }
 
 type RefreshRequest struct {

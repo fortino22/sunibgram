@@ -108,6 +108,31 @@ func (c *UserProfileController) GetProfile(ctx *fiber.Ctx) error {
 	return c.fetchAndRespond(ctx, id, viewerID)
 }
 
+// GetUsernameHistory returns the user's username-change log for the
+// "about this account" page. Public.
+func (c *UserProfileController) GetUsernameHistory(ctx *fiber.Ctx) error {
+	id, ok := ctrlshared.ParseIDParam(ctx, "id", "user")
+	if !ok {
+		return nil
+	}
+	changes, err := c.profileService.UsernameHistory(id)
+	if err != nil {
+		return ctrlshared.HandleServiceError(ctx, err)
+	}
+	items := make([]userprofiledto.UsernameChangeItem, 0, len(changes))
+	for _, ch := range changes {
+		items = append(items, userprofiledto.UsernameChangeItem{
+			OldUsername: ch.OldValue,
+			NewUsername: ch.NewValue,
+			ChangedAt:   utils.Wrap(ch.ChangedAt),
+		})
+	}
+	return ctx.Status(fiber.StatusOK).JSON(userprofiledto.UsernameHistoryResponse{
+		Count:   len(items),
+		Changes: items,
+	})
+}
+
 func (c *UserProfileController) UpdateProfile(ctx *fiber.Ctx) error {
 	claims, ok := ctrlshared.RequireAuth(ctx)
 	if !ok {
@@ -259,8 +284,19 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 		}
 	}
 	email := ""
+	// Self-view only: surface the per-field change cooldown (pre-computed by the
+	// service) so the edit UI can disable the field and show the next-allowed date.
+	var nameChangeAvailableAt, usernameChangeAvailableAt *utils.FormattedTime
 	if includeEmail {
 		email = fp.User.Email
+		if fp.NameChangeAvailableAt != nil {
+			w := utils.Wrap(*fp.NameChangeAvailableAt)
+			nameChangeAvailableAt = &w
+		}
+		if fp.UsernameChangeAvailableAt != nil {
+			w := utils.Wrap(*fp.UsernameChangeAvailableAt)
+			usernameChangeAvailableAt = &w
+		}
 	}
 	return userprofiledto.UserProfileResponse{
 		UserID:         fp.User.UserID,
@@ -283,5 +319,7 @@ func ToUserProfileResponse(fp *userprofilesvciface.FullProfile, getURL func(stri
 		OnboardingCompleted: includeEmail && fp.User.OnboardingCompleted,
 		Faculty:             faculty,
 		CreatedAt:           utils.Wrap(fp.User.CreatedAt),
+		NameChangeAvailableAt:     nameChangeAvailableAt,
+		UsernameChangeAvailableAt: usernameChangeAvailableAt,
 	}
 }

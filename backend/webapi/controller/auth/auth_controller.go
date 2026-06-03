@@ -2,7 +2,9 @@ package authctrl
 
 import (
 	"errors"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,7 +14,6 @@ import (
 	authsvciface "github.com/sunibgram/domain/service/auth"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
-	utils "github.com/sunibgram/webapi/dto/_shared"
 	authdto "github.com/sunibgram/webapi/dto/auth"
 )
 
@@ -146,7 +147,13 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
 
-	pair, err := c.authService.Login(req.Email, req.Password)
+	meta := authsvciface.LoginMeta{
+		UserAgent: ctx.Get("User-Agent"),
+		IP:        ctx.IP(),
+		BaseURL:   ctx.BaseURL(),
+	}
+
+	pair, err := c.authService.Login(req.Email, req.Password, meta)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
 	}
@@ -158,41 +165,32 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *AuthController) LoginWithOTP(ctx *fiber.Ctx) error {
-	var req authdto.LoginWithOTPRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
-	}
+// ConfirmLogin handles the yes/no links from the post-login alert email. Public
+// endpoint — the one-time token in the query string is the only credential, so it
+// works from any device. It performs the action, then redirects into the app:
+// "No, it isn't me" (session already revoked) → forgot-password to secure the
+// account; everything else (confirmed, or an expired/invalid link) → login.
+func (c *AuthController) ConfirmLogin(ctx *fiber.Ctx) error {
+	status, err := c.authService.ConfirmLogin(ctx.Context(), ctx.Query("token"), ctx.Query("action"))
 
-	pair, err := c.authService.LoginWithOTP(req.Email, req.Password, req.OTP)
-	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
+	var target string
+	switch {
+	case err != nil:
+		target = frontendURL("/login/expired")
+	case status == "denied":
+		target = frontendURL("/forgot-password")
+	default:
+		target = frontendURL("/login")
 	}
-
-	return ctx.Status(fiber.StatusOK).JSON(authdto.LoginResponse{
-		Message:     "login successful",
-		AccessToken: pair.AccessToken,
-		SID:         pair.SID,
-	})
+	return ctx.Redirect(target, fiber.StatusFound)
 }
 
-func (c *AuthController) LoginProd(ctx *fiber.Ctx) error {
-	var req authdto.LoginRequest
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
-	}
-
-	_, pair, err := c.authService.LoginProd(req.Email, req.Password)
-	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(authdto.ErrorResponse{Message: err.Error()})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(authdto.LoginProdResponse{
-		Message:              "login successful",
-		AccessToken:          pair.AccessToken,
-		SID:                  pair.SID,
-		AccessTokenExpiresAt: utils.Wrap(pair.AccessTokenExpiresAt),
-	})
+// frontendURL joins the Next.js app base (FRONTEND_BASE_URL, default local dev)
+// with a path, for redirecting the email-link flow back into the app.
+func frontendURL(path string) string {
+	base := strings.TrimRight(os.Getenv("FRONTEND_BASE_URL"), "/")
+	
+	return base + path
 }
 
 func (c *AuthController) Refresh(ctx *fiber.Ctx) error {

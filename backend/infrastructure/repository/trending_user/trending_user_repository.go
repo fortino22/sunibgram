@@ -7,6 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
+	rolemodel "github.com/sunibgram/domain/model/role"
 	trendingusermodel "github.com/sunibgram/domain/model/trending_user"
 	trendinguserrepoiface "github.com/sunibgram/domain/repository/trending_user"
 	"github.com/sunibgram/infrastructure/cache"
@@ -141,6 +142,7 @@ FROM users u
 LEFT JOIN received   rc ON rc.user_id = u.user_id
 LEFT JOIN given_acts gv ON gv.user_id = u.user_id
 WHERE (rc.user_id IS NOT NULL OR gv.user_id IS NOT NULL)
+  AND u.role_id <> (SELECT role_id FROM roles WHERE name = ?)
 ORDER BY score DESC, u.user_id ASC
 LIMIT ? OFFSET ?
 `
@@ -228,6 +230,7 @@ FROM users u
 LEFT JOIN received   rc ON rc.user_id = u.user_id
 LEFT JOIN given_acts gv ON gv.user_id = u.user_id
 WHERE (rc.user_id IS NOT NULL OR gv.user_id IS NOT NULL)
+  AND u.role_id <> (SELECT role_id FROM roles WHERE name = ?)
 ORDER BY score DESC, u.user_id ASC
 `
 
@@ -261,6 +264,7 @@ active_users AS (
 SELECT COUNT(*)
 FROM active_users a
 JOIN users u ON u.user_id = a.user_id
+WHERE u.role_id <> (SELECT role_id FROM roles WHERE name = ?)
 `
 
 const userInfoSQL = `
@@ -381,14 +385,14 @@ func (r *trendingUserRepository) loadScores(ctx context.Context, page, limit, of
 
 	var rows []scoreRow
 	if err := r.readDB.WithContext(ctx).
-		Raw(trendingUserScoresSQL, limit, offset).
+		Raw(trendingUserScoresSQL, rolemodel.RoleAdmin, limit, offset).
 		Scan(&rows).Error; err != nil {
 		return nil, 0, time.Time{}, err
 	}
 
 	var total int64
 	if err := r.readDB.WithContext(ctx).
-		Raw(trendingUserCountSQL).
+		Raw(trendingUserCountSQL, rolemodel.RoleAdmin).
 		Scan(&total).Error; err != nil {
 		return nil, 0, time.Time{}, err
 	}
@@ -495,7 +499,7 @@ func (r *trendingUserRepository) GetMyWeeklyTrending(ctx context.Context, viewer
 func (r *trendingUserRepository) ComputeAllWeeklyScores(ctx context.Context) ([]trendinguserrepoiface.WeeklyScoreRow, error) {
 	var rows []scoreRow
 	if err := r.readDB.WithContext(ctx).
-		Raw(trendingUserAllScoresSQL).
+		Raw(trendingUserAllScoresSQL, rolemodel.RoleAdmin).
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}

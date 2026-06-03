@@ -6,17 +6,20 @@ import (
 	"fmt"
 	"mime/multipart"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/sunibgram/application/helper"
 	communityuc "github.com/sunibgram/application/usecase/community"
 	storageuc "github.com/sunibgram/application/usecase/storage"
 	mediamodel "github.com/sunibgram/domain/model/media"
+	profilefieldchangemodel "github.com/sunibgram/domain/model/profile_field_change"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
 	notificationusermuterepoiface "github.com/sunibgram/domain/repository/notification_user_mute"
+	profilefieldchangerepoiface "github.com/sunibgram/domain/repository/profile_field_change"
 	userrepoiface "github.com/sunibgram/domain/repository/user"
 	userblockrepoiface "github.com/sunibgram/domain/repository/user_block"
 	userfacultyrepoiface "github.com/sunibgram/domain/repository/user_faculty"
@@ -34,6 +37,7 @@ type UserProfileService struct {
 	blockRepo       userblockrepoiface.IUserBlockRepository
 	muteRepo        notificationusermuterepoiface.INotificationUserMuteRepository
 	profileRepo     userprofilerepoiface.IUserProfileRepository
+	pfcRepo         profilefieldchangerepoiface.IProfileFieldChangeRepository
 	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository
 	cacheRepo       cacherepoiface.ICacheRepository
 	storageUsecase  *storageuc.StorageUsecase
@@ -45,6 +49,7 @@ func NewUserProfileService(
 	blockRepo userblockrepoiface.IUserBlockRepository,
 	muteRepo notificationusermuterepoiface.INotificationUserMuteRepository,
 	profileRepo userprofilerepoiface.IUserProfileRepository,
+	pfcRepo profilefieldchangerepoiface.IProfileFieldChangeRepository,
 	userFacultyRepo userfacultyrepoiface.IUserFacultyRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
 	storageUsecase *storageuc.StorageUsecase,
@@ -55,6 +60,7 @@ func NewUserProfileService(
 		blockRepo:       blockRepo,
 		muteRepo:        muteRepo,
 		profileRepo:     profileRepo,
+		pfcRepo:         pfcRepo,
 		userFacultyRepo: userFacultyRepo,
 		cacheRepo:       cacheRepo,
 		storageUsecase:  storageUsecase,
@@ -160,8 +166,33 @@ func (s *UserProfileService) UpdateProfile(ctx context.Context, userID uint, inp
 				}
 			}
 		}
+		// Per-field change cooldown, backed by the profile_field_changes log.
+		// Only an actual value change is rate-limited and logged, so re-submitting
+		// an unchanged name/username (e.g. editing only bio/avatar) is a no-op.
+		now := time.Now()
+		latest, _ := s.pfcRepo.LatestByUser(userID) // nil-safe; absent field reads as zero time
+		nameChanged := input.Name != nil && name != user.Name
+		usernameChanged := input.Username != nil && username != user.UserName
+		if nameChanged {
+			if next := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldName]); next.After(now) {
+				return fmt.Errorf("display name can only be changed once every 7 days; try again on %s", next.Format("Jan 2, 2006"))
+			}
+		}
+		if usernameChanged {
+			if next := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldUsername]); next.After(now) {
+				return fmt.Errorf("username can only be changed once every 7 days; try again on %s", next.Format("Jan 2, 2006"))
+			}
+		}
 		if err := s.userRepo.UpdateInfo(userID, name, username); err != nil {
 			return err
+		}
+		// Log the change(s) after the write succeeds. Best-effort: a failed log
+		// only means the next change isn't blocked, never blocks a valid one.
+		if nameChanged {
+			_ = s.pfcRepo.Record(userID, profilefieldchangemodel.FieldName, now, user.Name, name)
+		}
+		if usernameChanged {
+			_ = s.pfcRepo.Record(userID, profilefieldchangemodel.FieldUsername, now, user.UserName, username)
 		}
 		if s.cacheRepo != nil {
 			// Tag-based invalidation. Global thread feed families cover the
@@ -320,7 +351,7 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 			}
 		}
 	}
-	return &userprofilesvciface.FullProfile{
+	fp := &userprofilesvciface.FullProfile{
 		User:        user,
 		Stat:        stat,
 		Profile:     profile,
@@ -329,7 +360,19 @@ func (s *UserProfileService) GetProfile(userID uint, viewerID *uint) (*userprofi
 		IsBlocked:   isBlocked,
 		IsBlockedBy: isBlockedBy,
 		IsMuted:     isMuted,
-	}, nil
+	}
+	// Per-field change cooldown for the edit UI. Set only while still locked;
+	// the controller renders these self-view only.
+	if latest, lerr := s.pfcRepo.LatestByUser(userID); lerr == nil {
+		now := time.Now()
+		if n := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldName]); n.After(now) {
+			fp.NameChangeAvailableAt = &n
+		}
+		if n := profilefieldchangemodel.NextChangeAt(latest[profilefieldchangemodel.FieldUsername]); n.After(now) {
+			fp.UsernameChangeAvailableAt = &n
+		}
+	}
+	return fp, nil
 }
 
 // onboardingTargetFollows is the upper bound on how many people a first-time
@@ -387,6 +430,12 @@ func (s *UserProfileService) CompleteOnboarding(userID uint) error {
 		return fmt.Errorf("must follow at least %d people to continue", required)
 	}
 	return s.userRepo.CompleteOnboarding(userID)
+}
+
+// UsernameHistory returns the user's username-change log, newest first, for the
+// "about this account" page.
+func (s *UserProfileService) UsernameHistory(userID uint) ([]profilefieldchangemodel.ProfileFieldChange, error) {
+	return s.pfcRepo.HistoryByUserField(userID, profilefieldchangemodel.FieldUsername)
 }
 
 func (s *UserProfileService) GetProfiles(userIDs []uint) ([]userprofilemodel.UserProfile, error) {

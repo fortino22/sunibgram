@@ -18,7 +18,17 @@ const schema = z.object({
     .max(30, 'Max 30 characters')
     .regex(/^[a-zA-Z0-9._]+$/, 'Only letters, numbers, dots, underscores'),
   bio: z.string().max(160, 'Max 160 characters').optional(),
-  birthdayDate: z.string().optional(),
+  birthdayDate: z
+    .string()
+    .optional()
+    .refine((val) => {
+      if (!val) return true;
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return false;
+      const cutoff = new Date();
+      cutoff.setFullYear(cutoff.getFullYear() - 17);
+      return d <= cutoff;
+    }, 'You must be at least 17 years old'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -41,7 +51,25 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
   const [bannerPreview, setBannerPreview] = useState<string | null>(profile.banner ?? null);
   const [clearBanner, setClearBanner] = useState(false);
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null);
+  // Holds the submitted form values while the once-a-week confirm dialog is open.
+  const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
   const facultyName = profile.faculty?.faculty_name ?? '—';
+
+  // Per-field change cooldown (7 days, enforced by the backend). When still
+  // locked, disable the input so the user can't type a new value; the form
+  // re-sends the unchanged value, which the backend treats as a no-op.
+  const [now] = useState(() => Date.now());
+  const nameLockedUntil = profile.name_change_available_at ? new Date(profile.name_change_available_at) : null;
+  const usernameLockedUntil = profile.username_change_available_at ? new Date(profile.username_change_available_at) : null;
+  const nameLocked = !!nameLockedUntil && nameLockedUntil.getTime() > now;
+  const usernameLocked = !!usernameLockedUntil && usernameLockedUntil.getTime() > now;
+  // Latest birthday allowed for a 17-year-old (caps the date picker). Derived
+  // from the `now` state value so it stays deterministic during render.
+  const maxBirthday = (() => {
+    const d = new Date(now);
+    d.setFullYear(d.getFullYear() - 17);
+    return d.toISOString().split('T')[0];
+  })();
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -86,7 +114,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
     setClearBanner(true);
   }
 
-  function onSubmit(values: FormValues) {
+  function doMutate(values: FormValues) {
     mutate(
       {
         ...values,
@@ -100,6 +128,26 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
     );
   }
 
+  function onSubmit(values: FormValues) {
+    // Warn before burning the once-a-week change — only when the value actually
+    // changed. Locked fields are disabled and re-submit their original value, so
+    // they never trigger this.
+    const nameChanged = values.name !== (profile.name ?? '');
+    const usernameChanged = values.username !== (profile.username ?? '');
+    if (nameChanged || usernameChanged) {
+      setPendingValues(values);
+      return;
+    }
+    doMutate(values);
+  }
+
+  const pendingChangedFields = pendingValues
+    ? [
+        pendingValues.name !== (profile.name ?? '') ? 'display name' : null,
+        pendingValues.username !== (profile.username ?? '') ? 'username' : null,
+      ].filter(Boolean)
+    : [];
+
   return (
     <>
       <div
@@ -110,7 +158,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', letterSpacing: '-0.02em' }}>Edit profile</span>
-            <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)', padding: 4, borderRadius: '50%', display: 'flex' }}>
+            <button type="button" onClick={onClose} className="btn-ghost" style={{ border: 'none', cursor: 'pointer', color: 'var(--text)', padding: 4, borderRadius: '50%', display: 'flex' }}>
               <X size={20} strokeWidth={2} />
             </button>
           </div>
@@ -124,7 +172,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
             style={{ position: 'relative', height: 130, cursor: 'pointer', overflow: 'hidden', background: bannerPreview ? undefined : 'linear-gradient(135deg, oklch(28% 0.09 260), oklch(18% 0.05 290))' }}
           >
             {bannerPreview && <img src={bannerPreview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.35)' }}>
+            <div className="hover-brighten" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.35)' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: '#fff' }}>
                 <Camera size={22} strokeWidth={1.8} />
                 <span style={{ fontSize: 12, fontWeight: 500 }}>Change banner</span>
@@ -134,6 +182,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
               <button
                 type="button"
                 onClick={removeBanner}
+                className="hover-dim"
                 style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
                 title="Remove banner"
               >
@@ -151,6 +200,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
                 <button
                   type="button"
                   onClick={() => avatarInputRef.current?.click()}
+                  className="hover-brighten"
                   style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.4)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}
                 >
                   <Camera size={18} strokeWidth={1.8} />
@@ -160,11 +210,11 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
               <div style={{ paddingBottom: 4 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 500 }}>Profile photo</div>
                 <div style={{ display: 'flex', gap: 10, marginTop: 2 }}>
-                  <button type="button" onClick={() => avatarInputRef.current?.click()} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--accent)', padding: 0, fontFamily: 'inherit' }}>
+                  <button type="button" onClick={() => avatarInputRef.current?.click()} className="hover-underline" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--accent)', padding: 0, fontFamily: 'inherit' }}>
                     Change photo
                   </button>
                   {avatarPreview && (
-                    <button type="button" onClick={removeAvatar} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--coral)', padding: 0, fontFamily: 'inherit' }}>
+                    <button type="button" onClick={removeAvatar} className="hover-underline" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--coral)', padding: 0, fontFamily: 'inherit' }}>
                       Remove
                     </button>
                   )}
@@ -174,13 +224,19 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
 
             {/* Text fields */}
             {([
-              { id: 'name', label: 'Display name', error: errors.name?.message },
-              { id: 'username', label: 'Username', error: errors.username?.message },
-            ] as const).map(({ id, label, error: fe }) => (
+              { id: 'name', label: 'Display name', error: errors.name?.message, locked: nameLocked, lockedUntil: nameLockedUntil },
+              { id: 'username', label: 'Username', error: errors.username?.message, locked: usernameLocked, lockedUntil: usernameLockedUntil },
+            ] as const).map(({ id, label, error: fe, locked, lockedUntil }) => (
               <div key={id} style={{ marginBottom: 16 }}>
                 <label htmlFor={id} style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>{label}</label>
-                <input id={id} type="text" {...register(id)} style={{ width: '100%', background: 'var(--bg-subtle)', border: `1px solid ${fe ? 'var(--coral)' : 'var(--border)'}`, borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit', outline: 'none' }} />
+                <input id={id} type="text" disabled={locked} {...register(id)} style={{ width: '100%', background: 'var(--bg-subtle)', border: `1px solid ${fe ? 'var(--coral)' : 'var(--border)'}`, borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit', outline: 'none', opacity: locked ? 0.55 : 1, cursor: locked ? 'not-allowed' : 'text' }} />
                 {fe && <div style={{ fontSize: 12, color: 'var(--coral)', marginTop: 4 }}>{fe}</div>}
+                {locked && lockedUntil && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                    <Lock size={12} strokeWidth={1.8} />
+                    <span>Can be changed again on {lockedUntil.toLocaleDateString()}.</span>
+                  </div>
+                )}
               </div>
             ))}
 
@@ -195,6 +251,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
               <input
                 id="birthdayDate"
                 type="date"
+                max={maxBirthday}
                 {...register('birthdayDate')}
                 style={{ width: '100%', background: 'var(--bg-subtle)', border: `1px solid var(--border)`, borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit', outline: 'none' }}
               />
@@ -245,6 +302,45 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
           onComplete={onCropComplete}
           onClose={() => setPendingCrop(null)}
         />
+      )}
+
+      {pendingValues && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', padding: 16 }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isPending) setPendingValues(null); }}
+        >
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, width: '100%', maxWidth: 380, padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <Lock size={18} strokeWidth={2} color="var(--text)" />
+              <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+                Change {pendingChangedFields.join(' and ')}?
+              </span>
+            </div>
+            <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5, marginBottom: 20 }}>
+              You can only change your {pendingChangedFields.join(' and ')} once a week. Continue?
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setPendingValues(null)}
+                disabled={isPending}
+                className="btn-ghost"
+                style={{ flex: 1, background: 'transparent', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 0', color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: isPending ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => { if (pendingValues) doMutate(pendingValues); setPendingValues(null); }}
+                disabled={isPending}
+                className="btn-solid"
+                style={{ flex: 1, background: 'var(--text)', border: 'none', borderRadius: 10, padding: '10px 0', color: 'var(--bg)', fontWeight: 700, fontSize: 14, cursor: isPending ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: isPending ? 0.6 : 1 }}
+              >
+                {isPending ? 'Saving…' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

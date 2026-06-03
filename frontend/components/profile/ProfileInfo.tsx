@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, Calendar } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, Calendar, ChevronRight } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
+import { JoinedHoverCard } from '@/components/profile/JoinedHoverCard';
 import { ProfileOptionsMenu } from '@/components/profile/ProfileOptionsMenu';
 import { AvatarZoomModal } from '@/components/profile/AvatarZoomModal';
 
@@ -215,10 +217,13 @@ export function ProfileInfo({
             </span>
           )}
           {user.joinedMonth && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-tertiary)' }}>
-              <Calendar size={15} strokeWidth={1.6} />
-              Joined {user.joinedMonth}
-            </span>
+            <JoinedHoverCard userId={userId} joinedMonth={user.joinedMonth}>
+              <Link href={`/about-profile/${userId}`} className="group" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: 'var(--text-tertiary)', textDecoration: 'none' }}>
+                <Calendar size={15} strokeWidth={1.6} />
+                <span className="group-hover:underline">Joined {user.joinedMonth}</span>
+                <ChevronRight size={14} strokeWidth={1.8} />
+              </Link>
+            </JoinedHoverCard>
           )}
         </div>
 

@@ -44,6 +44,7 @@ import (
 	threadsummarymodel "github.com/sunibgram/domain/model/thread_summary"
 	trendreportmodel "github.com/sunibgram/domain/model/trend_report"
 	trendingusersnapshotmodel "github.com/sunibgram/domain/model/trending_user_snapshot"
+	profilefieldchangemodel "github.com/sunibgram/domain/model/profile_field_change"
 	usermodel "github.com/sunibgram/domain/model/user"
 	userblockmodel "github.com/sunibgram/domain/model/user_block"
 	userprofilemodel "github.com/sunibgram/domain/model/user_profile"
@@ -63,6 +64,7 @@ func AutoMigrate(db *gorm.DB) {
 		&usermodel.User{},
 		&usersettingsmodel.UserSettings{},
 		&userprofilemodel.UserProfile{},
+		&profilefieldchangemodel.ProfileFieldChange{},
 		&categorymodel.Category{},
 		&violationmodel.Violation{},
 		&trendreportmodel.TrendReportReason{},

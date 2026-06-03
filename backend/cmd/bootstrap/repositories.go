@@ -33,6 +33,7 @@ import (
 	notificationusermuterepoiface "github.com/sunibgram/domain/repository/notification_user_mute"
 	orderrepoiface "github.com/sunibgram/domain/repository/order"
 	premiumsubscriptionrepoiface "github.com/sunibgram/domain/repository/premium_subscription"
+	profilefieldchangerepoiface "github.com/sunibgram/domain/repository/profile_field_change"
 	reportrepoiface "github.com/sunibgram/domain/repository/report"
 	rolerepoiface "github.com/sunibgram/domain/repository/role"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
@@ -84,6 +85,7 @@ import (
 	notificationusermuterepo "github.com/sunibgram/infrastructure/repository/notification_user_mute"
 	orderrepo "github.com/sunibgram/infrastructure/repository/order"
 	premiumsubscriptionrepo "github.com/sunibgram/infrastructure/repository/premium_subscription"
+	profilefieldchangerepo "github.com/sunibgram/infrastructure/repository/profile_field_change"
 	reportrepo "github.com/sunibgram/infrastructure/repository/report"
 	rolerepo "github.com/sunibgram/infrastructure/repository/role"
 	threadrepo "github.com/sunibgram/infrastructure/repository/thread"
@@ -110,6 +112,7 @@ type Repositories struct {
 	User                        userrepoiface.IUserRepository
 	UserSettings                usersettingsrepoiface.IUserSettingsRepository
 	UserProfile                 userprofilerepoiface.IUserProfileRepository
+	ProfileFieldChange          profilefieldchangerepoiface.IProfileFieldChangeRepository
 	Verification                verificationrepoiface.IVerificationRepository
 	Follow                      followrepoiface.IFollowRepository
 	UserBlock                   userblockrepoiface.IUserBlockRepository
@@ -167,6 +170,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		User:                        userrepo.NewUserRepository(w, r, c),
 		UserSettings:                usersettingsrepo.NewUserSettingsRepository(w, r, c),
 		UserProfile:                 userprofilerepo.NewUserProfileRepository(w, r, c),
+		ProfileFieldChange:          profilefieldchangerepo.NewProfileFieldChangeRepository(w, r, c),
 		Verification:                verificationrepo.NewVerificationRepository(w, r),
 		Follow:                      followrepo.NewFollowRepository(w, r, c),
 		UserBlock:                   userblockrepo.NewUserBlockRepository(w, r, c),
