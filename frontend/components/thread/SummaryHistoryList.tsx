@@ -23,7 +23,7 @@ export function SummaryHistoryList({ items, selectedId, onSelect }: SummaryHisto
             : 'Post no longer available';
         return (
           <button
-            key={item.id}
+            key={`${item.type}-${item.id}`}
             type="button"
             onClick={() => onSelect(item.id)}
             className="summary-block"

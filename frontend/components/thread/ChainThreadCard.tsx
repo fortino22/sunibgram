@@ -10,6 +10,7 @@ import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
 import { ShareModal } from '@/components/share/ShareModal';
 import { SharePopover } from '@/components/share/SharePopover';
+import { shortTimeAgo } from '@/lib/utils';
 import { ThreadOptionsMenu } from '@/components/thread/ThreadOptionsMenu';
 import { ThreadFoxButton } from '@/components/thread/ThreadFoxButton';
 import { ThreadInlineEditor } from '@/components/thread/ThreadInlineEditor';
@@ -155,7 +156,7 @@ export function ChainThreadCard({ thread, hideConnector = false, withDivider = f
               >
                 @{thread.author.username}
               </Link>
-              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }} title={thread.time_ago}>· {shortTimeAgo(thread.time_ago)}</span>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }} onClick={(e) => e.stopPropagation()}>
                 <ThreadFoxButton thread={thread} />
                 {(canManage || canReport) && (

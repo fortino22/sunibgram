@@ -10,6 +10,7 @@ import { getAuthorAvatarUrl } from '@/components/thread/threadUtils';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { useQueryClient } from '@tanstack/react-query';
 import { useThreadSummaryStream } from '@/hooks/thread/useThreadSummary';
+import { shortTimeAgo } from '@/lib/utils';
 import { useSummaryStore } from '@/stores/summaryStore';
 import { toBullets } from '@/components/thread/summaryUtils';
 import type { ThreadItem } from '@/lib/services/threads';
@@ -155,7 +156,7 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
                   </Link>
                   {author.is_premium && <VerifiedBadge size={15} />}
                   <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>@{author.username}</span>
-                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }} title={thread.time_ago}>· {shortTimeAgo(thread.time_ago)}</span>
                 </div>
                 <div style={{ marginTop: 6 }}>
                   <ThreadBody content={thread.content} media={thread.media} compact />

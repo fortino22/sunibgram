@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import { useSummaryHistoryInfinite } from '@/hooks/thread/useSummaryHistoryInfinite';
 import { SummaryHistoryList } from '@/components/thread/SummaryHistoryList';
 import { SummaryDetail } from '@/components/thread/SummaryDetail';
@@ -104,8 +104,11 @@ function SummariesPageInner() {
         </div>
       ) : (
         /* Two-pane body — list (left) + detail (right) */
-        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div
+          className={`summaries-shell${selectedId !== null ? ' has-selected' : ''}`}
+          style={{ display: 'flex', flex: 1, minHeight: 0 }}
+        >
+          <div className="summaries-list-pane" style={{ width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div style={{ position: 'relative', padding: '16px 10px 12px' }}>
               <Search
                 size={16}
@@ -153,7 +156,30 @@ function SummariesPageInner() {
             </div>
           </div>
 
-          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: 20 }}>
+          <div className="summaries-detail-pane" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: 20 }}>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              aria-label="Back to summaries list"
+              className="summaries-detail-back"
+              style={{
+                display: 'none',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 12,
+                padding: '6px 10px 6px 4px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              <ArrowLeft size={18} strokeWidth={2} />
+              Back
+            </button>
             <SummaryDetail item={selected} onNavigate={() => undefined} />
           </div>
         </div>

@@ -18,6 +18,7 @@ import { ShareModal } from '@/components/share/ShareModal';
 import { SharePopover } from '@/components/share/SharePopover';
 import { useThreadManagement } from '@/hooks/useThreadManagement';
 import { useThreadActions } from '@/hooks/useThreadActions';
+import { shortTimeAgo } from '@/lib/utils';
 import type { ThreadItem, ThreadMediaResponse, ThreadMutationParams } from '@/lib/services/threads';
 import type { CommunityRole } from '@/lib/services/communities';
 import { useAuthStore } from '@/stores/authStore';
@@ -159,26 +160,28 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ marginBottom: replyUsername ? 2 : 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <UserHoverCard userId={thread.author.id}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                <UserHoverCard userId={thread.author.id}>
+                  <Link
+                    href={`/profile/${thread.author.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {thread.author.name || thread.author.username}
+                  </Link>
+                </UserHoverCard>
+                {thread.author.is_premium && <VerifiedBadge size={15} />}
                 <Link
                   href={`/profile/${thread.author.id}`}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', letterSpacing: '-0.01em', textDecoration: 'none' }}
+                  style={{ fontSize: 13, color: 'var(--text-tertiary)', textDecoration: 'none', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                 >
-                  {thread.author.name || thread.author.username}
+                  @{thread.author.username}
                 </Link>
-              </UserHoverCard>
-              {thread.author.is_premium && <VerifiedBadge size={15} />}
-              <Link
-                href={`/profile/${thread.author.id}`}
-                onClick={(e) => e.stopPropagation()}
-                style={{ fontSize: 13, color: 'var(--text-tertiary)', textDecoration: 'none' }}
-              >
-                @{thread.author.username}
-              </Link>
-              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2 }} onClick={(e) => e.stopPropagation()}>
+              </div>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)', flexShrink: 0, whiteSpace: 'nowrap' }} title={thread.time_ago}>· {shortTimeAgo(thread.time_ago)}</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                 <ThreadFoxButton thread={thread} />
                 {(canManage || canReport) && (
                   <ThreadOptionsMenu
@@ -198,10 +201,13 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
               </div>
             </div>
             {thread.author.faculty && (
-              <div style={{ marginTop: 2 }}>
+              <div style={{ marginTop: 2, maxWidth: '100%', minWidth: 0 }}>
                 <span
+                  className="faculty-pill"
+                  title={thread.author.faculty.faculty_name}
                   style={{
                     display: 'inline-block',
+                    maxWidth: '100%',
                     fontSize: 11,
                     fontWeight: 600,
                     padding: '2px 8px',
@@ -209,6 +215,10 @@ export function ProfileThreadCard({ thread, replyingTo, replyingToId, hideParent
                     background: 'var(--accent-soft)',
                     color: 'var(--accent)',
                     letterSpacing: '0.01em',
+                    whiteSpace: 'nowrap',
+                    overflowX: 'auto',
+                    overflowY: 'hidden',
+                    verticalAlign: 'bottom',
                   }}
                 >
                   {thread.author.faculty.faculty_name}

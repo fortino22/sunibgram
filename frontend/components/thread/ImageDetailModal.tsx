@@ -13,6 +13,7 @@ import { useComposeStore } from '@/stores/composeStore';
 import { BookmarkCollectionPopover } from '@/components/bookmarks/BookmarkCollectionPopover';
 import { ShareModal } from '@/components/share/ShareModal';
 import { SharePopover } from '@/components/share/SharePopover';
+import { shortTimeAgo } from '@/lib/utils';
 import { getAuthorAvatarUrl, getThreadAuthor } from './threadUtils';
 
 function effectiveBookmarkId(t: ThreadItem): number {
@@ -53,7 +54,7 @@ function ModalReply({ thread }: { thread: ThreadItem }) {
               {author.username}
             </span>
             {thread.time_ago && (
-              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>· {thread.time_ago}</span>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }} title={thread.time_ago}>· {shortTimeAgo(thread.time_ago)}</span>
             )}
           </div>
 
@@ -284,7 +285,7 @@ export function ImageDetailModal({ media, currentIndex, thread, onClose, onNavig
                   {author.username}
                 </div>
                 {thread.time_ago && (
-                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{thread.time_ago}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }} title={thread.time_ago}>{shortTimeAgo(thread.time_ago)}</div>
                 )}
               </div>
             </div>

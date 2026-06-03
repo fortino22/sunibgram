@@ -1,5 +1,5 @@
 import type { FeedParentContext } from '@/lib/services/threads';
-import { cn } from '@/lib/utils';
+import { cn, shortTimeAgo } from '@/lib/utils';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import type { ThreadAuthorWithAvatar } from './threadUtils';
 import { truncateContent } from './threadUtils';
@@ -32,20 +32,30 @@ export function ThreadHeader({
       )}
 
       <div className={cn('mb-1.5 flex min-w-0 items-center gap-1.5', compact && 'mb-1 flex-wrap')}>
-        <span className="truncate text-sm font-bold" style={{ color: 'var(--text)' }}>
-          {author.name || author.username}
-        </span>
-        {author.is_premium && <VerifiedBadge size={15} />}
-        <span className="shrink-0 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-          @{author.username}
-        </span>
+        {/* Name + username share remaining width and BOTH truncate with
+            ellipsis (X-style). Badges/time stay pinned to the right and
+            never shrink. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span className="min-w-0 truncate text-sm font-bold" style={{ color: 'var(--text)' }}>
+            {author.name || author.username}
+          </span>
+          {author.is_premium && <VerifiedBadge size={15} />}
+          <span className="min-w-0 truncate text-sm" style={{ color: 'var(--text-tertiary)' }}>
+            @{author.username}
+          </span>
+        </div>
         {showFaculty && author.faculty && (
           <span
-            className="rounded-full border px-2 py-0.5 text-xs font-bold"
+            className="faculty-pill shrink-0 rounded-full border px-2 py-0.5 text-xs font-bold"
+            title={author.faculty.faculty_name}
             style={{
               color: 'var(--accent)',
               background: 'var(--bg-subtle)',
               borderColor: 'var(--border)',
+              maxWidth: '40%',
+              whiteSpace: 'nowrap',
+              overflowX: 'auto',
+              overflowY: 'hidden',
             }}
           >
             {author.faculty.faculty_name}
@@ -56,13 +66,17 @@ export function ThreadHeader({
             <span className="shrink-0 text-sm" style={{ color: 'var(--text-tertiary)' }}>
               ·
             </span>
-            <span className="shrink-0 text-sm" style={{ color: 'var(--text-tertiary)' }}>
-              {timeAgo}
+            <span
+              className="shrink-0 text-sm"
+              style={{ color: 'var(--text-tertiary)' }}
+              title={timeAgo}
+            >
+              {shortTimeAgo(timeAgo)}
             </span>
           </>
         )}
         {isPinned && (
-          <span className="ml-auto text-xs" style={{ color: 'var(--text-tertiary)' }}>
+          <span className="ml-auto shrink-0 text-xs" style={{ color: 'var(--text-tertiary)' }}>
             Pinned
           </span>
         )}

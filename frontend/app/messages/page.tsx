@@ -21,11 +21,11 @@ import { useAddReaction, useRemoveReaction, useSwapReaction } from '@/hooks/chat
 import { useSearchParams } from 'next/navigation';
 import type { ChatMessage, ChatRoomsResponse } from '@/lib/services/chat';
 
-function RoomDeepLink({ setActiveRoomId }: { setActiveRoomId: (id: number) => void }) {
+function RoomDeepLink({ onSelectRoom }: { onSelectRoom: (id: number | null) => void }) {
   const searchParams = useSearchParams();
   useEffect(() => {
     const roomParam = searchParams.get('room');
-    if (roomParam) setActiveRoomId(Number(roomParam));
+    if (roomParam) onSelectRoom(Number(roomParam));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return null;
@@ -71,6 +71,14 @@ export default function MessagesPage() {
     addReaction.mutate({ chatId, emoji });
   }, [addReaction]);
 
+  // Single entry point for switching rooms. Resets edit/reply drafts in the
+  // same call so we don't have to schedule extra setState inside an effect.
+  const handleSelectRoom = useCallback((id: number | null) => {
+    setEditingMessage(null);
+    setReplyingTo(null);
+    setActiveRoomId(id);
+  }, [setActiveRoomId]);
+
   const handleUnreact = useCallback((chatId: number, emoji: string) => {
     removeReaction.mutate({ chatId, emoji });
   }, [removeReaction]);
@@ -87,7 +95,7 @@ export default function MessagesPage() {
   });
 
   const allRoomsQuery = useChatRooms();
-  const allRooms = allRoomsQuery.data?.data ?? [];
+  const allRooms = useMemo(() => allRoomsQuery.data?.data ?? [], [allRoomsQuery.data]);
 
   // Auto-join ALL rooms when the socket opens so we receive broadcasts for every room
   // (enables real-time updates in conversation list, avatar changes, etc.)
@@ -98,18 +106,18 @@ export default function MessagesPage() {
 
   const messagesQuery = useChatMessages(activeRoomId);
   const activeRoom = useChatRoom(activeRoomId);
-  const messages = messagesQuery.data?.data ?? [];
+  const messages = useMemo(() => messagesQuery.data?.data ?? [], [messagesQuery.data]);
   const { mutate: markRead } = useMarkMessagesRead();
 
   // For private rooms, fetch the other person's full profile (avatar, name, faculty)
   const otherUserId = activeRoom?.type === 'private' ? activeRoom.other_user?.user_id : undefined;
   const { data: otherProfile } = useProfile(otherUserId ?? null);
 
-  // Join the active room when it changes and zero out its unread count
+  // Join the active room when it changes and zero out its unread count.
+  // Edit/reply drafts are reset by handleSelectRoom (the only path that
+  // changes activeRoomId from UI), so this effect stays pure of setState.
   useEffect(() => {
     if (!activeRoomId) return;
-    setEditingMessage(null);
-    setReplyingTo(null);
     joinRoom(activeRoomId);
     queryClient.setQueryData<ChatRoomsResponse>(['chat', 'rooms'], (old) => {
       if (!old) return old;
@@ -151,6 +159,7 @@ export default function MessagesPage() {
 
   return (
     <div
+      className={`messages-shell${activeRoomId ? ' has-active-room' : ''}`}
       style={{
         display: 'flex',
         height: '100vh',
@@ -158,14 +167,14 @@ export default function MessagesPage() {
       }}
     >
       <Suspense fallback={null}>
-        <RoomDeepLink setActiveRoomId={setActiveRoomId} />
+        <RoomDeepLink onSelectRoom={handleSelectRoom} />
       </Suspense>
 
       {/* Left — Conversation list */}
-      <div style={{ width: 300, flexShrink: 0 }}>
+      <div className="messages-list-pane" style={{ width: 300, flexShrink: 0 }}>
         <ConversationList
           activeRoomId={activeRoomId}
-          onRoomSelect={setActiveRoomId}
+          onRoomSelect={handleSelectRoom}
           onNewChat={() => setShowNewChat(true)}
           typingUsersByRoom={typingUsersByRoom}
         />
@@ -173,6 +182,7 @@ export default function MessagesPage() {
 
       {/* Right — Active conversation */}
       <div
+        className="messages-chat-pane"
         style={{
           flex: 1,
           display: 'flex',
@@ -187,6 +197,7 @@ export default function MessagesPage() {
               room={activeRoom}
               otherProfile={otherProfile}
               isTyping={isTyping}
+              onBack={() => handleSelectRoom(null)}
               onGroupSettings={
                 activeRoom.type === 'group'
                   ? () => setShowGroupSettings(true)
@@ -275,7 +286,7 @@ export default function MessagesPage() {
           onClose={() => setShowNewChat(false)}
           onRoomCreated={(roomId) => {
             setShowNewChat(false);
-            setActiveRoomId(roomId);
+            handleSelectRoom(roomId);
           }}
         />
       )}
@@ -285,7 +296,7 @@ export default function MessagesPage() {
           onClose={() => setShowGroupSettings(false)}
           onLeave={() => {
             setShowGroupSettings(false);
-            setActiveRoomId(null);
+            handleSelectRoom(null);
           }}
         />
       )}

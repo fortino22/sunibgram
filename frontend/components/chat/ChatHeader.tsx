@@ -1,5 +1,6 @@
 'use client';
 
+import { ArrowLeft } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import type { ChatRoom } from '@/lib/services/chat';
 import type { UserProfile } from '@/lib/services/profile';
@@ -9,9 +10,10 @@ interface ChatHeaderProps {
   otherProfile?: UserProfile | null;
   isTyping: boolean;
   onGroupSettings?: () => void;
+  onBack?: () => void;
 }
 
-export function ChatHeader({ room, otherProfile, isTyping, onGroupSettings }: ChatHeaderProps) {
+export function ChatHeader({ room, otherProfile, isTyping, onGroupSettings, onBack }: ChatHeaderProps) {
   const isPrivate = room.type === 'private';
   const other = room.other_user;
 
@@ -35,6 +37,29 @@ export function ChatHeader({ room, otherProfile, isTyping, onGroupSettings }: Ch
         background: 'var(--bg-card)',
       }}
     >
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to conversations"
+          className="chat-header-back"
+          style={{
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 36,
+            height: 36,
+            borderRadius: 9999,
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text)',
+            cursor: 'pointer',
+            marginLeft: -6,
+          }}
+        >
+          <ArrowLeft size={22} strokeWidth={2} />
+        </button>
+      )}
       {/* Avatar */}
       {!isPrivate ? (
         room.avatar_url ? (

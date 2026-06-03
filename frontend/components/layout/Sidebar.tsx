@@ -193,12 +193,11 @@ export function Sidebar() {
     <nav className={`sidebar-nav${isCollapsed ? ' sidebar-collapsed' : ''}`}>
       {/* Logo */}
       <div style={{ padding: isCollapsed ? '20px 0' : '24px 20px 20px', display: 'flex', justifyContent: isCollapsed ? 'center' : undefined }}>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          aria-label="Refresh Sunibgram"
+        <Link
+          href="/about"
+          aria-label="About Sunibgram"
           className="sidebar-logo-btn"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'none' }}
         >
           <span className="sidebar-logo-hit">
             <Logo size={32} style={{ flexShrink: 0, color: 'var(--text-on-dark)' }} />
@@ -209,7 +208,7 @@ export function Sidebar() {
           >
             Sunibgram
           </span>
-        </button>
+        </Link>
       </div>
 
       {/* Nav items */}
