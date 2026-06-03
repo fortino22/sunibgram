@@ -28,6 +28,7 @@ import (
 	feedbackuc "github.com/sunibgram/application/usecase/feedback"
 	feedbackmediauc "github.com/sunibgram/application/usecase/feedback_media"
 	followuc "github.com/sunibgram/application/usecase/follow"
+	foxchatuc "github.com/sunibgram/application/usecase/fox_chat"
 	hashtaguc "github.com/sunibgram/application/usecase/hashtag"
 	likeuc "github.com/sunibgram/application/usecase/like"
 	notificationuc "github.com/sunibgram/application/usecase/notification"
@@ -77,6 +78,7 @@ import (
 	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
 	feedbackmediasvciface "github.com/sunibgram/domain/service/feedback_media"
 	followsvciface "github.com/sunibgram/domain/service/follow"
+	foxchatsvciface "github.com/sunibgram/domain/service/fox_chat"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
 	notificationsvciface "github.com/sunibgram/domain/service/notification"
@@ -117,6 +119,7 @@ type Services struct {
 	NotificationUserMute        notificationusermutesvciface.INotificationUserMuteService
 	Hashtag                     hashtagsvciface.IHashtagService
 	ThreadSummary               threadsummarysvciface.IThreadSummaryService
+	FoxChat                     foxchatsvciface.IFoxChatService
 	Thread                      threadsvciface.IThreadService
 	Event                       eventsvciface.IEventService
 	Explore                     exploresvciface.IExploreService
@@ -162,7 +165,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 	userBlock := userblockuc.NewUserBlockService(repos.UserBlock, repos.User, repos.Follow)
 	notificationUserMute := notificationusermuteuc.NewNotificationUserMuteService(repos.NotificationUserMute, repos.User)
 	hashtag := hashtaguc.NewHashtagService(repos.Hashtag, c)
-	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, repos.ThreadSummary, ext.OpenAI)
+	summary := threadsummaryuc.NewThreadSummaryService(repos.Thread, repos.Cache, repos.ThreadSummary, repos.FoxHistory, ext.OpenAI)
 	thread := threaduc.NewThreadService(repos.Thread, repos.Hashtag, repos.Event, repos.EventParticipant, hashtag, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, repos.NotificationUserMute, notification, summary, repos.User)
 	like := likeuc.NewLikeService(repos.Like, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification)
 	bookmark := bookmarkuc.NewBookmarkService(repos.Bookmark, repos.Thread, repos.Community, repos.CommunityMember, repos.UserSettings, repos.Follow, repos.UserBlock, notification, repos.BookmarkCollection)
@@ -187,6 +190,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		NotificationUserMute:        notificationUserMute,
 		Hashtag:                     hashtag,
 		ThreadSummary:               summary,
+		FoxChat:                     foxchatuc.NewFoxChatService(repos.FoxHistory, ext.DeepSeek),
 		Thread:                      thread,
 		Event:                       eventuc.NewEventService(repos.Event, repos.EventReview, repos.EventPin, repos.EventParticipant, ext.Storage, repos.UserSettings, repos.Follow, repos.Thread, eventActionConfirmation),
 		Explore:                     exploreuc.NewExploreService(repos.Explore, repos.Thread, repos.UserSettings, repos.Follow),

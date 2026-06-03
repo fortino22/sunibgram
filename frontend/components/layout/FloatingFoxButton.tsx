@@ -1,9 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useSummaryStore } from '@/stores/summaryStore';
 import { FoxHistoryPanel } from '@/components/thread/FoxHistoryPanel';
+import { FoxAskPanel } from '@/components/thread/FoxAskPanel';
+
+type FoxTab = 'summaries' | 'ask';
 
 /**
  * Floating fox orb pinned bottom-right (X Grok-style). Clicking it pops a small
@@ -18,6 +21,7 @@ export function FloatingFoxButton() {
   const summaryOpen = useSummaryStore((s) => s.summaryThread !== null);
   const [showSoon, setShowSoon] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [tab, setTab] = useState<FoxTab>('ask');
 
   const requestClose = useCallback(() => setClosing(true), []);
   const orbHidden = summaryOpen || showSoon;
@@ -96,8 +100,21 @@ export function FloatingFoxButton() {
               <ChevronDown size={18} strokeWidth={2.2} />
             </button>
 
-            {/* Two-pane history body: list on the left, selected summary on the right. */}
-            <FoxHistoryPanel active={showSoon && !closing} onNavigate={requestClose} />
+            {/* Tab header — Summaries (history) and Ask (guide chat). */}
+            <div role="tablist" style={{ display: 'flex', gap: 0, paddingRight: 40, borderBottom: '1px solid var(--border)' }}>
+              <FoxTabButton label="Ask Fox" active={tab === 'ask'} onClick={() => setTab('ask')} />
+              <FoxTabButton label="History" active={tab === 'summaries'} onClick={() => setTab('summaries')} />
+            </div>
+
+            {/* Body swaps by tab. Both panels stay mounted (inactive hidden via
+                display:none) so the Ask Fox chat + draft survive tab switches —
+                conditional rendering would unmount and wipe their state. */}
+            <div style={{ flex: 1, minHeight: 0, display: tab === 'summaries' ? 'block' : 'none' }}>
+              <FoxHistoryPanel active={showSoon && !closing && tab === 'summaries'} onNavigate={requestClose} />
+            </div>
+            <div style={{ flex: 1, minHeight: 0, display: tab === 'ask' ? 'block' : 'none' }}>
+              <FoxAskPanel onNavigate={requestClose} />
+            </div>
           </div>
         </>
       )}
@@ -113,4 +130,42 @@ export function FloatingFoxButton() {
       </button>
     </>
   );
+}
+
+function FoxTabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button type="button" role="tab" aria-selected={active} onClick={onClick} style={tabButtonStyle(active)}>
+      {label}
+      {active && (
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 40,
+            height: 3,
+            borderRadius: 2,
+            background: 'var(--accent)',
+          }}
+        />
+      )}
+    </button>
+  );
+}
+
+function tabButtonStyle(active: boolean): CSSProperties {
+  return {
+    flex: 1,
+    padding: '12px 0',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    color: active ? 'var(--text)' : 'var(--text-tertiary)',
+    fontFamily: 'inherit',
+    fontWeight: active ? 700 : 500,
+    fontSize: 13,
+    position: 'relative',
+  };
 }

@@ -28,6 +28,7 @@ import (
 	eventthreadpinmodel "github.com/sunibgram/domain/model/event_thread_pin"
 	facultymodel "github.com/sunibgram/domain/model/faculty"
 	feedbackmodel "github.com/sunibgram/domain/model/feedback"
+	foxhistorymodel "github.com/sunibgram/domain/model/fox_history"
 	feedbackmediamodel "github.com/sunibgram/domain/model/feedback_media"
 	hashtagmodel "github.com/sunibgram/domain/model/hashtag"
 	likemodel "github.com/sunibgram/domain/model/like"
@@ -87,7 +88,7 @@ func AutoMigrate(db *gorm.DB) {
 		&bookmarkcollectionmodel.BookmarkCollectionItem{},
 		&threadpinmodel.ThreadPin{},
 		&threadsummarymodel.ThreadSummary{},
-		&threadsummarymodel.UserThreadSummary{},
+		&foxhistorymodel.FoxHistory{},
 		&verificationcodemodel.VerificationCode{},
 		&userrelationshipmodel.UserRelationship{},
 		&userblockmodel.UserBlock{},
@@ -187,6 +188,10 @@ func createIndexes(db *gorm.DB) {
 		"CREATE INDEX IF NOT EXISTS idx_user_rel_follower_created ON user_relationships(follower_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_user_rel_following_created ON user_relationships(following_id, created_at DESC)",
 		"CREATE INDEX IF NOT EXISTS idx_verification_codes_expires_at ON verification_codes(expires_at)",
+
+		// Fox history: one summary row per (user, thread); chat rows append freely.
+		// The partial unique index is the conflict arbiter for RecordSummary's upsert.
+		"CREATE UNIQUE INDEX IF NOT EXISTS uniq_fox_history_user_thread_summary ON fox_histories(user_id, thread_id) WHERE type = 'summary'",
 
 		// For You source-query indexes. Each source's WHERE + ORDER BY pattern
 		// gets one composite. The fresh-first boolean in ORDER BY cannot be

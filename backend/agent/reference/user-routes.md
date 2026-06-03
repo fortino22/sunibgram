@@ -1,11 +1,20 @@
+---
+summary: Catalog of signed-in user-facing routes — feed, profile, threads, communities, events, messages, bookmarks, explore, settings — with "suggest when" cues.
+last_synced: 2026-06-03
+source:
+  - frontend/app/page.tsx
+  - frontend/app/communities/page.tsx
+  - frontend/app/settings/account/page.tsx
+tags: [reference, routes, user]
+---
+
 # User Routes (signed-in)
 
 Clickable, user-facing routes for the **user** role. Requires a verified, signed-in
 Binus account. Dynamic segments shown as `:param`. Premium-only actions flagged.
 
-> Admin routes (`/admin/*`) are excluded — see scope note in
-> [README](../README.md). Public/no-login routes are in
-> [public-routes.md](./public-routes.md).
+> Admin routes (`/admin/*`) are excluded — see scope note in [[SCHEMA]]. Public/no-login
+> routes are in [[public-routes]].
 
 ---
 
@@ -89,8 +98,8 @@ can change roles or remove members.
 ## Events
 
 ### `/events`
-**Events feed.** Browse approved events; RSVP. *Creating an event requires premium*
-(official events also need admin approval; unofficial publish instantly).
+**Events feed.** Browse approved events; RSVP. *Creating an event is free — no premium*
+(official events need admin approval before badging; unofficial publish instantly).
 **Suggest when:** "what events are happening", "RSVP to an event", "create an event".
 
 ### `/events/:id`
@@ -188,7 +197,7 @@ Settings use a left-sidebar layout. Index: `/settings`.
 | `/settings/password` | Change password (needs current password) | "change my password" |
 | `/settings/blocked-users` | List & unblock blocked accounts | "see who I've blocked", "unblock someone" |
 | `/settings/muted-users` | List & unmute muted accounts | "muted accounts", "unmute someone" |
-| `/settings/subscription` | Premium subscription — view / cancel | "manage premium", "cancel subscription", "go premium" |
+| `/settings/subscription` | Premium — start the 1-month free trial (paid purchase coming soon) | "go premium", "start free trial", "manage premium" |
 
-**Account deletion** lives in account settings (`/settings/account`) — see
-[FAQ](../policies/faq.md) and [privacy](../policies/privacy.md).
+**Account deletion** lives in account settings (`/settings/account`) — see [[faq]] and
+[[privacy-model]].

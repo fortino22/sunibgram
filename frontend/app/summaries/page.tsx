@@ -1,8 +1,8 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Search } from 'lucide-react';
 import { useSummaryHistoryInfinite } from '@/hooks/thread/useSummaryHistoryInfinite';
 import { SummaryHistoryList } from '@/components/thread/SummaryHistoryList';
 import { SummaryDetail } from '@/components/thread/SummaryDetail';
@@ -24,9 +24,18 @@ export default function SummariesPage() {
 }
 
 function SummariesPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   // "Show more" deep-links to ?tab=summaries; otherwise default to Your Agent.
-  const initialTab: Tab = useSearchParams().get('tab') === 'summaries' ? 'summaries' : 'agent';
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  // URL is the source of truth so the tab survives refresh / back-forward.
+  const activeTab: Tab = searchParams.get('tab') === 'summaries' ? 'summaries' : 'agent';
+
+  function setTab(tab: Tab) {
+    const url = new URLSearchParams(searchParams.toString());
+    if (tab === 'summaries') url.set('tab', 'summaries');
+    else url.delete('tab'); // keep clean default URL = /summaries
+    router.replace(url.toString() ? `/summaries?${url.toString()}` : '/summaries');
+  }
   const [input, setInput] = useState('');
   const [q, setQ] = useState('');
 
@@ -41,8 +50,8 @@ function SummariesPageInner() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   // Derive selection at render: clicked item if still present, else top match.
-  const selected = items.find((i) => i.thread_id === selectedId) ?? items[0] ?? null;
-  const effectiveSelectedId = selected?.thread_id ?? null;
+  const selected = items.find((i) => i.id === selectedId) ?? items[0] ?? null;
+  const effectiveSelectedId = selected?.id ?? null;
 
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -84,8 +93,8 @@ function SummariesPageInner() {
           Fox Agent
         </div>
         <div role="tablist" style={{ display: 'flex', gap: 0 }}>
-          <TabButton label="Your Agent" active={activeTab === 'agent'} onClick={() => setActiveTab('agent')} />
-          <TabButton label="Summaries" active={activeTab === 'summaries'} onClick={() => setActiveTab('summaries')} />
+          <TabButton label="Your Agent" active={activeTab === 'agent'} onClick={() => setTab('agent')} />
+          <TabButton label="Summaries" active={activeTab === 'summaries'} onClick={() => setTab('summaries')} />
         </div>
       </div>
 
@@ -95,8 +104,11 @@ function SummariesPageInner() {
         </div>
       ) : (
         /* Two-pane body — list (left) + detail (right) */
-        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-          <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div
+          className={`summaries-shell${selectedId !== null ? ' has-selected' : ''}`}
+          style={{ display: 'flex', flex: 1, minHeight: 0 }}
+        >
+          <div className="summaries-list-pane" style={{ width: 300, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div style={{ position: 'relative', padding: '16px 10px 12px' }}>
               <Search
                 size={16}
@@ -144,7 +156,30 @@ function SummariesPageInner() {
             </div>
           </div>
 
-          <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: 20 }}>
+          <div className="summaries-detail-pane" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: 20 }}>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              aria-label="Back to summaries list"
+              className="summaries-detail-back"
+              style={{
+                display: 'none',
+                alignItems: 'center',
+                gap: 6,
+                marginBottom: 12,
+                padding: '6px 10px 6px 4px',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              <ArrowLeft size={18} strokeWidth={2} />
+              Back
+            </button>
             <SummaryDetail item={selected} onNavigate={() => undefined} />
           </div>
         </div>

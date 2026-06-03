@@ -4,6 +4,10 @@ import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightPanel } from './RightPanel';
+import { MobileBottomNav } from './MobileBottomNav';
+import { MobileTopBar } from './MobileTopBar';
+import { MobileSidebarDrawer } from './MobileSidebarDrawer';
+import { MobileBarsAutoHide } from './MobileBarsAutoHide';
 import { FloatingFoxButton } from './FloatingFoxButton';
 import { ThreadSummaryPanel } from '@/components/thread/ThreadSummaryPanel';
 import { AuthGuard } from '@/components/auth/AuthGuard';
@@ -87,6 +91,7 @@ export function MainWrapper({ children }: MainWrapperProps) {
         >
           <Sidebar />
           <main
+            className="app-main"
             style={{
               flex: 1,
               minWidth: 0,
@@ -96,11 +101,15 @@ export function MainWrapper({ children }: MainWrapperProps) {
               borderRight: '1px solid var(--border)',
             }}
           >
+            <MobileTopBar />
             {children}
           </main>
           {!hideRightPanel && <RightPanel />}
         </div>
       </div>
+      <MobileBottomNav />
+      <MobileSidebarDrawer />
+      <MobileBarsAutoHide />
       <FloatingFoxButton />
       <ThreadSummaryPanel />
     </AuthGuard>

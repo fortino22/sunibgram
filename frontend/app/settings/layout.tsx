@@ -28,9 +28,10 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
   const isIndex = pathname === '/settings';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className={`settings-shell${isIndex ? ' is-index' : ' is-detail'}`} style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Section nav — sticky, scrolls only on overflow */}
       <aside
+        className="settings-aside"
         style={{
           width: 360,
           flexShrink: 0,
@@ -64,7 +65,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Detail pane */}
-      <section style={{ flex: 1, minWidth: 0, borderLeft: '1px solid var(--border)' }}>
+      <section className="settings-detail" style={{ flex: 1, minWidth: 0, borderLeft: '1px solid var(--border)' }}>
         {isIndex ? <SettingsIndexHint /> : children}
       </section>
     </div>

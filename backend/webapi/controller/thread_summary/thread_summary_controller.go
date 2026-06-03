@@ -11,6 +11,7 @@ import (
 	"github.com/valyala/fasthttp"
 
 	threadsummaryuc "github.com/sunibgram/application/usecase/thread_summary"
+	foxhistorymodel "github.com/sunibgram/domain/model/fox_history"
 	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
 	ctrlshared "github.com/sunibgram/webapi/controller/_shared"
@@ -115,33 +116,46 @@ func (c *ThreadSummaryController) GetHistory(ctx *fiber.Ctx) error {
 	page, limit := ctrlshared.ParsePagination(ctx)
 	q := strings.TrimSpace(ctx.Query("q"))
 
-	summaries, timestamps, total, err := c.summaryService.ListHistory(ctx.Context(), claims.UserID, page, limit, q)
+	rows, total, err := c.summaryService.ListHistory(ctx.Context(), claims.UserID, page, limit, q)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
 
-	// Group current thread media by thread so the detail view can show images.
-	ids := make([]uint, len(summaries))
-	for i, s := range summaries {
-		ids[i] = s.ThreadID
+	// Group current thread media by thread (summary rows only) for the detail view.
+	ids := make([]uint, 0, len(rows))
+	for _, r := range rows {
+		if r.ThreadID != nil {
+			ids = append(ids, *r.ThreadID)
+		}
 	}
 	mediaByThread := ctrlshared.LoadThreadMediaByID(c.mediaService, ids)
 
-	data := make([]threadsummarydto.SummaryHistoryItem, len(summaries))
-	for i, s := range summaries {
-		media := mediaByThread[s.ThreadID]
-		mediaResp := make([]threadmediadto.ThreadMediaResponse, len(media))
-		for j, m := range media {
-			mediaResp[j] = threadmediadto.ThreadMediaResponse{MediaID: m.MediaID, URL: c.mediaService.GetURL(m.ObjectName)}
+	data := make([]threadsummarydto.SummaryHistoryItem, len(rows))
+	for i, r := range rows {
+		item := threadsummarydto.SummaryHistoryItem{
+			ID:           r.ID,
+			Type:         r.Type,
+			Summary:      r.Body,
+			SummarizedAt: dtoutils.Wrap(r.UpdatedAt),
+			Media:        []threadmediadto.ThreadMediaResponse{},
 		}
-		data[i] = threadsummarydto.SummaryHistoryItem{
-			ThreadID:     s.ThreadID,
-			Content:      s.ContentSnapshot,
-			Summary:      s.Summary,
-			IsStale:      s.IsStale,
-			SummarizedAt: dtoutils.Wrap(timestamps[i]),
-			Media:        mediaResp,
+		if r.Type == foxhistorymodel.TypeChat {
+			item.Question = r.Question
+		} else {
+			var threadID uint
+			if r.ThreadID != nil {
+				threadID = *r.ThreadID
+			}
+			item.ThreadID = threadID
+			item.Content = r.Snapshot
+			media := mediaByThread[threadID]
+			mediaResp := make([]threadmediadto.ThreadMediaResponse, len(media))
+			for j, m := range media {
+				mediaResp[j] = threadmediadto.ThreadMediaResponse{MediaID: m.MediaID, URL: c.mediaService.GetURL(m.ObjectName)}
+			}
+			item.Media = mediaResp
 		}
+		data[i] = item
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(threadsummarydto.PaginatedSummaryHistoryResponse{

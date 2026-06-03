@@ -5,6 +5,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Compress a verbose relative time string ("5 days ago", "1 minute ago",
+// "Just now") into an X-style short form ("5d", "1m", "now"). Leaves
+// already-short values and absolute dates unchanged.
+export function shortTimeAgo(value: string | null | undefined): string {
+  if (!value) return '';
+  const trimmed = value.trim();
+  if (/^(just\s*now|now)$/i.test(trimmed)) return 'now';
+  const match = trimmed.match(/^(\d+)\s*(second|minute|hour|day|week|month|year)s?(?:\s+ago)?$/i);
+  if (!match) return trimmed;
+  const n = match[1];
+  const unit = match[2].toLowerCase();
+  const map: Record<string, string> = {
+    second: 's',
+    minute: 'm',
+    hour: 'h',
+    day: 'd',
+    week: 'w',
+    month: 'mo',
+    year: 'y',
+  };
+  return `${n}${map[unit] ?? ''}`;
+}
+
 // Parses "YYYY-MM-DD HH:mm" from backend and returns a relative time string.
 export function timeAgo(dateStr: string): string {
   if (!dateStr) return '';

@@ -59,10 +59,17 @@ interface FeedTabButtonProps {
 }
 
 function FeedTabButton({ tab, active, onClick }: FeedTabButtonProps) {
+  const ref = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (active && ref.current) {
+      ref.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  }, [active]);
   return (
     <button
+      ref={ref}
       onClick={onClick}
-      className="btn-ghost"
+      className="btn-ghost feed-tab-btn"
       style={{
         flex: 1,
         minWidth: 'max-content',
@@ -80,8 +87,9 @@ function FeedTabButton({ tab, active, onClick }: FeedTabButtonProps) {
         whiteSpace: 'nowrap',
         textAlign: 'center',
       }}
+      title={tab.label}
     >
-      {tab.label}
+      <span className="feed-tab-label">{tab.label}</span>
     </button>
   );
 }
@@ -331,8 +339,9 @@ export default function HomePage() {
           borderBottom: '1px solid var(--border)',
         }}
       >
-        <div style={{ padding: '20px 20px 0' }}>
+        <div className="feed-header" style={{ padding: '20px 20px 0' }}>
           <div
+            className="feed-header-title"
             style={{
               fontWeight: 600,
               fontSize: 20,
@@ -344,6 +353,7 @@ export default function HomePage() {
             Home
           </div>
           <div
+            className="feed-tabs"
             style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -359,7 +369,8 @@ export default function HomePage() {
                     key={t.id}
                     ref={(el) => { if (active) activeCommunityBtnRef.current = el; }}
                     onClick={() => handleTabClick(t.id)}
-                    className="btn-ghost"
+                    className="btn-ghost feed-tab-btn"
+                    title={t.label}
                     style={{
                       flex: 1,
                       minWidth: 'max-content',
@@ -381,7 +392,7 @@ export default function HomePage() {
                       gap: 3,
                     }}
                   >
-                    {t.label}
+                    <span className="feed-tab-label">{t.label}</span>
                     {active && (
                       <ChevronDown
                         size={13}

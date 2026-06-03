@@ -19,6 +19,8 @@ import { loadDraft, saveDraft, clearDraft } from '@/hooks/useSignupDraft';
 
 export type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken';
 
+const USERNAME_REGEX = /^[a-zA-Z0-9._]+$/;
+
 // Maps a backend validation error to the field + step that owns it, so the
 // message lands where the user can fix it instead of in a generic banner.
 function mapServerError(msg: string): { field?: keyof SignupInput; step?: SignupStep } {
@@ -100,7 +102,8 @@ export default function SignupPage() {
   useEffect(() => {
     if (usernameTimer.current) clearTimeout(usernameTimer.current);
 
-    if (!usernameValue || usernameValue.length < 3) {
+    const trimmed = (usernameValue ?? '').trim();
+    if (trimmed.length < 3 || trimmed.length > 30 || !USERNAME_REGEX.test(trimmed)) {
       setUsernameStatus('idle');
       return;
     }
@@ -108,12 +111,12 @@ export default function SignupPage() {
     setUsernameStatus('checking');
     usernameTimer.current = setTimeout(async () => {
       try {
-        const { available } = await checkUsernameAvailable(usernameValue);
+        const { available } = await checkUsernameAvailable(trimmed);
         setUsernameStatus(available ? 'available' : 'taken');
       } catch {
         setUsernameStatus('idle');
       }
-    }, 600);
+    }, 500);
 
     return () => { if (usernameTimer.current) clearTimeout(usernameTimer.current); };
   }, [usernameValue]);
@@ -133,10 +136,17 @@ export default function SignupPage() {
   const onStep1: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     const valid = await trigger(['name', 'username', 'email', 'password', 'confirmPassword', 'agreeToTerms']);
-    if (valid) {
-      setServerError('');
-      setStep(2);
+    if (!valid) return;
+    if (usernameStatus === 'taken') {
+      setError('username', { message: 'Username already taken' });
+      return;
     }
+    if (usernameStatus === 'checking') {
+      setError('username', { message: 'Still checking username, please wait…' });
+      return;
+    }
+    setServerError('');
+    setStep(2);
   };
 
   const onStep2 = handleSubmit(async (data) => {

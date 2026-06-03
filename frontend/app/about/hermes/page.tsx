@@ -16,7 +16,7 @@ export default function HermesPage() {
         title="How we operate, behind the scenes."
         description="Hermes is the operational toolset that keeps Sunibgram running day to day. It’s the layer that automates the routine work, surfaces what needs a human, and powers on-platform AI like Fox."
         primaryCta={{ label: 'Meet Fox', href: '/about/fox' }}
-        secondaryCta={{ label: 'See our story', href: '/about/our-story' }}
+        secondaryCta={{ label: 'See our story', href: '/about/story' }}
         secondaryCtaDark
       />
 

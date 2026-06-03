@@ -19,10 +19,10 @@ const COLUMNS: Column[] = [
     ],
   },
   {
-    title: 'Company',
+    title: 'Our Story',
     links: [
-      { label: 'Company', href: '/about/company' },
-      { label: 'Our story', href: '/about/our-story' },
+      { label: 'Mission', href: '/about/mission' },
+      { label: 'Story', href: '/about/story' },
       { label: 'Use cases', href: '/about/use-cases' },
       { label: 'News', href: '/about/news' },
     ],

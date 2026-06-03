@@ -2,13 +2,48 @@ package usermodel
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	rolemodel "github.com/sunibgram/domain/model/role"
 )
 
 const allowedEmailDomain = "@binus.ac.id"
+
+var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+
+// ValidateName mirrors frontend: trimmed, min 2 chars.
+func ValidateName(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("name is required")
+	}
+	if utf8.RuneCountInString(name) < 2 {
+		return errors.New("name must be at least 2 characters")
+	}
+	return nil
+}
+
+// ValidateUsername mirrors frontend: trimmed, 3-30 chars, [a-zA-Z0-9_] only.
+func ValidateUsername(username string) error {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return errors.New("username is required")
+	}
+	n := utf8.RuneCountInString(username)
+	if n < 3 {
+		return errors.New("username must be at least 3 characters")
+	}
+	if n > 30 {
+		return errors.New("username must be 30 characters or less")
+	}
+	if !usernameRegex.MatchString(username) {
+		return errors.New("username may only contain letters, numbers, and underscores")
+	}
+	return nil
+}
 
 type TokenPair struct {
 	AccessToken          string
@@ -43,11 +78,11 @@ type User struct {
 }
 
 func (u *User) ValidateRegister() error {
-	if strings.TrimSpace(u.Name) == "" {
-		return errors.New("name is required")
+	if err := ValidateName(u.Name); err != nil {
+		return err
 	}
-	if strings.TrimSpace(u.UserName) == "" {
-		return errors.New("username is required")
+	if err := ValidateUsername(u.UserName); err != nil {
+		return err
 	}
 	if strings.TrimSpace(u.Email) == "" {
 		return errors.New("email is required")

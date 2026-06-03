@@ -3,9 +3,8 @@ package threadsummarysvciface
 import (
 	"context"
 	"io"
-	"time"
 
-	threadsummarymodel "github.com/sunibgram/domain/model/thread_summary"
+	foxhistorymodel "github.com/sunibgram/domain/model/fox_history"
 )
 
 type IThreadSummaryService interface {
@@ -19,8 +18,8 @@ type IThreadSummaryService interface {
 	RegisterReply(ctx context.Context, threadID uint) error
 	// RecordView records that the user summarized this thread (history).
 	RecordView(ctx context.Context, userID, threadID uint) error
-	// ListHistory returns the user's summary history (newest first), the matching
-	// view timestamps, and the total count. When q is non-empty, results are
-	// filtered to summaries matching the query text.
-	ListHistory(ctx context.Context, userID uint, page, limit int, q string) ([]threadsummarymodel.ThreadSummary, []time.Time, int64, error)
+	// ListHistory returns the user's Fox history (newest first) — both summaries
+	// and chat asks — plus the total count. When q is non-empty, results are
+	// filtered to rows matching the query text.
+	ListHistory(ctx context.Context, userID uint, page, limit int, q string) ([]foxhistorymodel.FoxHistory, int64, error)
 }

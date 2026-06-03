@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { toBullets } from '@/components/thread/summaryUtils';
 import { renderRichContent } from '@/components/thread/MentionText';
+import { FoxMarkdown } from '@/components/thread/foxMarkdown';
 import type { SummaryHistoryItem } from '@/lib/services/threads';
 
 interface SummaryDetailProps {
@@ -20,6 +21,28 @@ export function SummaryDetail({ item, onNavigate }: SummaryDetailProps) {
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
           Select a summary to view it.
         </p>
+      </div>
+    );
+  }
+
+  // Chat ask: show the question and the Fox answer (with clickable routes).
+  if (item.type === 'chat') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <section>
+          <div style={labelStyle}>You asked</div>
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {item.question?.trim() || '—'}
+          </div>
+        </section>
+        <div style={{ height: 1, background: 'var(--border)' }} />
+        <section>
+          <div style={labelStyle}>Fox replied</div>
+          <div style={{ fontSize: 14, color: 'var(--text)' }}>
+            <FoxMarkdown text={item.summary} onNavigate={onNavigate} />
+          </div>
+        </section>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.summarized_at}</div>
       </div>
     );
   }

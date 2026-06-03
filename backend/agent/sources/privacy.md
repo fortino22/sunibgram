@@ -1,11 +1,20 @@
+---
+summary: Plain-language privacy notice — what's collected, how it's used (no ad selling), who sees your content, your controls, security, and retention.
+last_synced: 2026-06-03
+source:
+  - frontend/app/about/privacy/page.tsx
+tags: [source, privacy]
+---
+
 # Privacy
 
 Plain-language summary for the agent. Source: `/about/privacy`
 (`frontend/app/about/privacy/page.tsx`). **Last updated · January 2026.** Sunibgram is
 a student-built campus network, operated independently and **not officially affiliated
-with Binus University**.
+with Binus University** (see [[independence]]).
 
-> For the full notice, point users to [`/about/privacy`](../routes/public-routes.md).
+> For the full notice, point users to `/about/privacy` (see [[public-routes]]). The
+> who-sees-what model is summarized in [[privacy-model]].
 
 ---
 

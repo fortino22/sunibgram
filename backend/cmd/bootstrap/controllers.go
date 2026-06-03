@@ -24,6 +24,7 @@ import (
 	facultyctrl "github.com/sunibgram/webapi/controller/faculty"
 	feedbackctrl "github.com/sunibgram/webapi/controller/feedback"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
+	foxchatctrl "github.com/sunibgram/webapi/controller/fox_chat"
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
 	notificationctrl "github.com/sunibgram/webapi/controller/notification"
@@ -74,6 +75,7 @@ type Controllers struct {
 	ThreadPin           *threadpinctrl.ThreadPinController
 	Repost              *repostctrl.RepostController
 	ThreadSummary       *threadsummaryctrl.ThreadSummaryController
+	FoxChat             *foxchatctrl.FoxChatController
 	Category            *categoryctrl.CategoryController
 	Violation           *violationctrl.ViolationController
 	Report              *reportctrl.ReportController
@@ -126,6 +128,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		ThreadPin:           threadpinctrl.NewThreadPinController(svcs.ThreadPin),
 		Repost:              repostctrl.NewRepostController(svcs.Thread, svcs.ThreadMedia),
 		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary, svcs.ThreadMedia),
+		FoxChat:             foxchatctrl.NewFoxChatController(svcs.FoxChat),
 		Category:            categoryctrl.NewCategoryController(svcs.Category),
 		Violation:           violationctrl.NewViolationController(svcs.Violation),
 		Report:              reportctrl.NewReportController(svcs.Report, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.Thread, svcs.ThreadPoll, svcs.UserProfile),

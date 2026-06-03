@@ -264,6 +264,12 @@ func EventPinsUserTag(userID uint) string {
 	return fmt.Sprintf("tag:event:pins:user:%d", userID)
 }
 
+// FoxHistoryUserTag covers fox_history:user:<uid>:* — every cached page of one
+// user's Fox history (summaries + chats) across query/type/page/limit variants.
+func FoxHistoryUserTag(userID uint) string {
+	return fmt.Sprintf("tag:fox-history:user:%d", userID)
+}
+
 // FeedbackListTag covers feedback:list:* (paginated feedback list cache across
 // type/status filters). Registered at FeedbackRepository.FindAll Set sites.
 func FeedbackListTag() string {
