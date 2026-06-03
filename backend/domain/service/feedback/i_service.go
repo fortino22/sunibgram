@@ -13,7 +13,7 @@ type FeedbackView struct {
 }
 
 type IFeedbackService interface {
-	Create(userID uint, fType, title, body string) error
+	Create(userID uint, fType, title, body string) (uuid.UUID, error)
 	GetByID(viewerID uint, id uuid.UUID) (*FeedbackView, error)
 	List(viewerID uint, fType, status string, page, limit int) ([]FeedbackView, int64, error)
 	UpdateStatus(adminID uint, id uuid.UUID, status string) error

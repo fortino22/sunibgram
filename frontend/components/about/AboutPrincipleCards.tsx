@@ -58,7 +58,7 @@ const PRINCIPLES: Principle[] = [
 
 export function AboutPrincipleCards() {
   return (
-    <div className="about-card-grid" style={{ maxWidth: '64rem', margin: '36px auto 0' }}>
+    <div className="about-card-grid">
       {PRINCIPLES.map(({ Icon, title, body }, i) => (
         <motion.div
           key={title}

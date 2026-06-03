@@ -30,6 +30,7 @@ export interface FeedbackResponse {
   title: string;
   body: string;
   status: FeedbackStatus;
+  images: string[];
   author: FeedbackAuthor;
   likes: number;
   dislikes: number;
@@ -60,6 +61,16 @@ export interface CreateFeedbackInput {
   type: FeedbackType;
   title: string;
   body: string;
+  files?: File[];
+}
+
+function buildFeedbackFormData(input: CreateFeedbackInput): FormData {
+  const formData = new FormData();
+  formData.append('type', input.type);
+  formData.append('title', input.title);
+  formData.append('body', input.body);
+  input.files?.forEach((file) => formData.append('files', file));
+  return formData;
 }
 
 function buildListPath(params: ListFeedbackParams): string {
@@ -87,7 +98,7 @@ export function createFeedback(
   input: CreateFeedbackInput,
   token: string,
 ): Promise<{ message: string }> {
-  return api.post<{ message: string }>('/api/feedback', input, token);
+  return api.post<{ message: string }>('/api/feedback', buildFeedbackFormData(input), token);
 }
 
 export function deleteFeedback(id: string, token: string): Promise<{ message: string }> {

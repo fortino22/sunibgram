@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Bug, Hammer } from 'lucide-react';
+import { useRef, useState, type ChangeEvent } from 'react';
+import { X, Bug, Hammer, ImagePlus } from 'lucide-react';
 import {
   FEEDBACK_BODY_MAX,
   FEEDBACK_TITLE_MAX,
   type CreateFeedbackInput,
   type FeedbackType,
 } from '@/lib/services/feedback';
+import { compressImages, IMAGE_MAX_BYTES } from '@/lib/compressImage';
+
+const MAX_FEEDBACK_IMAGES = 4;
 
 interface FeedbackComposerModalProps {
   busy?: boolean;
@@ -25,15 +28,54 @@ export function FeedbackComposerModal({
   const [type, setType] = useState<FeedbackType>('bug');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [compressing, setCompressing] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const trimmedTitle = title.trim();
   const trimmedBody = body.trim();
   const canSubmit =
     !busy &&
+    !compressing &&
     trimmedTitle.length > 0 &&
     trimmedTitle.length <= FEEDBACK_TITLE_MAX &&
     trimmedBody.length > 0 &&
     trimmedBody.length <= FEEDBACK_BODY_MAX;
+
+  async function handleFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    const incoming = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (incoming.length === 0) return;
+
+    setImageError(null);
+    const available = MAX_FEEDBACK_IMAGES - files.length;
+    if (available <= 0) {
+      setImageError(`You can attach up to ${MAX_FEEDBACK_IMAGES} images.`);
+      return;
+    }
+    const slice = incoming.slice(0, available);
+    if (incoming.length > available) {
+      setImageError(`Only ${MAX_FEEDBACK_IMAGES} images allowed — extra files were dropped.`);
+    }
+
+    setCompressing(true);
+    try {
+      const ready = await compressImages(slice, { maxSizeBytes: IMAGE_MAX_BYTES.media });
+      const oversized = ready.filter((f) => f.size > IMAGE_MAX_BYTES.media);
+      if (oversized.length > 0) {
+        setImageError('Some images are too large even after compression.');
+      }
+      setFiles((prev) => [...prev, ...ready.filter((f) => f.size <= IMAGE_MAX_BYTES.media)]);
+    } finally {
+      setCompressing(false);
+    }
+  }
+
+  function removeFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+    setImageError(null);
+  }
 
   return (
     <div
@@ -110,7 +152,7 @@ export function FeedbackComposerModal({
           onSubmit={(e) => {
             e.preventDefault();
             if (!canSubmit) return;
-            onSubmit({ type, title: trimmedTitle, body: trimmedBody });
+            onSubmit({ type, title: trimmedTitle, body: trimmedBody, files });
           }}
           style={{ padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: 16 }}
         >
@@ -224,6 +266,109 @@ export function FeedbackComposerModal({
                 lineHeight: 1.55,
               }}
             />
+          </div>
+
+          <div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 6,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Images
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                {files.length}/{MAX_FEEDBACK_IMAGES}
+              </span>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={handleFilesChange}
+              style={{ display: 'none' }}
+            />
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              {files.map((file, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    position: 'relative',
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={file.name}
+                    style={{ width: 72, height: 72, objectFit: 'cover', display: 'block' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeFile(idx)}
+                    disabled={busy}
+                    aria-label="Remove image"
+                    style={{
+                      position: 'absolute',
+                      top: 2,
+                      right: 2,
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.6)',
+                      border: 'none',
+                      cursor: busy ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                    }}
+                  >
+                    <X size={10} color="#fff" />
+                  </button>
+                </div>
+              ))}
+
+              {files.length < MAX_FEEDBACK_IMAGES && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={busy || compressing}
+                  aria-label="Add images"
+                  style={{
+                    width: 72,
+                    height: 72,
+                    borderRadius: 8,
+                    border: '1px dashed var(--border)',
+                    background: 'var(--bg-subtle)',
+                    color: 'var(--text-tertiary)',
+                    cursor: busy || compressing ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    fontFamily: 'inherit',
+                    fontSize: 10,
+                  }}
+                >
+                  <ImagePlus size={18} strokeWidth={2} />
+                  {compressing ? 'Working…' : 'Add'}
+                </button>
+              )}
+            </div>
+
+            {imageError && (
+              <div style={{ fontSize: 12, color: 'var(--coral)', marginTop: 6 }}>{imageError}</div>
+            )}
           </div>
 
           {errorMessage && (

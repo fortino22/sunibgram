@@ -1,33 +1,30 @@
 import Link from 'next/link';
+import { AboutHeroBackground } from '@/components/about/AboutHeroBackground';
 
 export function AboutFinalCTA() {
   return (
-    <section
-      id="team"
-      style={{
-        background:
-          'linear-gradient(135deg, var(--accent) 0%, oklch(56% 0.18 240) 100%)',
-      }}
-    >
+    <section id="team" className="relative overflow-hidden">
+      <AboutHeroBackground />
+      <div className="about-hero-grain" aria-hidden />
       <div
-        className="about-container flex flex-wrap items-center justify-between gap-8"
+        className="about-container relative z-10 flex flex-wrap items-center justify-between gap-8"
         style={{ paddingTop: '72px', paddingBottom: '72px' }}
       >
         <div style={{ maxWidth: '40rem' }}>
           <h2
             style={{
-              color: '#ffffff',
-              fontSize: 'clamp(1.875rem, 3.5vw, 2.5rem)',
-              fontWeight: 600,
+              color: 'var(--text)',
+              fontWeight: 500,
+              fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)',
+              lineHeight: 1.12,
               letterSpacing: '-0.02em',
-              lineHeight: 1.15,
             }}
           >
-            Made for Binus. Built by Binus.
+            Made for Binus. Built by Binusian.
           </h2>
           <p
             style={{
-              color: 'rgba(255,255,255,0.85)',
+              color: 'var(--text-muted)',
               fontSize: '1rem',
               lineHeight: 1.6,
               marginTop: '14px',
@@ -40,11 +37,8 @@ export function AboutFinalCTA() {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <Link href="/feedback" className="about-btn-secondary about-btn-secondary-inverted">
+          <Link href="/feedback" className="about-btn-secondary">
             Talk to the team
-          </Link>
-          <Link href="/signup" className="about-btn-primary about-btn-primary-inverted">
-            Join with your Binus email
           </Link>
         </div>
       </div>

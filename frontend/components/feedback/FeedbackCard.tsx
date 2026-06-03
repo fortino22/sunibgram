@@ -6,6 +6,7 @@ import { ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { DeletePostModal } from '@/components/shared/DeletePostModal';
+import { ImageZoomLightbox } from '@/components/shared/ImageZoomLightbox';
 import { FeedbackTypeBadge } from './FeedbackTypeBadge';
 import { FeedbackStatusBadge } from './FeedbackStatusBadge';
 import { useAuthStore } from '@/stores/authStore';
@@ -40,6 +41,7 @@ export function FeedbackCard({ feedback, view = 'grid' }: FeedbackCardProps) {
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<number | null>(null);
 
   const voteMutation = useVoteFeedback();
   const deleteMutation = useDeleteFeedback();
@@ -177,7 +179,7 @@ export function FeedbackCard({ feedback, view = 'grid' }: FeedbackCardProps) {
             lineHeight: 1.55,
             margin: 0,
             display: '-webkit-box',
-            WebkitLineClamp: 3,
+            WebkitLineClamp: isList ? 2 : 3,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
             whiteSpace: 'pre-wrap',
@@ -186,6 +188,78 @@ export function FeedbackCard({ feedback, view = 'grid' }: FeedbackCardProps) {
         >
           {feedback.body}
         </p>
+
+        {feedback.images.length > 0 && isList && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            {feedback.images.map((src, idx) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={src}
+                src={src}
+                alt="Feedback attachment"
+                loading="lazy"
+                role="button"
+                onClick={() => setLightbox(idx)}
+                style={{
+                  width: 96,
+                  height: 96,
+                  objectFit: 'cover',
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  display: 'block',
+                  flexShrink: 0,
+                  cursor: 'zoom-in',
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {feedback.images.length > 0 && !isList && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns:
+                feedback.images.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+              gap: 6,
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}
+          >
+            {feedback.images.map((src, idx) => {
+              const count = feedback.images.length;
+              // 1 img: wide banner. 3 imgs: first spans full width. else square.
+              const spanFull = count === 3 && idx === 0;
+              const ratio = count === 1 ? '16 / 10' : spanFull ? '16 / 7' : '1 / 1';
+              return (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={src}
+                  src={src}
+                  alt="Feedback attachment"
+                  loading="lazy"
+                  role="button"
+                  onClick={() => setLightbox(idx)}
+                  style={{
+                    width: '100%',
+                    aspectRatio: ratio,
+                    gridColumn: spanFull ? '1 / -1' : 'auto',
+                    objectFit: 'cover',
+                    border: '1px solid var(--border)',
+                    display: 'block',
+                    cursor: 'zoom-in',
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
 
         <div
           style={{
@@ -215,6 +289,16 @@ export function FeedbackCard({ feedback, view = 'grid' }: FeedbackCardProps) {
           <div style={{ fontSize: 12, color: 'var(--coral)', marginTop: 4 }}>{errorMsg}</div>
         )}
       </div>
+
+      {lightbox !== null && (
+        <ImageZoomLightbox
+          images={feedback.images}
+          index={lightbox}
+          title={feedback.title}
+          onClose={() => setLightbox(null)}
+          onNavigate={setLightbox}
+        />
+      )}
 
       <DeletePostModal
         open={confirmDelete}

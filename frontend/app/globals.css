@@ -1226,15 +1226,23 @@ body {
    the fold on first paint. Sections share the space 1:1 and
    centre their content vertically when there is slack. */
 .about-fold {
-  min-height: calc(100vh - 61px);
   display: flex;
   flex-direction: column;
 }
 .about-fold > section {
-  flex: 1 1 0;
   display: flex;
   flex-direction: column;
+}
+/* Hero fills at least the first screen on tall displays, but grows with
+   its content on short ones — never shorter than its content, never clipped. */
+.about-fold > #what {
+  flex: 0 0 auto;
+  min-height: min(calc(100vh - 61px), max-content);
   justify-content: center;
+}
+/* Thread demo: natural height below the fold. */
+.about-fold > section:not(#what) {
+  flex: 0 0 auto;
 }
 .about-fold > section + section {
   border-top: 1px solid var(--border);
@@ -1257,7 +1265,7 @@ body {
 
 .about-container {
   width: 100%;
-  max-width: 64rem;
+  max-width: 80rem;
   margin-left: auto;
   margin-right: auto;
   padding-left: 32px;
@@ -1361,9 +1369,6 @@ body {
 .about-thread-section {
   padding-top: 32px;
   padding-bottom: 32px;
-  max-width: 1280px;
-  margin-left: auto;
-  margin-right: auto;
 }
 .thread-flow-header {
   display: flex;
@@ -2028,7 +2033,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 11px 20px;
-  background: transparent;
+  background: var(--bg-card);
   color: var(--text);
   font-size: 0.8125rem;
   font-weight: 600;
@@ -2063,20 +2068,23 @@ body {
   border-color: #ffffff;
 }
 
-/* Inline mono link with arrow — used as in-section CTA */
+/* Filled in-section CTA button with arrow */
 .about-link-mono {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 11px 20px;
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--text);
-  border-bottom: 1px solid var(--border-strong);
-  padding-bottom: 2px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .about-link-mono:hover {
+  background: var(--bg-hover);
   color: var(--accent);
   border-color: var(--accent);
 }
@@ -2109,6 +2117,171 @@ body {
   opacity: 0.6;
 }
 .about-usecase-card > * { position: relative; z-index: 1; }
+
+/* ============================================================
+   About home — features showcase ("Built for how you Binus.")
+   Horizontal-snap track of feature cards. Each card uses the
+   same cyan/blue radial gradient palette as AboutHeroBackground,
+   so the section visually rhymes with the hero.
+   ============================================================ */
+.about-feature-nav-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.about-feature-nav-btn:hover {
+  border-color: var(--text);
+  background: color-mix(in oklab, var(--text) 5%, transparent);
+}
+
+.about-feature-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(260px, 1fr);
+  gap: 20px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.about-feature-track::-webkit-scrollbar { display: none; }
+
+/* Show ~4 cards at desktop width, ~2 on tablet, ~1.1 on mobile. */
+@media (min-width: 1024px) {
+  .about-feature-track { grid-auto-columns: calc((100% - 60px) / 4); }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .about-feature-track { grid-auto-columns: calc((100% - 20px) / 2); }
+}
+@media (max-width: 639px) {
+  .about-feature-track { grid-auto-columns: 85%; }
+}
+
+.about-feature-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 320px;
+  padding: 26px 24px;
+  border-radius: 0;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--text);
+  scroll-snap-align: start;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.about-feature-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--text);
+}
+
+/* Hero-style cyan/blue gradient inside each card. */
+.about-feature-card-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 320px at 22% 28%, rgba(79, 172, 254, 0.55), transparent 70%),
+    radial-gradient(circle 380px at 78% 78%, rgba(0, 204, 255, 0.45), transparent 70%),
+    radial-gradient(circle 300px at 55% 12%, rgba(102, 126, 234, 0.4), transparent 72%),
+    radial-gradient(circle 260px at 10% 92%, rgba(0, 242, 254, 0.4), transparent 70%);
+  filter: blur(10px);
+  opacity: 0.95;
+}
+
+/* Subtle grid overlay that mirrors .about-hero-grid */
+.about-feature-card-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 60%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 85%);
+  opacity: 0.5;
+}
+
+/* Grain effect — same SVG noise the hero uses, scoped to each card. */
+.about-feature-card-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.65;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+}
+
+.about-feature-card-body,
+.about-feature-card-foot {
+  position: relative;
+  z-index: 2;
+}
+
+.about-feature-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.375rem;
+  letter-spacing: -0.015em;
+  margin-bottom: 10px;
+}
+
+.about-feature-card-desc {
+  color: var(--text);
+  opacity: 0.78;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  max-width: 22rem;
+}
+
+.about-feature-card-foot {
+  margin-top: 24px;
+}
+
+.about-feature-card-app {
+  width: 34px;
+  height: 34px;
+  border-radius: 0;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+}
+
+.about-feature-card-explore {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--text);
+  transition: gap 0.18s ease;
+}
+.about-feature-card:hover .about-feature-card-explore {
+  gap: 10px;
+}
 
 /* Generic card surface used by split-section visuals */
 .about-surface-card {
@@ -2263,12 +2436,13 @@ body {
   top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  min-width: 420px;
+  width: max-content;
+  max-width: min(720px, calc(100vw - 32px));
   display: flex;
   gap: 0;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 12px 40px oklch(0% 0 0 / 0.1), 0 2px 8px oklch(0% 0 0 / 0.06);
   padding: 24px 0;
   opacity: 0;
@@ -2284,7 +2458,8 @@ body {
 
 /* Column inside dropdown */
 .about-nav-dropdown-col {
-  flex: 1;
+  flex: 0 0 auto;
+  width: 220px;
   padding: 0 24px;
   display: flex;
   flex-direction: column;
@@ -2311,7 +2486,7 @@ body {
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   text-decoration: none;
   transition: background-color 0.12s ease;
 }
@@ -2329,6 +2504,43 @@ body {
   color: var(--text-muted);
   font-size: 0.8125rem;
   line-height: 1.45;
+}
+
+/* Developer-only badge — used inside nav titles and on feature heroes */
+.about-nav-dev-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+.about-hero-dev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.about-hero-dev-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 /* ---- Dark CTA button ---- */
@@ -2550,7 +2762,7 @@ body {
    About — feature page quick navigate (section 2)
    ============================================================ */
 .about-feature-quicknav {
-  max-width: 64rem;
+  width: 100%;
   margin: 0 auto;
 }
 .about-feature-quicknav-head {
@@ -2645,12 +2857,14 @@ body {
   display: flex;
   align-items: center;
 }
-.about-feature-section + .about-feature-section {
+.about-feature-quicknav-section {
+  border-top: 1px solid var(--border);
+}
+.about-feature-section {
   border-top: 1px solid var(--border);
 }
 .about-feature-section-grid {
   width: 100%;
-  max-width: 64rem;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
@@ -2901,6 +3115,149 @@ body {
     grid-template-columns: minmax(0, 1fr);
     gap: 32px;
   }
+}
+
+/* ============================================================
+   About — News index rows and article body
+   ============================================================ */
+.about-news-row {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: start;
+  padding: 28px 4px;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.18s ease, padding 0.18s ease;
+}
+.about-news-row:hover {
+  background: color-mix(in oklab, var(--text) 4%, transparent);
+  padding-left: 12px;
+  padding-right: 12px;
+}
+@media (max-width: 720px) {
+  .about-news-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+}
+
+.about-news-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+.about-news-date {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.about-news-cat {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+  border: 1px solid color-mix(in oklab, var(--accent) 60%, transparent);
+}
+.about-news-body { min-width: 0; }
+.about-news-title {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.375rem;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+.about-news-lede {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  margin-top: 8px;
+  max-width: 36rem;
+}
+.about-news-arrow {
+  color: var(--text-tertiary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 8px;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+.about-news-row:hover .about-news-arrow {
+  color: var(--text);
+  transform: translateX(4px);
+}
+
+.about-news-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.about-news-back:hover { color: var(--accent); }
+
+.about-news-article {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+.about-news-p {
+  color: var(--text);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  margin-top: 18px;
+}
+.about-news-p strong {
+  color: var(--text);
+  font-weight: 700;
+}
+.about-news-h2 {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: -0.015em;
+  margin-top: 42px;
+}
+.about-news-ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.about-news-ul li {
+  position: relative;
+  padding-left: 20px;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.about-news-ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+}
+.about-news-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 40px;
 }
 
 /* Legal document layout (privacy / terms) */

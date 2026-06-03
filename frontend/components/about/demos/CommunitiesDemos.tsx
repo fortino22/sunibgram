@@ -14,6 +14,13 @@ import {
   Bookmark,
   Send,
   MoreHorizontal,
+  Code2,
+  GraduationCap,
+  Brain,
+  Trophy,
+  Footprints,
+  Palette,
+  type LucideIcon,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -34,7 +41,13 @@ function DemoShell({ title, children }: { title: string; children: ReactNode }) 
   );
 }
 
-function CommunityThumb({ tint = 'var(--bg-subtle)' }: { tint?: string }) {
+function CommunityThumb({
+  tint = 'var(--bg-subtle)',
+  icon: Icon,
+}: {
+  tint?: string;
+  icon?: LucideIcon;
+}) {
   return (
     <div
       style={{
@@ -44,8 +57,14 @@ function CommunityThumb({ tint = 'var(--bg-subtle)' }: { tint?: string }) {
         background: tint,
         border: '1px solid var(--border)',
         flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--text)',
       }}
-    />
+    >
+      {Icon && <Icon size={24} strokeWidth={1.8} />}
+    </div>
   );
 }
 
@@ -67,12 +86,14 @@ function CommunityRow({
   isPrivate = false,
   trailing,
   tint,
+  icon,
 }: {
   name: string;
   members: number;
   isPrivate?: boolean;
   trailing?: ReactNode;
   tint?: string;
+  icon?: LucideIcon;
 }) {
   return (
     <div
@@ -86,7 +107,7 @@ function CommunityRow({
         background: 'var(--bg-card)',
       }}
     >
-      <CommunityThumb tint={tint} />
+      <CommunityThumb tint={tint} icon={icon} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.005em' }}>
@@ -132,12 +153,13 @@ export function CommunitiesDemoVisibility() {
         name="BNPC Coders"
         members={2412}
         tint="color-mix(in oklab, var(--accent) 18%, var(--bg-subtle))"
+        icon={Code2}
         trailing={
           <motion.button
             animate={{
               background: joinedPublic ? 'var(--accent-soft)' : 'var(--accent)',
               color: joinedPublic ? 'var(--accent)' : '#fff',
-              borderColor: 'transparent',
+              borderColor: 'rgba(0,0,0,0)',
             }}
             style={{
               padding: '7px 16px',
@@ -166,6 +188,7 @@ export function CommunitiesDemoVisibility() {
         members={84}
         isPrivate
         tint="color-mix(in oklab, var(--coral) 15%, var(--bg-subtle))"
+        icon={GraduationCap}
         trailing={
           <motion.button
             animate={{
@@ -286,14 +309,14 @@ export function CommunitiesDemoModeration() {
 /* ------------------------------------------------------------------ */
 
 const CATS = ['All', 'Academic', 'Sports', 'Tech', 'Arts'];
-type CatItem = { name: string; cat: string; members: number; tint: string };
+type CatItem = { name: string; cat: string; members: number; tint: string; icon: LucideIcon };
 const COMMUNITIES: CatItem[] = [
-  { name: 'BNPC Coders',           cat: 'Tech',     members: 2412, tint: 'color-mix(in oklab, var(--accent) 18%, var(--bg-subtle))' },
-  { name: 'ML Study Group',        cat: 'Tech',     members: 894,  tint: 'color-mix(in oklab, var(--accent) 14%, var(--bg-subtle))' },
-  { name: 'Alam Sutera Futsal',    cat: 'Sports',   members: 612,  tint: 'color-mix(in oklab, var(--green) 18%, var(--bg-subtle))' },
-  { name: 'Anggrek Run Club',      cat: 'Sports',   members: 478,  tint: 'color-mix(in oklab, var(--green) 14%, var(--bg-subtle))' },
-  { name: 'Design Critique',       cat: 'Arts',     members: 314,  tint: 'color-mix(in oklab, var(--coral) 18%, var(--bg-subtle))' },
-  { name: 'Tugas Akhir Survival',  cat: 'Academic', members: 1207, tint: 'color-mix(in oklab, var(--amber) 18%, var(--bg-subtle))' },
+  { name: 'BNPC Coders',           cat: 'Tech',     members: 2412, tint: 'color-mix(in oklab, var(--accent) 18%, var(--bg-subtle))', icon: Code2 },
+  { name: 'ML Study Group',        cat: 'Tech',     members: 894,  tint: 'color-mix(in oklab, var(--accent) 14%, var(--bg-subtle))', icon: Brain },
+  { name: 'Alam Sutera Futsal',    cat: 'Sports',   members: 612,  tint: 'color-mix(in oklab, var(--green) 18%, var(--bg-subtle))',  icon: Trophy },
+  { name: 'Anggrek Run Club',      cat: 'Sports',   members: 478,  tint: 'color-mix(in oklab, var(--green) 14%, var(--bg-subtle))',  icon: Footprints },
+  { name: 'Design Critique',       cat: 'Arts',     members: 314,  tint: 'color-mix(in oklab, var(--coral) 18%, var(--bg-subtle))',  icon: Palette },
+  { name: 'Tugas Akhir Survival',  cat: 'Academic', members: 1207, tint: 'color-mix(in oklab, var(--amber) 18%, var(--bg-subtle))',  icon: GraduationCap },
 ];
 
 export function CommunitiesDemoDiscovery() {
@@ -362,7 +385,7 @@ export function CommunitiesDemoDiscovery() {
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.3 }}
             >
-              <CommunityRow name={c.name} members={c.members} tint={c.tint} />
+              <CommunityRow name={c.name} members={c.members} tint={c.tint} icon={c.icon} />
             </motion.div>
           ))}
         </AnimatePresence>
@@ -390,6 +413,7 @@ export function CommunitiesDemoMemberThreads() {
         members={84}
         isPrivate
         tint="color-mix(in oklab, var(--amber) 18%, var(--bg-subtle))"
+        icon={GraduationCap}
         trailing={
           <motion.button
             animate={{

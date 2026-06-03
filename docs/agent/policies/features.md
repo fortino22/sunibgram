@@ -64,9 +64,32 @@ Source: `/about/leaderboard`, `/about/help`.
 Source: bookmark models, `user-routes.md`.
 - Save any thread; organize into **collections** (limits in [limits.md](./limits.md)).
 
-## Fox AI summaries
-- Open a thread → generate a **Fox** summary of the post + its replies. Your summary
-  history lives at `/summaries` (Fox-agent tab).
+## Fox AI
+Source: `/about/fox`.
+- **Thread summaries (user-facing):** open a thread → generate a **Fox** summary of the
+  post + its replies. Your summary history lives at `/summaries` (Fox-agent tab).
+- **Analyst role (platform-side):** Fox also reviews every **official event** — returns
+  approve / decline / ask-for-changes with a confidence score and a written reason;
+  clear-cut low-risk events can auto-approve, anything risky is flagged for a human. It
+  writes a **daily morning brief** (events decided, bugs, top feature requests) and a
+  **weekly story** (trending hashtags, top engaging users, safety notes). Low-confidence
+  or borderline calls never auto-approve — they route to an admin with Fox's notes.
+  See [about.md](./about.md) for Fox + Hermes.
+
+## Feed / For You ranking
+Source: `/about/algorithm`. For "how is my feed ordered / why this order?":
+- Posts get a quiet **interest score** from reactions, freshness, and source (your posts,
+  people you follow, your communities, campus-wide trending).
+- **Reaction weights:** reposts count most, then bookmarks/comments, then shares, then a
+  like (baseline); replies are nudged down vs original posts.
+- **Time decay:** strongest right after posting, fading over hours; posts older than
+  ~a week leave For You.
+- **Fresh slots:** a couple of just-posted threads (~last 15 min) get a reserved spot up
+  top, newest first.
+- **Fairness cap:** no single account can dominate — limited posts near the top and overall.
+- **Reshuffle:** similar-interest posts are gently shuffled so the feed varies per visit.
+- **"New posts" banner:** appears while scrolling when fresh threads arrive; tap to slide
+  them in without losing your place.
 
 ## Account controls
 Source: `/about/privacy`, settings routes.

@@ -41,7 +41,7 @@ export function AboutHero() {
   const currentSrc = `/assets/binus/${encodeURIComponent(BINUS_LOGOS[index])}`;
 
   return (
-    <section className="relative overflow-hidden" id="what">
+    <section className="relative" id="what">
       <AboutHeroBackground />
       <div className="about-hero-grain" aria-hidden />
       <div

@@ -50,7 +50,10 @@ When a user asks "how long / how big / how many / what file types?" → cite
   - FAQ → `frontend/app/about/help/page.tsx`
   - Terms → `frontend/app/about/terms/page.tsx`
   - Privacy → `frontend/app/about/privacy/page.tsx`
-  - Purpose / principles → `frontend/app/about/what/page.tsx`, `.../team/page.tsx`
+  - Purpose / principles → `frontend/app/about/our-story/page.tsx`, `.../company/page.tsx`
+  - Fox AI / Hermes → `frontend/app/about/fox/page.tsx`, `.../hermes/page.tsx`
+  - Feed ("For You") ranking → `frontend/app/about/algorithm/page.tsx`
+  - News articles → `frontend/lib/news.ts` + `frontend/app/about/news/**`
   - Report categories → `backend/infrastructure/seeder/violation_seeder.go`
   - Community categories → `backend/infrastructure/seeder/category_seeder.go`
   - Faculties → `backend/infrastructure/seeder/faculty_seeder.go`
@@ -59,5 +62,5 @@ When a user asks "how long / how big / how many / what file types?" → cite
     services/components (`threads.ts`, `bookmarkCollections.ts`, `feedback.ts`,
     community/chat modals); premium → `usecase/order` + `usecase/premium_subscription`
 - When the live `/about/*` copy, routes, or these limits change, re-sync these files.
-- **Last synced:** 2026-06-01.
+- **Last synced:** 2026-06-03.
 - **Support:** `support@sunibgram.com`.

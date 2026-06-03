@@ -26,6 +26,7 @@ import (
 	exploreuc "github.com/sunibgram/application/usecase/explore"
 	facultyuc "github.com/sunibgram/application/usecase/faculty"
 	feedbackuc "github.com/sunibgram/application/usecase/feedback"
+	feedbackmediauc "github.com/sunibgram/application/usecase/feedback_media"
 	followuc "github.com/sunibgram/application/usecase/follow"
 	hashtaguc "github.com/sunibgram/application/usecase/hashtag"
 	likeuc "github.com/sunibgram/application/usecase/like"
@@ -74,6 +75,7 @@ import (
 	exploresvciface "github.com/sunibgram/domain/service/explore"
 	facultysvciface "github.com/sunibgram/domain/service/faculty"
 	feedbacksvciface "github.com/sunibgram/domain/service/feedback"
+	feedbackmediasvciface "github.com/sunibgram/domain/service/feedback_media"
 	followsvciface "github.com/sunibgram/domain/service/follow"
 	hashtagsvciface "github.com/sunibgram/domain/service/hashtag"
 	likesvciface "github.com/sunibgram/domain/service/like"
@@ -138,6 +140,7 @@ type Services struct {
 	EventActionConfirmation     eventactionconfirmationsvciface.IEventActionConfirmationService
 	Faculty                     facultysvciface.IFacultyService
 	Feedback                    feedbacksvciface.IFeedbackService
+	FeedbackMedia               feedbackmediasvciface.IFeedbackMediaService
 	Order                       ordersvciface.IOrderService
 	PremiumSubscription         premiumsubscriptionsvciface.IPremiumSubscriptionService
 	ChatRoom                    chatroomsvciface.IChatRoomService
@@ -206,6 +209,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		EventParticipant:            eventparticipantuc.NewEventParticipantService(repos.EventParticipant, repos.Event, repos.UserBlock),
 		Faculty:                     facultyuc.NewFacultyService(repos.Faculty, repos.UserFaculty),
 		Feedback:                    feedbackuc.NewFeedbackService(repos.Feedback),
+		FeedbackMedia:               feedbackmediauc.NewFeedbackMediaService(repos.FeedbackMedia, ext.Storage),
 		Order:                       orderuc.NewOrderService(repos.Order, repos.User, repos.PremiumSubscription, repos.Community, repos.Cache, os.Getenv("MIDTRANS_SERVER_KEY"), os.Getenv("MIDTRANS_ENV")),
 		PremiumSubscription:         premiumsubscriptionuc.NewPremiumSubscriptionService(repos.User, repos.PremiumSubscription, repos.Community, repos.Cache),
 		ChatRoom:                    chatRoom,

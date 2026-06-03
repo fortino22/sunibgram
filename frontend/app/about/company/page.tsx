@@ -1,26 +1,34 @@
 import type { Metadata } from 'next';
 import { AboutPageHero } from '@/components/about/AboutPageHero';
+import { AboutSplitValue } from '@/components/about/AboutSplitValue';
+import { AboutFinalCTA } from '@/components/about/AboutFinalCTA';
 
 export const metadata: Metadata = {
-  title: 'The Team — Sunibgram',
+  title: 'Company — Sunibgram',
   description:
-    'Sunibgram is a student-built campus social network, made in Jakarta — not officially affiliated with Binus University.',
+    'Sunibgram is the verified campus social network for Binus students — built independently by Binusian in Jakarta. Learn what it is and who builds it.',
 };
 
-export default function TeamPage() {
+export default function CompanyPage() {
   return (
     <>
       <AboutPageHero
-        eyebrow="The team"
-        title="Made for Binus. Built by Binus."
-        description="Sunibgram is a student project — built independently in Jakarta, not officially affiliated with Binus University. We work small, ship in the open, and listen to the campus that uses it."
-        primaryCta={{ label: 'Talk to the team', href: 'mailto:support@sunibgram.com' }}
-        secondaryCta={{ label: 'Read our principles', href: '/about/what' }}
+        eyebrow="Company"
+        title="A social network built around one campus."
+        description="Sunibgram is a verified-only platform for Binus students. Threads, communities, events, and DMs — all from people who actually share a campus with you."
+        primaryCta={{ label: 'Join with your Binus email', href: '/signup' }}
+        secondaryCta={{ label: 'See how it works', href: '/about/threads' }}
+        secondaryCtaDark
       />
 
+      <AboutSplitValue />
+
+      <AboutFinalCTA />
+
+      {/* Independent, by design */}
       <section className="about-content-section">
         <div className="about-container">
-          <div className="about-content-split">
+          <div className="about-content-split" style={{ maxWidth: 'none' }}>
             <div>
               <span className="about-content-eyebrow">Independent, by design</span>
               <h2 className="about-content-h2">
@@ -79,7 +87,7 @@ export default function TeamPage() {
                   WHERE WE BUILD
                 </div>
                 <div style={{ marginTop: 8, color: 'var(--text)', fontSize: 15, lineHeight: 1.55 }}>
-                  Made in Jakarta. Hosted on commodity cloud. Coffee provided by campus kantin.
+                  Made in Jakarta.
                 </div>
               </div>
             </div>

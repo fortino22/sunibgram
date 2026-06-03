@@ -23,6 +23,11 @@ verification. Requires a valid `@binus.ac.id` email; one account per student.
 **Reset password.** Reset via an email OTP. Optional `?email=` pre-fills the address.
 **Suggest when:** "forgot my password", "reset password", "can't remember password".
 
+### `/login/expired`
+**Sign-in link expired.** Landing shown when a "was this you?" sign-in confirmation
+link from the alert email is no longer valid. Offers Back to login and Reset password.
+**Suggest when:** "the email link doesn't work", "sign-in link expired", "link expired".
+
 ---
 
 ## About / Info
@@ -32,15 +37,20 @@ The `/about` section explains the product and policies. All pages are public.
 | Route | Page | Suggest when |
 |---|---|---|
 | `/about` | About hub / landing — what Sunibgram is | "what is Sunibgram", "about the app" |
-| `/about/what` | Why it exists + the 6 core principles | "why does this exist", "what do you stand for" |
+| `/about/company` | What it is + independence (not official Binus) | "what is Sunibgram", "is this official Binus", "who runs it" |
+| `/about/our-story` | Why it exists + what the team believes | "why does this exist", "why build it", "what do you stand for" |
 | `/about/threads` | Threads guide — posting, replies, polls, reposts | "how do threads work", "how to post / poll" |
 | `/about/communities` | Communities guide — public vs private, moderation | "how communities work", "public vs private" |
 | `/about/events` | Events guide — official vs student-run, RSVPs | "how events work", "official vs unofficial events" |
 | `/about/messages` | Messages guide — DMs, group rooms, read receipts | "how DMs work", "how does chat work" |
 | `/about/leaderboard` | Leaderboard guide — weekly scoring, faculty boards | "how is the leaderboard scored" |
+| `/about/algorithm` | For You feed transparency — ranking, weights, fairness | "how does the feed work", "how is For You ranked", "why this order" |
+| `/about/fox` | Fox AI analyst — event review, daily/weekly reports | "what is Fox", "how does the AI work", "who approves events" |
+| `/about/hermes` | Hermes — operational toolset powering automation + Fox | "how do you operate", "what runs the automation" |
 | `/about/use-cases` | Real scenarios (first-years, clubs, study groups…) | "how would I use this", "examples" |
+| `/about/news` | News — announcements + release notes (index) | "what's new", "release notes", "any announcements" |
+| `/about/news/:slug` | A single news article (live: `sunibgram-enters-beta`) | "read the beta announcement", "open that news post" |
 | `/about/help` | Help Center + FAQ + support email | "help", "FAQ", "I need support" |
-| `/about/team` | The team + independence (not official Binus) | "who built this", "is this official Binus" |
 | `/about/privacy` | Privacy Center | "privacy policy", "how is my data used" |
 | `/about/terms` | Terms & Conditions | "terms", "rules for using the app" |
 

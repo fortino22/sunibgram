@@ -16,14 +16,14 @@ export function AboutSplitConnection() {
         style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}
       >
         {/* Left — copy */}
-        <div style={{ maxWidth: '34rem', justifySelf: 'center' }}>
+        <div style={{ maxWidth: '34rem', justifySelf: 'start' }}>
           <span className="about-eyebrow">Verified · one account</span>
           <h2
             style={{
               color: 'var(--text)',
-              fontWeight: 600,
-              fontSize: 'clamp(2rem, 4vw, 3rem)',
-              lineHeight: 1.1,
+              fontWeight: 500,
+              fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)',
+              lineHeight: 1.12,
               letterSpacing: '-0.02em',
               marginTop: '20px',
             }}
@@ -53,7 +53,7 @@ export function AboutSplitConnection() {
         </div>
 
         {/* Right — Three.js 3D globe of Binus people */}
-        <div className="about-orbit-stage" style={{ justifySelf: 'center' }}>
+        <div className="about-orbit-stage" style={{ justifySelf: 'end' }}>
           <AboutGlobe />
         </div>
       </div>

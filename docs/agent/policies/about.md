@@ -1,7 +1,7 @@
 # About Sunibgram
 
 Orientation for the agent — what Sunibgram is and what it stands for. Sources:
-`/about`, `/about/what`, `/about/team`, and backend category seeder.
+`/about`, `/about/company`, `/about/our-story`, and backend category seeder.
 
 ---
 
@@ -19,6 +19,8 @@ what a faculty is. Sunibgram puts all of that in one verified place: the people 
 real, the feed is on-topic, and the rules are written for campus, not advertisers.
 
 ## The six principles ("what we stand for")
+> Source: the values + independence copy now lives on `/about/our-story` and
+> `/about/company` (formerly `/about/what`).
 1. **Verified, always** — every account is tied to a real `@binus.ac.id` email. No
    bots, no anonymous trolls, no off-campus strangers.
 2. **Built around campus** — faculty, batch, and community are first-class. The feed
@@ -59,6 +61,17 @@ Threads & replies, polls, reposts · Communities (public/private) · Events
 thread summaries. Feature guides live under `/about/*` — see
 [public-routes.md](../routes/public-routes.md). Where to *do* each thing →
 [user-routes.md](../routes/user-routes.md).
+
+## Fox & Hermes (the AI / automation layer)
+Source: `/about/fox`, `/about/hermes`.
+- **Fox** — Sunibgram's on-platform AI analyst. Reviews every official event (approve /
+  decline / ask for changes, with a confidence score), writes a daily morning brief and
+  a weekly story from live activity, and escalates low-confidence or borderline calls to
+  a human. Fox also powers user-facing **thread summaries** (see [features.md](./features.md))
+  and the **For You** feed transparency page (`/about/algorithm`).
+- **Hermes** — the operational toolset Fox runs on. It's tooling, not an AI of its own:
+  it routes event reviews, shapes live data into Fox's reports, and keeps a
+  human-in-the-loop on anything sensitive.
 
 ## Support
 **support@sunibgram.com** — read every message, usually within a couple of working

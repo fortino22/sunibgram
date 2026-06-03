@@ -158,7 +158,7 @@ export function Sidebar() {
   const [moreHovered, setMoreHovered] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const avatarSrc = profile?.avatar ?? null;
-  const isCollapsed = pathname.startsWith('/messages') || pathname.startsWith('/admin') || pathname.startsWith('/summaries') || pathname.startsWith('/leaderboard') || pathname === '/events';
+  const isCollapsed = pathname.startsWith('/messages') || pathname.startsWith('/admin') || pathname.startsWith('/summaries') || pathname.startsWith('/leaderboard') || pathname === '/events' || pathname.startsWith('/feedback');
   const moreItems = user?.roleName === 'admin' ? [...MORE_NAV_ITEMS, ADMIN_NAV_ITEM] : MORE_NAV_ITEMS;
   const moreActive = moreItems.some((item) => pathname.startsWith(item.href));
 
