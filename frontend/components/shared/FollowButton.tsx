@@ -44,8 +44,8 @@ export function FollowButton({ userId, initialFollowing }: FollowButtonProps) {
       onClick={handleClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="shrink-0 rounded-full text-[14px] font-bold transition-colors"
-      style={{ padding: '6px 16px', ...(following ? followingStyle : notFollowingStyle) }}
+      className="shrink-0 rounded-full text-[14px] font-bold transition-colors text-center"
+      style={{ padding: '6px 16px', minWidth: 104, ...(following ? followingStyle : notFollowingStyle) }}
     >
       {label}
     </button>
