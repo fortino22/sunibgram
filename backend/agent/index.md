@@ -26,7 +26,7 @@ Conventions + workflows are in [[SCHEMA]].
 - [[messages]] — real-time DMs and group rooms; multi-file attachments, edit/unsend, delivery states.
 - [[leaderboard]] — weekly engagement ranking, Sunday reset, per-faculty boards.
 - [[bookmarks]] — save threads and organize them into collections.
-- [[premium]] — unlocks community + event creation; paid purchase coming soon, one-time 1-month free trial available now.
+- [[premium]] — unlocks community creation; paid purchase coming soon, one-time 1-month free trial available now.
 - [[faculties]] — each account's Binus faculty; drives the faculty feed and faculty boards.
 
 ## Concepts

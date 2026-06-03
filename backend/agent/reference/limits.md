@@ -87,4 +87,4 @@ Source: `.../premium_subscription/premium_subscription_service.go`.
 - **Buying premium:** **coming soon** — paid purchase not available yet; do not quote a price.
 - **Free trial:** **1 month**, activatable **once per account** (a second attempt is
   rejected) — the only way to get premium right now.
-- **Premium unlocks:** creating communities and creating events (see [[premium]]).
+- **Premium unlocks:** creating communities (see [[premium]]). Creating events is free.

@@ -25,12 +25,23 @@ export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
   const { messages, ask, busy } = useFoxAsk();
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Keep the newest message in view as it streams.
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  // Auto-grow the textarea with typed text, up to INPUT_MAX_H, then scroll.
+  // Keyed on `input` so it grows on type and shrinks back when send() clears it.
+  const autosize = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, INPUT_MAX_H)}px`;
+  };
+  useEffect(autosize, [input]);
 
   const send = () => {
     const q = input.trim();
@@ -93,6 +104,7 @@ export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
 
       <div style={{ borderTop: '1px solid var(--border)', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end' }}>
         <textarea
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
@@ -188,10 +200,13 @@ function ThinkingIndicator() {
   );
 }
 
+const INPUT_MAX_H = 120;
+
 const inputStyle: CSSProperties = {
   flex: 1,
   resize: 'none',
-  maxHeight: 120,
+  maxHeight: INPUT_MAX_H,
+  overflowY: 'auto',
   boxSizing: 'border-box',
   fontSize: 13,
   fontFamily: 'inherit',

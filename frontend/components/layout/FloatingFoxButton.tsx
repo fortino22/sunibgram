@@ -106,13 +106,14 @@ export function FloatingFoxButton() {
               <FoxTabButton label="History" active={tab === 'summaries'} onClick={() => setTab('summaries')} />
             </div>
 
-            {/* Body swaps by tab. minHeight:0 lets inner panels scroll. */}
-            <div style={{ flex: 1, minHeight: 0 }}>
-              {tab === 'summaries' ? (
-                <FoxHistoryPanel active={showSoon && !closing} onNavigate={requestClose} />
-              ) : (
-                <FoxAskPanel onNavigate={requestClose} />
-              )}
+            {/* Body swaps by tab. Both panels stay mounted (inactive hidden via
+                display:none) so the Ask Fox chat + draft survive tab switches —
+                conditional rendering would unmount and wipe their state. */}
+            <div style={{ flex: 1, minHeight: 0, display: tab === 'summaries' ? 'block' : 'none' }}>
+              <FoxHistoryPanel active={showSoon && !closing && tab === 'summaries'} onNavigate={requestClose} />
+            </div>
+            <div style={{ flex: 1, minHeight: 0, display: tab === 'ask' ? 'block' : 'none' }}>
+              <FoxAskPanel onNavigate={requestClose} />
             </div>
           </div>
         </>

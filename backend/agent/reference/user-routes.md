@@ -98,8 +98,8 @@ can change roles or remove members.
 ## Events
 
 ### `/events`
-**Events feed.** Browse approved events; RSVP. *Creating an event requires premium*
-(official events also need admin approval; unofficial publish instantly).
+**Events feed.** Browse approved events; RSVP. *Creating an event is free — no premium*
+(official events need admin approval before badging; unofficial publish instantly).
 **Suggest when:** "what events are happening", "RSVP to an event", "create an event".
 
 ### `/events/:id`

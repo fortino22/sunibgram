@@ -27,4 +27,6 @@ verified badge.
   only".
 
 ## Creating
-**Creating an event requires [[premium]].**
+**Creating an event is free** — any student can create one, no [[premium]] needed.
+Student-run events publish instantly; official events still need a `.doc`/`.docx`
+attachment and admin (Fox) review before they get the verified badge.

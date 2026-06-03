@@ -1,5 +1,5 @@
 ---
-summary: Premium unlocks creating communities and events. Paid purchase is coming soon; for now users can activate a one-time 1-month free trial.
+summary: Premium unlocks creating communities. Paid purchase is coming soon; for now users can activate a one-time 1-month free trial.
 last_synced: 2026-06-03
 source:
   - backend/application/usecase/premium_subscription/premium_subscription_service.go
@@ -8,7 +8,7 @@ tags: [entity, premium, billing]
 
 # Premium
 
-The upgrade that unlocks creating communities and events. Manage it at
+The upgrade that unlocks creating communities. Manage it at
 `/settings/subscription` (see [[user-routes]]).
 
 ## Buying premium
@@ -22,7 +22,8 @@ to get premium right now.
 
 ## What it unlocks
 - Creating a [[communities|community]].
-- Creating an [[events|event]].
+
+Creating an [[events|event]] does **not** require premium — any student can create one.
 
 When a user asks to do a premium-gated action, mention the premium requirement and suggest the
 **1-month free trial** (purchase is coming soon). Exact figures are mirrored in [[limits]].
