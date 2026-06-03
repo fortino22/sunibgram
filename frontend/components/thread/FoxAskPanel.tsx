@@ -54,7 +54,7 @@ export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
         {empty ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 6 }}>
             <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-              Hi! I&apos;m Fox 🦊 — ask me anything about how to use Sunibgram.
+              Hi! I&apos;m Fox — ask me anything about how to use Sunibgram.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {SUGGESTIONS.map((s) => (
@@ -65,20 +65,26 @@ export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {messages.map((m) =>
               m.role === 'user' ? (
-                <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '85%', ...userBubble }}>
+                <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '88%', ...userBubble }}>
                   {m.text}
                 </div>
               ) : (
-                <div key={m.id} style={{ alignSelf: 'flex-start', maxWidth: '92%', ...foxBubble }}>
-                  {m.text === '' && m.status === 'streaming' ? (
-                    <ThinkingDots />
-                  ) : (
+                m.text === '' && m.status === 'streaming' ? (
+                  <div key={m.id} style={{ alignSelf: 'flex-start', padding: '2px 2px' }}>
+                    <ThinkingIndicator />
+                  </div>
+                ) : (
+                  <div
+                    key={m.id}
+                    className={m.status === 'streaming' ? 'fox-stream-wave' : undefined}
+                    style={{ alignSelf: 'flex-start', maxWidth: '92%', ...foxBubble }}
+                  >
                     <FoxMarkdown text={m.text} onNavigate={onNavigate} />
-                  )}
-                </div>
+                  </div>
+                )
               ),
             )}
           </div>
@@ -98,7 +104,7 @@ export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
           type="button"
           onClick={send}
           disabled={busy || input.trim() === ''}
-          style={{ ...sendStyle, opacity: busy || input.trim() === '' ? 0.5 : 1 }}
+          className="fox-send"
         >
           Send
         </button>
@@ -119,45 +125,65 @@ const chipStyle: CSSProperties = {
 };
 
 const userBubble: CSSProperties = {
-  fontSize: 13,
+  fontSize: 13.5,
   lineHeight: 1.5,
   color: '#fff',
   background: 'var(--accent)',
-  borderRadius: '14px 14px 4px 14px',
-  padding: '8px 12px',
+  borderRadius: '16px 16px 5px 16px',
+  padding: '9px 13px',
   wordBreak: 'break-word',
 };
 
 const foxBubble: CSSProperties = {
-  fontSize: 13,
+  fontSize: 13.5,
   color: 'var(--text)',
   background: 'var(--bg-secondary)',
   border: '1px solid var(--border)',
-  borderRadius: '14px 14px 14px 4px',
-  padding: '8px 12px',
+  borderRadius: '16px 16px 16px 5px',
+  padding: '9px 13px',
 };
 
+const THINKING_PHRASES = [
+  'Fox is thinking...',
+  'Fox is cooking...',
+  'Fox is sniffing around the guide...',
+  'Fox is fetching the answer...',
+];
+
 /**
- * Claude-style "thinking" indicator — three dots that pulse in sequence while
- * Fox composes its answer. Uses the shared `pulse` keyframe (globals.css) with
- * staggered delays.
+ * "Thinking" indicator — a shimmering status phrase that rotates every ~2s,
+ * beside three sequentially-pulsing dots. Uses the Fox-Agent blue palette
+ * (`.fox-thinking-shimmer` / `.fox-thinking-dot` from globals.css) to match the
+ * sidebar "Fox Agent" entry, with a soft cross-fade between phrases.
  */
-function ThinkingDots() {
+function ThinkingIndicator() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % THINKING_PHRASES.length), 2000);
+    return () => clearInterval(t);
+  }, []);
+  const phrase = THINKING_PHRASES[i];
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 0' }} aria-label="Fox is thinking">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: 'var(--text-tertiary)',
-            animation: 'pulse 1s ease-in-out infinite',
-            animationDelay: `${i * 0.18}s`,
-          }}
-        />
-      ))}
+    <span
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '1px 0' }}
+      aria-label={phrase}
+    >
+      <span
+        key={i}
+        className="fox-thinking-wrap"
+        style={{ fontSize: 13, fontWeight: 500, lineHeight: 1, display: 'inline-flex', whiteSpace: 'pre' }}
+        aria-hidden="true"
+      >
+        {Array.from(phrase).map((ch, idx) => (
+          <span
+            key={idx}
+            className="fox-wave-letter"
+            style={{ animationDelay: `${idx * 0.06}s` }}
+          >
+            {ch}
+          </span>
+        ))}
+      </span>
     </span>
   );
 }
@@ -177,14 +203,3 @@ const inputStyle: CSSProperties = {
   outline: 'none',
 };
 
-const sendStyle: CSSProperties = {
-  flexShrink: 0,
-  fontSize: 13,
-  fontWeight: 600,
-  color: '#000',
-  background: '#fff',
-  border: '1px solid var(--border-strong)',
-  borderRadius: 9999,
-  padding: '9px 16px',
-  cursor: 'pointer',
-};

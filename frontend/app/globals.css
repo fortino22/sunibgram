@@ -440,6 +440,75 @@ body {
   .fox-blue-title { animation: none; }
 }
 
+/* Fox "thinking" indicator — same flowing Fox-Agent blue as .fox-blue-title,
+   plus a soft fade-in as each rotating phrase swaps in (keyed remount). */
+.fox-thinking-shimmer {
+  background: linear-gradient(90deg, #4facfe, #00f2fe, #00ccff, #667eea, #4facfe);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: summary-shimmer 2s linear infinite, fox-thinking-fade 0.35s ease;
+}
+@keyframes fox-thinking-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+/* Gentle waving bob on the phrase while Fox thinks. Layered on top of the
+   blue shimmer + fade so the text floats softly. */
+.fox-thinking-wave {
+  display: inline-block;
+  animation: summary-shimmer 2s linear infinite,
+             fox-thinking-fade 0.35s ease,
+             fox-thinking-wave 1.6s ease-in-out infinite;
+}
+@keyframes fox-thinking-wave {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2.5px); }
+}
+/* Per-letter wave: each char bobs in sequence (stagger set inline via
+   animation-delay) so a wave flows across the "Fox is thinking" phrase. */
+/* Wrapper holds layout + the soft fade as each rotating phrase swaps in
+   (keyed remount). Gradient/clip now lives on each letter, not here. */
+.fox-thinking-wrap {
+  animation: fox-thinking-fade 0.35s ease;
+}
+.fox-wave-letter {
+  display: inline-block;
+  background: linear-gradient(90deg, #4facfe, #00f2fe, #00ccff, #667eea, #4facfe);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: summary-shimmer 2s linear infinite,
+             fox-wave-letter 1.1s ease-in-out infinite;
+}
+@keyframes fox-wave-letter {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fox-thinking-shimmer { animation: none; color: #4facfe; }
+  .fox-thinking-wave { animation: none; }
+  /* .fox-wave-letter intentionally still animates under reduced-motion —
+     this loading wave is small + decorative and must stay visibly moving. */
+}
+
+/* Streaming AI reply: gentle wave + soft blue glow on the whole bubble while
+   text streams in, so the response feels "alive" as it arrives. Removed once
+   the message status flips off 'streaming'. */
+.fox-stream-wave {
+  animation: fox-stream-wave 1.8s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes fox-stream-wave {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fox-stream-wave { animation: none; }
+}
+
 /* Rainbow-recolored fox: the same flowing 7-colour gradient as
    .summary-shimmer, but clipped to a fox silhouette via `mask` instead of
    text. Set the mask image inline (sidebar logo, or a sleep-sprite frame).
@@ -3466,6 +3535,44 @@ body {
 .about-faq-icon[data-open='true'] {
   transform: rotate(45deg);
   color: var(--accent);
+}
+
+/* Fox chat Send button — solid black/white pill (inverts with theme). Dark
+   theme: white pill, black text. Light theme: black pill, white text.
+   Disabled = flat grey pill so it reads as inactive, not a faint ghost. */
+.fox-send {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #000;
+  background: #fff;
+  border: none;
+  border-radius: 9999px;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
+}
+.fox-send:hover:not(:disabled) {
+  opacity: 0.85;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
+}
+.fox-send:active:not(:disabled) {
+  transform: translateY(1px) scale(0.97);
+}
+.fox-send:disabled {
+  cursor: not-allowed;
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+}
+[data-theme="white"] .fox-send {
+  color: #fff;
+  background: #000;
+}
+[data-theme="white"] .fox-send:disabled {
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
 }
 
 
