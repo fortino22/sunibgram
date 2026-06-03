@@ -8,52 +8,47 @@ type Column = {
 
 const COLUMNS: Column[] = [
   {
-    title: 'The app',
+    title: 'Features',
     links: [
-      { label: 'Threads', href: '/' },
-      { label: 'Communities', href: '/communities' },
-      { label: 'Events', href: '/events' },
-      { label: 'Direct messages', href: '/messages' },
-      { label: 'Leaderboard', href: '/leaderboard' },
-      { label: 'Find people', href: '/connect' },
-      { label: 'Bookmarks', href: '/bookmarks' },
-      { label: 'Premium', href: '/settings/subscription' },
+      { label: 'Threads', href: '/about/threads' },
+      { label: 'Communities', href: '/about/communities' },
+      { label: 'Messages', href: '/about/messages' },
+      { label: 'Events', href: '/about/events' },
+      { label: 'Leaderboard', href: '/about/leaderboard' },
+      { label: 'Fox AI', href: '/about/fox' },
     ],
   },
   {
-    title: 'Join Sunibgram',
+    title: 'Company',
+    links: [
+      { label: 'Company', href: '/about/company' },
+      { label: 'Our story', href: '/about/our-story' },
+      { label: 'Use cases', href: '/about/use-cases' },
+      { label: 'News', href: '/about/news' },
+    ],
+  },
+  {
+    title: 'Resources',
+    links: [
+      { label: 'Help center', href: '/about/help' },
+      { label: 'Algorithm', href: '/about/algorithm' },
+      { label: 'How we operate', href: '/about/hermes' },
+    ],
+  },
+  {
+    title: 'Safety',
+    links: [
+      { label: 'Privacy center', href: '/about/privacy' },
+      { label: 'Terms and conditions', href: '/about/terms' },
+    ],
+  },
+  {
+    title: 'Get started',
     links: [
       { label: 'Sign up', href: '/signup' },
       { label: 'Sign in', href: '/login' },
       { label: 'Forgot password', href: '/forgot-password' },
       { label: 'Explore the feed', href: '/explore' },
-    ],
-  },
-  {
-    title: 'For organizers',
-    links: [
-      { label: 'Start a community', href: '/communities' },
-      { label: 'Host an event', href: '/events' },
-      { label: 'Become a moderator', href: '/communities' },
-      { label: 'Admin tools', href: '/admin' },
-    ],
-  },
-  {
-    title: 'The team',
-    links: [
-      { label: 'Our story', href: '/about/our-story' },
-      { label: 'Talk to us', href: '/feedback' },
-      { label: 'Report a bug', href: '/feedback' },
-      { label: 'Request a feature', href: '/feedback' },
-    ],
-  },
-  {
-    title: 'Fine print',
-    links: [
-      { label: 'Trust & safety', href: '/about' },
-      { label: 'Privacy', href: '/about' },
-      { label: 'Terms', href: '/about' },
-      { label: 'Community rules', href: '/about' },
     ],
   },
 ];
