@@ -2243,12 +2243,13 @@ body {
   top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  min-width: 420px;
+  width: max-content;
+  max-width: min(720px, calc(100vw - 32px));
   display: flex;
   gap: 0;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 12px 40px oklch(0% 0 0 / 0.1), 0 2px 8px oklch(0% 0 0 / 0.06);
   padding: 24px 0;
   opacity: 0;
@@ -2264,7 +2265,8 @@ body {
 
 /* Column inside dropdown */
 .about-nav-dropdown-col {
-  flex: 1;
+  flex: 0 0 auto;
+  width: 220px;
   padding: 0 24px;
   display: flex;
   flex-direction: column;
@@ -2291,7 +2293,7 @@ body {
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 0;
   text-decoration: none;
   transition: background-color 0.12s ease;
 }
@@ -2309,6 +2311,43 @@ body {
   color: var(--text-muted);
   font-size: 0.8125rem;
   line-height: 1.45;
+}
+
+/* Developer-only badge — used inside nav titles and on feature heroes */
+.about-nav-dev-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+.about-hero-dev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.about-hero-dev-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 /* ---- Dark CTA button ---- */
@@ -2625,7 +2664,10 @@ body {
   display: flex;
   align-items: center;
 }
-.about-feature-section + .about-feature-section {
+.about-feature-quicknav-section {
+  border-top: 1px solid var(--border);
+}
+.about-feature-section {
   border-top: 1px solid var(--border);
 }
 .about-feature-section-grid {

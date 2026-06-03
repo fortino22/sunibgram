@@ -41,7 +41,7 @@ const COLUMNS: Column[] = [
   {
     title: 'The team',
     links: [
-      { label: 'About', href: '/about' },
+      { label: 'Our story', href: '/about/our-story' },
       { label: 'Talk to us', href: '/feedback' },
       { label: 'Report a bug', href: '/feedback' },
       { label: 'Request a feature', href: '/feedback' },
@@ -60,10 +60,16 @@ const COLUMNS: Column[] = [
 
 export function AboutFooter() {
   return (
-    <footer style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+    <footer
+      style={{
+        background: 'var(--bg)',
+        color: 'var(--text)',
+        borderTop: '1px solid var(--border)',
+      }}
+    >
       <div
         className="about-container"
-        style={{ paddingTop: '64px', paddingBottom: '40px' }}
+        style={{ paddingTop: '64px', paddingBottom: '56px' }}
       >
         <div className="flex items-center gap-2.5" style={{ marginBottom: '48px' }}>
           <Logo size={35} />
@@ -110,14 +116,12 @@ export function AboutFooter() {
             </div>
           ))}
         </div>
+      </div>
 
+      <div style={{ borderTop: '1px solid var(--border)' }}>
         <div
-          className="flex items-center justify-between flex-wrap gap-4"
-          style={{
-            marginTop: '56px',
-            paddingTop: '24px',
-            borderTop: '1px solid var(--border)',
-          }}
+          className="about-container flex items-center justify-between flex-wrap gap-4"
+          style={{ paddingTop: '24px', paddingBottom: '24px' }}
         >
           <p
             style={{

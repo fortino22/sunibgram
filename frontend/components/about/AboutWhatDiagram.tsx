@@ -5,34 +5,33 @@ import { motion } from 'framer-motion';
 import { Logo } from '@/components/ui/Logo';
 
 /* ------------------------------------------------------------------ *
- *  Editorial echo of one question that the campus keeps asking and    *
- *  re-asking, in different words, across different channels, because  *
- *  no canonical place exists. Below a thin rule, a single Sunibgram   *
- *  surface gathers all of them into one answered post.                *
+ *  One question, asked in five different ways across five channels    *
+ *  because none of them are the canonical place for it. Then a rule   *
+ *  with the Sunibgram mark breaks the page, and below it the same     *
+ *  question reappears — same words, same weight — but answered.       *
  * ------------------------------------------------------------------ */
 
 type Echo = {
   id: string;
   text: string;
-  x: number;          // left, % of canvas
-  y: number;          // top, % of canvas
-  size: number;       // px
+  ts: string;
+  x: number;            // left, % of canvas
+  y: number;            // top, % of canvas
+  size: number;         // px
   weight: 300 | 400 | 500 | 600;
   italic?: boolean;
-  rotation: number;   // deg
+  rotation: number;
   baseOpacity: number;
-  ts: string;
 };
 
+const HERO = 'Did the lab notes get posted?';
+
 const ECHOES: Echo[] = [
-  { id: 'e1', text: 'Did the lab notes get posted?', x: 5,  y: 6,  size: 22, weight: 600, rotation: -0.6, baseOpacity: 0.92, ts: '3 days ago' },
-  { id: 'e2', text: 'ada yg punya lab notes ga?',    x: 52, y: 14, size: 14, weight: 400, italic: true,  rotation:  1.1, baseOpacity: 0.72, ts: '2 days ago' },
-  { id: 'e3', text: 'anyone got the lab notes?',     x: 12, y: 22, size: 17, weight: 300, rotation: -1.0, baseOpacity: 0.82, ts: 'yesterday' },
-  { id: 'e4', text: 'laprak udah keluar blm?',       x: 55, y: 29, size: 15, weight: 400, italic: true,  rotation:  0.8, baseOpacity: 0.65, ts: '22h ago' },
-  { id: 'e5', text: 'lab notes uploaded?',           x: 8,  y: 37, size: 18, weight: 400, rotation: -0.6, baseOpacity: 0.58, ts: '14h ago' },
-  { id: 'e6', text: 'yo, lab notes?',                x: 60, y: 44, size: 13, weight: 300, italic: true,  rotation:  1.4, baseOpacity: 0.52, ts: '6h ago' },
-  { id: 'e7', text: 'ada link lab notes?',           x: 14, y: 51, size: 16, weight: 400, rotation: -0.5, baseOpacity: 0.46, ts: '47 min' },
-  { id: 'e8', text: 'tau di mana lab notes?',        x: 50, y: 58, size: 14, weight: 300, italic: true,  rotation:  0.7, baseOpacity: 0.42, ts: '12 min' },
+  { id: 'e1', text: HERO,                          ts: '3 days ago', x: 4,  y: 5,  size: 22, weight: 600, rotation: -0.3, baseOpacity: 0.95, italic: false },
+  { id: 'e2', text: 'ada yg punya lab notes ga?',  ts: '2 days ago', x: 32, y: 16, size: 14, weight: 400, rotation:  0.6, baseOpacity: 0.72, italic: true  },
+  { id: 'e3', text: 'anyone got the lab notes?',   ts: 'yesterday',  x: 10, y: 24, size: 17, weight: 300, rotation: -0.5, baseOpacity: 0.6,  italic: false },
+  { id: 'e4', text: 'laprak udah keluar blm?',     ts: '22h ago',    x: 40, y: 32, size: 13, weight: 400, rotation:  0.4, baseOpacity: 0.48, italic: true  },
+  { id: 'e5', text: 'lab notes uploaded?',         ts: '47 min ago', x: 6,  y: 40, size: 16, weight: 300, rotation: -0.3, baseOpacity: 0.4,  italic: false },
 ];
 
 const N = ECHOES.length;
@@ -41,9 +40,8 @@ export function AboutWhatDiagram() {
   /* step
    *   0           empty
    *   1..N        echo i appears
-   *   N + 1       horizontal rule draws
-   *   N + 2       resolution appears
-   *   N + 3       echoes dim, resolution settles
+   *   N + 1       brand mark settles, rule halves sweep out
+   *   N + 2       resolution appears, echoes dim
    */
   const [step, setStep] = useState(0);
 
@@ -58,14 +56,14 @@ export function AboutWhatDiagram() {
       ECHOES.forEach((_, i) => {
         timeouts.push(setTimeout(() => {
           if (mounted) setStep(i + 1);
-        }, 350 * i + 250));
+        }, 320 * i + 250));
       });
 
-      const lastEcho = 350 * (N - 1) + 250;
-      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 1); }, lastEcho + 800));
-      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 2); }, lastEcho + 1200));
-      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 3); }, lastEcho + 1500));
-      timeouts.push(setTimeout(cycle, 9000));
+      const lastEcho = 320 * (N - 1) + 250;
+      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 1); }, lastEcho + 700));
+      timeouts.push(setTimeout(() => { if (mounted) setStep(N + 2); }, lastEcho + 1300));
+
+      timeouts.push(setTimeout(cycle, 8200));
     }
 
     cycle();
@@ -77,7 +75,7 @@ export function AboutWhatDiagram() {
 
   const ruleVisible    = step >= N + 1;
   const answerVisible  = step >= N + 2;
-  const echoesDim      = step >= N + 3;
+  const echoesDim      = step >= N + 2;
 
   return (
     <div
@@ -93,20 +91,20 @@ export function AboutWhatDiagram() {
         overflow: 'hidden',
       }}
     >
-      {/* Echoes — scattered across upper canvas */}
-      <div style={{ position: 'absolute', inset: 0, padding: '14px 18px' }}>
+      {/* Echoes — cascading down the upper half */}
+      <div style={{ position: 'absolute', inset: 0, padding: '18px 22px' }}>
         {ECHOES.map((e, i) => {
           const shown = step > i;
           const targetOpacity = shown
             ? echoesDim
-              ? e.baseOpacity * 0.18
+              ? e.baseOpacity * 0.42
               : e.baseOpacity
             : 0;
           return (
             <motion.div
               key={e.id}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: targetOpacity, y: shown ? 0 : 4 }}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: targetOpacity, y: shown ? 0 : 6 }}
               transition={{ duration: 0.55, ease: [0.22, 0.8, 0.36, 1] }}
               style={{
                 position: 'absolute',
@@ -124,13 +122,15 @@ export function AboutWhatDiagram() {
                 userSelect: 'none',
                 display: 'inline-flex',
                 alignItems: 'baseline',
-                gap: 8,
+                gap: 10,
               }}
             >
               <span>{e.text}</span>
-              <span
+              <motion.span
+                animate={{ opacity: echoesDim ? 0 : 1 }}
+                transition={{ duration: 0.4 }}
                 style={{
-                  fontSize: Math.max(10, Math.round(e.size * 0.55)),
+                  fontSize: Math.max(10, Math.round(e.size * 0.5)),
                   fontWeight: 400,
                   fontStyle: 'normal',
                   color: 'var(--text-tertiary)',
@@ -138,30 +138,73 @@ export function AboutWhatDiagram() {
                 }}
               >
                 {e.ts}
-              </span>
+              </motion.span>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Thin rule across the middle — draws left to right */}
-      <motion.div
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: ruleVisible ? 1 : 0 }}
-        transition={{ duration: 0.75, ease: [0.22, 0.8, 0.36, 1] }}
+      {/* Rule with brand mark — halves sweep out from the centered logo */}
+      <div
         style={{
           position: 'absolute',
-          left: '18px',
-          right: '18px',
-          top: '68%',
-          height: 1,
-          background: 'var(--text)',
-          transformOrigin: 'left center',
-          opacity: 0.85,
+          left: 22,
+          right: 22,
+          top: '54%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
         }}
-      />
+      >
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: ruleVisible ? 1 : 0 }}
+          transition={{ duration: 0.6, delay: ruleVisible ? 0.18 : 0, ease: [0.22, 0.8, 0.36, 1] }}
+          style={{
+            flex: 1,
+            height: 1,
+            background: 'var(--text)',
+            transformOrigin: 'right center',
+            opacity: 0.9,
+          }}
+        />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: ruleVisible ? 1 : 0, scale: ruleVisible ? 1 : 0.7 }}
+          transition={{ duration: 0.4, ease: [0.22, 0.8, 0.36, 1] }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 7,
+            color: 'var(--text)',
+          }}
+        >
+          <Logo size={14} bg="var(--bg-card)" />
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+            }}
+          >
+            Sunibgram
+          </span>
+        </motion.div>
+        <motion.div
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: ruleVisible ? 1 : 0 }}
+          transition={{ duration: 0.6, delay: ruleVisible ? 0.18 : 0, ease: [0.22, 0.8, 0.36, 1] }}
+          style={{
+            flex: 1,
+            height: 1,
+            background: 'var(--text)',
+            transformOrigin: 'left center',
+            opacity: 0.9,
+          }}
+        />
+      </div>
 
-      {/* Resolution — one canonical place */}
+      {/* Resolution — same words as the hero echo, same weight, answered */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: answerVisible ? 1 : 0, y: answerVisible ? 0 : 10 }}
@@ -170,56 +213,44 @@ export function AboutWhatDiagram() {
           position: 'absolute',
           left: 22,
           right: 22,
-          top: '73%',
+          top: '63%',
           display: 'flex',
           flexDirection: 'column',
-          gap: 6,
+          gap: 10,
         }}
       >
         <div
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 7,
-            fontSize: 11,
+            fontSize: 22,
             fontWeight: 600,
-            color: 'var(--text-tertiary)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-          }}
-        >
-          <span style={{ color: 'var(--text)', display: 'inline-flex', alignItems: 'center' }}>
-            <Logo size={13} bg="var(--bg-card)" />
-          </span>
-          <span style={{ color: 'var(--text)' }}>Sunibgram</span>
-        </div>
-
-        <div
-          style={{
-            fontSize: 17,
-            fontWeight: 500,
             color: 'var(--text)',
             letterSpacing: '-0.012em',
-            lineHeight: 1.3,
+            lineHeight: 1.2,
           }}
         >
-          Did the lab notes get posted?
+          {HERO}
         </div>
 
         <div
           style={{
             display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            fontSize: 12,
-            fontWeight: 500,
-            color: 'var(--text-tertiary)',
-            letterSpacing: '-0.005em',
+            alignItems: 'baseline',
+            gap: 10,
           }}
         >
-          <span style={{ color: 'var(--accent)', fontWeight: 600 }}>12 verified answers</span>
-          <span aria-hidden style={{ opacity: 0.5 }}>·</span>
-          <span>pinned · 2h ago</span>
+          <span
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: 'var(--accent)',
+              letterSpacing: '-0.005em',
+            }}
+          >
+            12 verified answers
+          </span>
+          <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
+            on-topic · faculty feed
+          </span>
         </div>
       </motion.div>
     </div>

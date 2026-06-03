@@ -19,6 +19,7 @@ export function AboutFeaturePage({
   sections,
   ctaLabel = 'Join with your Binus email',
   ctaHref = '/signup',
+  badge,
 }: {
   eyebrow: string;
   title: ReactNode;
@@ -26,6 +27,7 @@ export function AboutFeaturePage({
   sections: FeatureSection[];
   ctaLabel?: string;
   ctaHref?: string;
+  badge?: string;
 }) {
   return (
     <>
@@ -37,6 +39,7 @@ export function AboutFeaturePage({
           className="about-container-narrow relative z-10 flex flex-col items-center text-center"
           style={{ paddingTop: '72px', paddingBottom: '72px' }}
         >
+          {badge && <span className="about-hero-dev-badge">{badge}</span>}
           <span className="about-eyebrow">{eyebrow}</span>
           <h1
             style={{

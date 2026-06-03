@@ -13,6 +13,7 @@ type DropdownItem = {
   title: string;
   description: string;
   href: string;
+  badge?: string;
 };
 
 type DropdownColumn = {
@@ -69,33 +70,14 @@ const DROPDOWNS: NavDropdown[] = [
           },
         ],
       },
-    ],
-  },
-  {
-    label: 'About',
-    columns: [
       {
-        heading: 'Mission',
+        heading: 'Intelligence',
         items: [
           {
-            title: 'What it is',
-            description: 'Learn about Sunibgram and our mission for Binus students.',
-            href: '/about/what',
-          },
-          {
-            title: 'Team',
-            description: 'Meet the people building Sunibgram.',
-            href: '/about/team',
-          },
-        ],
-      },
-      {
-        heading: 'Community',
-        items: [
-          {
-            title: 'Use cases',
-            description: 'How students use Sunibgram every day.',
-            href: '/about/use-cases',
+            title: 'Fox AI',
+            description: 'The on-platform analyst that reviews events and writes daily and weekly reports.',
+            href: '/about/fox',
+            badge: 'Developer',
           },
         ],
       },
@@ -115,6 +97,26 @@ const DROPDOWNS: NavDropdown[] = [
         ],
       },
       {
+        heading: 'Transparency',
+        items: [
+          {
+            title: 'Algorithm',
+            description: 'How we rank threads and surface content on your feed.',
+            href: '/about/algorithm',
+          },
+          {
+            title: 'How we operate',
+            description: 'Hermes — the operational toolset that keeps Sunibgram running.',
+            href: '/about/hermes',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Safety',
+    columns: [
+      {
         heading: 'Legal',
         items: [
           {
@@ -133,7 +135,10 @@ const DROPDOWNS: NavDropdown[] = [
   },
 ];
 
-const PLAIN_LINKS: NavLink[] = [];
+const PLAIN_LINKS: NavLink[] = [
+  { label: 'Our story', href: '/about/our-story' },
+  { label: 'News', href: '/about/news' },
+];
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -241,6 +246,9 @@ export function AboutNav() {
                       >
                         <span className="about-nav-dropdown-title">
                           {item.title}
+                          {item.badge && (
+                            <span className="about-nav-dev-badge">{item.badge}</span>
+                          )}
                         </span>
                         <span className="about-nav-dropdown-desc">
                           {item.description}
@@ -314,7 +322,12 @@ export function AboutNav() {
                     href={item.href}
                     className="about-nav-mobile-item"
                   >
-                    <span className="about-nav-dropdown-title">{item.title}</span>
+                    <span className="about-nav-dropdown-title">
+                      {item.title}
+                      {item.badge && (
+                        <span className="about-nav-dev-badge">{item.badge}</span>
+                      )}
+                    </span>
                     <span className="about-nav-dropdown-desc">{item.description}</span>
                   </Link>
                 ))}
