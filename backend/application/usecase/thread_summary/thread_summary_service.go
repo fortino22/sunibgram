@@ -12,10 +12,8 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
-	helper "github.com/sunibgram/application/helper"
-	foxhistorymodel "github.com/sunibgram/domain/model/fox_history"
 	cacherepoiface "github.com/sunibgram/domain/repository/cache"
-	foxhistoryrepoiface "github.com/sunibgram/domain/repository/fox_history"
+	foxsessionrepoiface "github.com/sunibgram/domain/repository/fox_session"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	threadsummaryrepoiface "github.com/sunibgram/domain/repository/thread_summary"
 	threadsummarysvciface "github.com/sunibgram/domain/service/thread_summary"
@@ -42,7 +40,7 @@ type ThreadSummaryService struct {
 	threadRepo     threadrepoiface.IThreadRepository
 	cacheRepo      cacherepoiface.ICacheRepository
 	summaryRepo    threadsummaryrepoiface.IThreadSummaryRepository
-	foxHistoryRepo foxhistoryrepoiface.IFoxHistoryRepository
+	foxSessionRepo foxsessionrepoiface.IFoxSessionRepository
 	openaiClient   *openai.Client
 	group          singleflight.Group
 }
@@ -51,14 +49,14 @@ func NewThreadSummaryService(
 	threadRepo threadrepoiface.IThreadRepository,
 	cacheRepo cacherepoiface.ICacheRepository,
 	summaryRepo threadsummaryrepoiface.IThreadSummaryRepository,
-	foxHistoryRepo foxhistoryrepoiface.IFoxHistoryRepository,
+	foxSessionRepo foxsessionrepoiface.IFoxSessionRepository,
 	openaiClient *openai.Client,
 ) threadsummarysvciface.IThreadSummaryService {
 	return &ThreadSummaryService{
 		threadRepo:     threadRepo,
 		cacheRepo:      cacheRepo,
 		summaryRepo:    summaryRepo,
-		foxHistoryRepo: foxHistoryRepo,
+		foxSessionRepo: foxSessionRepo,
 		openaiClient:   openaiClient,
 	}
 }
@@ -346,12 +344,12 @@ func (s *ThreadSummaryService) InvalidateCache(ctx context.Context, threadID uin
 	return s.cacheRepo.Delete(ctx, threadSummaryKey(threadID), threadSummaryReplyCountKey(threadID))
 }
 
-// RecordView records that the user summarized this thread, building their
-// unified Fox history. Best-effort — called after a summary has been served
-// (cached or fresh). Snapshots the current summary text + root content so the
-// history entry is self-contained even if the thread is later edited/deleted.
+// RecordView records that the user summarized this thread as a summary session.
+// Best-effort — called after a summary has been served (cached or fresh).
+// Snapshots the current summary text + root content so the session is
+// self-contained even if the thread is later edited/deleted.
 func (s *ThreadSummaryService) RecordView(ctx context.Context, userID, threadID uint) error {
-	if s.foxHistoryRepo == nil {
+	if s.foxSessionRepo == nil {
 		return nil
 	}
 	summary, _ := s.CachedSummary(ctx, threadID)
@@ -366,23 +364,11 @@ func (s *ThreadSummaryService) RecordView(ctx context.Context, userID, threadID 
 			snapshot = root.Content
 		}
 	}
-	if err := s.foxHistoryRepo.RecordSummary(userID, threadID, summary, snapshot); err != nil {
-		log.Printf("fox history record-summary failed user=%d thread=%d: %v", userID, threadID, err)
+	if _, err := s.foxSessionRepo.UpsertSummarySession(userID, threadID, summary, snapshot); err != nil {
+		log.Printf("fox summary session upsert failed user=%d thread=%d: %v", userID, threadID, err)
 		return err
 	}
 	return nil
-}
-
-// ListHistory returns the user's Fox history (most-recent first) — both
-// summaries and chat asks — plus the total count, from the unified fox_history
-// table. The controller maps each row to the response shape by Type.
-func (s *ThreadSummaryService) ListHistory(ctx context.Context, userID uint, page, limit int, q string) ([]foxhistorymodel.FoxHistory, int64, error) {
-	if s.foxHistoryRepo == nil {
-		return nil, 0, nil
-	}
-	page, limit = helper.NormalizePageLimit(page, limit, 20)
-	offset := (page - 1) * limit
-	return s.foxHistoryRepo.ListHistory(userID, offset, limit, q, "")
 }
 
 func (s *ThreadSummaryService) RegisterReply(ctx context.Context, threadID uint) error {

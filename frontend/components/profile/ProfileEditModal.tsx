@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Camera, X, Trash2, Lock } from 'lucide-react';
 import { useUpdateProfile } from '@/hooks/useUpdateProfile';
+import { useFacultyLocations } from '@/hooks/useFacultyLocations';
 import { Avatar } from '@/components/shared/Avatar';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
 import type { UserProfile } from '@/lib/services/profile';
@@ -18,6 +19,7 @@ const schema = z.object({
     .max(30, 'Max 30 characters')
     .regex(/^[a-zA-Z0-9._]+$/, 'Only letters, numbers, dots, underscores'),
   bio: z.string().max(160, 'Max 160 characters').optional(),
+  facultyLocationId: z.string().optional(),
   birthdayDate: z
     .string()
     .optional()
@@ -54,6 +56,8 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
   // Holds the submitted form values while the once-a-week confirm dialog is open.
   const [pendingValues, setPendingValues] = useState<FormValues | null>(null);
   const facultyName = profile.faculty?.faculty_name ?? '—';
+  const { data: facultyLocations = [], isLoading: locationsLoading } = useFacultyLocations(false);
+  const currentLocationId = profile.faculty_location ? String(profile.faculty_location.id) : '';
 
   // Per-field change cooldown (7 days, enforced by the backend). When still
   // locked, disable the input so the user can't type a new value; the form
@@ -63,6 +67,11 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
   const usernameLockedUntil = profile.username_change_available_at ? new Date(profile.username_change_available_at) : null;
   const nameLocked = !!nameLockedUntil && nameLockedUntil.getTime() > now;
   const usernameLocked = !!usernameLockedUntil && usernameLockedUntil.getTime() > now;
+  // Campus has a longer (6-month) cooldown, surfaced the same way.
+  const facultyLocationLockedUntil = profile.faculty_location_change_available_at
+    ? new Date(profile.faculty_location_change_available_at)
+    : null;
+  const facultyLocationLocked = !!facultyLocationLockedUntil && facultyLocationLockedUntil.getTime() > now;
   // Latest birthday allowed for a 17-year-old (caps the date picker). Derived
   // from the `now` state value so it stays deterministic during render.
   const maxBirthday = (() => {
@@ -77,6 +86,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
       name: profile.name ?? '',
       username: profile.username ?? '',
       bio: profile.bio ?? '',
+      facultyLocationId: currentLocationId,
       birthdayDate: profile.birthday_date ?? '',
     },
   });
@@ -115,6 +125,7 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
   }
 
   function doMutate(values: FormValues) {
+    const locationChanged = (values.facultyLocationId ?? '') !== currentLocationId;
     mutate(
       {
         ...values,
@@ -123,30 +134,41 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
         clearAvatar,
         clearBanner,
         birthdayDate: values.birthdayDate || undefined,
+        // Only send the campus when it actually changed, so an unrelated edit
+        // never trips the 6-month cooldown.
+        facultyLocationId: locationChanged ? values.facultyLocationId || undefined : undefined,
       },
       { onSuccess: () => onClose() }
     );
   }
 
   function onSubmit(values: FormValues) {
-    // Warn before burning the once-a-week change — only when the value actually
+    // Warn before burning a rate-limited change — only when the value actually
     // changed. Locked fields are disabled and re-submit their original value, so
     // they never trigger this.
     const nameChanged = values.name !== (profile.name ?? '');
     const usernameChanged = values.username !== (profile.username ?? '');
-    if (nameChanged || usernameChanged) {
+    const locationChanged = (values.facultyLocationId ?? '') !== currentLocationId;
+    if (nameChanged || usernameChanged || locationChanged) {
       setPendingValues(values);
       return;
     }
     doMutate(values);
   }
 
-  const pendingChangedFields = pendingValues
+  // Confirm-dialog field labels paired with their cooldown cadence.
+  const pendingChanges = pendingValues
     ? [
-        pendingValues.name !== (profile.name ?? '') ? 'display name' : null,
-        pendingValues.username !== (profile.username ?? '') ? 'username' : null,
-      ].filter(Boolean)
+        pendingValues.name !== (profile.name ?? '') ? { label: 'display name', cadence: 'once a week' } : null,
+        pendingValues.username !== (profile.username ?? '') ? { label: 'username', cadence: 'once a week' } : null,
+        (pendingValues.facultyLocationId ?? '') !== currentLocationId ? { label: 'campus', cadence: 'once every 6 months' } : null,
+      ].filter((x): x is { label: string; cadence: string } => x !== null)
     : [];
+  const pendingChangedLabels = pendingChanges.map((c) => c.label);
+  // Pick the strictest cadence to headline the warning sentence.
+  const pendingCadence = pendingChanges.some((c) => c.cadence.includes('6 months'))
+    ? 'once every 6 months'
+    : 'once a week';
 
   return (
     <>
@@ -285,6 +307,32 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
               </p>
             </div>
 
+            {/* Campus — editable, 6-month cooldown */}
+            <div style={{ marginBottom: 20 }}>
+              <label htmlFor="facultyLocationId" style={{ display: 'block', fontSize: 13, color: 'var(--text-tertiary)', marginBottom: 6, fontWeight: 500 }}>Campus</label>
+              <select
+                id="facultyLocationId"
+                disabled={facultyLocationLocked || locationsLoading}
+                {...register('facultyLocationId')}
+                style={{ width: '100%', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', color: 'var(--text)', fontSize: 15, fontFamily: 'inherit', outline: 'none', opacity: facultyLocationLocked || locationsLoading ? 0.55 : 1, cursor: facultyLocationLocked ? 'not-allowed' : 'pointer' }}
+              >
+                {currentLocationId === '' && <option value="">Select your campus</option>}
+                {facultyLocations.map((loc) => (
+                  <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+                ))}
+              </select>
+              {facultyLocationLocked && facultyLocationLockedUntil ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>
+                  <Lock size={12} strokeWidth={1.8} />
+                  <span>Can be changed again on {facultyLocationLockedUntil.toLocaleDateString()}.</span>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6, lineHeight: 1.4 }}>
+                  Your home campus can only be changed once every 6 months.
+                </p>
+              )}
+            </div>
+
             {error && <div style={{ fontSize: 13, color: 'var(--coral)', marginBottom: 12 }}>{(error as Error).message}</div>}
 
             <button type="submit" className="btn-solid" disabled={isPending} style={{ width: '100%', background: 'var(--text)', border: 'none', borderRadius: 10, padding: '11px 0', color: 'var(--bg)', fontWeight: 700, fontSize: 15, cursor: isPending ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: isPending ? 0.6 : 1 }}>
@@ -313,11 +361,11 @@ export function ProfileEditModal({ profile, onClose }: ProfileEditModalProps) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <Lock size={18} strokeWidth={2} color="var(--text)" />
               <span style={{ fontWeight: 700, fontSize: 17, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-                Change {pendingChangedFields.join(' and ')}?
+                Change {pendingChangedLabels.join(' and ')}?
               </span>
             </div>
             <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5, marginBottom: 20 }}>
-              You can only change your {pendingChangedFields.join(' and ')} once a week. Continue?
+              You can only change your {pendingChangedLabels.join(' and ')} {pendingCadence}. Continue?
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button

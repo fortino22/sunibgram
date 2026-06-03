@@ -27,15 +27,16 @@ const (
 )
 
 var bucketPrefixMap = map[string]bucketPrefix{
-	"avatar":           {bucketMedia, "avatar"},
-	"banner":           {bucketMedia, "banner"},
-	"post":             {bucketMedia, "post"},
-	"poll":             {bucketMedia, "poll"},
-	"community_banner": {bucketMedia, "community-banner"},
-	"event_banner":     {bucketMedia, "event-banner"},
-	"group_avatar":     {bucketMedia, "group-avatar"},
-	"chat":             {bucketPrivate, "chat"},
-	"document_event":   {bucketPrivate, "document-event"},
+	"avatar":                 {bucketMedia, "avatar"},
+	"banner":                 {bucketMedia, "banner"},
+	"post":                   {bucketMedia, "post"},
+	"poll":                   {bucketMedia, "poll"},
+	"community_banner":       {bucketMedia, "community-banner"},
+	"community_event_banner": {bucketMedia, "community-event-banner"},
+	"event_banner":           {bucketMedia, "event-banner"},
+	"group_avatar":           {bucketMedia, "group-avatar"},
+	"chat":                   {bucketPrivate, "chat"},
+	"document_event":         {bucketPrivate, "document-event"},
 }
 
 type StorageUsecase struct {

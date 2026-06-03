@@ -57,7 +57,8 @@ func (c *EventController) Create(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
-	_, err = c.eventService.Create(ctx.Context(), claims.UserID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachments)
+	locIDs := parseFacultyLocationIDs(ctx)
+	_, err = c.eventService.Create(ctx.Context(), claims.UserID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, attachments, locIDs)
 	if err != nil {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
@@ -69,15 +70,24 @@ func (c *EventController) GetAll(ctx *fiber.Ctx) error {
 		return nil
 	}
 	_, limit := ctrlshared.ParsePagination(ctx)
-	trending, running, future, past, err := c.eventService.GetAll(limit)
+	var locationID *uint
+	if raw := ctx.Query("faculty_location_id"); raw != "" {
+		if n, err := strconv.ParseUint(raw, 10, 64); err == nil {
+			v := uint(n)
+			locationID = &v
+		}
+	}
+	region := ctx.Query("region")
+	trending, running, future, past, err := c.eventService.GetAll(limit, locationID, region)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
+	audMap := c.audienceMini(collectEventIDs(trending, running, future, past))
 	return ctx.Status(fiber.StatusOK).JSON(eventdto.EventGroupsResponse{
-		Trending: c.toListResponses(trending),
-		Running:  c.toListResponses(running),
-		Future:   c.toListResponses(future),
-		Past:     c.toListResponses(past),
+		Trending: c.toListResponses(trending, audMap),
+		Running:  c.toListResponses(running, audMap),
+		Future:   c.toListResponses(future, audMap),
+		Past:     c.toListResponses(past, audMap),
 	})
 }
 
@@ -89,7 +99,7 @@ func (c *EventController) GetTrending(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(authdto.ErrorResponse{Message: "internal server error"})
 	}
-	return ctx.Status(fiber.StatusOK).JSON(c.toListResponses(events))
+	return ctx.Status(fiber.StatusOK).JSON(c.toListResponses(events, c.audienceMini(collectEventIDs(events))))
 }
 
 func (c *EventController) GetPending(ctx *fiber.Ctx) error {
@@ -106,7 +116,7 @@ func (c *EventController) GetPending(ctx *fiber.Ctx) error {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(eventdto.PaginatedEventWithReviewHistoryResponse{
-		Data: c.toAdminEventReviewHistoryResponses(ctx.Context(), events, reviews),
+		Data: c.toAdminEventReviewHistoryResponses(ctx.Context(), events, reviews, c.audienceMini(collectEventIDs(events))),
 		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -122,7 +132,7 @@ func (c *EventController) GetMyEvents(ctx *fiber.Ctx) error {
 		return ctrlshared.HandleServiceError(ctx, err)
 	}
 	return ctx.Status(fiber.StatusOK).JSON(eventdto.PaginatedMyEventResponse{
-		Data: c.toEventReviewHistoryResponses(ctx.Context(), events, reviews),
+		Data: c.toEventReviewHistoryResponses(ctx.Context(), events, reviews, c.audienceMini(collectEventIDs(events))),
 		Meta: threaddto.FeedMeta{Total: total, Page: page, Limit: limit},
 	})
 }
@@ -135,8 +145,9 @@ func (c *EventController) GetByID(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: "event not found"})
 	}
+	audMap := c.audienceMini([]string{event.ID})
 	return ctx.Status(fiber.StatusOK).JSON(eventdto.EventWithReviewHistoryResponse{
-		EventResponse: c.toResponse(ctx.Context(), event),
+		EventResponse: c.toResponse(ctx.Context(), event, audMap[event.ID]),
 		Notes:         c.toEventReviewNoteResponses(reviews),
 	})
 }
@@ -158,7 +169,8 @@ func (c *EventController) Update(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(authdto.ErrorResponse{Message: "invalid request body"})
 	}
-	_, err = c.eventService.Update(ctx.Context(), eventID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, clearBanner, attachments)
+	locIDs := parseFacultyLocationIDs(ctx)
+	_, err = c.eventService.Update(ctx.Context(), eventID, req.Title, req.Description, req.Location, req.Type, req.StartTime.Time, req.EndTime.Time, banner, clearBanner, attachments, locIDs)
 	if err != nil {
 		if err.Error() == "event not found" {
 			return ctx.Status(fiber.StatusNotFound).JSON(authdto.ErrorResponse{Message: err.Error()})
@@ -315,7 +327,39 @@ func (c *EventController) GetThreads(ctx *fiber.Ctx) error {
 	})
 }
 
-func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Event) eventdto.EventResponse {
+// collectEventIDs flattens one or more event slices to their ids (audience batch-load).
+func collectEventIDs(groups ...[]threadmodel.Event) []string {
+	ids := []string{}
+	for _, g := range groups {
+		for i := range g {
+			ids = append(ids, g[i].ID)
+		}
+	}
+	return ids
+}
+
+// audienceMini batch-loads the region audience for the given events and maps it
+// to the response shape, keyed by event id.
+func (c *EventController) audienceMini(eventIDs []string) map[string][]eventdto.FacultyLocationMini {
+	out := map[string][]eventdto.FacultyLocationMini{}
+	if len(eventIDs) == 0 {
+		return out
+	}
+	audMap, err := c.eventService.GetAudienceByEventIDs(eventIDs)
+	if err != nil {
+		return out
+	}
+	for id, locs := range audMap {
+		mini := make([]eventdto.FacultyLocationMini, len(locs))
+		for i, l := range locs {
+			mini[i] = eventdto.FacultyLocationMini{ID: l.ID, Name: l.Name, Region: l.Region, IsAllRegions: l.IsAllRegions}
+		}
+		out[id] = mini
+	}
+	return out
+}
+
+func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Event, audience []eventdto.FacultyLocationMini) eventdto.EventResponse {
 	bannerURL := ctrlshared.BuildMediaURL(event.BannerObjectName, c.eventService.GetURL)
 	var attachmentURL string
 	if event.AttachmentObjectName != "" {
@@ -326,6 +370,9 @@ func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Eve
 		}
 	}
 	docURLs := c.eventDocURLs(ctx, event)
+	if audience == nil {
+		audience = []eventdto.FacultyLocationMini{}
+	}
 	return eventdto.EventResponse{
 		ID:            event.ID,
 		UserID:        event.UserID,
@@ -339,20 +386,16 @@ func (c *EventController) toResponse(ctx context.Context, event *threadmodel.Eve
 		BannerURL:     bannerURL,
 		AttachmentURL: attachmentURL,
 		DocURLs:       docURLs,
+		Audience:      audience,
 		CreatedAt:     utils.Wrap(event.CreatedAt),
 		UpdatedAt:     utils.Wrap(event.UpdatedAt),
 	}
 }
 
-func (c *EventController) toResponses(ctx context.Context, events []threadmodel.Event) []eventdto.EventResponse {
-	out := make([]eventdto.EventResponse, len(events))
-	for i := range events {
-		out[i] = c.toResponse(ctx, &events[i])
+func (c *EventController) toListResponse(event *threadmodel.Event, audience []eventdto.FacultyLocationMini) eventdto.EventListResponse {
+	if audience == nil {
+		audience = []eventdto.FacultyLocationMini{}
 	}
-	return out
-}
-
-func (c *EventController) toListResponse(event *threadmodel.Event) eventdto.EventListResponse {
 	return eventdto.EventListResponse{
 		ID:          event.ID,
 		UserID:      event.UserID,
@@ -363,35 +406,36 @@ func (c *EventController) toListResponse(event *threadmodel.Event) eventdto.Even
 		StartTime:   eventdto.EventTime{Time: event.StartTime},
 		EndTime:     eventdto.EventTime{Time: event.EndTime},
 		BannerURL:   ctrlshared.BuildMediaURL(event.BannerObjectName, c.eventService.GetURL),
+		Audience:    audience,
 		CreatedAt:   utils.Wrap(event.CreatedAt),
 		UpdatedAt:   utils.Wrap(event.UpdatedAt),
 	}
 }
 
-func (c *EventController) toListResponses(events []threadmodel.Event) []eventdto.EventListResponse {
+func (c *EventController) toListResponses(events []threadmodel.Event, audMap map[string][]eventdto.FacultyLocationMini) []eventdto.EventListResponse {
 	out := make([]eventdto.EventListResponse, len(events))
 	for i := range events {
-		out[i] = c.toListResponse(&events[i])
+		out[i] = c.toListResponse(&events[i], audMap[events[i].ID])
 	}
 	return out
 }
 
-func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, events []threadmodel.Event, reviews map[string][]eventreviewmodel.EventReview) []eventdto.EventWithReviewHistoryResponse {
+func (c *EventController) toEventReviewHistoryResponses(ctx context.Context, events []threadmodel.Event, reviews map[string][]eventreviewmodel.EventReview, audMap map[string][]eventdto.FacultyLocationMini) []eventdto.EventWithReviewHistoryResponse {
 	out := make([]eventdto.EventWithReviewHistoryResponse, len(events))
 	for i := range events {
 		out[i] = eventdto.EventWithReviewHistoryResponse{
-			EventResponse: c.toResponse(ctx, &events[i]),
+			EventResponse: c.toResponse(ctx, &events[i], audMap[events[i].ID]),
 			Notes:         c.toEventReviewNoteResponses(reviews[events[i].ID]),
 		}
 	}
 	return out
 }
 
-func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context, events []threadmodel.Event, reviews map[string][]eventreviewmodel.EventReview) []eventdto.AdminEventWithReviewHistoryResponse {
+func (c *EventController) toAdminEventReviewHistoryResponses(ctx context.Context, events []threadmodel.Event, reviews map[string][]eventreviewmodel.EventReview, audMap map[string][]eventdto.FacultyLocationMini) []eventdto.AdminEventWithReviewHistoryResponse {
 	out := make([]eventdto.AdminEventWithReviewHistoryResponse, len(events))
 	for i := range events {
 		out[i] = eventdto.AdminEventWithReviewHistoryResponse{
-			EventResponse: c.toResponse(ctx, &events[i]),
+			EventResponse: c.toResponse(ctx, &events[i], audMap[events[i].ID]),
 			Notes:         c.toEventAdminReviewNoteResponses(reviews[events[i].ID]),
 		}
 	}
@@ -463,6 +507,37 @@ func parseCreateEventRequest(ctx *fiber.Ctx) (eventdto.CreateEventRequest, *mult
 		return req, nil, nil, err
 	}
 	return req, nil, nil, nil
+}
+
+// parseFacultyLocationIDs reads the repeated `faculty_location_ids` form field
+// (also tolerates a single comma-separated value). Returns nil when absent so
+// the service treats an update with no audience field as "leave audience as-is".
+func parseFacultyLocationIDs(ctx *fiber.Ctx) []uint {
+	var raw []string
+	if form, _ := ctx.MultipartForm(); form != nil {
+		raw = form.Value["faculty_location_ids"]
+	}
+	if len(raw) == 0 {
+		if v := ctx.FormValue("faculty_location_ids"); v != "" {
+			raw = []string{v}
+		}
+	}
+	if len(raw) == 0 {
+		return nil
+	}
+	ids := make([]uint, 0, len(raw))
+	for _, entry := range raw {
+		for _, part := range strings.Split(entry, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			if n, err := strconv.ParseUint(part, 10, 64); err == nil {
+				ids = append(ids, uint(n))
+			}
+		}
+	}
+	return ids
 }
 
 func eventPDFFiles(ctx *fiber.Ctx) []*multipart.FileHeader {

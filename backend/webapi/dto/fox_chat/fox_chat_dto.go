@@ -6,8 +6,10 @@ type QAPairRequest struct {
 	Answer   string `json:"answer"`
 }
 
-// AskRequest is the body for POST /fox/ask.
+// AskRequest is the body for POST /fox/ask. SessionID is 0 to start a new chat
+// session; the response carries the resolved id in the X-Fox-Session-Id header.
 type AskRequest struct {
-	Question string          `json:"question"`
-	History  []QAPairRequest `json:"history"`
+	SessionID uint            `json:"session_id"`
+	Question  string          `json:"question"`
+	History   []QAPairRequest `json:"history"`
 }

@@ -12,6 +12,7 @@ import (
 	chatroomrepoiface "github.com/sunibgram/domain/repository/chat_room"
 	communityrepoiface "github.com/sunibgram/domain/repository/community"
 	communityactionconfirmationrepoiface "github.com/sunibgram/domain/repository/community_action_confirmation"
+	communityeventrepoiface "github.com/sunibgram/domain/repository/community_event"
 	communitymemberrepoiface "github.com/sunibgram/domain/repository/community_member"
 	communitypinrepoiface "github.com/sunibgram/domain/repository/community_pin"
 	communityrequestrepoiface "github.com/sunibgram/domain/repository/community_request"
@@ -25,10 +26,11 @@ import (
 	eventthreadpinrepoiface "github.com/sunibgram/domain/repository/event_thread_pin"
 	explorerepoiface "github.com/sunibgram/domain/repository/explore"
 	facultyrepoiface "github.com/sunibgram/domain/repository/faculty"
+	facultylocationrepoiface "github.com/sunibgram/domain/repository/faculty_location"
 	feedbackrepoiface "github.com/sunibgram/domain/repository/feedback"
 	feedbackmediarepoiface "github.com/sunibgram/domain/repository/feedback_media"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
-	foxhistoryrepoiface "github.com/sunibgram/domain/repository/fox_history"
+	foxsessionrepoiface "github.com/sunibgram/domain/repository/fox_session"
 	hashtagrepoiface "github.com/sunibgram/domain/repository/hashtag"
 	likerepoiface "github.com/sunibgram/domain/repository/like"
 	notificationrepoiface "github.com/sunibgram/domain/repository/notification"
@@ -66,6 +68,7 @@ import (
 	chatroomrepo "github.com/sunibgram/infrastructure/repository/chat_room"
 	communityrepo "github.com/sunibgram/infrastructure/repository/community"
 	communityactionconfirmationrepo "github.com/sunibgram/infrastructure/repository/community_action_confirmation"
+	communityeventrepo "github.com/sunibgram/infrastructure/repository/community_event"
 	communitymemberrepo "github.com/sunibgram/infrastructure/repository/community_member"
 	communitypinrepo "github.com/sunibgram/infrastructure/repository/community_pin"
 	communityrequestrepo "github.com/sunibgram/infrastructure/repository/community_request"
@@ -79,10 +82,11 @@ import (
 	eventthreadpinrepo "github.com/sunibgram/infrastructure/repository/event_thread_pin"
 	explorerepo "github.com/sunibgram/infrastructure/repository/explore"
 	facultyrepo "github.com/sunibgram/infrastructure/repository/faculty"
+	facultylocationrepo "github.com/sunibgram/infrastructure/repository/faculty_location"
 	feedbackrepo "github.com/sunibgram/infrastructure/repository/feedback"
 	feedbackmediarepo "github.com/sunibgram/infrastructure/repository/feedback_media"
 	followrepo "github.com/sunibgram/infrastructure/repository/follow"
-	foxhistoryrepo "github.com/sunibgram/infrastructure/repository/fox_history"
+	foxsessionrepo "github.com/sunibgram/infrastructure/repository/fox_session"
 	hashtagrepo "github.com/sunibgram/infrastructure/repository/hashtag"
 	likerepo "github.com/sunibgram/infrastructure/repository/like"
 	notificationrepo "github.com/sunibgram/infrastructure/repository/notification"
@@ -137,6 +141,7 @@ type Repositories struct {
 	Report                      reportrepoiface.IReportRepository
 	Community                   communityrepoiface.ICommunityRepository
 	CommunityActionConfirmation communityactionconfirmationrepoiface.ICommunityActionConfirmationRepository
+	CommunityEvent              communityeventrepoiface.ICommunityEventRepository
 	CommunityMember             communitymemberrepoiface.ICommunityMemberRepository
 	CommunityRequest            communityrequestrepoiface.ICommunityRequestRepository
 	CommunityRule               communityrulerepoiface.ICommunityRuleRepository
@@ -146,6 +151,7 @@ type Repositories struct {
 	EventParticipant            eventparticipantrepoiface.IEventParticipantRepository
 	EventActionConfirmation     eventactionconfirmationrepoiface.IEventActionConfirmationRepository
 	Faculty                     facultyrepoiface.IFacultyRepository
+	FacultyLocation             facultylocationrepoiface.IFacultyLocationRepository
 	Feedback                    feedbackrepoiface.IFeedbackRepository
 	FeedbackMedia               feedbackmediarepoiface.IFeedbackMediaRepository
 	UserFaculty                 userfacultyrepoiface.IUserFacultyRepository
@@ -159,7 +165,7 @@ type Repositories struct {
 	Notification                notificationrepoiface.INotificationRepository
 	ThreadPoll                  threadpollrepoiface.IThreadPollRepository
 	ThreadSummary               threadsummaryrepoiface.IThreadSummaryRepository
-	FoxHistory                  foxhistoryrepoiface.IFoxHistoryRepository
+	FoxSession                  foxsessionrepoiface.IFoxSessionRepository
 	EventThreadPin              eventthreadpinrepoiface.IEventThreadPinRepository
 	TrendingUser                trendinguserrepoiface.ITrendingUserRepository
 	TrendingUserSnapshot        trendingusersnapshotrepoiface.ITrendingUserSnapshotRepository
@@ -197,6 +203,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		Report:                      reportrepo.NewReportRepository(w, r),
 		Community:                   communityrepo.NewCommunityRepository(w, r, c),
 		CommunityActionConfirmation: communityactionconfirmationrepo.NewCommunityActionConfirmationRepository(w, r),
+		CommunityEvent:              communityeventrepo.NewCommunityEventRepository(w, r),
 		CommunityMember:             communitymemberrepo.NewCommunityMemberRepository(w, r, c),
 		CommunityRequest:            communityrequestrepo.NewCommunityRequestRepository(w, r, c),
 		CommunityRule:               communityrulerepo.NewCommunityRuleRepository(w, r),
@@ -206,6 +213,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		EventParticipant:            eventparticipantrepo.NewEventParticipantRepository(w, r, c),
 		EventActionConfirmation:     eventactionconfirmationrepo.NewEventActionConfirmationRepository(w, r),
 		Faculty:                     facultyrepo.NewFacultyRepository(w, r, c),
+		FacultyLocation:             facultylocationrepo.NewFacultyLocationRepository(w, r, c),
 		Feedback:                    feedbackrepo.NewFeedbackRepository(w, r, c),
 		FeedbackMedia:               feedbackmediarepo.NewFeedbackMediaRepository(w, r),
 		UserFaculty:                 userfacultyrepo.NewUserFacultyRepository(w, r, c),
@@ -219,7 +227,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 		Notification:                notificationrepo.NewNotificationRepository(w, r, c),
 		ThreadPoll:                  threadpollrepo.NewThreadPollRepository(w, r, c),
 		ThreadSummary:               threadsummaryrepo.NewThreadSummaryRepository(w, r),
-		FoxHistory:                  foxhistoryrepo.NewFoxHistoryRepository(w, r, c),
+		FoxSession:                  foxsessionrepo.NewFoxSessionRepository(w, r, c),
 		EventThreadPin:              eventthreadpinrepo.NewEventThreadPinRepository(w, r, c),
 		TrendingUser:                trendinguserrepo.NewTrendingUserRepository(r, c),
 		TrendingUserSnapshot:        trendingusersnapshotrepo.NewTrendingUserSnapshotRepository(w, r, c),

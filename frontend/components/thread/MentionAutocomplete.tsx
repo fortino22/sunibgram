@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
@@ -17,6 +17,8 @@ interface MentionAutocompleteProps {
   onSelect: (user: MentionUser) => void;
   onClose: () => void;
   onResults?: (results: MentionUser[]) => void;
+  /** Optional pinned row rendered above the user results (e.g. "Everyone · @all"). */
+  topSlot?: ReactNode;
 }
 
 interface Position {
@@ -100,6 +102,7 @@ export function MentionAutocomplete({
   onSelect,
   onClose,
   onResults,
+  topSlot,
 }: MentionAutocompleteProps) {
   const { data, isLoading } = useMentionSearch(query, true);
   const results = data ?? [];
@@ -161,18 +164,21 @@ export function MentionAutocomplete({
         padding: 4,
       }}
     >
+      {topSlot}
       {isLoading && results.length === 0 ? (
-        <SkeletonRows />
+        topSlot ? null : <SkeletonRows />
       ) : results.length === 0 ? (
-        <div
-          style={{
-            padding: '12px 14px',
-            color: 'var(--text-tertiary)',
-            fontSize: 14,
-          }}
-        >
-          No users found
-        </div>
+        topSlot ? null : (
+          <div
+            style={{
+              padding: '12px 14px',
+              color: 'var(--text-tertiary)',
+              fontSize: 14,
+            }}
+          >
+            No users found
+          </div>
+        )
       ) : (
         results.map((user, i) => (
           <button

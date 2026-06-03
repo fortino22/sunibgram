@@ -14,6 +14,8 @@ interface Props {
 export function MyEventCardActions({ event }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  // Once opened, keep the dialog mounted so in-progress edits survive a close/reopen.
+  const [editMounted, setEditMounted] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const deleteMutation = useDeleteEvent();
@@ -95,6 +97,7 @@ export function MyEventCardActions({ event }: Props) {
                   e.preventDefault();
                   e.stopPropagation();
                   setMenuOpen(false);
+                  setEditMounted(true);
                   setEditOpen(true);
                 }}
                 style={{
@@ -152,7 +155,7 @@ export function MyEventCardActions({ event }: Props) {
         )}
       </div>
 
-      {editOpen && (
+      {editMounted && (
         <EditEventDialog open={editOpen} onOpenChange={setEditOpen} event={editEventForDialog} />
       )}
 

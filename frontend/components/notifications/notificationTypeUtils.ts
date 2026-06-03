@@ -1,4 +1,4 @@
-import { Heart, Repeat2, UserPlus, MessageCircle, AtSign, Bookmark, MessageSquare, Bell } from 'lucide-react';
+import { Heart, Repeat2, UserPlus, MessageCircle, AtSign, Bookmark, MessageSquare, Bell, CalendarDays } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface NotificationTypeConfig {
@@ -14,6 +14,8 @@ const TYPE_MAP: Record<string, NotificationTypeConfig> = {
   mention:      { Icon: AtSign,         color: '#a855f7' },
   bookmark:     { Icon: Bookmark,       color: '#f59e0b' },
   chat_message: { Icon: MessageSquare,  color: '#0ea5e9' },
+  community_event_invite:  { Icon: CalendarDays, color: '#14b8a6' },
+  community_event_mention: { Icon: AtSign,       color: '#a855f7' },
 };
 
 const FALLBACK: NotificationTypeConfig = { Icon: Bell, color: '#6b7280' };

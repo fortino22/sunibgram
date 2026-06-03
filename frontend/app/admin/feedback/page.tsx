@@ -64,11 +64,41 @@ export default function AdminFeedbackPage() {
       }
     >
       {q.isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              style={{ padding: 16, borderRadius: 14, border: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', flexDirection: 'column', gap: 12 }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="admin-skeleton" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                <div className="admin-skeleton" style={{ height: 12, width: '40%', borderRadius: 6 }} />
+              </div>
+              <div className="admin-skeleton" style={{ height: 14, width: '70%', borderRadius: 6 }} />
+              <div className="admin-skeleton" style={{ height: 10, width: '100%', borderRadius: 6 }} />
+              <div className="admin-skeleton" style={{ height: 10, width: '85%', borderRadius: 6 }} />
+            </div>
+          ))}
+        </div>
       ) : q.isError ? (
         <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : rows.length === 0 ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>No feedback</div>
+        <div
+          style={{
+            padding: '48px 24px',
+            textAlign: 'center',
+            color: 'var(--text-tertiary)',
+            border: '1px dashed var(--border)',
+            borderRadius: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <MessageSquareText size={28} strokeWidth={1.6} />
+          <span style={{ fontSize: 14 }}>No feedback{statusFilter ? ` with status "${statusFilter}"` : ''}</span>
+        </div>
       ) : (
         <>
           <div

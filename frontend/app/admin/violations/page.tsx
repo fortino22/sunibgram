@@ -58,13 +58,14 @@ export default function AdminViolationsPage() {
   );
 
   const columns: Column<Violation>[] = [
-    { key: 'name', header: 'Name', render: (r) => <span style={{ fontWeight: 600 }}>{r.name}</span> },
-    { key: 'desc', header: 'Description', render: (r) => <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.description}</span> },
+    { key: 'name', header: 'Name', sortValue: (r) => r.name?.toLowerCase(), render: (r) => <span style={{ fontWeight: 600 }}>{r.name}</span> },
+    { key: 'desc', header: 'Description', render: (r) => <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{r.description || '—'}</span> },
     {
       key: 'actions',
       header: '',
+      align: 'right',
       render: (r) => (
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
           <button
             type="button"
             onClick={() => { setEditing(r); setName(r.name); setDescription(r.description); }}
@@ -95,11 +96,18 @@ export default function AdminViolationsPage() {
         </button>
       }
     >
-      {q.isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+      {q.isError ? (
+        <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : (
         <>
-          <DataTable<Violation> columns={columns} rows={pageRows} rowKey={(r) => r.id} />
+          <DataTable<Violation>
+            columns={columns}
+            rows={pageRows}
+            rowKey={(r) => r.id}
+            loading={q.isLoading}
+            empty="No report types yet"
+            emptyIcon={<ShieldAlert size={28} strokeWidth={1.6} style={{ color: 'var(--text-tertiary)' }} />}
+          />
           <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}

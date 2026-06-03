@@ -6,8 +6,9 @@ import "time"
 type Field string
 
 const (
-	FieldName     Field = "name"
-	FieldUsername Field = "username"
+	FieldName            Field = "name"
+	FieldUsername        Field = "username"
+	FieldFacultyLocation Field = "faculty_location"
 )
 
 // ProfileFieldChange is one append-only record of a rate-limited profile field
@@ -28,15 +29,28 @@ type ProfileFieldChange struct {
 
 func (ProfileFieldChange) TableName() string { return "profile_field_changes" }
 
-// ProfileFieldChangeCooldown is the minimum interval between changes of a single
-// rate-limited profile field. Each field is tracked independently.
+// ProfileFieldChangeCooldown is the default minimum interval between changes of
+// a rate-limited profile field (name/username). Each field is tracked
+// independently.
 const ProfileFieldChangeCooldown = 7 * 24 * time.Hour
+
+// FacultyLocationChangeCooldown is the (longer) interval for changing the home
+// campus — roughly 6 months.
+const FacultyLocationChangeCooldown = 180 * 24 * time.Hour
+
+// cooldownFor returns the per-field cooldown interval.
+func cooldownFor(field Field) time.Duration {
+	if field == FieldFacultyLocation {
+		return FacultyLocationChangeCooldown
+	}
+	return ProfileFieldChangeCooldown
+}
 
 // NextChangeAt returns the earliest time a field may change again given its last
 // change time. A zero last value (never changed) returns zero — changeable now.
-func NextChangeAt(last time.Time) time.Time {
+func NextChangeAt(field Field, last time.Time) time.Time {
 	if last.IsZero() {
 		return time.Time{}
 	}
-	return last.Add(ProfileFieldChangeCooldown)
+	return last.Add(cooldownFor(field))
 }

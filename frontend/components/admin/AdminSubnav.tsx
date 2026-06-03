@@ -13,6 +13,7 @@ import {
   MessageSquareText,
   Receipt,
   ShieldAlert,
+  ShieldCheck,
   Tags,
   TrendingUp,
   Users,
@@ -29,6 +30,7 @@ const GROUPS: NavLink[][] = [
   [{ href: '/admin', label: 'Overview', icon: LayoutDashboard }],
   [
     { href: '/admin/users', label: 'Users', icon: Users },
+    { href: '/admin/roles', label: 'Roles', icon: ShieldCheck },
     { href: '/admin/feedback', label: 'Feedback', icon: MessageSquareText },
   ],
   [

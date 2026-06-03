@@ -15,29 +15,32 @@ import (
 	"github.com/sunibgram/application/helper"
 	storageuc "github.com/sunibgram/application/usecase/storage"
 	eventreviewmodel "github.com/sunibgram/domain/model/event_review"
+	facultylocationmodel "github.com/sunibgram/domain/model/faculty_location"
 	mediamodel "github.com/sunibgram/domain/model/media"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	eventrepoiface "github.com/sunibgram/domain/repository/event"
 	eventparticipantrepoiface "github.com/sunibgram/domain/repository/event_participant"
 	eventpinrepoiface "github.com/sunibgram/domain/repository/event_pin"
 	eventreviewrepoiface "github.com/sunibgram/domain/repository/event_review"
+	facultylocationrepoiface "github.com/sunibgram/domain/repository/faculty_location"
 	followrepoiface "github.com/sunibgram/domain/repository/follow"
-	eventactionconfirmationsvciface "github.com/sunibgram/domain/service/event_action_confirmation"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	usersettingsrepoiface "github.com/sunibgram/domain/repository/user_settings"
 	eventsvciface "github.com/sunibgram/domain/service/event"
+	eventactionconfirmationsvciface "github.com/sunibgram/domain/service/event_action_confirmation"
 )
 
 type EventService struct {
-	eventRepo       eventrepoiface.IEventRepository
-	eventReviewRepo eventreviewrepoiface.IEventReviewRepository
-	pinRepo         eventpinrepoiface.IEventPinRepository
-	partRepo        eventparticipantrepoiface.IEventParticipantRepository
-	storageUsecase  *storageuc.StorageUsecase
-	settingsRepo    usersettingsrepoiface.IUserSettingsRepository
-	followRepo      followrepoiface.IFollowRepository
-	threadRepo      threadrepoiface.IThreadRepository
-	auditSvc        eventactionconfirmationsvciface.IEventActionConfirmationService
+	eventRepo           eventrepoiface.IEventRepository
+	eventReviewRepo     eventreviewrepoiface.IEventReviewRepository
+	pinRepo             eventpinrepoiface.IEventPinRepository
+	partRepo            eventparticipantrepoiface.IEventParticipantRepository
+	storageUsecase      *storageuc.StorageUsecase
+	settingsRepo        usersettingsrepoiface.IUserSettingsRepository
+	followRepo          followrepoiface.IFollowRepository
+	threadRepo          threadrepoiface.IThreadRepository
+	auditSvc            eventactionconfirmationsvciface.IEventActionConfirmationService
+	facultyLocationRepo facultylocationrepoiface.IFacultyLocationRepository
 }
 
 func NewEventService(
@@ -50,18 +53,50 @@ func NewEventService(
 	followRepo followrepoiface.IFollowRepository,
 	threadRepo threadrepoiface.IThreadRepository,
 	auditSvc eventactionconfirmationsvciface.IEventActionConfirmationService,
+	facultyLocationRepo facultylocationrepoiface.IFacultyLocationRepository,
 ) eventsvciface.IEventService {
 	return &EventService{
-		eventRepo:       eventRepo,
-		eventReviewRepo: eventReviewRepo,
-		pinRepo:         pinRepo,
-		partRepo:        partRepo,
-		storageUsecase:  storageUsecase,
-		settingsRepo:    settingsRepo,
-		followRepo:      followRepo,
-		threadRepo:      threadRepo,
-		auditSvc:        auditSvc,
+		eventRepo:           eventRepo,
+		eventReviewRepo:     eventReviewRepo,
+		pinRepo:             pinRepo,
+		partRepo:            partRepo,
+		storageUsecase:      storageUsecase,
+		settingsRepo:        settingsRepo,
+		followRepo:          followRepo,
+		threadRepo:          threadRepo,
+		auditSvc:            auditSvc,
+		facultyLocationRepo: facultyLocationRepo,
 	}
+}
+
+// validateAudience requires at least one campus and that every id is a real
+// faculty_location (incl. the "All Regions" sentinel). Returns the de-duplicated
+// id list.
+func (s *EventService) validateAudience(ids []uint) ([]uint, error) {
+	seen := map[uint]bool{}
+	out := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		ok, err := s.facultyLocationRepo.Exists(id)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errors.New("invalid audience region")
+		}
+		out = append(out, id)
+	}
+	if len(out) == 0 {
+		return nil, errors.New("at least one audience region is required")
+	}
+	return out, nil
+}
+
+func (s *EventService) GetAudienceByEventIDs(eventIDs []string) (map[string][]facultylocationmodel.FacultyLocation, error) {
+	return s.eventRepo.FindAudienceByEventIDs(eventIDs)
 }
 
 func (s *EventService) invalidateUserScopedCaches(eventID string) {
@@ -73,8 +108,12 @@ func (s *EventService) invalidateUserScopedCaches(eventID string) {
 	}
 }
 
-func (s *EventService) Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader) (*threadmodel.Event, error) {
+func (s *EventService) Create(ctx context.Context, userID uint, title, description, location string, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, attachments []*multipart.FileHeader, facultyLocationIDs []uint) (*threadmodel.Event, error) {
 	if err := validateEventInput(title, startTime, endTime); err != nil {
+		return nil, err
+	}
+	audience, err := s.validateAudience(facultyLocationIDs)
+	if err != nil {
 		return nil, err
 	}
 	title = strings.TrimSpace(title)
@@ -136,6 +175,9 @@ func (s *EventService) Create(ctx context.Context, userID uint, title, descripti
 		s.deleteDocs(ctx, event.Docs)
 		return nil, err
 	}
+	if err := s.eventRepo.ReplaceAudience(event.ID, audience); err != nil {
+		return nil, err
+	}
 	return event, nil
 }
 
@@ -162,9 +204,9 @@ func (s *EventService) GetByIDWithReviews(id string) (*threadmodel.Event, []even
 	return event, reviews[event.ID], nil
 }
 
-func (s *EventService) GetAll(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
+func (s *EventService) GetAll(limit int, locationID *uint, region string) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	_, limit = helper.NormalizePageLimit(1, limit, 10)
-	return s.eventRepo.FindGroupedApproved(limit)
+	return s.eventRepo.FindGroupedApproved(limit, locationID, region)
 }
 
 func (s *EventService) GetTopRunningOrFuture(limit int) ([]threadmodel.Event, error) {
@@ -222,12 +264,21 @@ func (s *EventService) eventReviewsByEvents(events []threadmodel.Event) (map[str
 	return s.eventReviewRepo.FindByEventIDs(eventIDs)
 }
 
-func (s *EventService) Update(ctx context.Context, id, title, description, location, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool, attachments []*multipart.FileHeader) (*threadmodel.Event, error) {
+func (s *EventService) Update(ctx context.Context, id, title, description, location, eventType string, startTime, endTime time.Time, banner *multipart.FileHeader, clearBanner bool, attachments []*multipart.FileHeader, facultyLocationIDs []uint) (*threadmodel.Event, error) {
 	if err := validateEventID(id); err != nil {
 		return nil, err
 	}
 	if err := validateEventInput(title, startTime, endTime); err != nil {
 		return nil, err
+	}
+	// Audience is optional on update; when provided it fully replaces the set.
+	var audience []uint
+	if facultyLocationIDs != nil {
+		validated, err := s.validateAudience(facultyLocationIDs)
+		if err != nil {
+			return nil, err
+		}
+		audience = validated
 	}
 	title = strings.TrimSpace(title)
 	description = strings.TrimSpace(description)
@@ -287,6 +338,11 @@ func (s *EventService) Update(ctx context.Context, id, title, description, locat
 	}
 	if err := s.eventRepo.Update(event); err != nil {
 		return nil, err
+	}
+	if audience != nil {
+		if err := s.eventRepo.ReplaceAudience(event.ID, audience); err != nil {
+			return nil, err
+		}
 	}
 	s.invalidateUserScopedCaches(event.ID)
 	return event, nil

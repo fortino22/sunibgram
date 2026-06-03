@@ -57,13 +57,14 @@ export default function AdminCategoriesPage() {
   );
 
   const columns: Column<Category>[] = [
-    { key: 'name', header: 'Name', render: (r) => <span style={{ fontWeight: 600 }}>{r.name}</span> },
+    { key: 'name', header: 'Name', sortValue: (r) => r.name?.toLowerCase(), render: (r) => <span style={{ fontWeight: 600 }}>{r.name}</span> },
     { key: 'id',   header: 'ID',   render: (r) => <code style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{r.id}</code> },
     {
       key: 'actions',
       header: '',
+      align: 'right',
       render: (r) => (
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
           <button
             type="button"
             onClick={() => { setEditing(r); setName(r.name); }}
@@ -94,11 +95,18 @@ export default function AdminCategoriesPage() {
         </button>
       }
     >
-      {q.isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
+      {q.isError ? (
+        <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : (
         <>
-          <DataTable<Category> columns={columns} rows={pageRows} rowKey={(r) => r.id} />
+          <DataTable<Category>
+            columns={columns}
+            rows={pageRows}
+            rowKey={(r) => r.id}
+            loading={q.isLoading}
+            empty="No categories yet"
+            emptyIcon={<Tags size={28} strokeWidth={1.6} style={{ color: 'var(--text-tertiary)' }} />}
+          />
           <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}

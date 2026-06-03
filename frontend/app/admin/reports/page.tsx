@@ -65,6 +65,7 @@ export default function AdminReportsPage() {
     {
       key: 'type',
       header: 'Type',
+      sortValue: (r) => r.violation?.name ?? '',
       render: (r) => <span style={{ fontWeight: 600 }}>{r.violation?.name ?? '—'}</span>,
     },
     {
@@ -109,6 +110,7 @@ export default function AdminReportsPage() {
     {
       key: 'actions',
       header: '',
+      align: 'right',
       render: (r) => (
         <button
           type="button"
@@ -187,13 +189,18 @@ export default function AdminReportsPage() {
         </div>
       </div>
 
-      {q.isLoading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading…</div>
-      ) : q.isError ? (
+      {q.isError ? (
         <div style={{ padding: 40, color: 'var(--coral)' }}>{(q.error as Error).message}</div>
       ) : (
         <>
-          <DataTable<Report> columns={columns} rows={pageRows} rowKey={(r) => r.id} />
+          <DataTable<Report>
+            columns={columns}
+            rows={pageRows}
+            rowKey={(r) => r.id}
+            loading={q.isLoading}
+            empty="No reports match"
+            emptyIcon={<Flag size={28} strokeWidth={1.6} style={{ color: 'var(--text-tertiary)' }} />}
+          />
           <Pager page={page} totalPages={totalPages} total={total} onChange={setPage} />
         </>
       )}

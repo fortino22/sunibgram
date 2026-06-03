@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"os"
 
+	"github.com/sunibgram/infrastructure/cache"
 	authctrl "github.com/sunibgram/webapi/controller/auth"
 	bookmarkctrl "github.com/sunibgram/webapi/controller/bookmark"
 	bookmarkcollectionctrl "github.com/sunibgram/webapi/controller/bookmark_collection"
@@ -11,6 +12,7 @@ import (
 	chatctrl "github.com/sunibgram/webapi/controller/chat"
 	chatroomctrl "github.com/sunibgram/webapi/controller/chat_room"
 	communityctrl "github.com/sunibgram/webapi/controller/community"
+	communityeventctrl "github.com/sunibgram/webapi/controller/community_event"
 	communitypinctrl "github.com/sunibgram/webapi/controller/community_pin"
 	communityrequestctrl "github.com/sunibgram/webapi/controller/community_request"
 	communityrulectrl "github.com/sunibgram/webapi/controller/community_rule"
@@ -22,9 +24,11 @@ import (
 	eventthreadpinctrl "github.com/sunibgram/webapi/controller/event_thread_pin"
 	explorectrl "github.com/sunibgram/webapi/controller/explore"
 	facultyctrl "github.com/sunibgram/webapi/controller/faculty"
+	facultylocationctrl "github.com/sunibgram/webapi/controller/faculty_location"
 	feedbackctrl "github.com/sunibgram/webapi/controller/feedback"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
 	foxchatctrl "github.com/sunibgram/webapi/controller/fox_chat"
+	foxsessionctrl "github.com/sunibgram/webapi/controller/fox_session"
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
 	notificationctrl "github.com/sunibgram/webapi/controller/notification"
@@ -48,112 +52,117 @@ import (
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
 	verificationctrl "github.com/sunibgram/webapi/controller/verification"
 	violationctrl "github.com/sunibgram/webapi/controller/violation"
-	"github.com/sunibgram/infrastructure/cache"
 	webapisocket "github.com/sunibgram/webapi/socket"
 )
 
 type Controllers struct {
-	Cache               *cachectrl.CacheController
-	Auth                *authctrl.AuthController
-	Role                *rolectrl.RoleController
-	User                *userctrl.UserController
-	UserSettings        *usersettingsctrl.UserSettingsController
-	UserProfile         *userprofilectrl.UserProfileController
-	Email               *emailctrl.EmailController
-	Verification        *verificationctrl.VerificationController
+	Cache                *cachectrl.CacheController
+	Auth                 *authctrl.AuthController
+	Role                 *rolectrl.RoleController
+	User                 *userctrl.UserController
+	UserSettings         *usersettingsctrl.UserSettingsController
+	UserProfile          *userprofilectrl.UserProfileController
+	Email                *emailctrl.EmailController
+	Verification         *verificationctrl.VerificationController
 	Follow               *followctrl.FollowController
 	UserBlock            *userblockctrl.UserBlockController
 	NotificationUserMute *notificationusermutectrl.NotificationUserMuteController
 	Thread               *threadctrl.ThreadController
-	Event               *eventctrl.EventController
-	EventThreadPin      *eventthreadpinctrl.EventThreadPinController
-	Hashtag             *hashtagctrl.HashtagController
-	Explore             *explorectrl.ExploreController
-	Like                *likectrl.LikeController
-	Bookmark            *bookmarkctrl.BookmarkController
-	BookmarkCollection  *bookmarkcollectionctrl.BookmarkCollectionController
-	ThreadPin           *threadpinctrl.ThreadPinController
-	Repost              *repostctrl.RepostController
-	ThreadSummary       *threadsummaryctrl.ThreadSummaryController
-	FoxChat             *foxchatctrl.FoxChatController
-	Category            *categoryctrl.CategoryController
-	Violation           *violationctrl.ViolationController
-	Report              *reportctrl.ReportController
-	Community           *communityctrl.CommunityController
-	CommunityMember     *communityctrl.CommunityMemberController
-	CommunityRequest    *communityrequestctrl.CommunityRequestController
-	CommunityRule       *communityrulectrl.CommunityRuleController
-	CommunityThreadPin  *communitythreadpinctrl.CommunityThreadPinController
-	CommunityPin        *communitypinctrl.CommunityPinController
-	CommunityThread     *communityctrl.CommunityThreadController
-	EventPin            *eventpinctrl.EventPinController
-	EventParticipant    *eventparticipantctrl.EventParticipantController
-	Faculty             *facultyctrl.FacultyController
-	Feedback            *feedbackctrl.FeedbackController
-	Order               *orderctrl.OrderController
-	PremiumSubscription *premiumsubscriptionctrl.PremiumSubscriptionController
-	DevSubscription     *premiumsubscriptionctrl.DevSubscriptionController
-	ChatRoom            *chatroomctrl.ChatRoomController
-	Chat                *chatctrl.ChatController
-	Share               *sharectrl.ShareController
-	Notification        *notificationctrl.NotificationController
-	ThreadPoll          *threadpollctrl.ThreadPollController
-	TrendingUser        *trendinguserctrl.TrendingUserController
-	TrendingThread      *trendingthreadctrl.TrendingThreadController
-	TrendReport         *trendreportctrl.TrendReportController
-	NotificationHandler *webapisocket.NotificationHandler
+	Event                *eventctrl.EventController
+	EventThreadPin       *eventthreadpinctrl.EventThreadPinController
+	Hashtag              *hashtagctrl.HashtagController
+	Explore              *explorectrl.ExploreController
+	Like                 *likectrl.LikeController
+	Bookmark             *bookmarkctrl.BookmarkController
+	BookmarkCollection   *bookmarkcollectionctrl.BookmarkCollectionController
+	ThreadPin            *threadpinctrl.ThreadPinController
+	Repost               *repostctrl.RepostController
+	ThreadSummary        *threadsummaryctrl.ThreadSummaryController
+	FoxChat              *foxchatctrl.FoxChatController
+	FoxSession           *foxsessionctrl.FoxSessionController
+	Category             *categoryctrl.CategoryController
+	Violation            *violationctrl.ViolationController
+	Report               *reportctrl.ReportController
+	Community            *communityctrl.CommunityController
+	CommunityEvent       *communityeventctrl.CommunityEventController
+	CommunityMember      *communityctrl.CommunityMemberController
+	CommunityRequest     *communityrequestctrl.CommunityRequestController
+	CommunityRule        *communityrulectrl.CommunityRuleController
+	CommunityThreadPin   *communitythreadpinctrl.CommunityThreadPinController
+	CommunityPin         *communitypinctrl.CommunityPinController
+	CommunityThread      *communityctrl.CommunityThreadController
+	EventPin             *eventpinctrl.EventPinController
+	EventParticipant     *eventparticipantctrl.EventParticipantController
+	Faculty              *facultyctrl.FacultyController
+	FacultyLocation      *facultylocationctrl.FacultyLocationController
+	Feedback             *feedbackctrl.FeedbackController
+	Order                *orderctrl.OrderController
+	PremiumSubscription  *premiumsubscriptionctrl.PremiumSubscriptionController
+	DevSubscription      *premiumsubscriptionctrl.DevSubscriptionController
+	ChatRoom             *chatroomctrl.ChatRoomController
+	Chat                 *chatctrl.ChatController
+	Share                *sharectrl.ShareController
+	Notification         *notificationctrl.NotificationController
+	ThreadPoll           *threadpollctrl.ThreadPollController
+	TrendingUser         *trendinguserctrl.TrendingUserController
+	TrendingThread       *trendingthreadctrl.TrendingThreadController
+	TrendReport          *trendreportctrl.TrendReportController
+	NotificationHandler  *webapisocket.NotificationHandler
 }
 
 func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers {
 	return &Controllers{
-		Cache:               cachectrl.NewCacheController(svcs.Cache),
-		Auth:                authctrl.NewAuthController(svcs.Auth, svcs.Faculty),
-		Role:                rolectrl.NewRoleController(svcs.Role),
-		User:                userctrl.NewUserController(svcs.User, svcs.UserProfile),
-		UserSettings:        usersettingsctrl.NewUserSettingsController(svcs.UserSettings),
-		UserProfile:         userprofilectrl.NewUserProfileController(svcs.UserProfile, svcs.Faculty, ext.SocketHub, svcs.ChatRoom),
-		Email:               emailctrl.NewEmailController(ext.Email),
-		Verification:        verificationctrl.NewVerificationController(svcs.Verification, c),
-		Follow:              followctrl.NewFollowController(svcs.Follow, svcs.UserProfile),
+		Cache:                cachectrl.NewCacheController(svcs.Cache),
+		Auth:                 authctrl.NewAuthController(svcs.Auth, svcs.Faculty, svcs.FacultyLocation),
+		Role:                 rolectrl.NewRoleController(svcs.Role),
+		User:                 userctrl.NewUserController(svcs.User, svcs.UserProfile),
+		UserSettings:         usersettingsctrl.NewUserSettingsController(svcs.UserSettings),
+		UserProfile:          userprofilectrl.NewUserProfileController(svcs.UserProfile, svcs.Faculty, ext.SocketHub, svcs.ChatRoom),
+		Email:                emailctrl.NewEmailController(ext.Email),
+		Verification:         verificationctrl.NewVerificationController(svcs.Verification, c),
+		Follow:               followctrl.NewFollowController(svcs.Follow, svcs.UserProfile),
 		UserBlock:            userblockctrl.NewUserBlockController(svcs.UserBlock, svcs.UserProfile),
 		NotificationUserMute: notificationusermutectrl.NewNotificationUserMuteController(svcs.NotificationUserMute, svcs.UserProfile),
-		Thread:              threadctrl.NewThreadController(svcs.Thread, svcs.ThreadMedia, svcs.CommunityMember, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll),
-		Event:               eventctrl.NewEventController(svcs.Event, svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.EventThreadPin),
-		EventThreadPin:      eventthreadpinctrl.NewEventThreadPinController(svcs.EventThreadPin),
-		Hashtag:             hashtagctrl.NewHashtagController(svcs.Hashtag),
-		Explore:             explorectrl.NewExploreController(svcs.Explore, svcs.UserProfile, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.Thread, svcs.Community, svcs.ThreadPoll),
-		Like:                likectrl.NewLikeController(svcs.Like, svcs.Bookmark, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
-		Bookmark:            bookmarkctrl.NewBookmarkController(svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
-		BookmarkCollection:  bookmarkcollectionctrl.NewBookmarkCollectionController(svcs.BookmarkCollection, svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
-		ThreadPin:           threadpinctrl.NewThreadPinController(svcs.ThreadPin),
-		Repost:              repostctrl.NewRepostController(svcs.Thread, svcs.ThreadMedia),
-		ThreadSummary:       threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary, svcs.ThreadMedia),
-		FoxChat:             foxchatctrl.NewFoxChatController(svcs.FoxChat),
-		Category:            categoryctrl.NewCategoryController(svcs.Category),
-		Violation:           violationctrl.NewViolationController(svcs.Violation),
-		Report:              reportctrl.NewReportController(svcs.Report, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.Thread, svcs.ThreadPoll, svcs.UserProfile),
-		Community:           communityctrl.NewCommunityController(svcs.Community, svcs.CommunityRule, svcs.UserProfile),
-		CommunityMember:     communityctrl.NewCommunityMemberController(svcs.CommunityMember, svcs.UserProfile),
-		CommunityRequest:    communityrequestctrl.NewCommunityRequestController(svcs.CommunityRequest, svcs.UserProfile),
-		CommunityRule:       communityrulectrl.NewCommunityRuleController(svcs.CommunityRule),
-		CommunityThreadPin:  communitythreadpinctrl.NewCommunityThreadPinController(svcs.CommunityThreadPin),
-		CommunityPin:        communitypinctrl.NewCommunityPinController(svcs.CommunityPin, svcs.Community),
-		CommunityThread:     communityctrl.NewCommunityThreadController(svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.CommunityThreadPin),
-		EventPin:            eventpinctrl.NewEventPinController(svcs.EventPin, svcs.Event),
-		EventParticipant:    eventparticipantctrl.NewEventParticipantController(svcs.EventParticipant, svcs.Event),
-		Faculty:             facultyctrl.NewFacultyController(svcs.Faculty),
-		Feedback:            feedbackctrl.NewFeedbackController(svcs.Feedback, svcs.FeedbackMedia, svcs.UserProfile, c),
-		Order:               orderctrl.NewOrderController(svcs.Order, os.Getenv("MIDTRANS_SERVER_KEY")),
-		PremiumSubscription: premiumsubscriptionctrl.NewPremiumSubscriptionController(svcs.PremiumSubscription),
-		DevSubscription:     premiumsubscriptionctrl.NewDevSubscriptionController(svcs.PremiumSubscription),
-		ChatRoom:            chatroomctrl.NewChatRoomController(svcs.ChatRoom, ext.SocketHub),
-		Chat:                chatctrl.NewChatController(svcs.Chat, svcs.ChatMedia, svcs.ChatReaction, ext.SocketHub),
-		Share:               sharectrl.NewShareController(svcs.Share, ext.Storage),
-		Notification:        notificationctrl.NewNotificationController(svcs.Notification),
-		ThreadPoll:          threadpollctrl.NewThreadPollController(svcs.ThreadPoll),
-		TrendingUser:        trendinguserctrl.NewTrendingUserController(svcs.TrendingUser, svcs.UserProfile),
-		TrendingThread:      trendingthreadctrl.NewTrendingThreadController(svcs.TrendingThread, svcs.UserProfile),
-		TrendReport:         trendreportctrl.NewTrendReportController(svcs.TrendReport),
-		NotificationHandler: webapisocket.NewNotificationHandler(ext.SocketHub, svcs.Notification),
+		Thread:               threadctrl.NewThreadController(svcs.Thread, svcs.ThreadMedia, svcs.CommunityMember, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll),
+		Event:                eventctrl.NewEventController(svcs.Event, svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.EventThreadPin),
+		EventThreadPin:       eventthreadpinctrl.NewEventThreadPinController(svcs.EventThreadPin),
+		Hashtag:              hashtagctrl.NewHashtagController(svcs.Hashtag),
+		Explore:              explorectrl.NewExploreController(svcs.Explore, svcs.UserProfile, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.Thread, svcs.Community, svcs.ThreadPoll),
+		Like:                 likectrl.NewLikeController(svcs.Like, svcs.Bookmark, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
+		Bookmark:             bookmarkctrl.NewBookmarkController(svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
+		BookmarkCollection:   bookmarkcollectionctrl.NewBookmarkCollectionController(svcs.BookmarkCollection, svcs.Bookmark, svcs.Like, svcs.Thread, svcs.ThreadMedia, svcs.ThreadPoll, svcs.UserProfile),
+		ThreadPin:            threadpinctrl.NewThreadPinController(svcs.ThreadPin),
+		Repost:               repostctrl.NewRepostController(svcs.Thread, svcs.ThreadMedia),
+		ThreadSummary:        threadsummaryctrl.NewThreadSummaryController(svcs.ThreadSummary),
+		FoxChat:              foxchatctrl.NewFoxChatController(svcs.FoxChat),
+		FoxSession:           foxsessionctrl.NewFoxSessionController(svcs.FoxSession, svcs.ThreadMedia),
+		Category:             categoryctrl.NewCategoryController(svcs.Category),
+		Violation:            violationctrl.NewViolationController(svcs.Violation),
+		Report:               reportctrl.NewReportController(svcs.Report, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.Thread, svcs.ThreadPoll, svcs.UserProfile),
+		Community:            communityctrl.NewCommunityController(svcs.Community, svcs.CommunityRule, svcs.UserProfile),
+		CommunityEvent:       communityeventctrl.NewCommunityEventController(svcs.CommunityEvent),
+		CommunityMember:      communityctrl.NewCommunityMemberController(svcs.CommunityMember, svcs.UserProfile),
+		CommunityRequest:     communityrequestctrl.NewCommunityRequestController(svcs.CommunityRequest, svcs.UserProfile),
+		CommunityRule:        communityrulectrl.NewCommunityRuleController(svcs.CommunityRule),
+		CommunityThreadPin:   communitythreadpinctrl.NewCommunityThreadPinController(svcs.CommunityThreadPin),
+		CommunityPin:         communitypinctrl.NewCommunityPinController(svcs.CommunityPin, svcs.Community),
+		CommunityThread:      communityctrl.NewCommunityThreadController(svcs.Thread, svcs.ThreadMedia, svcs.Like, svcs.Bookmark, svcs.ThreadPin, svcs.UserProfile, svcs.ThreadPoll, svcs.CommunityThreadPin),
+		EventPin:             eventpinctrl.NewEventPinController(svcs.EventPin, svcs.Event),
+		EventParticipant:     eventparticipantctrl.NewEventParticipantController(svcs.EventParticipant, svcs.Event),
+		Faculty:              facultyctrl.NewFacultyController(svcs.Faculty),
+		FacultyLocation:      facultylocationctrl.NewFacultyLocationController(svcs.FacultyLocation),
+		Feedback:             feedbackctrl.NewFeedbackController(svcs.Feedback, svcs.FeedbackMedia, svcs.UserProfile, c),
+		Order:                orderctrl.NewOrderController(svcs.Order, os.Getenv("MIDTRANS_SERVER_KEY")),
+		PremiumSubscription:  premiumsubscriptionctrl.NewPremiumSubscriptionController(svcs.PremiumSubscription),
+		DevSubscription:      premiumsubscriptionctrl.NewDevSubscriptionController(svcs.PremiumSubscription),
+		ChatRoom:             chatroomctrl.NewChatRoomController(svcs.ChatRoom, ext.SocketHub),
+		Chat:                 chatctrl.NewChatController(svcs.Chat, svcs.ChatMedia, svcs.ChatReaction, ext.SocketHub),
+		Share:                sharectrl.NewShareController(svcs.Share, ext.Storage),
+		Notification:         notificationctrl.NewNotificationController(svcs.Notification),
+		ThreadPoll:           threadpollctrl.NewThreadPollController(svcs.ThreadPoll),
+		TrendingUser:         trendinguserctrl.NewTrendingUserController(svcs.TrendingUser, svcs.UserProfile),
+		TrendingThread:       trendingthreadctrl.NewTrendingThreadController(svcs.TrendingThread, svcs.UserProfile),
+		TrendReport:          trendreportctrl.NewTrendReportController(svcs.TrendReport),
+		NotificationHandler:  webapisocket.NewNotificationHandler(ext.SocketHub, svcs.Notification),
 	}
 }

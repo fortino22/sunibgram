@@ -3,6 +3,13 @@ import type { PaginatedFeedResponse } from './threads';
 
 // ── Backend response shapes ──────────────────────────────────────────────────
 
+interface EventAudienceResponse {
+  id: number;
+  name: string;
+  region: string;
+  is_all_regions: boolean;
+}
+
 interface EventListItemResponse {
   id: string;
   user_id: number;
@@ -13,6 +20,7 @@ interface EventListItemResponse {
   start_time: string | null;
   end_time: string | null;
   banner_url?: string;
+  audience?: EventAudienceResponse[];
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +60,13 @@ interface EventShareApiResponse {
 
 // ── Frontend model shapes ────────────────────────────────────────────────────
 
+export interface EventAudience {
+  id: number;
+  name: string;
+  region: string;
+  isAllRegions: boolean;
+}
+
 export interface EventItem {
   id: string;
   userId: number;
@@ -62,6 +77,7 @@ export interface EventItem {
   startTime: string | null;
   endTime: string | null;
   banner?: string;
+  audience: EventAudience[];
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +114,7 @@ export interface CreateEventInput {
   type: 'official' | 'unofficial';
   banner: File;
   document?: File;
+  facultyLocationIds: number[];
 }
 
 export interface UpdateEventInput {
@@ -109,6 +126,12 @@ export interface UpdateEventInput {
   type: 'official' | 'unofficial';
   banner?: File;
   document?: File;
+  facultyLocationIds?: number[];
+}
+
+export interface EventFeedFilter {
+  region?: string;
+  facultyLocationId?: number;
 }
 
 export interface EventShareResult {
@@ -123,6 +146,10 @@ export interface PaginationParams {
 
 // ── Mappers ──────────────────────────────────────────────────────────────────
 
+function mapAudience(raw?: EventAudienceResponse[]): EventAudience[] {
+  return (raw ?? []).map((a) => ({ id: a.id, name: a.name, region: a.region, isAllRegions: a.is_all_regions }));
+}
+
 function mapEventItem(raw: EventListItemResponse): EventItem {
   return {
     id: raw.id,
@@ -134,6 +161,7 @@ function mapEventItem(raw: EventListItemResponse): EventItem {
     startTime: raw.start_time,
     endTime: raw.end_time,
     banner: raw.banner_url,
+    audience: mapAudience(raw.audience),
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
   };
@@ -167,13 +195,20 @@ function buildCreateEventFormData(input: CreateEventInput): FormData {
   if (input.document) {
     formData.append('docs', input.document);
   }
+  for (const id of input.facultyLocationIds) {
+    formData.append('faculty_location_ids', String(id));
+  }
   return formData;
 }
 
 // ── API calls ────────────────────────────────────────────────────────────────
 
-export async function getEvents(token: string): Promise<EventGroups> {
-  const response = await api.get<EventGroupsResponse>('/api/events', token);
+export async function getEvents(token: string, filter?: EventFeedFilter): Promise<EventGroups> {
+  const search = new URLSearchParams();
+  if (filter?.region) search.set('region', filter.region);
+  if (filter?.facultyLocationId !== undefined) search.set('faculty_location_id', String(filter.facultyLocationId));
+  const qs = search.toString();
+  const response = await api.get<EventGroupsResponse>(`/api/events${qs ? `?${qs}` : ''}`, token);
   return {
     trending: (response.trending ?? []).map(mapEventItem),
     running: (response.running ?? []).map(mapEventItem),
@@ -206,6 +241,11 @@ export function updateEvent(id: string, input: UpdateEventInput, token: string) 
   formData.append('type', input.type);
   if (input.banner) formData.append('banner', input.banner);
   if (input.document) formData.append('docs', input.document);
+  if (input.facultyLocationIds) {
+    for (const id of input.facultyLocationIds) {
+      formData.append('faculty_location_ids', String(id));
+    }
+  }
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
   return fetch(`${baseUrl}/api/events/${id}`, {
     method: 'PUT',

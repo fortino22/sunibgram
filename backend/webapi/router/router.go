@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/sunibgram/infrastructure/cache"
 	authctrl "github.com/sunibgram/webapi/controller/auth"
 	bookmarkctrl "github.com/sunibgram/webapi/controller/bookmark"
 	bookmarkcollectionctrl "github.com/sunibgram/webapi/controller/bookmark_collection"
@@ -11,6 +12,7 @@ import (
 	chatctrl "github.com/sunibgram/webapi/controller/chat"
 	chatroomctrl "github.com/sunibgram/webapi/controller/chat_room"
 	communityctrl "github.com/sunibgram/webapi/controller/community"
+	communityeventctrl "github.com/sunibgram/webapi/controller/community_event"
 	communitypinctrl "github.com/sunibgram/webapi/controller/community_pin"
 	communityrequestctrl "github.com/sunibgram/webapi/controller/community_request"
 	communityrulectrl "github.com/sunibgram/webapi/controller/community_rule"
@@ -22,9 +24,11 @@ import (
 	eventthreadpinctrl "github.com/sunibgram/webapi/controller/event_thread_pin"
 	explorectrl "github.com/sunibgram/webapi/controller/explore"
 	facultyctrl "github.com/sunibgram/webapi/controller/faculty"
+	facultylocationctrl "github.com/sunibgram/webapi/controller/faculty_location"
 	feedbackctrl "github.com/sunibgram/webapi/controller/feedback"
 	followctrl "github.com/sunibgram/webapi/controller/follow"
 	foxchatctrl "github.com/sunibgram/webapi/controller/fox_chat"
+	foxsessionctrl "github.com/sunibgram/webapi/controller/fox_session"
 	hashtagctrl "github.com/sunibgram/webapi/controller/hashtag"
 	likectrl "github.com/sunibgram/webapi/controller/like"
 	notificationctrl "github.com/sunibgram/webapi/controller/notification"
@@ -48,7 +52,6 @@ import (
 	usersettingsctrl "github.com/sunibgram/webapi/controller/user_settings"
 	verificationctrl "github.com/sunibgram/webapi/controller/verification"
 	violationctrl "github.com/sunibgram/webapi/controller/violation"
-	"github.com/sunibgram/infrastructure/cache"
 	"github.com/sunibgram/webapi/middleware"
 	adminroute "github.com/sunibgram/webapi/router/admin"
 	authroute "github.com/sunibgram/webapi/router/auth"
@@ -56,13 +59,16 @@ import (
 	categoryroute "github.com/sunibgram/webapi/router/category"
 	chatroute "github.com/sunibgram/webapi/router/chat"
 	communityroute "github.com/sunibgram/webapi/router/community"
+	communityeventroute "github.com/sunibgram/webapi/router/community_event"
 	devroute "github.com/sunibgram/webapi/router/dev"
 	emailroute "github.com/sunibgram/webapi/router/email"
 	eventroute "github.com/sunibgram/webapi/router/event"
 	exploreroute "github.com/sunibgram/webapi/router/explore"
 	facultyroute "github.com/sunibgram/webapi/router/faculty"
+	facultylocationroute "github.com/sunibgram/webapi/router/faculty_location"
 	feedbackroute "github.com/sunibgram/webapi/router/feedback"
 	foxchatroute "github.com/sunibgram/webapi/router/fox_chat"
+	foxsessionroute "github.com/sunibgram/webapi/router/fox_session"
 	hashtagroute "github.com/sunibgram/webapi/router/hashtag"
 	notificationroute "github.com/sunibgram/webapi/router/notification"
 	orderroute "github.com/sunibgram/webapi/router/order"
@@ -100,6 +106,7 @@ func Register(
 	repostCtrl *repostctrl.RepostController,
 	summaryCtrl *threadsummaryctrl.ThreadSummaryController,
 	foxChatCtrl *foxchatctrl.FoxChatController,
+	foxSessionCtrl *foxsessionctrl.FoxSessionController,
 	emailCtrl *emailctrl.EmailController,
 	verificationCtrl *verificationctrl.VerificationController,
 	followCtrl *followctrl.FollowController,
@@ -107,6 +114,7 @@ func Register(
 	muteCtrl *notificationusermutectrl.NotificationUserMuteController,
 	communityCtrl *communityctrl.CommunityController,
 	communityMemberCtrl *communityctrl.CommunityMemberController,
+	communityEventCtrl *communityeventctrl.CommunityEventController,
 	communityRequestCtrl *communityrequestctrl.CommunityRequestController,
 	communityThreadCtrl *communityctrl.CommunityThreadController,
 	communityRuleCtrl *communityrulectrl.CommunityRuleController,
@@ -119,6 +127,7 @@ func Register(
 	violationCtrl *violationctrl.ViolationController,
 	reportCtrl *reportctrl.ReportController,
 	facultyCtrl *facultyctrl.FacultyController,
+	facultyLocationCtrl *facultylocationctrl.FacultyLocationController,
 	feedbackCtrl *feedbackctrl.FeedbackController,
 	orderCtrl *orderctrl.OrderController,
 	premiumSubscriptionCtrl *premiumsubscriptionctrl.PremiumSubscriptionController,
@@ -144,16 +153,19 @@ func Register(
 	hashtagroute.RegisterHashtagRoutes(api, hashtagCtrl, auth)
 	threadroute.RegisterThreadRoutes(api, threadCtrl, likeCtrl, bookmarkCtrl, threadPinCtrl, repostCtrl, summaryCtrl, auth)
 	foxchatroute.RegisterFoxChatRoutes(api, foxChatCtrl, auth)
+	foxsessionroute.RegisterFoxSessionRoutes(api, foxSessionCtrl, auth)
 	bookmarkcollectionroute.RegisterBookmarkCollectionRoutes(api, bookmarkCollectionCtrl, auth)
 	eventroute.RegisterEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, eventThreadPinCtrl, auth)
 	emailroute.RegisterEmailRoutes(api, emailCtrl, auth)
 	userroute.RegisterUserRoutes(api, followCtrl, exploreCtrl, userBlockCtrl, muteCtrl, userCtrl, auth)
 	adminroute.RegisterAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
 	communityroute.RegisterCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, communityRuleCtrl, communityThreadPinCtrl, communityPinCtrl, auth)
+	communityeventroute.RegisterCommunityEventRoutes(api, communityEventCtrl, auth)
 	categoryroute.RegisterCategoryRoutes(api, categoryCtrl)
 	violationroute.RegisterViolationRoutes(api, violationCtrl, auth)
 	reportroute.RegisterReportRoutes(api, reportCtrl, auth)
 	facultyroute.RegisterFacultyRoutes(api, facultyCtrl, profileCtrl, auth)
+	facultylocationroute.RegisterFacultyLocationRoutes(api, facultyLocationCtrl)
 	feedbackroute.RegisterFeedbackRoutes(api, feedbackCtrl, auth)
 	orderroute.RegisterOrderRoutes(api, orderCtrl, auth, c)
 	premiumsubscriptionroute.RegisterPremiumSubscriptionRoutes(api, premiumSubscriptionCtrl, auth)
