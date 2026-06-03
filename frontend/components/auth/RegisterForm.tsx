@@ -201,6 +201,9 @@ export function RegisterForm({
                   <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--coral)', fontSize: 16, lineHeight: 1 }}>✗</span>
                 )}
               </div>
+              {usernameStatus === 'checking' && !errors.username && (
+                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 5 }}>Checking availability…</p>
+              )}
               {usernameStatus === 'available' && !errors.username && (
                 <p style={{ fontSize: 12, color: '#22c55e', marginTop: 5 }}>Username available</p>
               )}
