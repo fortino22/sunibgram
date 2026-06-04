@@ -12,8 +12,9 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ title, description, children }: SettingsPanelProps) {
   return (
-    <div>
+    <div className="settings-panel">
       <header
+        className="settings-panel-header"
         style={{
           padding: '14px 20px',
           borderBottom: '1px solid var(--border)',
@@ -55,7 +56,7 @@ export function SettingsPanel({ title, description, children }: SettingsPanelPro
           )}
         </div>
       </header>
-      <div style={{ padding: '20px' }}>{children}</div>
+      <div className="settings-panel-body" style={{ padding: '20px' }}>{children}</div>
     </div>
   );
 }

@@ -35,6 +35,8 @@
   /* Mono premium badge (settings nav only). Dark theme → white circle, black check. */
   --premium-badge-bg: #ffffff;
   --premium-badge-fg: #000000;
+  /* fox.png art is black — invert on dark theme so it reads against dark bg. */
+  --fox-filter: invert(1);
   /* Native controls (date/time pickers, scrollbars) follow the theme. */
   color-scheme: dark;
   --font-dm-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -77,6 +79,8 @@
   /* Mono premium badge: light theme → black circle, white check. */
   --premium-badge-bg: #000000;
   --premium-badge-fg: #ffffff;
+  /* Light theme: black fox art reads fine as-is. */
+  --fox-filter: none;
   color-scheme: light;
 }
 
@@ -579,6 +583,15 @@ body {
     top: 0 !important;
   }
 
+  /* Profile followers/following page: page header already shows back + name,
+     drop MobileTopBar so user sees a single X-style header. */
+  body:has(.follow-page-shell) .mobile-top-bar {
+    display: none !important;
+  }
+  .app-main .follow-page-shell .follow-page-header[style*="position: sticky"] {
+    top: 0 !important;
+  }
+
   /* ── Messages (single-pane on mobile) ──────────────────────────────── */
   .messages-shell {
     /* Top bar (52) + bottom nav (56) eat 108px of viewport on mobile. */
@@ -675,11 +688,11 @@ body {
   }
 }
 
-/* ── Settings: single-pane up to tablet width ──────────────────────────────
-   At 481–880px the sidebar collapses to a 64px rail, so the 360px settings
-   aside + detail pane no longer fit side-by-side. Switch to single-pane: index
-   shows the full nav list, sub-routes show just the panel. */
-@media (max-width: 880px) {
+/* ── Settings: single-pane up to small-desktop width ──────────────────────
+   Sidebar(280) + settings-aside(360) = 640px. Below ~1024px viewport the
+   detail pane becomes unusably narrow, so collapse to single-pane: index
+   shows full nav list, sub-routes show just the panel. */
+@media (max-width: 1024px) {
   .settings-shell.is-index .settings-aside {
     width: 100% !important;
     border-right: none !important;
@@ -687,13 +700,40 @@ body {
     position: static !important;
   }
   .settings-shell.is-index .settings-detail {
-    display: none;
+    display: none !important;
   }
   .settings-shell.is-detail .settings-aside {
-    display: none;
+    display: none !important;
   }
   .settings-shell.is-detail .settings-detail {
     border-left: none !important;
+  }
+  /* Sub-route: SettingsPanel already has its own sticky header w/ back
+     button — kill MobileTopBar to avoid two stacked headers. */
+  body:has(.settings-shell.is-detail) .mobile-top-bar {
+    display: none !important;
+  }
+  body:has(.settings-shell.is-detail) .app-main [style*="position: sticky"] {
+    top: 0 !important;
+  }
+}
+
+/* ── SettingsPanel: tighter padding on narrow viewports ────────────────── */
+@media (max-width: 640px) {
+  .settings-panel-header {
+    padding: 12px 14px !important;
+    gap: 10px !important;
+  }
+  .settings-panel-body {
+    padding: 16px 14px !important;
+  }
+}
+@media (max-width: 400px) {
+  .settings-panel-header {
+    padding: 10px 12px !important;
+  }
+  .settings-panel-body {
+    padding: 14px 12px !important;
   }
 }
 
