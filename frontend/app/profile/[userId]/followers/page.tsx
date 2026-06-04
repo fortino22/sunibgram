@@ -30,9 +30,10 @@ function FollowersPageInner() {
   }
 
   return (
-    <div>
+    <div className="follow-page-shell">
       {/* Header */}
       <header
+        className="follow-page-header"
         style={{
           position: 'sticky',
           top: 0,
@@ -88,6 +89,7 @@ function FollowersPageInner() {
       {/* Tabs */}
       <div
         role="tablist"
+        className="follow-page-tabs"
         style={{
           display: 'flex',
           borderBottom: '1px solid var(--border)',

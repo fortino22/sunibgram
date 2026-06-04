@@ -133,11 +133,11 @@ export function MobileSidebarDrawer() {
 
           {profile && (
             <div className="mobile-drawer-counts">
-              <Link href={`/profile/${profile.id}?tab=following`} className="mobile-drawer-count">
+              <Link href={`/profile/${profile.id}/followers?tab=following`} className="mobile-drawer-count">
                 <strong>{profile.following_count ?? 0}</strong>
                 <span>Following</span>
               </Link>
-              <Link href={`/profile/${profile.id}?tab=followers`} className="mobile-drawer-count">
+              <Link href={`/profile/${profile.id}/followers?tab=followers`} className="mobile-drawer-count">
                 <strong>{profile.followers_count ?? 0}</strong>
                 <span>Followers</span>
               </Link>
