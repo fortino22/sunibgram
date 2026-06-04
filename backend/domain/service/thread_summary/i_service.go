@@ -3,8 +3,6 @@ package threadsummarysvciface
 import (
 	"context"
 	"io"
-
-	foxhistorymodel "github.com/sunibgram/domain/model/fox_history"
 )
 
 type IThreadSummaryService interface {
@@ -16,10 +14,6 @@ type IThreadSummaryService interface {
 	QuotaExceeded(ctx context.Context, userID uint) (bool, error)
 	InvalidateCache(ctx context.Context, threadID uint) error
 	RegisterReply(ctx context.Context, threadID uint) error
-	// RecordView records that the user summarized this thread (history).
+	// RecordView records that the user summarized this thread (summary session).
 	RecordView(ctx context.Context, userID, threadID uint) error
-	// ListHistory returns the user's Fox history (newest first) — both summaries
-	// and chat asks — plus the total count. When q is non-empty, results are
-	// filtered to rows matching the query text.
-	ListHistory(ctx context.Context, userID uint, page, limit int, q string) ([]foxhistorymodel.FoxHistory, int64, error)
 }

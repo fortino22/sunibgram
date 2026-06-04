@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { streamFoxAsk, FoxLimitError, type FoxQAPair } from '@/lib/services/fox';
+import { useQueryClient } from '@tanstack/react-query';
+import { streamFoxAsk, FoxLimitError, type FoxQAPair, type FoxSessionTurn } from '@/lib/services/fox';
 import { useAuthStore } from '@/stores/authStore';
 
 export type FoxRole = 'user' | 'fox';
@@ -19,13 +20,16 @@ const REVEAL_STEP = 3; // chars revealed per tick
 const REVEAL_MS = 16;
 
 /**
- * Drives the Fox guide chat: holds the in-memory message list and exposes a
- * callable `ask(question)` that streams the answer into a new fox message with a
- * typewriter reveal independent of how the backend chunks the response. History
- * (prior turns) is replayed to the backend for short-term context.
+ * Drives the Fox guide chat for one re-openable session. Holds the message list
+ * and exposes `ask(question)` (streams the answer with a typewriter reveal),
+ * `loadSession(id, turns)` (hydrate a past conversation to continue it), and
+ * `startNew()` (begin a fresh session). The active session id is sent to the
+ * backend so turns persist server-side; a brand-new session's id comes back on
+ * the first answer.
  */
 export function useFoxAsk() {
   const token = useAuthStore((s) => s.token);
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<FoxMessage[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -35,8 +39,9 @@ export function useFoxAsk() {
   const streamDoneRef = useRef(false);
   const nextId = useRef(1);
   const abortRef = useRef<AbortController | null>(null);
-  // Mirror of messages so `ask` can read the latest list without a stale closure
-  // (and without re-creating the callback on every message change).
+  // Current chat session id (0 = not yet created server-side).
+  const sessionIdRef = useRef(0);
+  // Mirror of messages so `ask` can read the latest list without a stale closure.
   const messagesRef = useRef<FoxMessage[]>([]);
   useEffect(() => {
     messagesRef.current = messages;
@@ -66,6 +71,36 @@ export function useFoxAsk() {
       });
     }, REVEAL_MS);
     return () => clearInterval(timer);
+  }, []);
+
+  // startNew clears the panel for a fresh conversation.
+  const startNew = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    activeIdRef.current = null;
+    targetRef.current = '';
+    streamDoneRef.current = false;
+    sessionIdRef.current = 0;
+    setBusy(false);
+    setMessages([]);
+  }, []);
+
+  // loadSession hydrates a past chat session's turns so the user can continue it.
+  const loadSession = useCallback((sessionId: number, turns: FoxSessionTurn[]) => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    activeIdRef.current = null;
+    targetRef.current = '';
+    streamDoneRef.current = false;
+    sessionIdRef.current = sessionId;
+    setBusy(false);
+
+    const hydrated: FoxMessage[] = [];
+    for (const t of turns) {
+      hydrated.push({ id: nextId.current++, role: 'user', text: t.question });
+      hydrated.push({ id: nextId.current++, role: 'fox', text: t.answer, status: 'done' });
+    }
+    setMessages(hydrated);
   }, []);
 
   const ask = useCallback(
@@ -100,14 +135,23 @@ export function useFoxAsk() {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      streamFoxAsk(q, history, token, {
+      streamFoxAsk(q, sessionIdRef.current, history, token, {
         signal: controller.signal,
         onChunk: (chunk) => {
           targetRef.current += chunk;
         },
       })
-        .then(() => {
+        .then((resolvedSessionId) => {
           streamDoneRef.current = true;
+          if (resolvedSessionId !== null) {
+            sessionIdRef.current = resolvedSessionId;
+          }
+          // Refresh the history list so the new/updated session appears, and the
+          // turns detail for this session so re-opening it shows the new turn.
+          void queryClient.invalidateQueries({ queryKey: ['fox', 'sessions'] });
+          if (sessionIdRef.current !== 0) {
+            void queryClient.invalidateQueries({ queryKey: ['fox', 'session', sessionIdRef.current] });
+          }
         })
         .catch((err: unknown) => {
           if (controller.signal.aborted) return;
@@ -125,10 +169,10 @@ export function useFoxAsk() {
           setBusy(false);
         });
     },
-    [busy, token],
+    [busy, token, queryClient],
   );
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  return { messages, ask, busy };
+  return { messages, ask, busy, loadSession, startNew };
 }

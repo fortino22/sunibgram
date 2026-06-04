@@ -142,6 +142,10 @@ func (s *AuthService) Register(ctx context.Context, input authsvciface.RegisterI
 	if err := profile.ValidateRequiredFields(); err != nil {
 		return err
 	}
+	if input.FacultyLocationID == nil {
+		return errors.New("faculty location is required")
+	}
+	profile.FacultyLocationID = input.FacultyLocationID
 
 	if _, err := s.verificationRepo.FindVerifiedByEmailAndType(user.Email, verificationcodemodel.VerificationTypeRegister); err != nil {
 		return errors.New("email not verified, please verify your otp first")

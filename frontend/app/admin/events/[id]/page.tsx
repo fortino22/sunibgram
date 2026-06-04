@@ -1,16 +1,17 @@
 'use client';
 
 import { use, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Check, MapPin } from 'lucide-react';
+import { CalendarDays, Check, Clock, MapPin, Users as UsersIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { StatusBadge } from '@/components/admin/StatusBadge';
 import { EventDocViewer } from '@/components/admin/DocViewer';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
+import { fmtDateTime } from '@/components/admin/format';
+import { AudienceBadges } from '@/components/events/AudienceBadges';
 import {
   getEvent,
   approveEvent,
@@ -64,7 +65,7 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
     return <AdminPage title="Loading…"><div /></AdminPage>;
   }
   if (q.isError || !q.data) {
-    return <AdminPage title="Event"><div style={{ color: 'var(--coral)' }}>Failed to load.</div></AdminPage>;
+    return <AdminPage title="Event" backHref="/admin/events" backLabel="Back to events"><div style={{ color: 'var(--coral)' }}>Failed to load.</div></AdminPage>;
   }
 
   const e = q.data;
@@ -76,28 +77,13 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
       icon={CalendarDays}
       title={e.title}
       description={`${e.type.toUpperCase()} · submitted by user #${e.user_id}`}
-      actions={
-        <Link
-          href="/admin/events"
-          className="admin-btn admin-btn-outline admin-btn-sm"
-          style={{ textDecoration: 'none' }}
-        >
-          ← Back
-        </Link>
-      }
+      backHref="/admin/events"
+      backLabel="Back to events"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <StatusBadge status={e.status} />
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-            {new Date(e.start_time).toLocaleString()} – {new Date(e.end_time).toLocaleString()}
-          </span>
-          {e.location && (
-            <span style={{ fontSize: 13, color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <MapPin size={13} />
-              {e.location}
-            </span>
-          )}
+          <span className="admin-pill-outline">{e.type}</span>
         </div>
 
         {e.banner_url && (
@@ -107,6 +93,37 @@ export default function AdminEventDetailPage({ params }: { params: Promise<{ id:
             style={{ width: '100%', maxHeight: 320, objectFit: 'cover', borderRadius: 16, border: '1px solid var(--border)' }}
           />
         )}
+
+        <div className="admin-detail-grid">
+          <div className="admin-detail-row">
+            <div className="admin-detail-label">Schedule</div>
+            <div className="admin-detail-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Clock size={14} strokeWidth={2} style={{ color: 'var(--text-tertiary)' }} />
+              {fmtDateTime(e.start_time)} <span style={{ color: 'var(--text-tertiary)' }}>→</span> {fmtDateTime(e.end_time)}
+            </div>
+          </div>
+          <div className="admin-detail-row">
+            <div className="admin-detail-label">Venue</div>
+            <div className="admin-detail-value" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <MapPin size={14} strokeWidth={2} style={{ color: 'var(--text-tertiary)' }} />
+              {e.location || <span style={{ color: 'var(--text-tertiary)' }}>Not specified</span>}
+            </div>
+          </div>
+          <div className="admin-detail-row">
+            <div className="admin-detail-label">
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <UsersIcon size={12} strokeWidth={2.2} /> Audience
+              </span>
+            </div>
+            <div className="admin-detail-value">
+              {e.audience && e.audience.length > 0 ? (
+                <AudienceBadges audience={e.audience} max={20} />
+              ) : (
+                <span style={{ color: 'var(--text-tertiary)' }}>No regions targeted</span>
+              )}
+            </div>
+          </div>
+        </div>
 
         <div style={{ padding: 18, borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>Description</h3>

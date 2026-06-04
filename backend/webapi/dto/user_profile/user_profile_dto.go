@@ -24,12 +24,23 @@ type UserProfileResponse struct {
 	IsMuted             bool                         `json:"is_muted"`
 	OnboardingCompleted bool                         `json:"onboarding_completed"`
 	Faculty             *threaddto.FeedAuthorFaculty `json:"faculty,omitempty"`
+	FacultyLocation     *FacultyLocationMini         `json:"faculty_location,omitempty"`
 	CreatedAt           utils.FormattedTime          `json:"created_at"`
 	// *ChangeAvailableAt are set only on self-view, and only while the field is
 	// within its change cooldown — the edit UI uses them to disable the field
 	// and show when the next change is allowed. Omitted otherwise.
 	NameChangeAvailableAt     *utils.FormattedTime `json:"name_change_available_at,omitempty"`
 	UsernameChangeAvailableAt *utils.FormattedTime `json:"username_change_available_at,omitempty"`
+	// FacultyLocationChangeAvailableAt is self-view only: the campus cooldown
+	// (~6 months) the edit UI uses to lock the field until the next allowed date.
+	FacultyLocationChangeAvailableAt *utils.FormattedTime `json:"faculty_location_change_available_at,omitempty"`
+}
+
+// FacultyLocationMini is the campus summary embedded in a profile response.
+type FacultyLocationMini struct {
+	ID     uint   `json:"id"`
+	Name   string `json:"name"`
+	Region string `json:"region"`
 }
 
 // OnboardingStatusResponse tells the frontend how many people the first-time

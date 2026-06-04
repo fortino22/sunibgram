@@ -14,6 +14,7 @@ interface ProfileUser {
   username: string;
   bio?: string | null;
   faculty?: string | null;
+  facultyLocation?: { name: string; region: string } | null;
   joinedMonth?: string;
   following: number;
   followers: number;

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Pencil, Trash2, MoreHorizontal, CalendarPlus } from 'lucide-react';
 import type { CommunityData, CommunityRole } from '@/lib/services/communities';
 import { Avatar } from '@/components/shared/Avatar';
 
@@ -25,6 +25,7 @@ interface CommunityHeaderProps {
   onCancelRequest: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onCreateEvent: () => void;
   onShowMembers: () => void;
 }
 
@@ -48,12 +49,24 @@ export function CommunityHeader({
   onCancelRequest,
   onEdit,
   onDelete,
+  onCreateEvent,
   onShowMembers,
 }: CommunityHeaderProps) {
   void isOwner;
   const [joinedHovered, setJoinedHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const isMember = myRole !== null;
   const isPublic = community.visibility === 'PUBLIC';
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    window.addEventListener('mousedown', onClick);
+    return () => window.removeEventListener('mousedown', onClick);
+  }, [menuOpen]);
 
   const adminIconBtn = (extra: React.CSSProperties = {}): React.CSSProperties => ({
     border: '1px solid var(--border)',
@@ -63,12 +76,26 @@ export function CommunityHeader({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'transparent',
     color: 'var(--text-tertiary)',
     cursor: 'pointer',
     flexShrink: 0,
     ...extra,
   });
+
+  const menuItemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    textAlign: 'left',
+    padding: '10px 12px',
+    fontSize: 14,
+    fontWeight: 500,
+    color: 'var(--text)',
+    border: 'none',
+    borderRadius: 10,
+    cursor: 'pointer',
+  };
 
   function renderActionButton() {
     if (isAdmin) {
@@ -274,30 +301,65 @@ export function CommunityHeader({
               </svg>
             </button>
             {isAdmin && (
-              <>
+              <div ref={menuRef} style={{ position: 'relative' }}>
                 <button
-                  onClick={onDelete}
-                  disabled={deletePending}
-                  title="Delete community"
-                  className="btn-ghost"
-                  style={{
-                    ...adminIconBtn(),
-                    color: 'var(--coral, #e53e3e)',
-                    cursor: deletePending ? 'not-allowed' : 'pointer',
-                    opacity: deletePending ? 0.5 : 1,
-                  }}
-                >
-                  <Trash2 size={16} />
-                </button>
-                <button
-                  onClick={onEdit}
-                  title="Edit community"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  title="Admin actions"
                   className="btn-ghost"
                   style={adminIconBtn({ color: 'var(--text)' })}
+                  aria-label="Admin actions"
+                  aria-haspopup="menu"
                 >
-                  <Pencil size={16} />
+                  <MoreHorizontal size={18} />
                 </button>
-              </>
+                {menuOpen && (
+                  <div
+                    role="menu"
+                    className="tab-overflow-menu"
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      minWidth: 200,
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 14,
+                      boxShadow: 'var(--shadow-dropdown)',
+                      padding: 8,
+                      zIndex: 40,
+                    }}
+                  >
+                    <button
+                      role="menuitem"
+                      className="tab-overflow-item"
+                      onClick={() => { setMenuOpen(false); onEdit(); }}
+                      style={menuItemStyle}
+                    >
+                      <Pencil size={16} />
+                      Edit community
+                    </button>
+                    <button
+                      role="menuitem"
+                      className="tab-overflow-item"
+                      onClick={() => { setMenuOpen(false); onCreateEvent(); }}
+                      style={menuItemStyle}
+                    >
+                      <CalendarPlus size={16} />
+                      Create event
+                    </button>
+                    <button
+                      role="menuitem"
+                      className="tab-overflow-item"
+                      onClick={() => { setMenuOpen(false); onDelete(); }}
+                      disabled={deletePending}
+                      style={{ ...menuItemStyle, color: 'var(--coral, #e53e3e)' }}
+                    >
+                      <Trash2 size={16} />
+                      Delete community
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
             {renderActionButton()}
           </div>

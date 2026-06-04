@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Logo } from '@/components/ui/Logo';
 import { useForm } from 'react-hook-form';
 
@@ -16,6 +16,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const setToken = useAuthStore((state) => state.setToken);
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
@@ -47,6 +48,7 @@ export default function LoginPage() {
     try {
       const res = await loginMutation.mutateAsync(data);
       setToken(res.access_token, res.sid);
+      queryClient.clear(); // drop any prior user's cached queries before the new session fetches
       await setSessionCookie(res.sid);
       router.replace('/');
     } catch (err) {

@@ -1,13 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Search } from 'lucide-react';
 import { CommunityDetailSkeleton } from '@/components/community/CommunityDetailSkeleton';
 import { CommunityHeader } from '@/components/community/CommunityHeader';
 import { CommunityAboutTab } from '@/components/community/CommunityAboutTab';
 import { CommunityMembersPanel } from '@/components/community/CommunityMembersPanel';
 import { CommunityRequestCard } from '@/components/community/CommunityRequestCard';
+import { CommunityTabBar } from '@/components/community/CommunityTabBar';
+import { CommunityEventsTab } from '@/components/community-events/CommunityEventsTab';
+import { CreateCommunityEventDialog } from '@/components/community-events/CreateCommunityEventDialog';
 import { EditCommunityModal } from '@/components/community/EditCommunityModal';
 import { DangerConfirmModal } from '@/components/shared/DangerConfirmModal';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -38,17 +41,31 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import type { CommunityRole } from '@/lib/services/communities';
 
-type Tab = 'top' | 'latest' | 'media' | 'about' | 'requests';
+type Tab = 'top' | 'latest' | 'events' | 'media' | 'about' | 'requests';
+
+const TAB_VALUES: Tab[] = ['top', 'latest', 'events', 'media', 'about', 'requests'];
+function parseTab(v: string | null): Tab {
+  return v && (TAB_VALUES as string[]).includes(v) ? (v as Tab) : 'latest';
+}
 
 export default function CommunityDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const communityId = Number(params.id);
   const isValidId = Number.isInteger(communityId) && communityId > 0;
 
   const currentUserId = useAuthStore((s) => s.user?.id);
-  const [activeTab, setActiveTab] = useState<Tab>('latest');
+  // URL (?tab=) is the single source of truth so the tab survives navigating to
+  // an event and back, plus browser back/forward — no mirrored state to desync.
+  const activeTab = parseTab(searchParams.get('tab'));
+  function selectTab(id: Tab) {
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set('tab', id);
+    router.replace(`/communities/${communityId}?${sp.toString()}`, { scroll: false });
+  }
   const [showEdit, setShowEdit] = useState(false);
+  const [createEventOpen, setCreateEventOpen] = useState(false);
   const [showMembersPanel, setShowMembersPanel] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [membershipOverride, setMembershipOverride] = useState<CommunityRole | 'none' | null>(null);
@@ -125,6 +142,7 @@ export default function CommunityDetailPage() {
   const threadTabs: { id: Tab; label: string }[] = [
     { id: 'top', label: 'Top' },
     { id: 'latest', label: 'Latest' },
+    { id: 'events', label: 'Events' },
     { id: 'media', label: 'Media' },
     { id: 'about', label: 'About' },
     ...(isAdmin ? [{ id: 'requests' as Tab, label: `Requests${requests.length > 0 ? ` (${requests.length})` : ''}` }] : []),
@@ -278,39 +296,26 @@ export default function CommunityDetailPage() {
         onCancelRequest={handleCancelRequest}
         onEdit={() => setShowEdit(true)}
         onDelete={handleDelete}
+        onCreateEvent={() => { selectTab('events'); setCreateEventOpen(true); }}
         onShowMembers={() => setShowMembersPanel(true)}
       />
 
-      {/* Tab bar */}
-      <div
-        style={{
-          display: 'flex',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        {threadTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className="hover-dim"
-            style={{
-              flex: 1,
-              padding: '12px 0',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid var(--text)' : '2px solid transparent',
-              color: activeTab === tab.id ? 'var(--text)' : 'var(--text-tertiary)',
-              fontSize: 14,
-              fontWeight: activeTab === tab.id ? 700 : 400,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              textAlign: 'center',
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Tab bar — max 5 chips, rest collapse into a "More" dropdown */}
+      <CommunityTabBar
+        tabs={threadTabs}
+        activeId={activeTab}
+        onSelect={(id) => selectTab(id as Tab)}
+        maxVisible={5}
+      />
+
+      {/* Community events */}
+      {activeTab === 'events' && (
+        <CommunityEventsTab
+          communityId={communityId}
+          isAdmin={isAdmin}
+          onCreateEvent={() => setCreateEventOpen(true)}
+        />
+      )}
 
       {/* Latest threads */}
       {activeTab === 'latest' && (
@@ -432,6 +437,14 @@ export default function CommunityDetailPage() {
           community={community}
           onClose={() => setShowEdit(false)}
           onSuccess={() => setShowEdit(false)}
+        />
+      )}
+
+      {isAdmin && (
+        <CreateCommunityEventDialog
+          open={createEventOpen}
+          onOpenChange={setCreateEventOpen}
+          communityId={communityId}
         />
       )}
 

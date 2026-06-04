@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useCreateEvent } from '@/hooks/useCreateEvent';
+import { useFacultyLocations } from '@/hooks/useFacultyLocations';
 import { toast } from 'sonner';
 import { IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
@@ -24,6 +25,7 @@ const schema = z
       message: 'Banner image is required.',
     }),
     document: z.custom<File | undefined>((v) => v === undefined || v instanceof File).optional(),
+    facultyLocationIds: z.array(z.number()).min(1, 'Pick at least one audience region.'),
   })
   .superRefine((v, ctx) => {
     if (v.start_date && v.start_time && v.end_date && v.end_time) {
@@ -63,6 +65,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
   const docInputRef = useRef<HTMLInputElement>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [pendingCrop, setPendingCrop] = useState<{ src: string; filename: string } | null>(null);
+  const [step, setStep] = useState<1 | 2>(1);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -77,12 +80,29 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
       end_time: '',
       banner: undefined,
       document: undefined,
+      facultyLocationIds: [],
     },
   });
+
+  const { data: facultyLocations = [], isLoading: locationsLoading } = useFacultyLocations(true);
+  const allRegionsId = facultyLocations.find((l) => l.isAllRegions)?.id ?? null;
 
   const type = useWatch({ control: form.control, name: 'type', defaultValue: 'unofficial' });
   const startDate = useWatch({ control: form.control, name: 'start_date', defaultValue: '' });
   const docFile = useWatch({ control: form.control, name: 'document', defaultValue: undefined });
+  const selectedAudience = useWatch({ control: form.control, name: 'facultyLocationIds', defaultValue: [] });
+
+  function toggleAudience(id: number) {
+    const current = form.getValues('facultyLocationIds') ?? [];
+    // Selecting "All Regions" clears everything else (and vice-versa).
+    if (allRegionsId !== null && id === allRegionsId) {
+      form.setValue('facultyLocationIds', current.includes(id) ? [] : [id], { shouldValidate: true });
+      return;
+    }
+    const withoutAll = current.filter((x) => x !== allRegionsId);
+    const next = withoutAll.includes(id) ? withoutAll.filter((x) => x !== id) : [...withoutAll, id];
+    form.setValue('facultyLocationIds', next, { shouldValidate: true });
+  }
 
   useEffect(() => {
     if (startDate && !form.getValues('end_date')) {
@@ -95,6 +115,10 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
       if (bannerPreview) URL.revokeObjectURL(bannerPreview);
     };
   }, [bannerPreview]);
+
+  function handleClose() {
+    onOpenChange(false);
+  }
 
   function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -132,8 +156,22 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
       type: values.type,
       banner: values.banner,
       document: values.document,
+      facultyLocationIds: values.facultyLocationIds,
     });
+    form.reset();
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+    setBannerPreview(null);
+    setStep(1);
     onOpenChange(false);
+  }
+
+  const submit = form.handleSubmit((v) => void onSubmit(v));
+
+  async function goToStep2() {
+    const ok = await form.trigger(['type', 'title', 'description', 'banner']);
+    if (!ok) return;
+    form.clearErrors(['location', 'start_date', 'start_time', 'end_date', 'end_time', 'facultyLocationIds', 'document']);
+    setStep(2);
   }
 
   if (!open) return null;
@@ -174,7 +212,7 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
         zIndex: 100,
         padding: 16,
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false); }}
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
       <div
         style={{
@@ -201,12 +239,17 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
             zIndex: 1,
           }}
         >
-          <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-            Create Event
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+              Create Event
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+              STEP {step} OF 2 · {step === 1 ? 'Details' : 'Logistics'}
+            </span>
+          </div>
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleClose()}
             style={{
               background: 'none',
               border: 'none',
@@ -221,6 +264,8 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
         </div>
 
         {/* Banner */}
+        {step === 1 && (
+        <>
         <div
           onClick={() => bannerInputRef.current?.click()}
           style={{
@@ -278,11 +323,15 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
         {form.formState.errors.banner && (
           <p style={{ ...errorStyle, margin: '4px 20px 0' }}>{form.formState.errors.banner.message}</p>
         )}
+        </>
+        )}
 
         <form
-          onSubmit={form.handleSubmit((v) => void onSubmit(v))}
+          onSubmit={(e) => { e.preventDefault(); if (step === 2) submit(); }}
           style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}
         >
+          {step === 1 && (
+          <>
           {/* Type toggle */}
           <div>
             <label style={labelStyle}>Event type</label>
@@ -339,7 +388,11 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               <p style={errorStyle}>{form.formState.errors.description.message}</p>
             )}
           </div>
+          </>
+          )}
 
+          {step === 2 && (
+          <>
           {/* Location */}
           <div>
             <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -411,6 +464,43 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
             </div>
           </div>
 
+          {/* Audience regions */}
+          <div>
+            <label style={labelStyle}>Audience regions *</label>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '0 0 8px' }}>
+              Who is this event for? Pick one or more campuses, or “All Regions” for everyone.
+            </p>
+            {locationsLoading ? (
+              <div style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Loading campuses…</div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {facultyLocations.map((loc) => {
+                  const selected = selectedAudience.includes(loc.id);
+                  return (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      onClick={() => toggleAudience(loc.id)}
+                      style={{
+                        padding: '7px 14px', borderRadius: 999,
+                        border: `1px solid ${selected ? 'var(--text)' : 'var(--border)'}`,
+                        background: selected ? 'var(--text)' : 'transparent',
+                        color: selected ? 'var(--bg)' : 'var(--text)',
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        transition: 'background 0.15s, border-color 0.15s',
+                      }}
+                    >
+                      {loc.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {form.formState.errors.facultyLocationIds && (
+              <p style={errorStyle}>{form.formState.errors.facultyLocationIds.message}</p>
+            )}
+          </div>
+
           {/* Docs — official events only */}
           {type === 'official' && (
           <div>
@@ -455,30 +545,74 @@ export function CreateEventDialog({ open, onOpenChange }: Props) {
               {mutation.error.message}
             </div>
           )}
+          </>
+          )}
 
-          <button
-            type="submit"
-            disabled={mutation.isPending}
-            style={{
-              width: '100%',
-              padding: '12px',
-              borderRadius: 999,
-              border: 'none',
-              background: 'var(--text)',
-              color: 'var(--bg)',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: mutation.isPending ? 'default' : 'pointer',
-              opacity: mutation.isPending ? 0.5 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            {mutation.isPending && <LoaderCircle size={15} className="animate-spin" />}
-            {mutation.isPending ? 'Creating…' : 'Create Event'}
-          </button>
+          {/* Footer nav */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {step === 2 && (
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                style={{
+                  flex: '0 0 auto',
+                  padding: '12px 18px',
+                  borderRadius: 999,
+                  border: '1px solid var(--border)',
+                  background: 'transparent',
+                  color: 'var(--text)',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                ← Back
+              </button>
+            )}
+            {step === 1 ? (
+              <button
+                type="button"
+                onClick={() => void goToStep2()}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--text)',
+                  color: 'var(--bg)',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Next →
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={mutation.isPending}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'var(--text)',
+                  color: 'var(--bg)',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: mutation.isPending ? 'default' : 'pointer',
+                  opacity: mutation.isPending ? 0.5 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+              >
+                {mutation.isPending && <LoaderCircle size={15} className="animate-spin" />}
+                {mutation.isPending ? 'Creating…' : 'Create Event'}
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>

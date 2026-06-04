@@ -9,6 +9,7 @@ import { Avatar } from '@/components/shared/Avatar';
 import { VerifiedBadge } from '@/components/shared/VerifiedBadge';
 import { Icon } from '@/components/ui/Icon';
 import { useAuthStore } from '@/stores/authStore';
+import { logout as logoutRequest } from '@/lib/services/auth';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useMobileDrawerStore } from '@/stores/mobileDrawerStore';
 
@@ -69,6 +70,14 @@ export function MobileSidebarDrawer() {
   const avatarSrc = profile?.avatar ?? null;
 
   const handleLogout = async () => {
+    const token = useAuthStore.getState().token;
+    if (token) {
+      try {
+        await logoutRequest(token);
+      } catch {
+        // best-effort: tear down the client even if the backend call fails
+      }
+    }
     await fetch('/auth/clear-session', { method: 'POST' });
     logout();
     queryClient.clear();

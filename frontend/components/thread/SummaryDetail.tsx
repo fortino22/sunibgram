@@ -5,44 +5,68 @@ import Link from 'next/link';
 import { toBullets } from '@/components/thread/summaryUtils';
 import { renderRichContent } from '@/components/thread/MentionText';
 import { FoxMarkdown } from '@/components/thread/foxMarkdown';
-import type { SummaryHistoryItem } from '@/lib/services/threads';
+import { ArrowRight } from 'lucide-react';
+import { useFoxSession } from '@/hooks/fox/useFoxSession';
+import type { FoxSessionItem } from '@/lib/services/fox';
 
 interface SummaryDetailProps {
-  item: SummaryHistoryItem | null;
+  item: FoxSessionItem | null;
   /** Called when navigating to the thread, so the card can close. */
   onNavigate: () => void;
+  /**
+   * Re-open a chat session in the Ask Fox tab to continue it. When omitted (e.g.
+   * the /summaries page, which has no Ask tab) the chat view stays read-only.
+   */
+  onContinue?: (sessionId: number) => void;
 }
 
-/** Right-pane detail: full thread content on top, summary result below. */
-export function SummaryDetail({ item, onNavigate }: SummaryDetailProps) {
+/** Right-pane detail: chat transcript, or full thread content + summary result. */
+export function SummaryDetail({ item, onNavigate, onContinue }: SummaryDetailProps) {
+  // Chat sessions load their turns; the hook is disabled for summaries/empty.
+  const chatSessionId = item && item.type === 'chat' ? item.id : null;
+  const { data: detail, isLoading: turnsLoading } = useFoxSession(chatSessionId);
+
   if (item === null) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 24 }}>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, textAlign: 'center' }}>
-          Select a summary to view it.
+          Select an item to view it.
         </p>
       </div>
     );
   }
 
-  // Chat ask: show the question and the Fox answer (with clickable routes).
+  // Chat session: replay the conversation as chat bubbles (read-only), mirroring
+  // the Ask Fox panel — user questions right, Fox answers left.
   if (item.type === 'chat') {
+    const turns = detail?.turns ?? [];
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <section>
-          <div style={labelStyle}>You asked</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {item.question?.trim() || '—'}
+        {turnsLoading && turns.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>Loading conversation…</p>
+        ) : turns.length === 0 ? (
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>No messages in this conversation.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {turns.map((turn, i) => (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ alignSelf: 'flex-end', maxWidth: '88%', ...userBubble }}>
+                  {turn.question.trim() || '—'}
+                </div>
+                <div style={{ alignSelf: 'flex-start', maxWidth: '92%', ...foxBubble }}>
+                  <FoxMarkdown text={turn.answer} onNavigate={onNavigate} />
+                </div>
+              </div>
+            ))}
           </div>
-        </section>
-        <div style={{ height: 1, background: 'var(--border)' }} />
-        <section>
-          <div style={labelStyle}>Fox replied</div>
-          <div style={{ fontSize: 14, color: 'var(--text)' }}>
-            <FoxMarkdown text={item.summary} onNavigate={onNavigate} />
-          </div>
-        </section>
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.summarized_at}</div>
+        )}
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center' }}>{item.updated_at}</div>
+        {onContinue && (
+          <button type="button" onClick={() => onContinue(item.id)} className="fox-continue" style={{ alignSelf: 'center' }}>
+            Continue in Ask Fox
+            <ArrowRight size={13} strokeWidth={2.4} />
+          </button>
+        )}
       </div>
     );
   }
@@ -116,7 +140,7 @@ export function SummaryDetail({ item, onNavigate }: SummaryDetailProps) {
 
       {/* Footer */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.summarized_at}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.updated_at}</span>
         <Link
           href={`/thread/${item.thread_id}`}
           onClick={onNavigate}
@@ -128,6 +152,29 @@ export function SummaryDetail({ item, onNavigate }: SummaryDetailProps) {
     </div>
   );
 }
+
+// Chat-bubble styles mirror FoxAskPanel so the History transcript reads like the
+// live chat: user questions right (accent), Fox answers left (secondary).
+const userBubble: CSSProperties = {
+  fontSize: 13.5,
+  lineHeight: 1.5,
+  color: '#fff',
+  background: 'var(--accent)',
+  borderRadius: '16px 16px 5px 16px',
+  padding: '9px 13px',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+};
+
+const foxBubble: CSSProperties = {
+  fontSize: 13.5,
+  color: 'var(--text)',
+  background: 'var(--bg-secondary)',
+  border: '1px solid var(--border)',
+  borderRadius: '16px 16px 16px 5px',
+  padding: '9px 13px',
+  wordBreak: 'break-word',
+};
 
 const labelStyle: CSSProperties = {
   fontSize: 11,

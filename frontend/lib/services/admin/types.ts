@@ -25,9 +25,13 @@ export interface AdminUser {
   banner_url?: string | null;
   bio?: string;
   is_premium?: boolean;
+  gender?: string;
+  birthday_date?: string;
   follower_count?: number;
   following_count?: number;
+  onboarding_completed?: boolean;
   faculty?: { faculty_id: number; faculty_name: string } | null;
+  faculty_location?: { id: number; name: string; region: string } | null;
 }
 
 export interface Violation {
@@ -80,6 +84,15 @@ export interface AdminEventReview {
   created_at: string;
 }
 
+// AdminEventAudience mirrors the frontend EventAudience shape (camelCase) so the
+// shared <AudienceBadges /> component can render admin event region chips.
+export interface AdminEventAudience {
+  id: number;
+  name: string;
+  region: string;
+  isAllRegions: boolean;
+}
+
 export interface AdminEvent {
   id: string;
   user_id: number;
@@ -93,6 +106,7 @@ export interface AdminEvent {
   banner_url?: string | null;
   attachment_url?: string | null;
   doc_urls?: string[];
+  audience?: AdminEventAudience[];
   created_at?: string;
   updated_at?: string;
   notes?: AdminEventReview[];

@@ -1,10 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { useFoxAsk } from '@/hooks/fox/useFoxAsk';
 import { FoxMarkdown } from '@/components/thread/foxMarkdown';
+import type { FoxMessage } from '@/hooks/fox/useFoxAsk';
 
 interface FoxAskPanelProps {
+  /** Conversation messages (owned by FloatingFoxButton's useFoxAsk). */
+  messages: FoxMessage[];
+  /** Send a question into the active session. */
+  ask: (question: string) => void;
+  /** True while an answer is streaming. */
+  busy: boolean;
   /** Closes the fox card — passed to route links so navigating dismisses it. */
   onNavigate: () => void;
 }
@@ -21,8 +27,7 @@ const SUGGESTIONS = [
  * Fox streams an answer grounded in the LM wiki, with clickable in-app routes.
  * In-memory while the card is open; history persists server-side.
  */
-export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
-  const { messages, ask, busy } = useFoxAsk();
+export function FoxAskPanel({ messages, ask, busy, onNavigate }: FoxAskPanelProps) {
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -76,7 +81,7 @@ export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {messages.map((m) =>
               m.role === 'user' ? (
                 <div key={m.id} style={{ alignSelf: 'flex-end', maxWidth: '88%', ...userBubble }}>
@@ -110,6 +115,7 @@ export function FoxAskPanel({ onNavigate }: FoxAskPanelProps) {
           onKeyDown={onKeyDown}
           rows={1}
           placeholder="Ask Fox how to use the app…"
+          className="hide-scrollbar"
           style={inputStyle}
         />
         <button

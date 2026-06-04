@@ -51,10 +51,10 @@ function SummaryCard({ thread, onClose }: SummaryCardProps) {
 
   const requestClose = useCallback(() => setClosing(true), []);
 
-  // Once a summary finishes, refresh the fox history list so it shows up there.
+  // Once a summary finishes, refresh the fox session history so it shows up there.
   useEffect(() => {
     if (status === 'done') {
-      queryClient.invalidateQueries({ queryKey: ['summaries', 'history'] });
+      queryClient.invalidateQueries({ queryKey: ['fox', 'sessions'] });
     }
   }, [status, queryClient]);
 

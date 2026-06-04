@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 
-const TOKEN_RE = /(@\[[a-zA-Z0-9_.]+\|\d+\])|(#[a-zA-Z0-9_]+)/g;
+const TOKEN_RE = /(@\[[a-zA-Z0-9_.]+\|\d+\])|(#[a-zA-Z0-9_]+)|(@all\b)/gi;
 const RICH_MENTION_RE = /^@\[([a-zA-Z0-9_.]+)\|(\d+)\]$/;
 const HASHTAG_RE = /^#[a-zA-Z0-9_]+$/;
 
@@ -42,6 +42,13 @@ export function renderRichContent(content: string): ReactNode[] {
         >
           {token}
         </Link>
+      );
+    } else if (token.toLowerCase() === '@all') {
+      // "tag everyone" — blue tag, no profile link.
+      out.push(
+        <span key={key++} className="mention-link" style={{ color: 'var(--accent)' }}>
+          {token}
+        </span>
       );
     } else {
       out.push(<span key={key++}>{token}</span>);

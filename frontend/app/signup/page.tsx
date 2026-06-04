@@ -15,6 +15,7 @@ import { signupSchema, type SignupInput, type SignupStep } from '@/components/au
 import { ErrorAlert } from '@/components/ui/ErrorAlert';
 import { register as registerAccount, sendVerification, verifyVerification, checkUsernameAvailable } from '@/lib/services/auth';
 import { getFaculties, type Faculty } from '@/lib/services/faculties';
+import { useFacultyLocations } from '@/hooks/useFacultyLocations';
 import { loadDraft, saveDraft, clearDraft } from '@/hooks/useSignupDraft';
 
 export type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken';
@@ -30,6 +31,7 @@ function mapServerError(msg: string): { field?: keyof SignupInput; step?: Signup
   if (m.includes('password')) return { field: 'password', step: 1 };
   if (m.includes('gender')) return { field: 'gender', step: 2 };
   if (m.includes('birthday')) return { field: 'birthdayDate', step: 2 };
+  if (m.includes('faculty location') || m.includes('campus')) return { field: 'facultyLocationId', step: 2 };
   if (m.includes('faculty')) return { field: 'facultyId', step: 2 };
   if (m.includes('terms')) return { field: 'agreeToTerms', step: 1 };
   return {};
@@ -52,6 +54,7 @@ export default function SignupPage() {
   const [banner, setBanner] = useState<File | null>(null);
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [facultiesLoading, setFacultiesLoading] = useState(true);
+  const { data: facultyLocations = [], isLoading: facultyLocationsLoading } = useFacultyLocations(false);
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle');
 
   const { register, handleSubmit, watch, trigger, setError, getValues, reset, formState: { errors } } =
@@ -149,12 +152,20 @@ export default function SignupPage() {
     setStep(2);
   };
 
-  const onStep2 = handleSubmit(async (data) => {
+  const onStep2: React.FormEventHandler<HTMLFormElement> = async (e) => {
+    e.preventDefault();
+    const valid = await trigger(['gender', 'birthdayDate', 'facultyId', 'facultyLocationId']);
+    if (!valid) return;
+    setServerError('');
+    setStep(3);
+  };
+
+  const onStep3 = handleSubmit(async (data) => {
     setServerError('');
     setLoading(true);
     try {
       await sendVerification(data.email, 'REGISTER');
-      setStep(3);
+      setStep(4);
     } catch (err) {
       handleServerError(err, 'Failed to send code');
     } finally {
@@ -162,7 +173,7 @@ export default function SignupPage() {
     }
   });
 
-  const onStep3 = async () => {
+  const onStep4 = async () => {
     const data = getValues();
     const code = otp.join('');
     if (code.length < 6) return void setServerError('Enter the 6-digit code');
@@ -198,7 +209,8 @@ export default function SignupPage() {
   const stepTitles: Record<SignupStep, { heading: string; sub: string }> = {
     1: { heading: 'Create account', sub: 'Join the Binus campus community' },
     2: { heading: 'Your profile', sub: 'Tell us a bit about yourself' },
-    3: { heading: 'Check your email', sub: '' },
+    3: { heading: 'Your profile', sub: 'Add a bio and photos (optional)' },
+    4: { heading: 'Check your email', sub: '' },
   };
 
   return (
@@ -207,11 +219,11 @@ export default function SignupPage() {
         <Logo size={48} style={{ color: 'var(--text)' }} />
       </div>
 
-      <div style={{ textAlign: 'center', marginBottom: step < 3 ? 20 : 28 }}>
+      <div style={{ textAlign: 'center', marginBottom: step < 4 ? 20 : 28 }}>
         <h1 style={{ fontWeight: 600, fontSize: 28, color: 'var(--text)', letterSpacing: '-0.03em', marginBottom: 8 }}>
           {stepTitles[step].heading}
         </h1>
-        {step === 3 ? (
+        {step === 4 ? (
           <>
             <p style={{ fontSize: 14, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
               We sent a 6-digit code to <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{email}</span>
@@ -226,18 +238,18 @@ export default function SignupPage() {
       </div>
 
       {/* Step indicator — below the heading, only for the two data-entry steps */}
-      {step < 3 && (
+      {step < 4 && (
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', letterSpacing: '0.02em' }}>
-              STEP {step} OF 2
+              STEP {step} OF 3
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
               {step === 1 ? 'Account' : 'Profile'}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            {[1, 2].map((i) => (
+            {[1, 2, 3].map((i) => (
               <div
                 key={i}
                 style={{
@@ -254,7 +266,7 @@ export default function SignupPage() {
       )}
 
       <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px 24px' }}>
-        {(step === 1 || step === 2) && (
+        {(step === 1 || step === 2 || step === 3) && (
           <RegisterForm
             register={register}
             errors={errors}
@@ -264,10 +276,18 @@ export default function SignupPage() {
             showConfirm={showConfirm}
             faculties={faculties}
             facultiesLoading={facultiesLoading}
+            facultyLocations={facultyLocations}
+            facultyLocationsLoading={facultyLocationsLoading}
             usernameStatus={usernameStatus}
             currentStep={step}
-            onSubmit={step === 1 ? onStep1 : onStep2}
-            onBack={step === 2 ? () => { setStep(1); setServerError(''); } : undefined}
+            onSubmit={step === 1 ? onStep1 : step === 2 ? onStep2 : onStep3}
+            onBack={
+              step === 2
+                ? () => { setStep(1); setServerError(''); }
+                : step === 3
+                ? () => { setStep(2); setServerError(''); }
+                : undefined
+            }
             onTogglePass={() => setShowPass((v) => !v)}
             onToggleConfirm={() => setShowConfirm((v) => !v)}
             onAvatarChange={setAvatar}
@@ -276,14 +296,14 @@ export default function SignupPage() {
           />
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <>
             <ErrorAlert message={serverError} />
             <div style={{ marginBottom: 24 }}><OtpInput value={otp} onChange={setOtp} /></div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 type="button"
-                onClick={() => { setStep(2); setServerError(''); }}
+                onClick={() => { setStep(3); setServerError(''); }}
                 disabled={loading}
                 className="btn-ghost"
                 style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '11px 18px', border: '1px solid var(--border)', borderRadius: 10, background: 'transparent', color: 'var(--text)', fontWeight: 600, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
@@ -292,7 +312,7 @@ export default function SignupPage() {
               </button>
               <button
                 type="button"
-                onClick={onStep3}
+                onClick={onStep4}
                 disabled={loading}
                 className="btn-solid"
                 style={{ flex: 1, padding: '11px 0', background: loading ? 'var(--accent-soft)' : 'var(--accent)', border: 'none', borderRadius: 10, color: '#fff', fontWeight: 600, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '-0.01em', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}

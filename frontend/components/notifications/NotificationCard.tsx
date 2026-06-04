@@ -20,6 +20,11 @@ function resolveHref(notification: NotificationItem): string {
       return notification.reference_id
         ? `/messages?room=${notification.reference_id}`
         : '/messages';
+    case 'community_event_invite':
+    case 'community_event_mention':
+      return notification.reference_id
+        ? `/community-events/${notification.reference_id}`
+        : '#';
     default:
       return notification.reference_id
         ? `/thread/${notification.reference_id}`

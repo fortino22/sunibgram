@@ -10,6 +10,8 @@ import (
 	"gorm.io/gorm"
 
 	communitymodel "github.com/sunibgram/domain/model/community"
+	eventfacultylocationmodel "github.com/sunibgram/domain/model/event_faculty_location"
+	facultylocationmodel "github.com/sunibgram/domain/model/faculty_location"
 	threadmodel "github.com/sunibgram/domain/model/thread"
 	eventrepoiface "github.com/sunibgram/domain/repository/event"
 	"github.com/sunibgram/infrastructure/cache"
@@ -44,8 +46,37 @@ func eventListKey(limit int) string {
 	return fmt.Sprintf("event:list:limit:%d", limit)
 }
 
-func eventApprovedListKey(limit int) string {
-	return fmt.Sprintf("event:approved:list:limit:%d", limit)
+func eventApprovedListKey(limit int, locationID *uint, region string) string {
+	loc := "0"
+	if locationID != nil {
+		loc = fmt.Sprintf("%d", *locationID)
+	}
+	return fmt.Sprintf("event:approved:list:limit:%d:loc:%s:region:%s", limit, loc, region)
+}
+
+// audienceFilter builds the EXISTS predicate restricting events to those whose
+// region audience includes the given campus/region — "All Regions" events always
+// match. Returns ("", nil) when no filter is requested.
+func audienceFilter(locationID *uint, region string) (string, []any) {
+	if locationID == nil && strings.TrimSpace(region) == "" {
+		return "", nil
+	}
+	conds := []string{"fl.is_all_regions = TRUE"}
+	args := []any{}
+	if locationID != nil {
+		conds = append(conds, "fl.id = ?")
+		args = append(args, *locationID)
+	}
+	if r := strings.TrimSpace(region); r != "" {
+		conds = append(conds, "fl.region = ?")
+		args = append(args, r)
+	}
+	clause := fmt.Sprintf(`EXISTS (
+		SELECT 1 FROM event_faculty_locations efl
+		JOIN faculty_locations fl ON fl.id = efl.faculty_location_id
+		WHERE efl.event_id = events.id AND (%s)
+	)`, strings.Join(conds, " OR "))
+	return clause, args
 }
 
 func eventPendingListKey(limit int) string {
@@ -143,9 +174,9 @@ func (r *eventRepository) FindGrouped(limit int) ([]threadmodel.Event, []threadm
 	return result.Trending, result.Running, result.Future, nil
 }
 
-func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
+func (r *eventRepository) FindGroupedApproved(limit int, locationID *uint, region string) ([]threadmodel.Event, []threadmodel.Event, []threadmodel.Event, []threadmodel.Event, error) {
 	ctx := context.Background()
-	key := eventApprovedListKey(limit)
+	key := eventApprovedListKey(limit, locationID, region)
 	var result cachedEvents
 	if r.cache != nil {
 		if err := r.cache.Get(ctx, key, &result); err == nil {
@@ -153,9 +184,19 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 		}
 	}
 
+	audClause, audArgs := audienceFilter(locationID, region)
+	// base applies the approved filter plus the optional audience predicate to a
+	// fresh query, so each band shares the same scoping.
+	base := func() *gorm.DB {
+		q := r.readDB.Model(&threadmodel.Event{}).Where("status = ?", "approved")
+		if audClause != "" {
+			q = q.Where(audClause, audArgs...)
+		}
+		return q
+	}
+
 	var trending []threadmodel.Event
-	if err := r.readDB.
-		Where("status = ?", "approved").
+	if err := base().
 		Order("(week_thread_count * 3 + week_like_count + week_repost_count * 2 + week_share_count * 3) DESC, start_time ASC").
 		Limit(limit).
 		Find(&trending).Error; err != nil {
@@ -164,8 +205,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 
 	now := time.Now().UTC()
 	var running []threadmodel.Event
-	if err := r.readDB.
-		Where("status = ?", "approved").
+	if err := base().
 		Where("start_time <= ? AND end_time >= ?", now, now).
 		Order("start_time ASC").
 		Limit(limit).
@@ -174,8 +214,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 	}
 
 	var future []threadmodel.Event
-	if err := r.readDB.
-		Where("status = ?", "approved").
+	if err := base().
 		Where("start_time > ?", now).
 		Order("start_time ASC").
 		Limit(limit).
@@ -184,8 +223,7 @@ func (r *eventRepository) FindGroupedApproved(limit int) ([]threadmodel.Event, [
 	}
 
 	var past []threadmodel.Event
-	if err := r.readDB.
-		Where("status = ?", "approved").
+	if err := base().
 		Where("end_time < ?", now).
 		Order("end_time DESC").
 		Limit(limit).
@@ -361,6 +399,69 @@ func (r *eventRepository) Delete(id string) error {
 	}
 	r.invalidateEvent(id)
 	return nil
+}
+
+func (r *eventRepository) ReplaceAudience(eventID string, locationIDs []uint) error {
+	if err := r.writeDB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("event_id = ?", eventID).
+			Delete(&eventfacultylocationmodel.EventFacultyLocation{}).Error; err != nil {
+			return err
+		}
+		seen := map[uint]bool{}
+		rows := make([]eventfacultylocationmodel.EventFacultyLocation, 0, len(locationIDs))
+		for _, id := range locationIDs {
+			if id == 0 || seen[id] {
+				continue
+			}
+			seen[id] = true
+			rows = append(rows, eventfacultylocationmodel.EventFacultyLocation{EventID: eventID, FacultyLocationID: id})
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		return tx.Create(&rows).Error
+	}); err != nil {
+		return err
+	}
+	r.invalidateEvent(eventID)
+	return nil
+}
+
+func (r *eventRepository) FindAudienceByEventIDs(eventIDs []string) (map[string][]facultylocationmodel.FacultyLocation, error) {
+	out := map[string][]facultylocationmodel.FacultyLocation{}
+	if len(eventIDs) == 0 {
+		return out, nil
+	}
+	type audienceRow struct {
+		EventID      string
+		ID           uint
+		Name         string
+		Address      string
+		Region       string
+		IsAllRegions bool
+		SortOrder    int
+	}
+	var rows []audienceRow
+	if err := r.readDB.
+		Table("event_faculty_locations efl").
+		Select("efl.event_id, fl.id, fl.name, fl.address, fl.region, fl.is_all_regions, fl.sort_order").
+		Joins("JOIN faculty_locations fl ON fl.id = efl.faculty_location_id").
+		Where("efl.event_id IN ?", eventIDs).
+		Order("fl.sort_order ASC, fl.region ASC, fl.name ASC").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, rw := range rows {
+		out[rw.EventID] = append(out[rw.EventID], facultylocationmodel.FacultyLocation{
+			ID:           rw.ID,
+			Name:         rw.Name,
+			Address:      rw.Address,
+			Region:       rw.Region,
+			IsAllRegions: rw.IsAllRegions,
+			SortOrder:    rw.SortOrder,
+		})
+	}
+	return out, nil
 }
 
 func (r *eventRepository) FindThreads(eventID string, ownerUserID uint, requesterID *uint, filter, sort string, page, limit int) ([]threadmodel.Thread, int64, error) {

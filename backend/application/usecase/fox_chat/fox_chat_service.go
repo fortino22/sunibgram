@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	foxhistoryrepoiface "github.com/sunibgram/domain/repository/fox_history"
+	foxsessionrepoiface "github.com/sunibgram/domain/repository/fox_session"
 	foxchatsvciface "github.com/sunibgram/domain/service/fox_chat"
 	"github.com/sunibgram/infrastructure/deepseek"
 )
@@ -48,21 +48,41 @@ Answering rules:
 === END WIKI ===`
 
 type FoxChatService struct {
-	foxHistoryRepo foxhistoryrepoiface.IFoxHistoryRepository
+	foxSessionRepo foxsessionrepoiface.IFoxSessionRepository
 	deepseekClient *deepseek.Client
 	systemPrompt   string
 }
 
 func NewFoxChatService(
-	foxHistoryRepo foxhistoryrepoiface.IFoxHistoryRepository,
+	foxSessionRepo foxsessionrepoiface.IFoxSessionRepository,
 	deepseekClient *deepseek.Client,
 ) foxchatsvciface.IFoxChatService {
 	wiki := loadWiki(wikiDir())
 	return &FoxChatService{
-		foxHistoryRepo: foxHistoryRepo,
+		foxSessionRepo: foxSessionRepo,
 		deepseekClient: deepseekClient,
 		systemPrompt:   fmt.Sprintf(systemPreamble, wiki),
 	}
+}
+
+// ResolveChatSession returns the chat session to append this ask to. A 0
+// sessionID (or one the user does not own) starts a fresh session titled from
+// the first question.
+func (s *FoxChatService) ResolveChatSession(ctx context.Context, userID, sessionID uint, firstQuestion string) (uint, error) {
+	if s.foxSessionRepo == nil {
+		return 0, nil
+	}
+	if sessionID != 0 {
+		owns, err := s.foxSessionRepo.OwnsSession(userID, sessionID)
+		if err != nil {
+			return 0, err
+		}
+		if owns {
+			return sessionID, nil
+		}
+	}
+	title := strings.TrimSpace(firstQuestion)
+	return s.foxSessionRepo.CreateChatSession(userID, title)
 }
 
 func wikiDir() string {
@@ -121,7 +141,7 @@ func (a *accumWriter) Flush() {
 	}
 }
 
-func (s *FoxChatService) StreamAsk(ctx context.Context, userID uint, question string, history []foxchatsvciface.QAPair, w io.Writer) error {
+func (s *FoxChatService) StreamAsk(ctx context.Context, userID, sessionID uint, question string, history []foxchatsvciface.QAPair, w io.Writer) error {
 	question = strings.TrimSpace(question)
 	if question == "" {
 		_, err := io.WriteString(w, "Ask me anything about how to use Sunibgram.")
@@ -140,9 +160,9 @@ func (s *FoxChatService) StreamAsk(ctx context.Context, userID uint, question st
 	}
 
 	answer := strings.TrimSpace(tee.buf.String())
-	if answer != "" && s.foxHistoryRepo != nil {
-		if err := s.foxHistoryRepo.RecordChat(userID, question, answer); err != nil {
-			log.Printf("fox chat history record failed for user %d: %v", userID, err)
+	if answer != "" && sessionID != 0 && s.foxSessionRepo != nil {
+		if err := s.foxSessionRepo.AppendChatTurn(sessionID, question, answer); err != nil {
+			log.Printf("fox chat turn append failed for user %d session %d: %v", userID, sessionID, err)
 		}
 	}
 	return nil

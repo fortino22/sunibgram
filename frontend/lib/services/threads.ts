@@ -401,39 +401,6 @@ export async function streamThreadSummary(
   }
 }
 
-export interface SummaryHistoryItem {
-  /** Unique history row id — list key (chat rows have no thread_id). */
-  id: number;
-  /** "summary" = a summarized thread; "chat" = a Fox guide Q&A. */
-  type: 'summary' | 'chat';
-  /** Summary rows: the summarized thread (0 for chat rows). */
-  thread_id: number;
-  /** Summary rows: root post content captured when summarized. */
-  content: string;
-  /** Chat rows: the user's question. */
-  question?: string;
-  /** Summary rows: generated summary text. Chat rows: the Fox answer. */
-  summary: string;
-  /** True when the thread changed after summarizing — summary may be outdated. */
-  is_stale: boolean;
-  /** "YYYY-MM-DD HH:mm" (WIB). */
-  summarized_at: string;
-  /** Current thread images (empty if none / thread deleted / chat row). */
-  media: ThreadMediaResponse[];
-}
-
-export interface SummaryHistoryResponse {
-  data: SummaryHistoryItem[];
-  meta: FeedMeta;
-}
-
-export function getSummaryHistory(
-  params: PaginationParams = {},
-  token: string,
-): Promise<SummaryHistoryResponse> {
-  return api.get<SummaryHistoryResponse>(`/api/summaries/history${query(params)}`, token);
-}
-
 export function getThreadFeed(id: number | string, token: string): Promise<FeedItemResponse> {
   return api.get<FeedItemResponse>(`/api/threads/${id}`, token);
 }

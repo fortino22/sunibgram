@@ -1218,6 +1218,27 @@ body {
   filter: brightness(0.85);
 }
 
+/* Tab overflow ("More") dropdown menu + items */
+.tab-overflow-menu {
+  animation: tab-overflow-in 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+@keyframes tab-overflow-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tab-overflow-item {
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.tab-overflow-item:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.tab-overflow-item[data-active="true"] {
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
 /* Icon/overlay buttons on dark backgrounds — brighten on hover.
    Uses filter so it works even when the element sets `background` inline. */
 .hover-brighten {
@@ -1261,17 +1282,100 @@ body {
   text-decoration: underline;
 }
 
-/* Mention / hashtag rich tag — accent bg tint + underline on hover */
+/* Mention / hashtag rich tag — blue pill: accent text + tinted bg */
 .mention-link {
-  border-radius: 4px;
-  padding: 0 2px;
-  margin: 0 -2px;
+  font-weight: 600;
+  color: var(--accent);
+  background-color: color-mix(in oklab, var(--accent) 12%, transparent);
+  border-radius: 6px;
+  padding: 0 5px;
+  margin: 0 -1px;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 .mention-link:hover {
-  background-color: color-mix(in oklab, var(--accent) 14%, transparent);
+  background-color: color-mix(in oklab, var(--accent) 22%, transparent);
   color: var(--accent-hover);
-  text-decoration: underline;
+}
+
+/* Collapsible comment list — grid 0fr→1fr animates any content height
+   smoothly without max-height clipping. Inner child needs overflow:hidden. */
+.ce-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+.ce-collapse-open {
+  grid-template-rows: 1fr;
+}
+.ce-collapse > div {
+  overflow: hidden;
+}
+
+/* Community-event interactivity — hover via transform/box-shadow/opacity so
+   inline border/background on the elements don't override it. */
+.ce-card {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.ce-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-dropdown);
+  border-color: var(--text-tertiary);
+}
+.ce-card-banner img {
+  transition: transform 0.25s ease;
+}
+.ce-card:hover .ce-card-banner img {
+  transform: scale(1.05);
+}
+
+/* Reaction chips set border/background inline (inline wins over class), so a
+   visible hover must use properties NOT set inline: transform + box-shadow. */
+.ce-chip {
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.ce-chip:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
+}
+.ce-chip:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.ce-comment {
+  transition: background 0.12s ease;
+}
+.ce-comment:hover {
+  background: var(--bg-subtle);
+}
+.ce-actions {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.ce-comment:hover .ce-actions,
+.ce-actions:focus-within {
+  opacity: 1;
+}
+.ce-icon-btn {
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.ce-icon-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.ce-icon-btn.danger:hover {
+  color: var(--coral, #e53e3e);
+}
+.ce-composer {
+  transition: border-color 0.12s ease;
+}
+.ce-composer:focus-within {
+  border-color: var(--text-tertiary);
+}
+.ce-everyone-row {
+  transition: background 0.12s ease;
+}
+.ce-everyone-row:hover {
+  background: var(--bg-hover);
 }
 
 .poll-select {
@@ -1825,6 +1929,174 @@ body {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* === Loading skeleton shimmer === */
+
+@keyframes admin-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.admin-skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--bg-subtle) 25%,
+    var(--bg-hover) 37%,
+    var(--bg-subtle) 63%
+  );
+  background-size: 200% 100%;
+  animation: admin-shimmer 1.4s ease-in-out infinite;
+}
+
+/* === Sortable table headers === */
+
+.admin-th-sortable {
+  transition: color 0.12s ease, background-color 0.12s ease;
+}
+.admin-th-sortable:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+/* === Inline chips (role, region, faculty, gender …) === */
+
+.admin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.admin-chip-accent {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+.admin-chip-green {
+  background: var(--green-soft);
+  border-color: transparent;
+  color: var(--green);
+}
+
+/* === Clickable stat card (overview) === */
+
+.admin-stat-card-link {
+  cursor: pointer;
+  text-decoration: none;
+  outline: none;
+}
+.admin-stat-card-link:focus-visible {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.admin-stat-card-link .admin-stat-arrow {
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+.admin-stat-card-link:hover .admin-stat-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* === Back link (detail pages) === */
+
+.admin-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  transition: color 0.12s ease, gap 0.12s ease;
+}
+.admin-back-link:hover {
+  color: var(--text);
+  gap: 9px;
+}
+
+/* === Filter toolbar === */
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.admin-search {
+  position: relative;
+  flex: 0 1 340px;
+  min-width: 200px;
+  max-width: 380px;
+  display: flex;
+  align-items: center;
+}
+.admin-search > svg {
+  position: absolute;
+  left: 14px;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+.admin-search > input {
+  padding-left: 38px;
+}
+
+/* === Segmented control (status filter) === */
+
+.admin-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  flex-wrap: wrap;
+}
+.admin-segmented-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: capitalize;
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+.admin-segmented-btn:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+.admin-segmented-btn:active {
+  transform: scale(0.96);
+}
+.admin-segmented-btn[data-active="true"] {
+  background: var(--text);
+  color: var(--bg);
+}
+.admin-segmented-btn[data-active="true"]:hover {
+  background: var(--text);
+  color: var(--bg);
 }
 
 /* ============================================================
@@ -4148,6 +4420,28 @@ body {
 [data-theme="white"] .fox-send:disabled {
   color: var(--text-tertiary);
   background: var(--bg-hover);
+}
+
+/* Compact accent-outline pill (History → "Continue in Ask Fox"). Fills with the
+   accent on hover. No inline `background` at the call site or it beats this rule. */
+.fox-continue {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 9999px;
+  padding: 5px 11px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.fox-continue:hover {
+  background-color: var(--accent);
+  color: #fff;
 }
 
 

@@ -1,15 +1,15 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import type { SummaryHistoryItem } from '@/lib/services/threads';
+import type { FoxSessionItem } from '@/lib/services/fox';
 
 interface SummaryHistoryListProps {
-  items: SummaryHistoryItem[];
+  items: FoxSessionItem[];
   selectedId: number | null;
   onSelect: (id: number) => void;
 }
 
-/** Compact, clickable history sidebar — one row per summary or chat ask. */
+/** Compact, clickable history sidebar — one row per session (chat ask or summary). */
 export function SummaryHistoryList({ items, selectedId, onSelect }: SummaryHistoryListProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -17,13 +17,14 @@ export function SummaryHistoryList({ items, selectedId, onSelect }: SummaryHisto
         const selected = item.id === selectedId;
         const isChat = item.type === 'chat';
         const title = isChat
-          ? (item.question?.trim() || 'Ask')
+          ? (item.title.trim() || 'Ask Fox')
           : item.content.trim().length > 0
             ? item.content
             : 'Post no longer available';
+        const turnLabel = item.message_count === 1 ? '1 message' : `${item.message_count} messages`;
         return (
           <button
-            key={`${item.type}-${item.id}`}
+            key={`session-${item.id}`}
             type="button"
             onClick={() => onSelect(item.id)}
             className="summary-block"
@@ -48,9 +49,12 @@ export function SummaryHistoryList({ items, selectedId, onSelect }: SummaryHisto
             >
               {title}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={isChat ? askTagStyle : sumTagStyle}>{isChat ? 'Ask' : 'Summary'}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.summarized_at}</span>
+              {isChat && item.message_count > 0 && (
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{turnLabel}</span>
+              )}
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{item.updated_at}</span>
               {item.is_stale && <span style={staleDotStyle} title="Outdated" aria-label="Outdated" />}
             </span>
           </button>

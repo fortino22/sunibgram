@@ -5,16 +5,17 @@ interface StatusBadgeProps {
 }
 
 const COLORS: Record<string, { bg: string; fg: string }> = {
-  approved:  { bg: 'var(--green-soft)',  fg: 'var(--green)' },
-  pending:   { bg: 'var(--amber-soft)',  fg: 'var(--amber)' },
-  declined:  { bg: 'var(--coral-soft)',  fg: 'var(--coral)' },
-  revision:  { bg: 'var(--accent-soft)', fg: 'var(--accent)' },
-  resolved:  { bg: 'var(--green-soft)',  fg: 'var(--green)' },
-  dismissed: { bg: 'var(--bg-subtle)',   fg: 'var(--text-secondary)' },
-  open:      { bg: 'var(--coral-soft)',  fg: 'var(--coral)' },
-  paid:      { bg: 'var(--green-soft)',  fg: 'var(--green)' },
-  cancelled: { bg: 'var(--bg-subtle)',   fg: 'var(--text-secondary)' },
-  expired:   { bg: 'var(--bg-subtle)',   fg: 'var(--text-tertiary)' },
+  approved:    { bg: 'var(--green-soft)',  fg: 'var(--green)' },
+  pending:     { bg: 'var(--amber-soft)',  fg: 'var(--amber)' },
+  declined:    { bg: 'var(--coral-soft)',  fg: 'var(--coral)' },
+  revision:    { bg: 'var(--accent-soft)', fg: 'var(--accent)' },
+  resolved:    { bg: 'var(--green-soft)',  fg: 'var(--green)' },
+  in_progress: { bg: 'var(--accent-soft)', fg: 'var(--accent)' },
+  dismissed:   { bg: 'var(--bg-subtle)',   fg: 'var(--text-secondary)' },
+  open:        { bg: 'var(--coral-soft)',  fg: 'var(--coral)' },
+  paid:        { bg: 'var(--green-soft)',  fg: 'var(--green)' },
+  cancelled:   { bg: 'var(--bg-subtle)',   fg: 'var(--text-secondary)' },
+  expired:     { bg: 'var(--bg-subtle)',   fg: 'var(--text-tertiary)' },
 };
 
 const ACTIONABLE = new Set(['pending', 'open', 'revision']);
@@ -38,7 +39,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
         letterSpacing: '0.02em',
       }}
     >
-      {status}
+      {status.replace(/_/g, ' ')}
     </span>
   );
 }

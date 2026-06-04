@@ -1,19 +1,28 @@
 'use client';
 
 import { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, type LucideIcon } from 'lucide-react';
 
 interface AdminPageProps {
   title: string;
   description?: string;
   icon?: LucideIcon;
   actions?: ReactNode;
+  backHref?: string;
+  backLabel?: string;
   children: ReactNode;
 }
 
-export function AdminPage({ title, description, icon: Icon, actions, children }: AdminPageProps) {
+export function AdminPage({ title, description, icon: Icon, actions, backHref, backLabel = 'Back', children }: AdminPageProps) {
   return (
     <div style={{ padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {backHref && (
+        <Link href={backHref} className="admin-back-link">
+          <ArrowLeft size={15} strokeWidth={2.2} />
+          {backLabel}
+        </Link>
+      )}
       <header
         className="admin-page-header"
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}

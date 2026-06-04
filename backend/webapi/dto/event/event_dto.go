@@ -64,35 +64,45 @@ type UpdateEventRequest struct {
 	EndTime     EventTime `json:"end_time"`
 }
 
+// FacultyLocationMini is a campus summary in an event's region audience.
+type FacultyLocationMini struct {
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	Region       string `json:"region"`
+	IsAllRegions bool   `json:"is_all_regions"`
+}
+
 type EventResponse struct {
-	ID            string              `json:"id"`
-	UserID        uint                `json:"user_id"`
-	Title         string              `json:"title"`
-	Description   string              `json:"description"`
-	Location      string              `json:"location"`
-	Type          string              `json:"type"`
-	Status        string              `json:"status"`
-	StartTime     EventTime           `json:"start_time"`
-	EndTime       EventTime           `json:"end_time"`
-	BannerURL     string              `json:"banner_url,omitempty"`
-	AttachmentURL string              `json:"attachment_url,omitempty"`
-	DocURLs       []string            `json:"doc_urls,omitempty"`
-	CreatedAt     utils.FormattedTime `json:"created_at"`
-	UpdatedAt     utils.FormattedTime `json:"updated_at"`
+	ID            string                `json:"id"`
+	UserID        uint                  `json:"user_id"`
+	Title         string                `json:"title"`
+	Description   string                `json:"description"`
+	Location      string                `json:"location"`
+	Type          string                `json:"type"`
+	Status        string                `json:"status"`
+	StartTime     EventTime             `json:"start_time"`
+	EndTime       EventTime             `json:"end_time"`
+	BannerURL     string                `json:"banner_url,omitempty"`
+	AttachmentURL string                `json:"attachment_url,omitempty"`
+	DocURLs       []string              `json:"doc_urls,omitempty"`
+	Audience      []FacultyLocationMini `json:"audience"`
+	CreatedAt     utils.FormattedTime   `json:"created_at"`
+	UpdatedAt     utils.FormattedTime   `json:"updated_at"`
 }
 
 type EventListResponse struct {
-	ID          string              `json:"id"`
-	UserID      uint                `json:"user_id"`
-	Title       string              `json:"title"`
-	Description string              `json:"description"`
-	Location    string              `json:"location"`
-	Type        string              `json:"type"`
-	StartTime   EventTime           `json:"start_time"`
-	EndTime     EventTime           `json:"end_time"`
-	BannerURL   string              `json:"banner_url,omitempty"`
-	CreatedAt   utils.FormattedTime `json:"created_at"`
-	UpdatedAt   utils.FormattedTime `json:"updated_at"`
+	ID          string                `json:"id"`
+	UserID      uint                  `json:"user_id"`
+	Title       string                `json:"title"`
+	Description string                `json:"description"`
+	Location    string                `json:"location"`
+	Type        string                `json:"type"`
+	StartTime   EventTime             `json:"start_time"`
+	EndTime     EventTime             `json:"end_time"`
+	BannerURL   string                `json:"banner_url,omitempty"`
+	Audience    []FacultyLocationMini `json:"audience"`
+	CreatedAt   utils.FormattedTime   `json:"created_at"`
+	UpdatedAt   utils.FormattedTime   `json:"updated_at"`
 }
 
 type EventWithReviewHistoryResponse struct {

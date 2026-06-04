@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	facultylocationmodel "github.com/sunibgram/domain/model/faculty_location"
 	usermodel "github.com/sunibgram/domain/model/user"
 )
 
@@ -26,8 +27,12 @@ type UserProfile struct {
 	AvatarObjectName string         `gorm:"default:''"`
 	BannerObjectName string         `gorm:"default:''"`
 	Bio              string         `gorm:"type:text;default:''"`
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	// FacultyLocationID is the user's home campus. Set at registration, changeable
+	// once per 6 months (cooldown enforced via the profile_field_changes log).
+	FacultyLocationID *uint                                 `gorm:"index"`
+	FacultyLocation   *facultylocationmodel.FacultyLocation `gorm:"foreignKey:FacultyLocationID;references:ID"`
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 func ParseGender(raw string) Gender {
