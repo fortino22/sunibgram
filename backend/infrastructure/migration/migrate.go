@@ -158,6 +158,7 @@ func AutoMigrate(db *gorm.DB) {
 	seeder.SeedFacultyLocation(db)
 	seeder.SeedAdmin(db)
 	seeder.SeedAgent(db)
+	seeder.SeedDev(db) // dev-only demo data, gated on SEED_DEV=true env
 	// seeder.SeedDummy(db)
 	// seeder.SeedThreadWithReplies(db)
 	// seeder.SeedTrendingUserSnapshot(db)
