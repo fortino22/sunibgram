@@ -58,7 +58,13 @@ func Auth() fiber.Handler {
 		if sid != "" && sessionCache != nil {
 			var uid uint
 			if err := sessionCache.Get(context.Background(), fmt.Sprintf("session:%s", sid), &uid); err != nil {
-				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "session expired or revoked"})
+				// Only a true cache miss means the session was revoked/expired. Any
+				// other error (Redis timeout, failover) is transient — return 503 so
+				// the client retries instead of logging the user out on a blip.
+				if sessionCache.Miss(err) {
+					return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "session expired or revoked"})
+				}
+				return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"message": "session store unavailable"})
 			}
 		}
 
