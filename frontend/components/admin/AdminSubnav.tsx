@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Database,
   Flag,
   GraduationCap,
   LayoutDashboard,
@@ -44,6 +45,7 @@ const GROUPS: NavLink[][] = [
     { href: '/admin/violations', label: 'Report Types', icon: ShieldAlert },
   ],
   [{ href: '/admin/orders', label: 'Orders', icon: Receipt }],
+  [{ href: '/admin/database', label: 'Database', icon: Database }],
 ];
 
 const ALL_LINKS: NavLink[] = GROUPS.flat();
