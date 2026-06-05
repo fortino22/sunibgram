@@ -27,12 +27,32 @@ import {
 import type { MentionUser } from '@/lib/services/threads';
 import { encodeMentions, decodeMentionsForEditing } from '@/lib/mentions';
 import { useAuthStore } from '@/stores/authStore';
+import { useMyProfile } from '@/hooks/useMyProfile';
 import type {
   CommunityEventCommentData,
   CommunityEventDetail as CommunityEventDetailData,
 } from '@/lib/services/communityEvents';
 
 const REACTIONS = ['👍', '❤️', '🎉', '😂', '😮', '😢'];
+
+// Backend stores UTC as "YYYY-MM-DD HH:mm:ss" with no zone — append "Z" so it's
+// parsed as UTC, then render a short X-style relative label ("5m", "2h", "3d").
+function commentTimeAgo(value: string): string {
+  if (!value) return '';
+  const d = new Date(value.replace(' ', 'T') + 'Z');
+  if (Number.isNaN(d.getTime())) return '';
+  const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (sec < 60) return 'now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d`;
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return `${wk}w`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
 
 function formatRange(start: string, end: string): string {
   const s = new Date(start.replace(' ', 'T') + 'Z');
@@ -231,9 +251,20 @@ function CommentRow({
     >
       <Avatar username={comment.author.username} avatarUrl={comment.author.avatar_url || null} size="sm" />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{comment.author.name}</span>
           <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>@{comment.author.username}</span>
+          {comment.created_at && (
+            <>
+              <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>·</span>
+              <span
+                style={{ fontSize: 13, color: 'var(--text-tertiary)' }}
+                title={new Date(comment.created_at.replace(' ', 'T') + 'Z').toLocaleString()}
+              >
+                {commentTimeAgo(comment.created_at)}
+              </span>
+            </>
+          )}
           {comment.is_pinned && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
               <Pin size={11} /> Pinned
@@ -372,16 +403,20 @@ function CommentField({
     el.setSelectionRange(el.value.length, el.value.length);
   }, [autoFocus]);
 
-  // Caret-based @mention detection — same rule as the thread composer.
+  // Caret-based @mention detection. Walk back to a whitespace boundary, then the
+  // first char of that run must be the trigger "@". The query (everything after
+  // it) may itself contain email chars and a single inner "@", so a pasted email
+  // like "john@binus.ac.id" is captured whole — the backend exact-matches it by
+  // email and we insert the resolved @username, never a username collision.
   function detectMentionAt(value: string, caret: number) {
-    let i = caret - 1;
-    while (i >= 0 && /[a-zA-Z0-9_.]/.test(value[i])) i--;
-    if (i < 0 || value[i] !== '@') return null;
-    const before = i === 0 ? '' : value[i - 1];
-    if (before && !/\s/.test(before)) return null;
-    const query = value.slice(i + 1, caret);
-    if (query.length > 30) return null;
-    return { query, start: i, end: caret };
+    let start = caret;
+    while (start > 0 && !/\s/.test(value[start - 1])) start--;
+    if (value[start] !== '@') return null;
+    const query = value.slice(start + 1, caret);
+    // Query is plain text (username-in-progress) or exactly one email "@".
+    if ((query.match(/@/g)?.length ?? 0) > 1) return null;
+    if (query.length > 60) return null;
+    return { query, start, end: caret };
   }
 
   function syncMention(value: string, caret: number) {
@@ -551,14 +586,22 @@ function CommentField({
 
 function Composer({ eventId }: { eventId: number }) {
   const addComment = useAddCommunityEventComment(eventId);
+  const { data: profile } = useMyProfile();
   return (
-    <CommentField
-      pending={addComment.isPending}
-      resetAfterSubmit
-      onSubmit={async (content) => {
-        await addComment.mutateAsync(content);
-      }}
-    />
+    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <div style={{ paddingTop: 2, flexShrink: 0 }}>
+        <Avatar username={profile?.username ?? ''} avatarUrl={profile?.avatar ?? null} size="sm" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <CommentField
+          pending={addComment.isPending}
+          resetAfterSubmit
+          onSubmit={async (content) => {
+            await addComment.mutateAsync(content);
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -747,7 +790,18 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
         </h2>
 
         {event.can_comment ? (
-          <div style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              position: 'sticky',
+              top: 56,
+              zIndex: 10,
+              marginBottom: 16,
+              paddingBottom: 12,
+              background: 'color-mix(in oklab, var(--bg) 90%, transparent)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+            }}
+          >
             <Composer eventId={eventId} />
           </div>
         ) : (
@@ -790,7 +844,7 @@ export function CommunityEventDetail({ eventId }: { eventId: number }) {
         ) : (
           <div className={`ce-collapse${commentsOpen ? ' ce-collapse-open' : ''}`}>
             <div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 4, paddingBottom: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingTop: 4, paddingBottom: 8 }}>
                 {orderedComments.map((comment) => (
                   <CommentRow
                     key={comment.id}

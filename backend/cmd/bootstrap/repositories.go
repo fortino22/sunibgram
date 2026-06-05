@@ -40,6 +40,7 @@ import (
 	profilefieldchangerepoiface "github.com/sunibgram/domain/repository/profile_field_change"
 	reportrepoiface "github.com/sunibgram/domain/repository/report"
 	rolerepoiface "github.com/sunibgram/domain/repository/role"
+	schemarepoiface "github.com/sunibgram/domain/repository/schema"
 	threadrepoiface "github.com/sunibgram/domain/repository/thread"
 	threadmediarepoiface "github.com/sunibgram/domain/repository/thread_media"
 	threadpinrepoiface "github.com/sunibgram/domain/repository/thread_pin"
@@ -96,6 +97,7 @@ import (
 	profilefieldchangerepo "github.com/sunibgram/infrastructure/repository/profile_field_change"
 	reportrepo "github.com/sunibgram/infrastructure/repository/report"
 	rolerepo "github.com/sunibgram/infrastructure/repository/role"
+	schemarepo "github.com/sunibgram/infrastructure/repository/schema"
 	threadrepo "github.com/sunibgram/infrastructure/repository/thread"
 	threadmediarepo "github.com/sunibgram/infrastructure/repository/thread_media"
 	threadpinrepo "github.com/sunibgram/infrastructure/repository/thread_pin"
@@ -117,6 +119,7 @@ import (
 type Repositories struct {
 	Cache                       cacherepoiface.ICacheRepository
 	Role                        rolerepoiface.IRoleRepository
+	Schema                      schemarepoiface.ISchemaRepository
 	User                        userrepoiface.IUserRepository
 	UserSettings                usersettingsrepoiface.IUserSettingsRepository
 	UserProfile                 userprofilerepoiface.IUserProfileRepository
@@ -179,6 +182,7 @@ func NewRepositories(db *Database, c *cache.Cache) *Repositories {
 	return &Repositories{
 		Cache:                       cacherepo.NewCacheRepository(c),
 		Role:                        rolerepo.NewRoleRepository(w, r),
+		Schema:                      schemarepo.NewSchemaRepository(w, r),
 		User:                        userrepo.NewUserRepository(w, r, c),
 		UserSettings:                usersettingsrepo.NewUserSettingsRepository(w, r, c),
 		UserProfile:                 userprofilerepo.NewUserProfileRepository(w, r, c),

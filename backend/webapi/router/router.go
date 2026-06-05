@@ -38,6 +38,7 @@ import (
 	reportctrl "github.com/sunibgram/webapi/controller/report"
 	repostctrl "github.com/sunibgram/webapi/controller/repost"
 	rolectrl "github.com/sunibgram/webapi/controller/role"
+	schemactrl "github.com/sunibgram/webapi/controller/schema"
 	sharectrl "github.com/sunibgram/webapi/controller/share"
 	threadctrl "github.com/sunibgram/webapi/controller/thread"
 	threadpinctrl "github.com/sunibgram/webapi/controller/thread_pin"
@@ -140,6 +141,7 @@ func Register(
 	trendingUserCtrl *trendinguserctrl.TrendingUserController,
 	trendingThreadCtrl *trendingthreadctrl.TrendingThreadController,
 	trendReportCtrl *trendreportctrl.TrendReportController,
+	schemaCtrl *schemactrl.SchemaController,
 	c *cache.Cache,
 ) {
 	api := app.Group("/api")
@@ -158,7 +160,7 @@ func Register(
 	eventroute.RegisterEventRoutes(api, eventCtrl, eventPinCtrl, eventParticipantCtrl, eventThreadPinCtrl, auth)
 	emailroute.RegisterEmailRoutes(api, emailCtrl, auth)
 	userroute.RegisterUserRoutes(api, followCtrl, exploreCtrl, userBlockCtrl, muteCtrl, userCtrl, auth)
-	adminroute.RegisterAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl)
+	adminroute.RegisterAdminRoutes(api, roleCtrl, userCtrl, cacheCtrl, schemaCtrl)
 	communityroute.RegisterCommunityRoutes(api, communityCtrl, communityMemberCtrl, communityRequestCtrl, communityThreadCtrl, communityRuleCtrl, communityThreadPinCtrl, communityPinCtrl, auth)
 	communityeventroute.RegisterCommunityEventRoutes(api, communityEventCtrl, auth)
 	categoryroute.RegisterCategoryRoutes(api, categoryCtrl)

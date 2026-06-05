@@ -1,17 +1,20 @@
 'use client';
 
+import { Suspense } from 'react';
 import { Database } from 'lucide-react';
 import { AdminPage } from '@/components/admin/AdminPage';
-import { ErdViewer } from '@/components/admin/ErdViewer';
+import { SchemaBrowser } from '@/components/admin/SchemaBrowser';
 
 export default function AdminDatabasePage() {
   return (
     <AdminPage
       icon={Database}
       title="Database"
-      description="Interactive ERD of the current schema."
+      description="Live database schema — tables, columns, and relationships."
     >
-      <ErdViewer />
+      <Suspense fallback={null}>
+        <SchemaBrowser />
+      </Suspense>
     </AdminPage>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LoaderCircle, X, MapPin, CalendarDays, Clock, Users } from 'lucide-react';
+import { LoaderCircle, X, MapPin, CalendarDays, Clock, Users, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { IMAGE_MAX_BYTES } from '@/lib/compressImage';
 import { ImageCropModal } from '@/components/profile/ImageCropModal';
@@ -126,7 +126,7 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '10px 12px',
+    padding: '9px 11px',
     borderRadius: 8,
     border: '1px solid var(--border)',
     background: 'var(--bg-subtle)',
@@ -138,18 +138,19 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: 600,
     color: 'var(--text-secondary)',
     display: 'flex',
     alignItems: 'center',
     gap: 5,
-    marginBottom: 6,
+    marginBottom: 5,
   };
 
   return (
     <>
       <div
+        className="ce-dialog-backdrop"
         style={{
           position: 'fixed',
           inset: 0,
@@ -163,11 +164,12 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
         onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       >
         <div
+          className="ce-dialog-card"
           style={{
             background: 'var(--bg-card)',
             borderRadius: 16,
             width: '100%',
-            maxWidth: 480,
+            maxWidth: 440,
             maxHeight: '90vh',
             overflowY: 'auto',
             border: '1px solid var(--border)',
@@ -179,7 +181,7 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '16px 20px',
+              padding: '13px 16px',
               borderBottom: '1px solid var(--border)',
               position: 'sticky',
               top: 0,
@@ -187,20 +189,36 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
               zIndex: 1,
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <span style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
                 {isEdit ? 'Edit event' : 'Create community event'}
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-                STEP {step} OF 2 · {step === 1 ? 'Details' : 'People'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                {[1, 2].map((s) => (
+                  <span
+                    key={s}
+                    style={{
+                      height: 3,
+                      width: s === step ? 20 : 12,
+                      borderRadius: 999,
+                      background: s <= step ? 'var(--accent)' : 'var(--border)',
+                      transition: 'width 0.2s ease, background 0.2s ease',
+                    }}
+                  />
+                ))}
+                <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 2 }}>
+                  {step === 1 ? 'Details' : 'People'}
+                </span>
+              </div>
             </div>
             <button
               type="button"
               onClick={handleClose}
-              style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}
+              aria-label="Close"
+              className="ce-close-btn"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: 8, background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', flexShrink: 0 }}
             >
-              ✕
+              <X size={18} />
             </button>
           </div>
 
@@ -208,8 +226,9 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
           {step === 1 && (
             <div
               onClick={() => bannerInputRef.current?.click()}
+              className="ce-banner"
               style={{
-                aspectRatio: '16 / 9',
+                aspectRatio: '20 / 9',
                 width: '100%',
                 background: bannerPreview ? `url(${bannerPreview}) center/cover no-repeat` : 'var(--bg-subtle)',
                 cursor: 'pointer',
@@ -220,7 +239,9 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
               }}
             >
               {!bannerPreview && (
-                <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>Click to add a banner</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-tertiary)' }}>
+                  <ImagePlus size={15} /> Click to add a banner
+                </span>
               )}
               {bannerPreview && (
                 <button
@@ -255,18 +276,19 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
             </div>
           )}
 
-          <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {step === 1 && (
               <>
                 <div>
                   <label style={labelStyle}>Title *</label>
-                  <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Event title" maxLength={255} />
+                  <input className="ce-input" style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Event title" maxLength={255} />
                 </div>
                 <div>
                   <label style={labelStyle}>Description</label>
                   <textarea
                     rows={3}
-                    style={{ ...inputStyle, resize: 'vertical', minHeight: 72 }}
+                    className="ce-input"
+                    style={{ ...inputStyle, resize: 'vertical', minHeight: 68 }}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What's this event about?"
@@ -280,17 +302,17 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
               <>
                 <div>
                   <label style={labelStyle}><MapPin size={12} /> Location</label>
-                  <input style={inputStyle} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Auditorium, Room 301, Online" maxLength={255} />
+                  <input className="ce-input" style={inputStyle} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Auditorium, Room 301, Online" maxLength={255} />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
                     <label style={labelStyle}><CalendarDays size={12} /> Starts *</label>
-                    <input type="datetime-local" style={inputStyle} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                    <input type="datetime-local" className="ce-input" style={inputStyle} value={startTime} onChange={(e) => setStartTime(e.target.value)} />
                   </div>
                   <div>
                     <label style={labelStyle}><Clock size={12} /> Ends *</label>
-                    <input type="datetime-local" style={inputStyle} value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                    <input type="datetime-local" className="ce-input" style={inputStyle} value={endTime} onChange={(e) => setEndTime(e.target.value)} />
                   </div>
                 </div>
 
@@ -302,21 +324,24 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
             )}
 
             {/* Footer nav */}
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
               {step === 2 && (
                 <button
                   type="button"
                   onClick={() => setStep(1)}
+                  disabled={isPending}
+                  className="ce-btn-ghost"
                   style={{
                     flex: '0 0 auto',
-                    padding: '12px 18px',
+                    padding: '11px 16px',
                     borderRadius: 999,
                     border: '1px solid var(--border)',
                     background: 'transparent',
                     color: 'var(--text)',
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: 700,
-                    cursor: 'pointer',
+                    cursor: isPending ? 'default' : 'pointer',
+                    opacity: isPending ? 0.5 : 1,
                   }}
                 >
                   ← Back
@@ -326,14 +351,15 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
                 <button
                   type="button"
                   onClick={goToStep2}
+                  className="ce-btn-primary"
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '11px',
                     borderRadius: 999,
                     border: 'none',
                     background: 'var(--text)',
                     color: 'var(--bg)',
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: 700,
                     cursor: 'pointer',
                   }}
@@ -345,24 +371,25 @@ export function CreateCommunityEventDialog({ open, onOpenChange, communityId, ev
                   type="button"
                   onClick={handleSave}
                   disabled={isPending}
+                  className="ce-btn-primary"
                   style={{
                     flex: 1,
-                    padding: '12px',
+                    padding: '11px',
                     borderRadius: 999,
                     border: 'none',
                     background: 'var(--text)',
                     color: 'var(--bg)',
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: 700,
                     cursor: isPending ? 'default' : 'pointer',
-                    opacity: isPending ? 0.5 : 1,
+                    opacity: isPending ? 0.6 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 8,
                   }}
                 >
-                  {isPending && <LoaderCircle size={15} className="animate-spin" />}
+                  {isPending && <LoaderCircle size={15} className="ce-spin" />}
                   {isPending ? (isEdit ? 'Saving…' : 'Creating…') : isEdit ? 'Save changes' : 'Create event'}
                 </button>
               )}

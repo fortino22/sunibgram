@@ -5,11 +5,12 @@ import (
 
 	cachectrl "github.com/sunibgram/webapi/controller/cache"
 	rolectrl "github.com/sunibgram/webapi/controller/role"
+	schemactrl "github.com/sunibgram/webapi/controller/schema"
 	userctrl "github.com/sunibgram/webapi/controller/user"
 	"github.com/sunibgram/webapi/middleware"
 )
 
-func RegisterAdminRoutes(api fiber.Router, roleCtrl *rolectrl.RoleController, userCtrl *userctrl.UserController, cacheCtrl *cachectrl.CacheController) {
+func RegisterAdminRoutes(api fiber.Router, roleCtrl *rolectrl.RoleController, userCtrl *userctrl.UserController, cacheCtrl *cachectrl.CacheController, schemaCtrl *schemactrl.SchemaController) {
 	admin := api.Group("/admin", middleware.Auth(), middleware.AdminOnly())
 
 	roles := admin.Group("/roles")
@@ -25,4 +26,7 @@ func RegisterAdminRoutes(api fiber.Router, roleCtrl *rolectrl.RoleController, us
 
 	cache := admin.Group("/cache")
 	cache.Post("/clear", cacheCtrl.Clear)
+
+	schema := admin.Group("/schema")
+	schema.Get("/", schemaCtrl.Get)
 }

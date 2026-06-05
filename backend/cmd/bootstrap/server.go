@@ -132,6 +132,7 @@ func registerRoutes(app *fiber.App, ctrls *Controllers, c *cache.Cache) {
 		ctrls.TrendingUser,
 		ctrls.TrendingThread,
 		ctrls.TrendReport,
+		ctrls.Schema,
 		c,
 	)
 }

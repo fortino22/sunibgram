@@ -1,16 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarDays, MapPin, MessageCircle, Plus } from 'lucide-react';
+import { CalendarDays, MapPin, MessageCircle } from 'lucide-react';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { Button } from '@/components/ui/button';
 import { useCommunityEvents } from '@/hooks/useCommunityEvents';
 import type { CommunityEventListItem } from '@/lib/services/communityEvents';
 
 interface Props {
   communityId: number;
   isAdmin: boolean;
-  onCreateEvent?: () => void;
 }
 
 function formatRange(start: string, end: string): string {
@@ -72,7 +70,7 @@ function EventCard({ event }: { event: CommunityEventListItem }) {
   );
 }
 
-export function CommunityEventsTab({ communityId, isAdmin, onCreateEvent }: Props) {
+export function CommunityEventsTab({ communityId, isAdmin }: Props) {
   const { data, isLoading } = useCommunityEvents(communityId);
   const events = data?.data ?? [];
 
@@ -85,18 +83,10 @@ export function CommunityEventsTab({ communityId, isAdmin, onCreateEvent }: Prop
           ))}
         </div>
       ) : events.length === 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <EmptyState
-            title="No events yet"
-            subtitle={isAdmin ? 'Create your first community event and tag the people who should see it.' : "You'll see events here once an admin tags you in one."}
-          />
-          {isAdmin && onCreateEvent && (
-            <Button onClick={onCreateEvent}>
-              <Plus size={16} style={{ marginRight: 6 }} />
-              Create event
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          title="No events yet"
+          subtitle={isAdmin ? 'Create a community event from the header and tag the people who should see it.' : "You'll see events here once an admin tags you in one."}
+        />
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
           {events.map((event) => (

@@ -38,6 +38,7 @@ import (
 	reportctrl "github.com/sunibgram/webapi/controller/report"
 	repostctrl "github.com/sunibgram/webapi/controller/repost"
 	rolectrl "github.com/sunibgram/webapi/controller/role"
+	schemactrl "github.com/sunibgram/webapi/controller/schema"
 	sharectrl "github.com/sunibgram/webapi/controller/share"
 	threadctrl "github.com/sunibgram/webapi/controller/thread"
 	threadpinctrl "github.com/sunibgram/webapi/controller/thread_pin"
@@ -59,6 +60,7 @@ type Controllers struct {
 	Cache                *cachectrl.CacheController
 	Auth                 *authctrl.AuthController
 	Role                 *rolectrl.RoleController
+	Schema               *schemactrl.SchemaController
 	User                 *userctrl.UserController
 	UserSettings         *usersettingsctrl.UserSettingsController
 	UserProfile          *userprofilectrl.UserProfileController
@@ -115,6 +117,7 @@ func NewControllers(svcs *Services, ext *External, c *cache.Cache) *Controllers 
 		Cache:                cachectrl.NewCacheController(svcs.Cache),
 		Auth:                 authctrl.NewAuthController(svcs.Auth, svcs.Faculty, svcs.FacultyLocation),
 		Role:                 rolectrl.NewRoleController(svcs.Role),
+		Schema:               schemactrl.NewSchemaController(svcs.Schema),
 		User:                 userctrl.NewUserController(svcs.User, svcs.UserProfile),
 		UserSettings:         usersettingsctrl.NewUserSettingsController(svcs.UserSettings),
 		UserProfile:          userprofilectrl.NewUserProfileController(svcs.UserProfile, svcs.Faculty, ext.SocketHub, svcs.ChatRoom),

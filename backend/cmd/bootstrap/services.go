@@ -40,6 +40,7 @@ import (
 	premiumsubscriptionuc "github.com/sunibgram/application/usecase/premium_subscription"
 	reportuc "github.com/sunibgram/application/usecase/report"
 	roleuc "github.com/sunibgram/application/usecase/role"
+	schemauc "github.com/sunibgram/application/usecase/schema"
 	shareuc "github.com/sunibgram/application/usecase/share"
 	threaduc "github.com/sunibgram/application/usecase/thread"
 	threadmediauc "github.com/sunibgram/application/usecase/thread_media"
@@ -93,6 +94,7 @@ import (
 	premiumsubscriptionsvciface "github.com/sunibgram/domain/service/premium_subscription"
 	reportsvciface "github.com/sunibgram/domain/service/report"
 	rolesvciface "github.com/sunibgram/domain/service/role"
+	schemasvciface "github.com/sunibgram/domain/service/schema"
 	sharesvciface "github.com/sunibgram/domain/service/share"
 	threadsvciface "github.com/sunibgram/domain/service/thread"
 	threadmediasvciface "github.com/sunibgram/domain/service/thread_media"
@@ -115,6 +117,7 @@ type Services struct {
 	Cache                       cachesvciface.ICacheService
 	Auth                        authsvciface.IAuthService
 	Role                        rolesvciface.IRoleService
+	Schema                      schemasvciface.ISchemaService
 	User                        usersvciface.IUserService
 	UserSettings                usersettingssvciface.IUserSettingsService
 	UserProfile                 userprofilesvciface.IUserProfileService
@@ -189,6 +192,7 @@ func NewServices(repos *Repositories, ext *External, c *cache.Cache) *Services {
 		Cache:                       cacheuc.NewCacheService(repos.Cache),
 		Auth:                        authuc.NewAuthService(repos.User, repos.Role, repos.Verification, repos.UserSettings, ext.Storage, ext.Email, c),
 		Role:                        roleuc.NewRoleService(repos.Role),
+		Schema:                      schemauc.NewSchemaService(repos.Schema),
 		User:                        useruc.NewUserService(repos.User, repos.Follow, repos.UserProfile),
 		UserSettings:                usersettingsuc.NewUserSettingsService(repos.UserSettings, repos.Thread),
 		UserProfile:                 profile,

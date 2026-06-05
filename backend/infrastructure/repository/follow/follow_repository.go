@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -227,6 +228,19 @@ func (r *followRepository) GetFollowingSet(ctx context.Context, followerID uint,
 	return result, nil
 }
 
+// isEmailQuery reports whether the mention query is a full email address
+// (exactly one "@", non-empty local + domain, and a dot in the domain). Used to
+// switch the mention search from username-LIKE to an exact email match.
+func isEmailQuery(query string) bool {
+	q := strings.TrimSpace(query)
+	at := strings.IndexByte(q, '@')
+	if at <= 0 || at != strings.LastIndexByte(q, '@') {
+		return false
+	}
+	domain := q[at+1:]
+	return domain != "" && strings.Contains(domain, ".") && !strings.HasSuffix(domain, ".")
+}
+
 func (r *followRepository) SearchMentionUsers(ctx context.Context, requesterID uint, query string) ([]exploremodel.ExploreUserResult, error) {
 	pattern := explorerepo.LikePattern(query)
 	var rows []explorerepo.ExploreUserRow
@@ -242,8 +256,15 @@ func (r *followRepository) SearchMentionUsers(ctx context.Context, requesterID u
 		`).
 		Joins("JOIN roles ON roles.role_id = users.role_id").
 		Joins("LEFT JOIN user_profiles ON user_profiles.user_id = users.user_id").
-		Where("roles.name <> ?", "admin").
-		Where("users.user_name ILIKE ? ESCAPE '\\'", pattern)
+		Where("roles.name <> ?", "admin")
+	// Tag-by-email: when the query is a full email address, match it exactly
+	// against users.email instead of doing a username LIKE — so a pasted email
+	// resolves to the email owner and never collides with a same-text username.
+	if isEmailQuery(query) {
+		db = db.Where("LOWER(users.email) = LOWER(?)", strings.TrimSpace(query))
+	} else {
+		db = db.Where("users.user_name ILIKE ? ESCAPE '\\'", pattern)
+	}
 	// Exclude users in a mutual block relationship with the requester.
 	if requesterID != 0 {
 		db = threadrepo.ApplyBlockFilterOnColumn(db, "users.user_id", requesterID)

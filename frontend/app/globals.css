@@ -1378,6 +1378,70 @@ body {
   background: var(--bg-hover);
 }
 
+/* ─── Create / edit event dialog ─────────────────────────────────────── */
+.ce-dialog-backdrop {
+  animation: ce-fade-in 0.16s ease;
+}
+.ce-dialog-card {
+  animation: ce-pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes ce-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ce-pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ce-input {
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.ce-input:hover {
+  border-color: var(--text-tertiary);
+}
+.ce-input:focus {
+  border-color: var(--accent);
+  background: var(--bg-card);
+}
+/* Primary (solid) action button */
+.ce-btn-primary {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+.ce-btn-primary:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+.ce-btn-primary:not(:disabled):active {
+  transform: translateY(0) scale(0.99);
+}
+/* Secondary / ghost (outlined) button */
+.ce-btn-ghost {
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.ce-btn-ghost:not(:disabled):hover {
+  background: var(--bg-subtle);
+  border-color: var(--text-tertiary);
+}
+.ce-close-btn {
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.ce-close-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.ce-banner {
+  transition: filter 0.16s ease;
+}
+.ce-banner:hover {
+  filter: brightness(0.92);
+}
+.ce-spin {
+  animation: ce-spin 0.7s linear infinite;
+}
+@keyframes ce-spin {
+  to { transform: rotate(360deg); }
+}
+
 .poll-select {
   cursor: pointer;
   transition: border-color 0.15s;

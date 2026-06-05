@@ -162,3 +162,30 @@ export interface Role {
   role_id: number;
   name: string;
 }
+
+export interface SchemaColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+  is_pk: boolean;
+  is_unique: boolean;
+  is_fk: boolean;
+  fk_table?: string;
+  fk_column?: string;
+}
+
+export interface SchemaReference {
+  from_table: string;
+  from_column: string;
+  to_column: string;
+}
+
+export interface SchemaTable {
+  name: string;
+  columns: SchemaColumn[];
+  referenced_by: SchemaReference[];
+}
+
+export interface SchemaResponse {
+  tables: SchemaTable[];
+}
