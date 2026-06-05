@@ -2,9 +2,7 @@ package authctrl
 
 import (
 	"errors"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -181,7 +179,6 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 	meta := authsvciface.LoginMeta{
 		UserAgent: ctx.Get("User-Agent"),
 		IP:        ctx.IP(),
-		BaseURL:   ctx.BaseURL(),
 	}
 
 	pair, err := c.authService.Login(req.Email, req.Password, meta)
@@ -194,34 +191,6 @@ func (c *AuthController) Login(ctx *fiber.Ctx) error {
 		AccessToken: pair.AccessToken,
 		SID:         pair.SID,
 	})
-}
-
-// ConfirmLogin handles the yes/no links from the post-login alert email. Public
-// endpoint — the one-time token in the query string is the only credential, so it
-// works from any device. It performs the action, then redirects into the app:
-// "No, it isn't me" (session already revoked) → forgot-password to secure the
-// account; everything else (confirmed, or an expired/invalid link) → login.
-func (c *AuthController) ConfirmLogin(ctx *fiber.Ctx) error {
-	status, err := c.authService.ConfirmLogin(ctx.Context(), ctx.Query("token"), ctx.Query("action"))
-
-	var target string
-	switch {
-	case err != nil:
-		target = frontendURL("/login/expired")
-	case status == "denied":
-		target = frontendURL("/forgot-password")
-	default:
-		target = frontendURL("/login")
-	}
-	return ctx.Redirect(target, fiber.StatusFound)
-}
-
-// frontendURL joins the Next.js app base (FRONTEND_BASE_URL, default local dev)
-// with a path, for redirecting the email-link flow back into the app.
-func frontendURL(path string) string {
-	base := strings.TrimRight(os.Getenv("FRONTEND_BASE_URL"), "/")
-
-	return base + path
 }
 
 func (c *AuthController) Refresh(ctx *fiber.Ctx) error {

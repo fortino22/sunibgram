@@ -99,13 +99,6 @@ func userSessionsKey(userID uint) string {
 	return fmt.Sprintf("user_sessions:%d", userID)
 }
 
-const loginConfirmTTL = 24 * time.Hour
-
-// loginConfirmKey maps a one-time login-alert token to the session id it can revoke.
-func loginConfirmKey(token string) string {
-	return fmt.Sprintf("login_confirm:%s", token)
-}
-
 // IsUsernameAvailable reports whether a username is free. Public (used by the
 // signup form before the user has a token); reuses the same uniqueness check
 // Register relies on so the two never disagree.
@@ -305,11 +298,12 @@ func (s *AuthService) revokeAllSessions(ctx context.Context, userID uint) {
 	_ = s.cache.Delete(ctx, userSessionsKey(userID))
 }
 
-// Login validates credentials, opens a session, and fires a "was this you?"
-// security-alert email. The login succeeds immediately; the email lets the owner
-// disavow it (see ConfirmLogin), which revokes the session created here. meta
-// carries the request's User-Agent, IP, and base URL so the email can show the
-// device and build the confirm/deny links.
+// Login validates credentials, opens a session, and fires a "new sign-in"
+// notification email. The login succeeds immediately; the email is informational
+// only (no revoke links — those are prefetched by webmail scanners and would kill
+// the fresh session). meta carries the request's User-Agent and IP for the notice.
+// To evict an unrecognized session, the owner resets their password, which calls
+// revokeAllSessions.
 func (s *AuthService) Login(email, password string, meta authsvciface.LoginMeta) (usermodel.TokenPair, error) {
 	user, err := s.userRepo.FindByEmail(email)
 	if err != nil {
@@ -327,24 +321,15 @@ func (s *AuthService) Login(email, password string, meta authsvciface.LoginMeta)
 	}
 	_ = s.cache.SAdd(ctx, userSessionsKey(user.UserID), sid, dur)
 
-	s.sendLoginAlert(ctx, user.Email, sid, meta)
+	s.sendLoginAlert(user.Email, meta)
 
 	return generateTokenPair(user, sid)
 }
 
-// sendLoginAlert stores a one-time confirm token mapped to the session and queues
-// the alert email. Best-effort: a failure here never blocks a successful login.
-func (s *AuthService) sendLoginAlert(ctx context.Context, email, sid string, meta authsvciface.LoginMeta) {
-	token := uuid.NewString()
-	if err := s.cache.Set(ctx, loginConfirmKey(token), sid, loginConfirmTTL); err != nil {
-		log.Printf("login alert: failed to store confirm token: %v", err)
-		return
-	}
-
-	base := strings.TrimRight(meta.BaseURL, "/")
-	yesURL := fmt.Sprintf("%s/api/auth/login/verify?token=%s&action=yes", base, token)
-	noURL := fmt.Sprintf("%s/api/auth/login/verify?token=%s&action=no", base, token)
-
+// sendLoginAlert queues an informational "new sign-in" email. Best-effort: a
+// failure here never blocks a successful login. Notify-only — no revoke links,
+// because webmail link-scanners prefetch them and would kill the fresh session.
+func (s *AuthService) sendLoginAlert(email string, meta authsvciface.LoginMeta) {
 	device := meta.UserAgent
 	if strings.TrimSpace(device) == "" {
 		device = "Unknown device"
@@ -354,31 +339,9 @@ func (s *AuthService) sendLoginAlert(ctx context.Context, email, sid string, met
 		ip = "Unknown"
 	}
 
-	if err := s.emailService.SendLoginAlert(email, yesURL, noURL, device, ip); err != nil {
+	if err := s.emailService.SendLoginAlert(email, device, ip); err != nil {
 		log.Printf("login alert: failed to queue email: %v", err)
 	}
-}
-
-// ConfirmLogin resolves a confirm token to its session. "no" revokes that session
-// (logging the new device out); "yes" just acknowledges. The token is one-time:
-// it is consumed regardless of the action. Returns "denied"/"confirmed".
-func (s *AuthService) ConfirmLogin(ctx context.Context, token, action string) (string, error) {
-	token = strings.TrimSpace(token)
-	if token == "" {
-		return "", errors.New("invalid or expired link")
-	}
-
-	var sid string
-	if err := s.cache.Get(ctx, loginConfirmKey(token), &sid); err != nil {
-		return "", errors.New("invalid or expired link")
-	}
-	_ = s.cache.Delete(ctx, loginConfirmKey(token))
-
-	if action == "no" {
-		_ = s.Logout(ctx, sid)
-		return "denied", nil
-	}
-	return "confirmed", nil
 }
 
 func (s *AuthService) RefreshToken(ctx context.Context, sid string) (usermodel.TokenPair, error) {

@@ -23,7 +23,6 @@ func RegisterAuthRoutes(api fiber.Router, ctrl *authctrl.AuthController, authMW 
 	auth := api.Group("/auth")
 	auth.Post("/register", authIPRateLimit, ctrl.Register)
 	auth.Post("/login", authIPRateLimit, ctrl.Login)
-	auth.Get("/login/verify", ctrl.ConfirmLogin)
 	auth.Post("/refresh", ctrl.Refresh)
 	auth.Post("/logout", authMW, ctrl.Logout)
 	auth.Put("/change-password", authMW, ctrl.ChangePassword)
